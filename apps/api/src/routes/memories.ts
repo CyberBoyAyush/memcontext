@@ -8,6 +8,7 @@ import {
   rateLimitSearchMemory,
 } from "../middleware/rate-limit.js";
 import { saveMemory, searchMemories } from "../services/memory.js";
+import { checkMemoryLimit } from "../services/subscription.js";
 import type { MemoryCategory, MemorySource } from "@memcontext/types";
 
 const app = new Hono<{
@@ -47,9 +48,11 @@ app.post(
     const auth = c.get("auth");
     const body = c.req.valid("json");
 
-    if (auth.memoryCount >= auth.memoryLimit) {
+    // Always check fresh limit from DB, not cached value
+    const limitCheck = await checkMemoryLimit(auth.userId);
+    if (!limitCheck.allowed) {
       throw new HTTPException(403, {
-        message: `Memory limit exceeded. Current: ${auth.memoryCount}, Limit: ${auth.memoryLimit}. Upgrade your plan for more storage.`,
+        message: `Memory limit exceeded. Current: ${limitCheck.current}, Limit: ${limitCheck.limit}. Upgrade your plan for more storage.`,
       });
     }
 
