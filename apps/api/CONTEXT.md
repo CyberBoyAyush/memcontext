@@ -8,31 +8,32 @@ Single source of truth for all business logic. Both MCP and web call this API.
 
 ```json
 {
-  "hono": "^4.0.0",
-  "@hono/node-server": "^1.0.0",
-  "@hono/zod-validator": "^0.4.0",
-  "drizzle-orm": "^0.38.0",
-  "pg": "^8.0.0",
-  "zod": "^3.25.0",
-  "better-auth": "^1.0.0",
-  "openai": "^4.0.0",
-  "@upstash/redis": "^1.0.0"
+  "hono": "^4.11.0",
+  "@hono/node-server": "^1.19.0",
+  "@hono/zod-validator": "^0.7.0",
+  "drizzle-orm": "^0.45.0",
+  "pg": "^8.16.0",
+  "zod": "^4.2.0",
+  "better-auth": "^1.4.0",
+  "openai": "^6.15.0",
+  "@upstash/redis": "^1.36.0"
 }
 ```
 
 ## Routes
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | /api/memories | API Key / Session | Save memory |
-| GET | /api/memories/search | API Key / Session | Semantic search |
-| GET | /api/auth/* | Public | Better Auth endpoints |
-| POST | /api/api-keys | Session only | Create API key |
-| DELETE | /api/api-keys/:id | Session only | Revoke API key |
+| Method | Path                 | Auth              | Description           |
+| ------ | -------------------- | ----------------- | --------------------- |
+| POST   | /api/memories        | API Key / Session | Save memory           |
+| GET    | /api/memories/search | API Key / Session | Semantic search       |
+| GET    | /api/auth/\*         | Public            | Better Auth endpoints |
+| POST   | /api/api-keys        | Session only      | Create API key        |
+| DELETE | /api/api-keys/:id    | Session only      | Revoke API key        |
 
 ## Database Tables
 
 ### memories (Core)
+
 ```
 id              UUID PRIMARY KEY
 user_id         TEXT FK
@@ -49,6 +50,7 @@ created_at      TIMESTAMP
 ```
 
 ### memory_relations
+
 ```
 id              UUID PRIMARY KEY
 source_id       UUID FK -> memories
@@ -59,6 +61,7 @@ created_at      TIMESTAMP
 ```
 
 ### api_keys
+
 ```
 id              UUID PRIMARY KEY
 user_id         TEXT FK
@@ -72,15 +75,18 @@ created_at      TIMESTAMP
 ## Services
 
 ### embedding.ts
+
 - `generateEmbedding(text: string): Promise<number[]>`
 - Uses OpenAI text-embedding-3-large with dimensions: 1536
 
 ### memory.ts
+
 - `saveMemory(userId, content, options): Promise<SaveResult>`
 - `searchMemories(userId, query, options): Promise<Memory[]>`
 - `findSimilar(userId, embedding, threshold): Promise<Memory | null>`
 
 ### relation.ts
+
 - `classifyRelationship(oldMemory, newMemory): Promise<"update" | "extend" | "similar">`
 - Uses LLM with JSON Schema: `{"type": "update" | "extend" | "similar"}`
 - Default to "similar" on parse failure
@@ -110,6 +116,7 @@ if (apiKey) {
 ## Caching (Upstash Redis)
 
 Only API key validation is cached:
+
 ```typescript
 const cacheKey = `apikey:${keyHash}`;
 const TTL = 7 * 24 * 60 * 60; // 7 days

@@ -8,8 +8,8 @@ Thin MCP wrapper that connects Claude Desktop to apps/api. No business logic her
 
 ```json
 {
-  "@modelcontextprotocol/sdk": "^1.0.0",
-  "zod": "^3.25.0"
+  "@modelcontextprotocol/sdk": "^1.25.0",
+  "zod": "^4.2.0"
 }
 ```
 
@@ -27,6 +27,7 @@ Save a memory to the user's account.
 | project | string | No | Project name (lowercase) |
 
 **Output:**
+
 ```json
 {
   "id": "mem_abc123",
@@ -48,6 +49,7 @@ Find relevant memories using semantic search.
 | project | string | No | Filter by project |
 
 **Output:**
+
 ```json
 {
   "found": 3,
@@ -83,6 +85,7 @@ Claude Desktop
 ## Project Name Normalization
 
 Before sending to API:
+
 ```typescript
 function normalizeProject(project?: string): string | undefined {
   if (!project) return undefined;
@@ -91,6 +94,7 @@ function normalizeProject(project?: string): string | undefined {
 ```
 
 Examples:
+
 - "Capy Chat" -> "capychat"
 - "My-Project" -> "myproject"
 - "test_app" -> "testapp"
@@ -98,12 +102,13 @@ Examples:
 ## Error Responses
 
 Return user-friendly messages:
+
 ```typescript
 try {
   const result = await apiClient.post("/api/memories", args);
   return { content: [{ type: "text", text: JSON.stringify(result) }] };
 } catch (error) {
-  return { 
+  return {
     content: [{ type: "text", text: `Error: ${error.message}` }],
     isError: true,
   };
@@ -113,6 +118,7 @@ try {
 ## Authentication
 
 API key passed via environment variable:
+
 ```
 MEMCONTEXT_API_KEY=mc_a1b2c3d4...
 ```
