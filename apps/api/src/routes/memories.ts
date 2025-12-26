@@ -9,11 +9,15 @@ import {
 } from "../middleware/rate-limit.js";
 import { saveMemory, searchMemories } from "../services/memory.js";
 import { checkMemoryLimit } from "../services/subscription.js";
+import { getTimingContext } from "../middleware/request-logger.js";
+import { logger } from "../lib/logger.js";
 import type { MemoryCategory, MemorySource } from "@memcontext/types";
+import type { TimingContext } from "../utils/timing.js";
 
 const app = new Hono<{
   Variables: {
     auth: AuthContext;
+    timing: TimingContext;
   };
 }>();
 
@@ -47,10 +51,20 @@ app.post(
   async (c) => {
     const auth = c.get("auth");
     const body = c.req.valid("json");
+    const timing = getTimingContext(c);
 
-    // Always check fresh limit from DB, not cached value
     const limitCheck = await checkMemoryLimit(auth.userId);
     if (!limitCheck.allowed) {
+      logger.warn(
+        {
+          userId: auth.userId,
+          currentCount: limitCheck.current,
+          limit: limitCheck.limit,
+          plan: auth.plan,
+        },
+        "memory limit exceeded",
+      );
+
       throw new HTTPException(403, {
         message: `Memory limit exceeded. Current: ${limitCheck.current}, Limit: ${limitCheck.limit}. Upgrade your plan for more storage.`,
       });
@@ -62,6 +76,7 @@ app.post(
       category: body.category as MemoryCategory | undefined,
       project: body.project,
       source: body.source as MemorySource,
+      timing,
     });
 
     return c.json(result, 201);
@@ -76,6 +91,7 @@ app.get(
   async (c) => {
     const auth = c.get("auth");
     const query = c.req.valid("query");
+    const timing = getTimingContext(c);
 
     const result = await searchMemories({
       userId: auth.userId,
@@ -83,6 +99,7 @@ app.get(
       limit: query.limit,
       category: query.category as MemoryCategory | undefined,
       project: query.project,
+      timing,
     });
 
     return c.json(result);

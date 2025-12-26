@@ -3,19 +3,24 @@ import "./env.js";
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import { cors } from "hono/cors";
-import { logger } from "hono/logger";
 import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
 import { checkDbConnection, closeDb } from "./db/index.js";
 import { rateLimitHealth, rateLimitGlobal } from "./middleware/rate-limit.js";
-import { generateErrorId, logError } from "./utils/error.js";
+import { requestLogger, getRequestId } from "./middleware/request-logger.js";
+import { logger } from "./lib/logger.js";
+import {
+  AppError,
+  generateErrorId,
+  serializeError,
+} from "./utils/app-error.js";
 import memoriesRoutes from "./routes/memories.js";
 import apiKeysRoutes from "./routes/api-keys.js";
 import type { HealthResponse } from "@memcontext/types";
 
 const app = new Hono();
 
-app.use("*", logger());
+app.use("*", requestLogger);
 
 const ALLOWED_ORIGINS = [
   "http://localhost:3000",
@@ -25,7 +30,6 @@ const ALLOWED_ORIGINS = [
 
 function isAllowedOrigin(origin: string): boolean {
   if (ALLOWED_ORIGINS.includes(origin)) return true;
-  // Allow memcontext.in and all subdomains (e.g., api.memcontext.in, app.memcontext.in)
   if (/^https?:\/\/([a-z0-9-]+\.)?memcontext\.in$/.test(origin)) return true;
   return false;
 }
@@ -34,16 +38,16 @@ app.use(
   "*",
   cors({
     origin: (origin) => {
-      if (!origin) return "*"; // Allow non-browser requests (MCP, curl, etc.)
+      if (!origin) return "*";
       if (isAllowedOrigin(origin)) return origin;
-      return null; // Reject unknown origins
+      return null;
     },
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization", "X-API-Key"],
   }),
 );
 
-app.use("*", bodyLimit({ maxSize: 50 * 1024 })); // 50KB limit
+app.use("*", bodyLimit({ maxSize: 50 * 1024 }));
 
 app.use("/api/*", rateLimitGlobal);
 
@@ -56,6 +60,13 @@ app.get("/health", rateLimitHealth, async (c) => {
     database: dbHealthy,
   };
 
+  if (!dbHealthy) {
+    logger.warn(
+      { requestId: getRequestId(c) },
+      "health check failed - database unhealthy",
+    );
+  }
+
   return c.json(response, dbHealthy ? 200 : 503);
 });
 
@@ -63,57 +74,138 @@ app.route("/api/memories", memoriesRoutes);
 app.route("/api/api-keys", apiKeysRoutes);
 
 app.onError((err, c) => {
+  const requestId = getRequestId(c);
+
   if (err instanceof HTTPException) {
+    logger.warn(
+      {
+        requestId,
+        statusCode: err.status,
+        errorMessage: err.message,
+      },
+      "http exception",
+    );
+
     return c.json(
       {
         error: err.message,
         code: `HTTP_${err.status}`,
+        requestId,
       },
       err.status,
     );
   }
 
+  if (err instanceof AppError) {
+    logger.error(
+      {
+        requestId,
+        ...err.toLogObject(),
+      },
+      "application error",
+    );
+
+    return c.json(
+      {
+        error: err.message,
+        code: err.code,
+        errorId: err.id,
+        requestId,
+      },
+      err.statusCode as 400 | 401 | 403 | 404 | 429 | 500 | 502 | 503,
+    );
+  }
+
   const errorId = generateErrorId();
-  logError("unhandled_request_error", errorId, err);
+  const serialized = serializeError(err);
+
+  logger.error(
+    {
+      requestId,
+      errorId,
+      errorName: serialized.name,
+      errorMessage: serialized.message,
+      errorStack: serialized.stack,
+      errorCode: serialized.code,
+    },
+    "unhandled error",
+  );
 
   return c.json(
     {
       error: "An unexpected error occurred. Please try again.",
       code: "INTERNAL_ERROR",
       errorId,
+      requestId,
     },
     500,
   );
 });
 
 app.notFound((c) => {
+  const requestId = getRequestId(c);
+
+  logger.debug(
+    {
+      requestId,
+      path: c.req.path,
+      method: c.req.method,
+    },
+    "route not found",
+  );
+
   return c.json(
     {
       error: "Not found",
       code: "NOT_FOUND",
+      requestId,
     },
     404,
   );
 });
 
 const port = parseInt(process.env.PORT || "3000", 10);
+const startTime = Date.now();
 
-console.log(`Starting MemContext API server on port ${port}...`);
+logger.info(
+  {
+    port,
+    nodeEnv: process.env.NODE_ENV,
+    logLevel: process.env.LOG_LEVEL || "info",
+    nodeVersion: process.version,
+  },
+  "starting server",
+);
 
 serve({
   fetch: app.fetch,
   port,
 });
 
-const shutdown = async () => {
-  console.log("\nShutting down...");
+const shutdown = async (signal: string) => {
+  const uptime = Math.round((Date.now() - startTime) / 1000);
+
+  logger.info(
+    {
+      signal,
+      uptime,
+    },
+    "shutting down server",
+  );
+
   await closeDb();
   process.exit(0);
 };
 
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));
 
-console.log(`MemContext API server running at http://localhost:${port}`);
+logger.info(
+  {
+    port,
+    url: `http://localhost:${port}`,
+  },
+  "server started",
+);
 
 export default app;

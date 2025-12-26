@@ -3,7 +3,8 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateObject, generateText } from "ai";
 import { z } from "zod";
 import type { RelationshipClassification } from "@memcontext/types";
-import { generateErrorId, logError, escapeForPrompt } from "../utils/error.js";
+import { escapeForPrompt } from "../utils/app-error.js";
+import { logger } from "./logger.js";
 
 const EMBEDDING_MODEL = "openai/text-embedding-3-large";
 const LLM_MODEL = "google/gemini-2.5-flash";
@@ -39,6 +40,7 @@ function getOpenRouterAiSdk(): ReturnType<typeof createOpenRouter> {
 }
 
 export async function generateEmbedding(text: string): Promise<number[]> {
+  const start = performance.now();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -65,7 +67,29 @@ export async function generateEmbedding(text: string): Promise<number[]> {
       );
     }
 
+    const duration = Math.round(performance.now() - start);
+    logger.debug(
+      {
+        model: EMBEDDING_MODEL,
+        inputLength: text.length,
+        duration,
+      },
+      "embedding generated",
+    );
+
     return embedding;
+  } catch (error) {
+    const duration = Math.round(performance.now() - start);
+    logger.error(
+      {
+        model: EMBEDDING_MODEL,
+        inputLength: text.length,
+        duration,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      },
+      "embedding generation failed",
+    );
+    throw error;
   } finally {
     clearTimeout(timeout);
   }
@@ -80,6 +104,8 @@ export async function classifyRelationship(
   existingContent: string,
   newContent: string,
 ): Promise<RelationshipClassification> {
+  const start = performance.now();
+
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -89,7 +115,8 @@ export async function classifyRelationship(
 
     try {
       const { object } = await generateObject({
-        model: getOpenRouterAiSdk().chat(LLM_MODEL),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        model: getOpenRouterAiSdk().chat(LLM_MODEL) as any,
         schema: relationshipSchema,
         abortSignal: controller.signal,
         prompt: `You are a memory relationship classifier. Analyze these two memories and classify their relationship.
@@ -108,18 +135,39 @@ Classification options:
 Classify this relationship:`,
       });
 
+      const duration = Math.round(performance.now() - start);
+      logger.debug(
+        {
+          model: LLM_MODEL,
+          operation: "classify_relationship",
+          classification: object.classification,
+          duration,
+        },
+        "relationship classified",
+      );
+
       return object.classification as RelationshipClassification;
     } finally {
       clearTimeout(timeout);
     }
   } catch (error) {
-    const errorId = generateErrorId();
-    logError("llm_classification_failed", errorId, error);
+    const duration = Math.round(performance.now() - start);
+    logger.error(
+      {
+        model: LLM_MODEL,
+        operation: "classify_relationship",
+        duration,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      },
+      "relationship classification failed",
+    );
     return "similar";
   }
 }
 
 export async function expandMemory(content: string): Promise<string> {
+  const start = performance.now();
+
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -128,7 +176,8 @@ export async function expandMemory(content: string): Promise<string> {
 
     try {
       const { text } = await generateText({
-        model: getOpenRouterAiSdk().chat(LLM_MODEL),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        model: getOpenRouterAiSdk().chat(LLM_MODEL) as any,
         abortSignal: controller.signal,
         prompt: `Rewrite this user memory into a clear, searchable statement. Include relevant keywords and context that an AI agent might search for. Be specific about what type of preference, fact, or decision this represents. Keep it concise (1-2 sentences).
 
@@ -137,13 +186,34 @@ Memory: "${escapedContent}"
 Expanded version:`,
       });
 
+      const duration = Math.round(performance.now() - start);
+      logger.debug(
+        {
+          model: LLM_MODEL,
+          operation: "expand_memory",
+          inputLength: content.length,
+          outputLength: text.length,
+          duration,
+        },
+        "memory expanded",
+      );
+
       return text.trim() || content;
     } finally {
       clearTimeout(timeout);
     }
   } catch (error) {
-    const errorId = generateErrorId();
-    logError("memory_expansion_failed", errorId, error);
+    const duration = Math.round(performance.now() - start);
+    logger.error(
+      {
+        model: LLM_MODEL,
+        operation: "expand_memory",
+        inputLength: content.length,
+        duration,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      },
+      "memory expansion failed",
+    );
     return content;
   }
 }

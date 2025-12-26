@@ -20,6 +20,13 @@ const envSchema = z.object({
     .string()
     .min(1, "UPSTASH_REDIS_REST_TOKEN is required"),
   PORT: z.string().optional().default("3000"),
+  NODE_ENV: z.enum(["dev", "production", "test"]).optional().default("dev"),
+  LOG_LEVEL: z
+    .enum(["trace", "debug", "info", "warn", "error", "fatal"])
+    .optional()
+    .default("info"),
+  LOGTAIL_SOURCE_TOKEN: z.string().optional(),
+  LOGTAIL_INGEST_ENDPOINT: z.string().url().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -1,6 +1,7 @@
 import { createMiddleware } from "hono/factory";
 import { HTTPException } from "hono/http-exception";
 import { redis } from "../lib/redis.js";
+import { logger } from "../lib/logger.js";
 
 interface RateLimitConfig {
   windowMs: number;
@@ -58,17 +59,47 @@ export function createRateLimiter(configKey: keyof typeof RATE_LIMIT_CONFIGS) {
 
   return createMiddleware(async (c, next) => {
     const identifier = getClientIdentifier(c);
+    const requestId = c.get("requestId") || "unknown";
+
+    const start = performance.now();
     const result = await checkRateLimit(identifier, config);
+    const duration = Math.round(performance.now() - start);
 
     c.header("X-RateLimit-Limit", config.max.toString());
     c.header("X-RateLimit-Remaining", result.remaining.toString());
     c.header("X-RateLimit-Reset", result.resetAt.toString());
 
     if (!result.allowed) {
+      const retryAfter = Math.ceil((result.resetAt - Date.now()) / 1000);
+
+      logger.warn(
+        {
+          requestId,
+          rateLimitType: configKey,
+          rateLimitKey: identifier.substring(0, 20),
+          limit: config.max,
+          remaining: 0,
+          resetAt: result.resetAt,
+          retryAfter,
+          duration,
+        },
+        "rate limit exceeded",
+      );
+
       throw new HTTPException(429, {
-        message: `Rate limit exceeded. Try again in ${Math.ceil((result.resetAt - Date.now()) / 1000)} seconds.`,
+        message: `Rate limit exceeded. Try again in ${retryAfter} seconds.`,
       });
     }
+
+    logger.debug(
+      {
+        requestId,
+        rateLimitType: configKey,
+        remaining: result.remaining,
+        duration,
+      },
+      "rate limit check passed",
+    );
 
     await next();
   });

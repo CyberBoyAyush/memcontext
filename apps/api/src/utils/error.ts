@@ -1,48 +1,28 @@
-import { randomBytes } from "crypto";
+// Re-export for backward compatibility
+export {
+  generateErrorId,
+  serializeError as sanitizeErrorForLog,
+  escapeForPrompt,
+} from "./app-error.js";
 
-export function generateErrorId(): string {
-  return `ERR_${randomBytes(4).toString("hex").toUpperCase()}`;
-}
-
-export function sanitizeErrorForLog(error: unknown): {
-  message: string;
-  name: string;
-  code?: string;
-} {
-  if (error instanceof Error) {
-    return {
-      message: error.message,
-      name: error.name,
-      code: (error as NodeJS.ErrnoException).code,
-    };
-  }
-  return {
-    message: String(error),
-    name: "UnknownError",
-  };
-}
+import { logger } from "../lib/logger.js";
+import { serializeError } from "./app-error.js";
 
 export function logError(
   context: string,
   errorId: string,
   error: unknown,
 ): void {
-  const sanitized = sanitizeErrorForLog(error);
-  console.error(
-    JSON.stringify({
+  const serialized = serializeError(error);
+  logger.error(
+    {
       errorId,
       context,
-      error: sanitized,
-      timestamp: new Date().toISOString(),
-    }),
+      errorName: serialized.name,
+      errorMessage: serialized.message,
+      errorStack: serialized.stack,
+      errorCode: serialized.code,
+    },
+    context,
   );
-}
-
-export function escapeForPrompt(content: string): string {
-  return content
-    .replace(/\\/g, "\\\\")
-    .replace(/"/g, '\\"')
-    .replace(/\n/g, "\\n")
-    .replace(/\r/g, "\\r")
-    .replace(/\t/g, "\\t");
 }

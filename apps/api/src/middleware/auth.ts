@@ -8,6 +8,7 @@ import {
 } from "../services/cache.js";
 import { getSubscriptionData } from "../services/subscription.js";
 import { hashApiKey } from "../utils/index.js";
+import { logger } from "../lib/logger.js";
 import { eq, sql } from "drizzle-orm";
 
 export interface AuthContext {
@@ -24,26 +25,80 @@ export const authMiddleware = createMiddleware<{
   };
 }>(async (c, next) => {
   const apiKeyHeader = c.req.header("X-API-Key");
+  const requestId = c.get("requestId") || "unknown";
+  const ip =
+    c.req.header("x-forwarded-for")?.split(",")[0].trim() ||
+    c.req.header("x-real-ip") ||
+    "unknown";
 
-  if (apiKeyHeader) {
-    const auth = await validateApiKey(apiKeyHeader);
-    if (auth) {
-      c.set("auth", auth);
-      return next();
-    }
+  if (!apiKeyHeader) {
+    logger.warn(
+      {
+        requestId,
+        ip,
+        path: c.req.path,
+        reason: "missing_api_key",
+      },
+      "auth failed - missing api key",
+    );
+
+    throw new HTTPException(401, {
+      message: "Unauthorized: Valid API key required",
+    });
   }
 
-  throw new HTTPException(401, {
-    message: "Unauthorized: Valid API key required",
-  });
+  const auth = await validateApiKey(apiKeyHeader, requestId, ip);
+
+  if (!auth) {
+    logger.warn(
+      {
+        requestId,
+        ip,
+        keyPrefix: apiKeyHeader.substring(0, 8) + "...",
+        reason: "invalid_api_key",
+      },
+      "auth failed - invalid api key",
+    );
+
+    throw new HTTPException(401, {
+      message: "Unauthorized: Valid API key required",
+    });
+  }
+
+  logger.debug(
+    {
+      requestId,
+      userId: auth.userId,
+      plan: auth.plan,
+      memoryCount: auth.memoryCount,
+      memoryLimit: auth.memoryLimit,
+    },
+    "auth success",
+  );
+
+  c.set("auth", auth);
+  return next();
 });
 
-async function validateApiKey(key: string): Promise<AuthContext | null> {
+async function validateApiKey(
+  key: string,
+  requestId: string,
+  ip: string,
+): Promise<AuthContext | null> {
   const keyHash = hashApiKey(key);
 
   const cached = await getCachedApiKey(keyHash);
   if (cached) {
-    updateLastUsed(cached.keyId).catch(console.error);
+    updateLastUsed(cached.keyId).catch((err) => {
+      logger.error(
+        {
+          keyId: cached.keyId,
+          errorMessage: err instanceof Error ? err.message : String(err),
+        },
+        "failed to update last used",
+      );
+    });
+
     return {
       userId: cached.userId,
       keyId: cached.keyId,
@@ -53,6 +108,7 @@ async function validateApiKey(key: string): Promise<AuthContext | null> {
     };
   }
 
+  const start = performance.now();
   const [keyRecord] = await db
     .select({
       id: apiKeys.id,
@@ -62,7 +118,17 @@ async function validateApiKey(key: string): Promise<AuthContext | null> {
     .where(eq(apiKeys.keyHash, keyHash))
     .limit(1);
 
+  const duration = Math.round(performance.now() - start);
+
   if (!keyRecord) {
+    logger.debug(
+      {
+        requestId,
+        ip,
+        duration,
+      },
+      "api key not found in database",
+    );
     return null;
   }
 
@@ -78,7 +144,24 @@ async function validateApiKey(key: string): Promise<AuthContext | null> {
 
   await cacheApiKey(keyHash, authContext);
 
-  updateLastUsed(keyRecord.id).catch(console.error);
+  updateLastUsed(keyRecord.id).catch((err) => {
+    logger.error(
+      {
+        keyId: keyRecord.id,
+        errorMessage: err instanceof Error ? err.message : String(err),
+      },
+      "failed to update last used",
+    );
+  });
+
+  logger.debug(
+    {
+      requestId,
+      userId: keyRecord.userId,
+      duration,
+    },
+    "api key validated from database",
+  );
 
   return authContext;
 }
