@@ -11,7 +11,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "test": "pnpm dlx @modelcontextprotocol/inspector npx tsx src/index.ts"
   },
   "dependencies": {
     "@memcontext/types": "workspace:*",
