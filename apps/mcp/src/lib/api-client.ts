@@ -1,13 +1,6 @@
-function getApiBase(): string {
-  return process.env.MEMCONTEXT_API_URL || "http://localhost:3000";
-}
-
-function getApiKey(): string {
-  const apiKey = process.env.MEMCONTEXT_API_KEY;
-  if (!apiKey) {
-    throw new Error("MEMCONTEXT_API_KEY environment variable is required");
-  }
-  return apiKey;
+interface ApiClientConfig {
+  apiBase: string;
+  apiKey: string;
 }
 
 interface ApiError {
@@ -15,48 +8,62 @@ interface ApiError {
   code?: string;
 }
 
-export async function post<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${getApiBase()}${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-API-Key": getApiKey(),
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const error = (await res.json()) as ApiError;
-    throw new Error(error.error || `API request failed: ${res.status}`);
-  }
-
-  return res.json() as Promise<T>;
+export interface ApiClient {
+  post<T>(path: string, body: unknown): Promise<T>;
+  get<T>(
+    path: string,
+    params?: Record<string, string | number | undefined>,
+  ): Promise<T>;
 }
 
-export async function get<T>(
-  path: string,
-  params?: Record<string, string | number | undefined>,
-): Promise<T> {
-  const url = new URL(`${getApiBase()}${path}`);
+export function createApiClient(config: ApiClientConfig): ApiClient {
+  const { apiBase, apiKey } = config;
 
-  if (params) {
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined) {
-        url.searchParams.set(key, String(value));
+  return {
+    async post<T>(path: string, body: unknown): Promise<T> {
+      const res = await fetch(`${apiBase}${path}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": apiKey,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const error = (await res.json()) as ApiError;
+        throw new Error(error.error || `API request failed: ${res.status}`);
       }
-    });
-  }
 
-  const res = await fetch(url, {
-    headers: {
-      "X-API-Key": getApiKey(),
+      return res.json() as Promise<T>;
     },
-  });
 
-  if (!res.ok) {
-    const error = (await res.json()) as ApiError;
-    throw new Error(error.error || `API request failed: ${res.status}`);
-  }
+    async get<T>(
+      path: string,
+      params?: Record<string, string | number | undefined>,
+    ): Promise<T> {
+      const url = new URL(`${apiBase}${path}`);
 
-  return res.json() as Promise<T>;
+      if (params) {
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined) {
+            url.searchParams.set(key, String(value));
+          }
+        });
+      }
+
+      const res = await fetch(url, {
+        headers: {
+          "X-API-Key": apiKey,
+        },
+      });
+
+      if (!res.ok) {
+        const error = (await res.json()) as ApiError;
+        throw new Error(error.error || `API request failed: ${res.status}`);
+      }
+
+      return res.json() as Promise<T>;
+    },
+  };
 }
