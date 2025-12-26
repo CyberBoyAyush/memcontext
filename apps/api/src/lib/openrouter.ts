@@ -1,6 +1,6 @@
 import { OpenRouter } from "@openrouter/sdk";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { generateObject } from "ai";
+import { generateObject, generateText } from "ai";
 import { z } from "zod";
 import type { RelationshipClassification } from "@memcontext/types";
 
@@ -90,5 +90,23 @@ Classify this relationship:`,
   } catch (error) {
     console.error("LLM classification failed, defaulting to similar:", error);
     return "similar";
+  }
+}
+
+export async function expandMemory(content: string): Promise<string> {
+  try {
+    const { text } = await generateText({
+      model: getOpenRouterAiSdk().chat(LLM_MODEL),
+      prompt: `Rewrite this user memory into a clear, searchable statement. Include relevant keywords and context that an AI agent might search for. Be specific about what type of preference, fact, or decision this represents. Keep it concise (1-2 sentences).
+
+Memory: "${content}"
+
+Expanded version:`,
+    });
+
+    return text.trim() || content;
+  } catch (error) {
+    console.error("Memory expansion failed, using original:", error);
+    return content;
   }
 }

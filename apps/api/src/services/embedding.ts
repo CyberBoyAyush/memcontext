@@ -1,4 +1,7 @@
-import { generateEmbedding as openrouterGenerateEmbedding } from "../lib/openrouter.js";
+import {
+  generateEmbedding as openrouterGenerateEmbedding,
+  expandMemory as openrouterExpandMemory,
+} from "../lib/openrouter.js";
 
 export async function generateEmbedding(text: string): Promise<number[]> {
   if (!text || text.trim().length === 0) {
@@ -6,4 +9,12 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   }
 
   return openrouterGenerateEmbedding(text);
+}
+
+export async function expandMemory(content: string): Promise<string> {
+  if (!content || content.trim().length === 0) {
+    return content;
+  }
+
+  return openrouterExpandMemory(content);
 }

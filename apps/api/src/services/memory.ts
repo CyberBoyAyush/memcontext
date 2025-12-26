@@ -1,5 +1,5 @@
 import { db, memories, memoryRelations } from "../db/index.js";
-import { generateEmbedding } from "./embedding.js";
+import { generateEmbedding, expandMemory } from "./embedding.js";
 import { classifyRelationship } from "./relation.js";
 import { normalizeProjectName } from "../utils/index.js";
 import { eq, and, isNull, lt, asc, sql } from "drizzle-orm";
@@ -37,7 +37,8 @@ export async function saveMemory(
   const { userId, content, category, source } = params;
   const project = normalizeProjectName(params.project);
 
-  const embedding = await generateEmbedding(content);
+  const expandedContent = await expandMemory(content);
+  const embedding = await generateEmbedding(expandedContent);
 
   const similarMemory = await findSimilarMemory(userId, embedding);
 
