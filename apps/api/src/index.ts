@@ -4,8 +4,11 @@ import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
 import { checkDbConnection, closeDb } from "./db/index.js";
+import { rateLimitHealth, rateLimitGlobal } from "./middleware/rate-limit.js";
+import { generateErrorId, logError } from "./utils/error.js";
 import memoriesRoutes from "./routes/memories.js";
 import apiKeysRoutes from "./routes/api-keys.js";
 import type { HealthResponse } from "@memcontext/types";
@@ -14,16 +17,37 @@ const app = new Hono();
 
 app.use("*", logger());
 
+const ALLOWED_ORIGINS = [
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://localhost:5173",
+];
+
+function isAllowedOrigin(origin: string): boolean {
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  // Allow memcontext.in and all subdomains (e.g., api.memcontext.in, app.memcontext.in)
+  if (/^https?:\/\/([a-z0-9-]+\.)?memcontext\.in$/.test(origin)) return true;
+  return false;
+}
+
 app.use(
   "*",
   cors({
-    origin: "*",
+    origin: (origin) => {
+      if (!origin) return "*"; // Allow non-browser requests (MCP, curl, etc.)
+      if (isAllowedOrigin(origin)) return origin;
+      return null; // Reject unknown origins
+    },
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization", "X-API-Key"],
   }),
 );
 
-app.get("/health", async (c) => {
+app.use("*", bodyLimit({ maxSize: 50 * 1024 })); // 50KB limit
+
+app.use("/api/*", rateLimitGlobal);
+
+app.get("/health", rateLimitHealth, async (c) => {
   const dbHealthy = await checkDbConnection();
 
   const response: HealthResponse = {
@@ -49,12 +73,14 @@ app.onError((err, c) => {
     );
   }
 
-  console.error("Unhandled error:", err);
+  const errorId = generateErrorId();
+  logError("unhandled_request_error", errorId, err);
 
   return c.json(
     {
-      error: "Internal server error",
+      error: "An unexpected error occurred. Please try again.",
       code: "INTERNAL_ERROR",
+      errorId,
     },
     500,
   );

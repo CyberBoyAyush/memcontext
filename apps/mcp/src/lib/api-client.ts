@@ -6,6 +6,7 @@ interface ApiClientConfig {
 interface ApiError {
   error: string;
   code?: string;
+  errorId?: string;
 }
 
 export interface ApiClient {
@@ -32,7 +33,10 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
 
       if (!res.ok) {
         const error = (await res.json()) as ApiError;
-        throw new Error(error.error || `API request failed: ${res.status}`);
+        const message = error.errorId
+          ? `${error.error} (Reference: ${error.errorId})`
+          : error.error || `Request failed: ${res.status}`;
+        throw new Error(message);
       }
 
       return res.json() as Promise<T>;
@@ -60,7 +64,10 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
 
       if (!res.ok) {
         const error = (await res.json()) as ApiError;
-        throw new Error(error.error || `API request failed: ${res.status}`);
+        const message = error.errorId
+          ? `${error.error} (Reference: ${error.errorId})`
+          : error.error || `Request failed: ${res.status}`;
+        throw new Error(message);
       }
 
       return res.json() as Promise<T>;

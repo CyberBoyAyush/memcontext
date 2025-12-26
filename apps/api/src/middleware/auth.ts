@@ -1,14 +1,21 @@
 import { createMiddleware } from "hono/factory";
 import { HTTPException } from "hono/http-exception";
 import { db, apiKeys } from "../db/index.js";
-import { getCachedApiKey, cacheApiKey } from "../services/cache.js";
+import {
+  getCachedApiKey,
+  cacheApiKey,
+  type CachedApiKeyData,
+} from "../services/cache.js";
+import { getSubscriptionData } from "../services/subscription.js";
 import { hashApiKey } from "../utils/index.js";
 import { eq, sql } from "drizzle-orm";
-import type { CachedApiKeyData } from "@memcontext/types";
 
 export interface AuthContext {
   userId: string;
   keyId: string;
+  plan: string;
+  memoryCount: number;
+  memoryLimit: number;
 }
 
 export const authMiddleware = createMiddleware<{
@@ -37,7 +44,13 @@ async function validateApiKey(key: string): Promise<AuthContext | null> {
   const cached = await getCachedApiKey(keyHash);
   if (cached) {
     updateLastUsed(cached.keyId).catch(console.error);
-    return cached;
+    return {
+      userId: cached.userId,
+      keyId: cached.keyId,
+      plan: cached.plan,
+      memoryCount: cached.memoryCount,
+      memoryLimit: cached.memoryLimit,
+    };
   }
 
   const [keyRecord] = await db
@@ -53,9 +66,14 @@ async function validateApiKey(key: string): Promise<AuthContext | null> {
     return null;
   }
 
+  const subData = await getSubscriptionData(keyRecord.userId);
+
   const authContext: CachedApiKeyData = {
     userId: keyRecord.userId,
     keyId: keyRecord.id,
+    plan: subData.plan,
+    memoryCount: subData.memoryCount,
+    memoryLimit: subData.memoryLimit,
   };
 
   await cacheApiKey(keyHash, authContext);

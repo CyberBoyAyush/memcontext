@@ -13,6 +13,9 @@ const app = express();
 const port = parseInt(process.env.MCP_HTTP_PORT || "3001", 10);
 const apiBase = process.env.MEMCONTEXT_API_URL || "http://localhost:3000";
 
+const MAX_SESSIONS = 1000;
+const SESSION_IDLE_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
+
 app.use((_req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
@@ -33,9 +36,22 @@ app.use(express.json());
 interface SessionData {
   transport: StreamableHTTPServerTransport;
   apiKey: string;
+  lastActivityAt: number;
 }
 
 const sessions: Map<string, SessionData> = new Map();
+
+function cleanupStaleSessions(): void {
+  const now = Date.now();
+  for (const [sessionId, session] of sessions.entries()) {
+    if (now - session.lastActivityAt > SESSION_IDLE_TIMEOUT_MS) {
+      console.log(`Cleaning up stale session: ${sessionId}`);
+      sessions.delete(sessionId);
+    }
+  }
+}
+
+setInterval(cleanupStaleSessions, 5 * 60 * 1000); // Run cleanup every 5 minutes
 
 function extractApiKey(req: express.Request): string | null {
   const key = req.headers["memcontext-api-key"] || req.headers["x-api-key"];
@@ -48,11 +64,19 @@ app.post("/mcp", async (req, res) => {
 
   if (sessionId && sessions.has(sessionId)) {
     const session = sessions.get(sessionId)!;
+    session.lastActivityAt = Date.now();
     await session.transport.handleRequest(req, res, req.body);
     return;
   }
 
   if (!sessionId && isInitializeRequest(req.body)) {
+    if (sessions.size >= MAX_SESSIONS) {
+      res.status(503).json({
+        error: "Server at capacity. Please try again later.",
+      });
+      return;
+    }
+
     const apiKey = extractApiKey(req);
     if (!apiKey) {
       res.status(401).json({
@@ -65,7 +89,7 @@ app.post("/mcp", async (req, res) => {
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => randomUUID(),
       onsessioninitialized: (sid) => {
-        sessions.set(sid, { transport, apiKey });
+        sessions.set(sid, { transport, apiKey, lastActivityAt: Date.now() });
         console.log(`Session initialized: ${sid}`);
       },
     });
@@ -104,6 +128,7 @@ const handleSessionRequest = async (
   }
 
   const session = sessions.get(sessionId)!;
+  session.lastActivityAt = Date.now();
   await session.transport.handleRequest(req, res);
 };
 

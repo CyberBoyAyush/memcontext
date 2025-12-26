@@ -1,6 +1,7 @@
 import { db, memories, memoryRelations } from "../db/index.js";
 import { generateEmbedding, expandMemory } from "./embedding.js";
 import { classifyRelationship } from "./relation.js";
+import { incrementMemoryCount, decrementMemoryCount } from "./subscription.js";
 import { normalizeProjectName } from "../utils/index.js";
 import { eq, and, isNull, lt, asc, sql } from "drizzle-orm";
 import { cosineDistance } from "drizzle-orm";
@@ -54,6 +55,8 @@ export async function saveMemory(
         source,
       })
       .returning({ id: memories.id });
+
+    await incrementMemoryCount(userId);
 
     return {
       id: newMemory.id,
@@ -112,6 +115,8 @@ export async function saveMemory(
     relationType: classification === "extend" ? "extends" : "similar",
     strength: 1 - similarMemory.distance,
   });
+
+  await incrementMemoryCount(userId);
 
   return {
     id: newMemory.id,
@@ -227,5 +232,10 @@ export async function deleteMemory(
     .set({ deletedAt: sql`NOW()` })
     .where(and(eq(memories.id, memoryId), eq(memories.userId, userId)));
 
-  return (result.rowCount ?? 0) > 0;
+  const deleted = (result.rowCount ?? 0) > 0;
+  if (deleted) {
+    await decrementMemoryCount(userId);
+  }
+
+  return deleted;
 }

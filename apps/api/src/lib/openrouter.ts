@@ -3,9 +3,11 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateObject, generateText } from "ai";
 import { z } from "zod";
 import type { RelationshipClassification } from "@memcontext/types";
+import { generateErrorId, logError, escapeForPrompt } from "../utils/error.js";
 
 const EMBEDDING_MODEL = "openai/text-embedding-3-large";
 const LLM_MODEL = "google/gemini-2.5-flash";
+const REQUEST_TIMEOUT_MS = 30_000;
 
 function getApiKey(): string {
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -37,24 +39,36 @@ function getOpenRouterAiSdk(): ReturnType<typeof createOpenRouter> {
 }
 
 export async function generateEmbedding(text: string): Promise<number[]> {
-  const response = await getOpenRouterSdk().embeddings.generate({
-    model: EMBEDDING_MODEL,
-    input: text,
-    dimensions: 1536,
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-  if (typeof response === "string") {
-    throw new Error(
-      `Unexpected string response from embeddings API: ${response}`,
+  try {
+    const response = await getOpenRouterSdk().embeddings.generate(
+      {
+        model: EMBEDDING_MODEL,
+        input: text,
+        dimensions: 1536,
+      },
+      { signal: controller.signal },
     );
-  }
 
-  const embedding = response.data[0].embedding;
-  if (typeof embedding === "string") {
-    throw new Error("Received base64 encoded embedding, expected float array");
-  }
+    if (typeof response === "string") {
+      throw new Error(
+        `Unexpected string response from embeddings API: ${response}`,
+      );
+    }
 
-  return embedding;
+    const embedding = response.data[0].embedding;
+    if (typeof embedding === "string") {
+      throw new Error(
+        "Received base64 encoded embedding, expected float array",
+      );
+    }
+
+    return embedding;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 const relationshipSchema = z.object({
@@ -67,16 +81,24 @@ export async function classifyRelationship(
   newContent: string,
 ): Promise<RelationshipClassification> {
   try {
-    const { object } = await generateObject({
-      model: getOpenRouterAiSdk().chat(LLM_MODEL),
-      schema: relationshipSchema,
-      prompt: `You are a memory relationship classifier. Analyze these two memories and classify their relationship.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+    const escapedExisting = escapeForPrompt(existingContent);
+    const escapedNew = escapeForPrompt(newContent);
+
+    try {
+      const { object } = await generateObject({
+        model: getOpenRouterAiSdk().chat(LLM_MODEL),
+        schema: relationshipSchema,
+        abortSignal: controller.signal,
+        prompt: `You are a memory relationship classifier. Analyze these two memories and classify their relationship.
 
 EXISTING MEMORY:
-"${existingContent}"
+"${escapedExisting}"
 
 NEW MEMORY:
-"${newContent}"
+"${escapedNew}"
 
 Classification options:
 - "update": The new memory CONTRADICTS or REPLACES the existing memory (e.g., preference changed, fact updated)
@@ -84,29 +106,44 @@ Classification options:
 - "similar": The memories are RELATED but are SEPARATE FACTS (e.g., both about coding but different preferences)
 
 Classify this relationship:`,
-    });
+      });
 
-    return object.classification as RelationshipClassification;
+      return object.classification as RelationshipClassification;
+    } finally {
+      clearTimeout(timeout);
+    }
   } catch (error) {
-    console.error("LLM classification failed, defaulting to similar:", error);
+    const errorId = generateErrorId();
+    logError("llm_classification_failed", errorId, error);
     return "similar";
   }
 }
 
 export async function expandMemory(content: string): Promise<string> {
   try {
-    const { text } = await generateText({
-      model: getOpenRouterAiSdk().chat(LLM_MODEL),
-      prompt: `Rewrite this user memory into a clear, searchable statement. Include relevant keywords and context that an AI agent might search for. Be specific about what type of preference, fact, or decision this represents. Keep it concise (1-2 sentences).
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-Memory: "${content}"
+    const escapedContent = escapeForPrompt(content);
+
+    try {
+      const { text } = await generateText({
+        model: getOpenRouterAiSdk().chat(LLM_MODEL),
+        abortSignal: controller.signal,
+        prompt: `Rewrite this user memory into a clear, searchable statement. Include relevant keywords and context that an AI agent might search for. Be specific about what type of preference, fact, or decision this represents. Keep it concise (1-2 sentences).
+
+Memory: "${escapedContent}"
 
 Expanded version:`,
-    });
+      });
 
-    return text.trim() || content;
+      return text.trim() || content;
+    } finally {
+      clearTimeout(timeout);
+    }
   } catch (error) {
-    console.error("Memory expansion failed, using original:", error);
+    const errorId = generateErrorId();
+    logError("memory_expansion_failed", errorId, error);
     return content;
   }
 }

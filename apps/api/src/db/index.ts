@@ -19,9 +19,7 @@ function getPool(): pg.Pool {
     const connectionString = getConnectionString();
     pool = new Pool({
       connectionString,
-      ssl: connectionString.includes("neon.tech")
-        ? { rejectUnauthorized: false }
-        : undefined,
+      ssl: connectionString.includes("neon.tech") ? true : undefined,
     });
   }
   return pool;

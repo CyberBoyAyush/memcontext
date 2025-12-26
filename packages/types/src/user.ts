@@ -7,6 +7,25 @@ export interface User {
   updatedAt: Date;
 }
 
+export type PlanType = "free" | "hobby" | "pro" | "team";
+
+export interface Subscription {
+  id: string;
+  userId: string;
+  plan: PlanType;
+  memoryCount: number;
+  memoryLimit: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface MemoryLimitCheck {
+  allowed: boolean;
+  current: number;
+  limit: number;
+  plan: PlanType;
+}
+
 export interface ApiKey {
   id: string;
   userId: string;

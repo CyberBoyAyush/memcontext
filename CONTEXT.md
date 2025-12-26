@@ -89,7 +89,28 @@ memcontext/
 
 ## Database Schema (Custom Tables Only)
 
-Better Auth auto-generates its own tables (user, session, account, verification). Below are our custom tables.
+Better Auth auto-generates its own tables (user, session, account, verification) when web dashboard is added. Below are our custom tables.
+
+### subscriptions
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PK, default random | |
+| user_id | TEXT | NOT NULL, UNIQUE | Owner (FK -> user when Better Auth added) |
+| plan | TEXT | NOT NULL, default 'free' | free / hobby / pro / team |
+| memory_count | INTEGER | NOT NULL, default 0 | Current non-deleted memories |
+| memory_limit | INTEGER | NOT NULL, default 5000 | Based on plan |
+| created_at | TIMESTAMP | NOT NULL, default now | |
+| updated_at | TIMESTAMP | NOT NULL, default now | |
+
+**Plan Limits:**
+
+| Plan | Limit |
+|------|-------|
+| free | 300 |
+| hobby | 1500|
+| pro | 5000 |
+| team | 10000 |
 
 ### api_keys
 
@@ -134,9 +155,11 @@ Better Auth auto-generates its own tables (user, session, account, verification)
 
 ### Indexes
 
+- subscriptions.user_id already UNIQUE (implicit index)
 - HNSW on memories.embedding with vector_cosine_ops (fast similarity search)
 - Composite on memories(user_id, is_current, deleted_at) (filtered queries)
 - Index on memories.supersedes_id and memories.root_id (version traversal)
+- Index on api_keys.key_hash (already UNIQUE, implicit index)
 
 ---
 
@@ -154,7 +177,11 @@ Both resolve to the same user. API middleware checks X-API-Key first, falls back
 - Prefix: `mc_` + first 8 characters (stored for display)
 - Storage: SHA-256 hash only
 
-**Caching:** API key validation cached in Upstash Redis with 7-day TTL, refreshed on use via GETEX.
+**Caching:** API key validation + subscription data cached in Upstash Redis with 7-day TTL, refreshed on use via GETEX. Cache stores: user_id, plan, memory_count, memory_limit.
+
+**Cache Invalidation:**
+- API key revoked: delete cache entry
+- Subscription updated: delete cache entry (will refresh on next request)
 
 ---
 
@@ -197,10 +224,12 @@ Use Drizzle's cosineDistance helper with lt() for threshold checks.
 **Input:** content (required), category (optional), project (optional)
 
 **Behavior:**
-1. Generate embedding via OpenRouter
-2. Search for similar memories (distance < 0.20, is_current = true)
-3. If match found, classify via LLM (update/extend/similar)
-4. Insert accordingly, update relations/versions
+1. Check subscription: memory_count < memory_limit (reject with LIMIT_EXCEEDED if over)
+2. Generate embedding via OpenRouter
+3. Search for similar memories (distance < 0.20, is_current = true)
+4. If match found, classify via LLM (update/extend/similar)
+5. Insert accordingly, update relations/versions
+6. Increment subscription.memory_count (+1 for all inserts)
 
 **Output:** { id, status: "saved" | "updated" | "extended", superseded? }
 

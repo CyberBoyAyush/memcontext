@@ -18,4 +18,7 @@ export interface HealthResponse {
 export interface CachedApiKeyData {
   userId: string;
   keyId: string;
+  plan: string;
+  memoryCount: number;
+  memoryLimit: number;
 }

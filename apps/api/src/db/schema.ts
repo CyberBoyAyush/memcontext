@@ -10,6 +10,25 @@ import {
   vector,
 } from "drizzle-orm/pg-core";
 
+export const PLAN_LIMITS = {
+  free: 300,
+  hobby: 1500,
+  pro: 5000,
+  team: 10000,
+} as const;
+
+export type PlanType = keyof typeof PLAN_LIMITS;
+
+export const subscriptions = pgTable("subscriptions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull().unique(),
+  plan: text("plan").notNull().default("free"),
+  memoryCount: integer("memory_count").notNull().default(0),
+  memoryLimit: integer("memory_limit").notNull().default(300),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const apiKeys = pgTable("api_keys", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id").notNull(),
@@ -61,6 +80,8 @@ export const memoryRelations = pgTable("memory_relations", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export type SubscriptionRow = typeof subscriptions.$inferSelect;
+export type NewSubscriptionRow = typeof subscriptions.$inferInsert;
 export type ApiKeyRow = typeof apiKeys.$inferSelect;
 export type NewApiKeyRow = typeof apiKeys.$inferInsert;
 export type MemoryRow = typeof memories.$inferSelect;
