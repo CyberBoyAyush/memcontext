@@ -21,6 +21,11 @@ function getApiKey(): string {
 const APP_REFERER = "https://memcontext.in";
 const APP_TITLE = "MemContext";
 
+const APP_HEADERS = {
+  "HTTP-Referer": APP_REFERER,
+  "X-Title": APP_TITLE,
+};
+
 let openRouterSdkInstance: OpenRouter | null = null;
 let openrouterAiSdkInstance: ReturnType<typeof createOpenRouter> | null = null;
 
@@ -28,8 +33,6 @@ function getOpenRouterSdk(): OpenRouter {
   if (!openRouterSdkInstance) {
     openRouterSdkInstance = new OpenRouter({
       apiKey: getApiKey(),
-      httpReferer: APP_REFERER,
-      xTitle: APP_TITLE,
     });
   }
   return openRouterSdkInstance;
@@ -60,7 +63,10 @@ export async function generateEmbedding(text: string): Promise<number[]> {
         input: text,
         dimensions: 1536,
       },
-      { signal: controller.signal },
+      {
+        signal: controller.signal,
+        headers: APP_HEADERS,
+      },
     );
 
     if (typeof response === "string") {
