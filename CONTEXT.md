@@ -1,75 +1,267 @@
-# CONTEXT.md - MemContext Project
+# MemContext - Project Context
 
 ## What We're Building
 
-Centralized memory system for AI agents. Stores user preferences and project context, retrieves via semantic search. AI assistants like Claude Desktop remember things across sessions.
+Centralized memory system for AI coding agents. Stores user preferences, project context, and decisions as searchable memories. AI assistants (Claude Desktop, Cursor, Cline) retrieve relevant context automatically via semantic search.
 
 **Domain:** memcontext.com
 
-## Tech Stack
+**Problem:** AI agents forget everything between sessions. Users repeat themselves constantly.
 
-| Layer | Technology |
-|-------|------------|
-| Monorepo | Turborepo + pnpm |
-| Backend | Hono (TypeScript) |
-| Database | PostgreSQL + pgvector (Neon) |
-| ORM | Drizzle |
-| Embeddings | OpenAI text-embedding-3-large (1536 dims) |
-| Cache | Upstash Redis (API key validation only) |
-| Auth | Better Auth (in apps/api) |
-| Protocol | MCP (Model Context Protocol) |
+**Solution:** Persistent memory layer accessible via MCP protocol. Save once, retrieve forever.
+
+---
 
 ## Architecture
 
 ```
-Claude Desktop / Web Dashboard
-         │
-         ▼
-    apps/mcp / apps/web (thin clients)
-         │
-         ▼
-    apps/api (Hono + Drizzle) ← All business logic
-         │
-         ▼
-    Neon Postgres + pgvector
+Claude Desktop / Cursor / Cline
+              │
+              │ MCP (stdio)
+              ▼
+         apps/mcp (thin wrapper, no business logic)
+              │
+              │ HTTP + X-API-Key
+              ▼
+         apps/api (Hono - ALL business logic)
+              │
+              ▼
+    ┌─────────┴─────────┐
+    │                   │
+Upstash Redis      Neon Postgres
+(API key cache)    (memories + pgvector)
 ```
 
-## Database Schema (7 Tables)
+**Key Principle:** apps/api is the single source of truth. MCP and future web dashboard are thin clients.
 
-**Better Auth (4):** user, session, account, verification
+---
 
-**Custom (3):**
-- `api_keys` - MCP authentication (key_hash, user_id, name)
-- `memories` - Core table (content, embedding VECTOR(1536), is_current, supersedes_id)
-- `memory_relations` - Links between memories (extends/similar)
+## Tech Stack
 
-## Auth Strategy
+| Component | Package | Version |
+|-----------|---------|---------|
+| Monorepo | turborepo + pnpm | latest |
+| API Framework | hono | 4.11.3 |
+| API Server | @hono/node-server | 1.19.7 |
+| Validation | zod | 4.2.1 |
+| Zod Middleware | @hono/zod-validator | 0.7.6 |
+| ORM | drizzle-orm | 0.45.1 |
+| Migrations | drizzle-kit | 0.31.8 |
+| Database Driver | pg | 8.16.3 |
+| MCP SDK | @modelcontextprotocol/sdk | 1.25.1 |
+| Cache | @upstash/redis | 1.36.0 |
+| Auth | better-auth | 1.4.9 |
+| AI (Embeddings + LLM) | @openrouter/ai-sdk-provider | 1.5.4 |
 
-| Client | Method |
-|--------|--------|
-| Web Dashboard | Better Auth (session cookie) |
-| MCP Server | API Key (X-API-Key header) |
+**Database:** PostgreSQL with pgvector extension (hosted on Neon Singapore)
+
+**AI Provider:** OpenRouter for both embeddings (text-embedding-3-large) and LLM classification (gemini-2.0-flash-lite)
+
+---
+
+## Repository Structure
+
+```
+memcontext/
+├── apps/
+│   ├── api/                 # Hono backend (all business logic)
+│   │   ├── src/
+│   │   │   ├── db/          # schema.ts, connection
+│   │   │   ├── routes/      # memories.ts, api-keys.ts
+│   │   │   ├── services/    # embedding.ts, memory.ts, relation.ts
+│   │   │   ├── middleware/  # auth.ts
+│   │   │   ├── utils/       # hash.ts, normalize.ts
+│   │   │   └── index.ts
+│   │   └── drizzle.config.ts
+│   └── mcp/                 # MCP server (thin wrapper)
+│       └── src/
+│           ├── tools/       # save-memory.ts, search-memory.ts
+│           ├── lib/         # api-client.ts
+│           └── index.ts
+├── packages/
+│   └── types/               # Shared TypeScript types
+├── turbo.json
+├── pnpm-workspace.yaml
+└── package.json
+```
+
+---
+
+## Database Schema (Custom Tables Only)
+
+Better Auth auto-generates its own tables (user, session, account, verification). Below are our custom tables.
+
+### api_keys
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PK, default random | |
+| user_id | TEXT | NOT NULL, FK -> user | Owner |
+| key_prefix | TEXT | NOT NULL | Display prefix "mc_a1b2c3" |
+| key_hash | TEXT | NOT NULL, UNIQUE | SHA-256 hash (never store raw) |
+| name | TEXT | NOT NULL | User label "Claude Desktop" |
+| last_used_at | TIMESTAMP | | Updated on each request |
+| created_at | TIMESTAMP | NOT NULL, default now | |
+
+### memories
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PK, default random | |
+| user_id | TEXT | NOT NULL, FK -> user | Owner |
+| content | TEXT | NOT NULL | Clean, atomic fact |
+| embedding | VECTOR(1536) | NOT NULL | From text-embedding-3-large |
+| category | TEXT | | preference / fact / decision / context |
+| project | TEXT | | Normalized: lowercase, no spaces |
+| source | TEXT | NOT NULL | mcp / web / api |
+| is_current | BOOLEAN | NOT NULL, default true | False when superseded |
+| supersedes_id | UUID | FK -> memories | Previous version this replaces |
+| root_id | UUID | FK -> memories | Original memory in chain |
+| version | INTEGER | NOT NULL, default 1 | Increments on update |
+| deleted_at | TIMESTAMP | | Soft delete |
+| created_at | TIMESTAMP | NOT NULL, default now | |
+
+### memory_relations
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PK, default random | |
+| source_id | UUID | NOT NULL, FK -> memories | |
+| target_id | UUID | NOT NULL, FK -> memories | |
+| relation_type | TEXT | NOT NULL | extends / similar |
+| strength | REAL | | Similarity score 0-1 |
+| created_at | TIMESTAMP | NOT NULL, default now | |
+
+### Indexes
+
+- HNSW on memories.embedding with vector_cosine_ops (fast similarity search)
+- Composite on memories(user_id, is_current, deleted_at) (filtered queries)
+- Index on memories.supersedes_id and memories.root_id (version traversal)
+
+---
+
+## Authentication
+
+| Client | Method | Header |
+|--------|--------|--------|
+| MCP Server | API Key | X-API-Key: mc_... |
+| Web Dashboard | Better Auth Session | Cookie |
+
+Both resolve to the same user. API middleware checks X-API-Key first, falls back to session.
+
+**API Key Format:**
+- Full key: `mc_` + 32 random characters (shown once at creation)
+- Prefix: `mc_` + first 8 characters (stored for display)
+- Storage: SHA-256 hash only
+
+**Caching:** API key validation cached in Upstash Redis with 7-day TTL, refreshed on use via GETEX.
+
+---
 
 ## Relationship Detection (LLM Layer)
 
-When saving a memory with similarity > 0.80 to existing:
-1. Call LLM to classify: Update / Extend / Similar
-2. **Update** - Supersede old memory (is_current=false)
-3. **Extend** - Keep both, add to memory_relations
-4. **Similar** - Keep both, add to memory_relations
+When a new memory has similarity > 0.80 to an existing memory, classify the relationship:
 
-LLM returns JSON: `{"type": "update"}` via JSON Schema mode.
+| Type | Condition | Action |
+|------|-----------|--------|
+| UPDATE | New contradicts/replaces old | Old: is_current=false, New: supersedes_id=old.id |
+| EXTEND | New adds detail to old | Both stay current, add to memory_relations (type: extends) |
+| SIMILAR | Related but separate facts | Both stay current, add to memory_relations (type: similar) |
 
-## MCP Tools (Only 2)
+**LLM Call:** OpenRouter with gemini-2.0-flash-lite, JSON Schema response format forcing enum.
 
-1. **save_memory** - Store memory, auto-detect relationships
-2. **search_memory** - Semantic search, returns is_current=true only
+**Fallback:** Default to SIMILAR if LLM fails (keeps both, safe option).
 
-## Key Decisions
+**Performance:** ~80% of saves have no similar match (0ms overhead). ~20% trigger LLM (~100-150ms).
 
-1. All business logic in apps/api
-2. MCP and web are thin clients
-3. 1536-dim embeddings (industry standard)
-4. Redis for API key cache only (7-day TTL)
-5. Soft deletes (deleted_at timestamp)
-6. Version chains via supersedes_id + root_id
+---
+
+## Similarity Math (pgvector)
+
+pgvector uses cosine distance, not similarity:
+
+```
+similarity = 1 - distance
+distance < 0.20 = similarity > 0.80 (LLM trigger threshold)
+distance < 0.25 = similarity > 0.75 (search result threshold)
+```
+
+Use Drizzle's cosineDistance helper with lt() for threshold checks.
+
+---
+
+## MCP Tools
+
+### save_memory
+
+**Input:** content (required), category (optional), project (optional)
+
+**Behavior:**
+1. Generate embedding via OpenRouter
+2. Search for similar memories (distance < 0.20, is_current = true)
+3. If match found, classify via LLM (update/extend/similar)
+4. Insert accordingly, update relations/versions
+
+**Output:** { id, status: "saved" | "updated" | "extended", superseded? }
+
+### search_memory
+
+**Input:** query (required), limit (default 5, max 10), category (optional), project (optional)
+
+**Behavior:**
+1. Generate query embedding
+2. Vector search with filters (user_id, is_current=true, deleted_at=null)
+3. Return top results above 0.75 similarity
+
+**Output:** { found, memories: [{ id, content, category, relevance, created }] }
+
+**Project Normalization:** Both tools normalize project names to lowercase with no spaces/special characters.
+
+---
+
+## Environment Variables
+
+```
+DATABASE_URL=postgres://...@....neon.tech/...?sslmode=require
+OPENROUTER_API_KEY=sk-or-...
+UPSTASH_REDIS_REST_URL=https://...
+UPSTASH_REDIS_REST_TOKEN=...
+BETTER_AUTH_SECRET=...
+BETTER_AUTH_URL=http://localhost:3000
+```
+
+---
+
+## Coding Standards
+
+**Naming:**
+- Files: kebab-case (save-memory.ts, api-client.ts)
+- Functions/Variables: camelCase
+- Types/Interfaces: PascalCase
+- Constants: SCREAMING_SNAKE_CASE
+
+**Error Handling:**
+- Use Hono's HTTPException for API errors
+- Return consistent error shape: { error: string, code?: string }
+- Log errors with context (userId, action, input)
+
+**Validation:**
+- Zod schemas for all inputs
+- Use @hono/zod-validator middleware
+- Fail fast with descriptive messages
+
+**Database:**
+- All queries through Drizzle (no raw SQL except migrations)
+- Use transactions for multi-table operations
+- Soft delete by default (set deleted_at, never hard delete)
+
+**Security:**
+- Never log API keys or embeddings
+- Hash API keys with SHA-256
+- Validate user ownership on all memory operations
+- Rate limit API endpoints
+
+**Testing:**
+- Unit tests for services
+- Integration tests for routes
+- Use MCP Inspector for MCP testing

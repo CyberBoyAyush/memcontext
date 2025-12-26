@@ -35,6 +35,7 @@ pnpm drizzle-kit push         # Push to dev (no migration file)
 ## Hono Patterns
 
 ### Route Files
+
 ```typescript
 // src/routes/memories.ts
 import { Hono } from "hono";
@@ -54,6 +55,7 @@ export default app;
 ```
 
 ### Mount Routes
+
 ```typescript
 // src/index.ts
 import { Hono } from "hono";
@@ -69,6 +71,7 @@ export default app;
 ```
 
 ### Middleware
+
 ```typescript
 // src/middleware/auth.ts
 import { createMiddleware } from "hono/factory";
@@ -84,9 +87,17 @@ export const authMiddleware = createMiddleware(async (c, next) => {
 ## Drizzle Patterns
 
 ### Schema Definition
+
 ```typescript
 // src/db/schema.ts
-import { pgTable, uuid, text, vector, boolean, timestamp } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  uuid,
+  text,
+  vector,
+  boolean,
+  timestamp,
+} from "drizzle-orm/pg-core";
 
 export const memories = pgTable("memories", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -99,16 +110,14 @@ export const memories = pgTable("memories", {
 ```
 
 ### Vector Search
+
 ```typescript
 import { cosineDistance, lt, and, eq, asc } from "drizzle-orm";
 
 const results = await db
   .select()
   .from(memories)
-  .where(and(
-    eq(memories.userId, userId),
-    eq(memories.isCurrent, true)
-  ))
+  .where(and(eq(memories.userId, userId), eq(memories.isCurrent, true)))
   .orderBy(asc(cosineDistance(memories.embedding, queryEmbedding)))
   .limit(5);
 ```
@@ -138,7 +147,6 @@ export async function searchMemories(userId: string, query: string) {
 
 ```
 DATABASE_URL=postgres://...
-OPENAI_API_KEY=sk-...
 OPENROUTER_API_KEY=sk-or-...
 UPSTASH_REDIS_REST_URL=https://...
 UPSTASH_REDIS_REST_TOKEN=...
@@ -148,6 +156,7 @@ BETTER_AUTH_SECRET=...
 ## Validation
 
 Use Zod for request validation:
+
 ```typescript
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";

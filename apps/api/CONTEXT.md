@@ -15,7 +15,7 @@ Single source of truth for all business logic. Both MCP and web call this API.
   "pg": "^8.16.0",
   "zod": "^4.2.0",
   "better-auth": "^1.4.0",
-  "openai": "^6.15.0",
+  "@openrouter/sdk": "^0.3.0",
   "@upstash/redis": "^1.36.0"
 }
 ```
@@ -77,7 +77,7 @@ created_at      TIMESTAMP
 ### embedding.ts
 
 - `generateEmbedding(text: string): Promise<number[]>`
-- Uses OpenAI text-embedding-3-large with dimensions: 1536
+- Uses OpenRouter with text-embedding-3-large (1536 dimensions)
 
 ### memory.ts
 
@@ -88,7 +88,7 @@ created_at      TIMESTAMP
 ### relation.ts
 
 - `classifyRelationship(oldMemory, newMemory): Promise<"update" | "extend" | "similar">`
-- Uses LLM with JSON Schema: `{"type": "update" | "extend" | "similar"}`
+- Uses OpenRouter LLM with JSON Schema: `{"type": "update" | "extend" | "similar"}`
 - Default to "similar" on parse failure
 
 ## Auth Middleware Logic
