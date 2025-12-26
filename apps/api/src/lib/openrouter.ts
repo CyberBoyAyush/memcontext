@@ -18,6 +18,9 @@ function getApiKey(): string {
   return apiKey;
 }
 
+const APP_REFERER = "https://memcontext.in";
+const APP_TITLE = "MemContext";
+
 let openRouterSdkInstance: OpenRouter | null = null;
 let openrouterAiSdkInstance: ReturnType<typeof createOpenRouter> | null = null;
 
@@ -25,6 +28,8 @@ function getOpenRouterSdk(): OpenRouter {
   if (!openRouterSdkInstance) {
     openRouterSdkInstance = new OpenRouter({
       apiKey: getApiKey(),
+      httpReferer: APP_REFERER,
+      xTitle: APP_TITLE,
     });
   }
   return openRouterSdkInstance;
@@ -34,6 +39,10 @@ function getOpenRouterAiSdk(): ReturnType<typeof createOpenRouter> {
   if (!openrouterAiSdkInstance) {
     openrouterAiSdkInstance = createOpenRouter({
       apiKey: getApiKey(),
+      headers: {
+        "HTTP-Referer": APP_REFERER,
+        "X-Title": APP_TITLE,
+      },
     });
   }
   return openrouterAiSdkInstance;
