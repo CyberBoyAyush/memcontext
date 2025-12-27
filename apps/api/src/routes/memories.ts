@@ -8,7 +8,11 @@ import {
   rateLimitSearchMemory,
 } from "../middleware/rate-limit.js";
 import { saveMemory, searchMemories } from "../services/memory.js";
-import { checkMemoryLimit } from "../services/subscription.js";
+import {
+  checkMemoryLimit,
+  getSubscriptionData,
+} from "../services/subscription.js";
+import { updateCachedMemoryCount } from "../services/cache.js";
 import { getTimingContext } from "../middleware/request-logger.js";
 import { logger } from "../lib/logger.js";
 import type { MemoryCategory, MemorySource } from "@memcontext/types";
@@ -78,6 +82,22 @@ app.post(
       source: body.source as MemorySource,
       timing,
     });
+
+    // Update cache if memory was saved or extended (not just updated/superseded)
+    if (result.status === "saved" || result.status === "extended") {
+      try {
+        const sub = await getSubscriptionData(auth.userId);
+        await updateCachedMemoryCount(auth.keyHash, sub.memoryCount);
+      } catch (err) {
+        logger.error(
+          {
+            userId: auth.userId,
+            errorMessage: err instanceof Error ? err.message : String(err),
+          },
+          "failed to update cached memory count",
+        );
+      }
+    }
 
     return c.json(result, 201);
   },

@@ -14,6 +14,7 @@ import { eq, sql } from "drizzle-orm";
 export interface AuthContext {
   userId: string;
   keyId: string;
+  keyHash: string;
   plan: string;
   memoryCount: number;
   memoryLimit: number;
@@ -102,6 +103,7 @@ async function validateApiKey(
     return {
       userId: cached.userId,
       keyId: cached.keyId,
+      keyHash,
       plan: cached.plan,
       memoryCount: cached.memoryCount,
       memoryLimit: cached.memoryLimit,
@@ -163,7 +165,10 @@ async function validateApiKey(
     "api key validated from database",
   );
 
-  return authContext;
+  return {
+    ...authContext,
+    keyHash,
+  };
 }
 
 async function updateLastUsed(keyId: string): Promise<void> {
