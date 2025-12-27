@@ -4,7 +4,7 @@
 
 Centralized memory system for AI coding agents. Stores user preferences, project context, and decisions as searchable memories. AI assistants (Claude Desktop, Cursor, Cline) retrieve relevant context automatically via semantic search.
 
-**Domain:** memcontext.com
+**Domain:** memcontext.in
 
 **Problem:** AI agents forget everything between sessions. Users repeat themselves constantly.
 

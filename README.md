@@ -1,135 +1,175 @@
-# Turborepo starter
+# MemContext
 
-This Turborepo starter is maintained by the Turborepo core team.
+Centralized memory system for AI coding agents. Save once, retrieve forever.
 
-## Using this example
+## What is MemContext
 
-Run the following command:
+AI assistants like Claude Desktop, Cursor, and Cline forget everything between sessions. You end up repeating the same preferences, project context, and decisions over and over.
 
-```sh
-npx create-turbo@latest
+MemContext solves this by providing a persistent memory layer that AI agents can access via the Model Context Protocol (MCP). Your preferences, facts, and decisions are stored as searchable memories that any connected AI assistant can retrieve automatically through semantic search.
+
+## How It Works
+
+1. You tell your AI assistant something worth remembering
+2. The assistant saves it to MemContext via MCP
+3. Next session, when relevant context is needed, the assistant searches MemContext
+4. Your stored memories are retrieved and used automatically
+
+The system uses vector embeddings and semantic search, so memories are found by meaning rather than exact keyword matching.
+
+## Project Structure
+
+This is a Turborepo monorepo with the following structure:
+
+| Package          | Description                                                                    |
+| ---------------- | ------------------------------------------------------------------------------ |
+| `apps/api`       | Hono backend containing all business logic, database access, and AI processing |
+| `apps/mcp`       | MCP server that connects AI assistants to the API                              |
+| `packages/types` | Shared TypeScript type definitions                                             |
+
+All business logic lives in the API. The MCP server is a thin wrapper that translates MCP protocol calls into API requests.
+
+## Memory Categories
+
+Memories can be organized into four categories:
+
+| Category   | Purpose                                             |
+| ---------- | --------------------------------------------------- |
+| preference | User preferences (coding style, tools, conventions) |
+| fact       | Factual information about projects or users         |
+| decision   | Technical or project decisions made                 |
+| context    | General contextual information                      |
+
+## Memory Relations
+
+When you save a memory, the system automatically checks for similar existing memories and classifies the relationship:
+
+| Relation | Meaning                                                 |
+| -------- | ------------------------------------------------------- |
+| saved    | New memory, no similar memories found                   |
+| updated  | Replaces an existing memory (contradicting information) |
+| extended | Adds detail to an existing memory                       |
+
+## Tech Stack
+
+| Component       | Technology                          |
+| --------------- | ----------------------------------- |
+| Runtime         | Node.js                             |
+| Package Manager | pnpm                                |
+| Build System    | Turborepo                           |
+| API Framework   | Hono                                |
+| Database        | PostgreSQL with pgvector (Neon)     |
+| ORM             | Drizzle                             |
+| Cache           | Upstash Redis                       |
+| Embeddings      | OpenRouter (text-embedding-3-large) |
+| LLM             | OpenRouter (gemini-2.5-flash)       |
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- pnpm
+- PostgreSQL database with pgvector extension (Neon recommended)
+- Upstash Redis account
+- OpenRouter API key
+
+### Installation
+
+Install dependencies:
+
+```
+pnpm install
 ```
 
-## What's inside?
+### Environment Setup
 
-This Turborepo includes the following packages/apps:
+Create `.env` files in both `apps/api` and `apps/mcp` based on their respective `.env.example` files.
 
-### Apps and Packages
+The API requires:
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+- DATABASE_URL (PostgreSQL with pgvector)
+- OPENROUTER_API_KEY
+- UPSTASH_REDIS_REST_URL
+- UPSTASH_REDIS_REST_TOKEN
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+The MCP server requires:
 
-### Utilities
+- MEMCONTEXT_API_KEY (your API key from the API)
+- MEMCONTEXT_API_URL (defaults to http://localhost:3000)
 
-This Turborepo has some additional tools already setup for you:
+### Development
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+Run all apps:
+
+```
+pnpm dev
+```
+
+Run a specific app:
+
+```
+pnpm dev --filter=@memcontext/api
+pnpm dev --filter=@memcontext/mcp
+```
 
 ### Build
 
-To build all apps and packages, run the following command:
+Build all packages:
 
 ```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build
-yarn dlx turbo build
-pnpm exec turbo build
+pnpm build
 ```
 
-You can build a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+## Connecting AI Assistants
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build --filter=docs
+To connect Claude Desktop, add this to your `claude_desktop_config.json`:
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
-
-```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
+```json
+{
+  "mcpServers": {
+    "memcontext": {
+      "type": "streamable-http",
+      "url": "https://mcp.memcontext.in/mcp",
+      "headers": {
+        "X-API-Key": "mc_your_api_key_here"
+      }
+    }
+  }
+}
 ```
 
-You can develop a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+## API Endpoints
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev --filter=web
+| Method | Path                 | Description       |
+| ------ | -------------------- | ----------------- |
+| POST   | /api/memories        | Save a memory     |
+| GET    | /api/memories/search | Search memories   |
+| POST   | /api/api-keys        | Create an API key |
+| GET    | /api/api-keys        | List API keys     |
+| DELETE | /api/api-keys/:id    | Revoke an API key |
+| GET    | /health              | Health check      |
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
+All memory endpoints require authentication via `X-API-Key` header.
 
-### Remote Caching
+## MCP Tools
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+The MCP server exposes two tools to AI assistants:
 
-Turborepo can use a technique known as [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+| Tool          | Description                                        |
+| ------------- | -------------------------------------------------- |
+| save_memory   | Save a memory with optional category and project   |
+| search_memory | Search for relevant memories with optional filters |
 
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
+## Plan Limits
 
-```
-cd my-turborepo
+| Plan  | Memory Limit |
+| ----- | ------------ |
+| free  | 300          |
+| hobby | 1,500        |
+| pro   | 5,000        |
+| team  | 10,000       |
 
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo login
+## License
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo login
-yarn exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo link
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo link
-yarn exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.com/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.com/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.com/docs/reference/configuration)
-- [CLI Usage](https://turborepo.com/docs/reference/command-line-reference)
+Private
