@@ -10,38 +10,54 @@ const saveMemorySchema = {
   content: z
     .string()
     .describe(
-      "The memory content to save - should be a clear, atomic fact or preference",
+      "Clear, atomic memory to save. Good: 'User prefers TypeScript over JavaScript'. " +
+        "Bad: 'User likes coding' (too vague).",
     ),
   category: z
     .enum(["preference", "fact", "decision", "context"])
     .optional()
-    .describe("Category of the memory: preference, fact, decision, or context"),
+    .describe(
+      "preference: user likes/dislikes (e.g., 'prefers dark mode'). " +
+        "fact: objective info (e.g., 'uses MacOS'). " +
+        "decision: choices made (e.g., 'chose PostgreSQL for DB'). " +
+        "context: background info (e.g., 'working on e-commerce app').",
+    ),
   project: z
     .string()
     .optional()
     .describe(
-      "Project name. RULES: lowercase, no spaces, no special characters. Examples: 'capychat', 'memcontext'. If user says 'Capy Chat' use 'capychat'.",
+      "ONLY for project-specific memories (e.g., 'this project uses PNPM'). " +
+        "OMIT for general preferences (e.g., 'prefers Bun', 'likes dark mode'). " +
+        "Format: lowercase, no spaces. Example: 'memcontext', 'capychat'.",
     ),
 };
 
 const searchMemorySchema = {
-  query: z.string().describe("The search query to find relevant memories"),
+  query: z
+    .string()
+    .describe(
+      "Natural language search query. Examples: 'package manager preference', " +
+        "'coding style', 'database choices'.",
+    ),
   limit: z
     .number()
     .min(1)
     .max(10)
     .optional()
     .default(5)
-    .describe("Maximum number of results to return (1-10, default: 5)"),
+    .describe(
+      "Number of results (1-10, default: 5). Use higher for broad topics.",
+    ),
   category: z
     .enum(["preference", "fact", "decision", "context"])
     .optional()
-    .describe("Filter results by category"),
+    .describe("Filter by type. OMIT to search all categories."),
   project: z
     .string()
     .optional()
     .describe(
-      "Filter results by project name. RULES: lowercase, no spaces, no special characters.",
+      "OMIT to search ALL memories (recommended for most searches). " +
+        "ONLY set to filter to a specific project's memories.",
     ),
 };
 
@@ -62,10 +78,9 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
     {
       title: "Save Memory",
       description:
-        "Save a memory after searching confirms it's needed. Use when: " +
-        "(1) search found no existing memory on this topic, OR " +
-        "(2) search found conflicting info that needs correction. " +
-        "The system auto-detects updates vs new entries.",
+        "Save a memory AFTER search_memory confirms it's needed. " +
+        "Use when: (1) no existing memory on this topic, OR (2) existing memory has outdated/conflicting info. " +
+        "System auto-handles updates - just save the new/corrected info.",
       inputSchema: saveMemorySchema,
     },
     async (args: SaveMemoryInput) => {
@@ -109,9 +124,9 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
     {
       title: "Search Memory",
       description:
-        "Search for relevant memories. ALWAYS call this FIRST - at conversation start to load context, " +
-        "and before saving to check if the memory already exists. Only save_memory if search shows " +
-        "no match or conflicting information that needs updating.",
+        "ALWAYS call FIRST. Use at: (1) conversation start to load user context, " +
+        "(2) before saving to check for existing memories. " +
+        "Only use save_memory if search returns no match OR outdated info needing correction.",
       inputSchema: searchMemorySchema,
     },
     async (args: SearchMemoryInput) => {
