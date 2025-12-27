@@ -1,24 +1,31 @@
-import { classifyRelationship as openrouterClassify } from "../lib/openrouter.js";
+import {
+  classifyWithMultipleMemories as openrouterClassifyMulti,
+  type SimilarMemoryForClassification,
+  type ClassificationResult,
+} from "../lib/openrouter.js";
 import { logger } from "../lib/logger.js";
-import type { RelationshipClassification } from "@memcontext/types";
 import type { TimingContext } from "../utils/timing.js";
 import { withTiming } from "../utils/timing.js";
 
-export async function classifyRelationship(
-  existingContent: string,
+export type { SimilarMemoryForClassification, ClassificationResult };
+
+export async function classifyWithSimilarMemories(
+  existingMemories: SimilarMemoryForClassification[],
   newContent: string,
   timing?: TimingContext,
-): Promise<RelationshipClassification> {
-  if (!existingContent || !newContent) {
-    logger.debug("skipping classification - empty content");
-    return "similar";
+): Promise<ClassificationResult> {
+  if (!newContent || existingMemories.length === 0) {
+    logger.debug(
+      "skipping classification - empty content or no existing memories",
+    );
+    return { action: "similar", reason: "No existing memories to compare" };
   }
 
   if (timing) {
     return withTiming(timing, "classify_relationship", () =>
-      openrouterClassify(existingContent, newContent),
+      openrouterClassifyMulti(existingMemories, newContent),
     );
   }
 
-  return openrouterClassify(existingContent, newContent);
+  return openrouterClassifyMulti(existingMemories, newContent);
 }

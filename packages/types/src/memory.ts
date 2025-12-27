@@ -4,7 +4,11 @@ export type MemorySource = "mcp" | "web" | "api";
 
 export type RelationType = "extends" | "similar";
 
-export type RelationshipClassification = "update" | "extend" | "similar";
+export type RelationshipClassification =
+  | "update"
+  | "extend"
+  | "similar"
+  | "noop";
 
 export interface Memory {
   id: string;
@@ -39,8 +43,9 @@ export interface SaveMemoryRequest {
 
 export interface SaveMemoryResponse {
   id: string;
-  status: "saved" | "updated" | "extended";
+  status: "saved" | "updated" | "extended" | "duplicate";
   superseded?: string;
+  existingId?: string;
 }
 
 export interface SearchMemoryRequest {

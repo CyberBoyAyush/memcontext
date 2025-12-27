@@ -110,42 +110,59 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   }
 }
 
-const relationshipSchema = z.object({
-  classification: z.enum(["update", "extend", "similar"]),
+export interface SimilarMemoryForClassification {
+  index: number;
+  content: string;
+}
+
+export interface ClassificationResult {
+  action: RelationshipClassification;
+  targetIndex?: number;
+  reason: string;
+}
+
+const multiMemoryClassificationSchema = z.object({
+  action: z.enum(["update", "extend", "similar", "noop"]),
+  targetIndex: z.number().optional(),
   reason: z.string(),
 });
 
-export async function classifyRelationship(
-  existingContent: string,
+export async function classifyWithMultipleMemories(
+  existingMemories: SimilarMemoryForClassification[],
   newContent: string,
-): Promise<RelationshipClassification> {
+): Promise<ClassificationResult> {
   const start = performance.now();
 
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-    const escapedExisting = escapeForPrompt(existingContent);
     const escapedNew = escapeForPrompt(newContent);
+    const memoriesText = existingMemories
+      .map((m) => `[${m.index}] "${escapeForPrompt(m.content)}"`)
+      .join("\n");
 
     try {
       const { object } = await generateObject({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         model: getOpenRouterAiSdk().chat(LLM_MODEL) as any,
-        schema: relationshipSchema,
+        schema: multiMemoryClassificationSchema,
         abortSignal: controller.signal,
-        prompt: `You are a memory relationship classifier. Analyze these two memories and classify their relationship.
+        prompt: `You are a memory relationship classifier. Analyze the existing memories and determine how to handle the new memory.
 
-EXISTING MEMORY:
-"${escapedExisting}"
+EXISTING MEMORIES:
+${memoriesText}
 
 NEW MEMORY:
 "${escapedNew}"
 
 Classification options:
-- "update": The new memory CONTRADICTS or REPLACES the existing memory (e.g., preference changed, fact updated)
-- "extend": The new memory ADDS DETAIL or ELABORATES on the existing memory (e.g., more specific info about same topic)
-- "similar": The memories are RELATED but are SEPARATE FACTS (e.g., both about coding but different preferences)
+- "update": The new memory CONTRADICTS or REPLACES an existing memory (e.g., preference changed, fact updated). Set targetIndex to the memory being replaced.
+- "extend": The new memory ADDS DETAIL or ELABORATES on an existing memory (e.g., more specific info about same topic). Set targetIndex to the memory being extended.
+- "similar": The new memory is RELATED to existing memories but represents a SEPARATE FACT worth saving (e.g., different preference on same topic area).
+- "noop": The new memory is ALREADY CAPTURED by an existing memory - it's redundant, a duplicate, or a less specific version of what exists. DO NOT SAVE. Set targetIndex to the memory that already covers this.
+
+Important: Choose "noop" when the new memory doesn't add any new information. Choose "similar" only when it's genuinely new information worth keeping.
 
 Classify this relationship:`,
       });
@@ -154,14 +171,20 @@ Classify this relationship:`,
       logger.debug(
         {
           model: LLM_MODEL,
-          operation: "classify_relationship",
-          classification: object.classification,
+          operation: "classify_multi_memory",
+          action: object.action,
+          targetIndex: object.targetIndex,
+          existingCount: existingMemories.length,
           duration,
         },
-        "relationship classified",
+        "multi-memory classification completed",
       );
 
-      return object.classification as RelationshipClassification;
+      return {
+        action: object.action as RelationshipClassification,
+        targetIndex: object.targetIndex,
+        reason: object.reason,
+      };
     } finally {
       clearTimeout(timeout);
     }
@@ -170,13 +193,16 @@ Classify this relationship:`,
     logger.error(
       {
         model: LLM_MODEL,
-        operation: "classify_relationship",
+        operation: "classify_multi_memory",
         duration,
         errorMessage: error instanceof Error ? error.message : String(error),
       },
-      "relationship classification failed",
+      "multi-memory classification failed",
     );
-    return "similar";
+    return {
+      action: "similar",
+      reason: "Classification failed, defaulting to similar",
+    };
   }
 }
 
@@ -230,5 +256,59 @@ Expanded version:`,
       "memory expansion failed",
     );
     return content;
+  }
+}
+
+export async function expandQueryForSearch(query: string): Promise<string> {
+  const start = performance.now();
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+    const escapedQuery = escapeForPrompt(query);
+
+    try {
+      const { text } = await generateText({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        model: getOpenRouterAiSdk().chat(LLM_MODEL) as any,
+        abortSignal: controller.signal,
+        prompt: `Given this search query for a user's personal memory system:
+"${escapedQuery}"
+
+Rewrite this as a more specific, keyword-rich search query that would match stored memories about user preferences, facts, decisions, or context. Add relevant synonyms and related concepts. Keep it under 50 words.
+
+Expanded query:`,
+      });
+
+      const duration = Math.round(performance.now() - start);
+      logger.debug(
+        {
+          model: LLM_MODEL,
+          operation: "expand_query",
+          inputLength: query.length,
+          outputLength: text.length,
+          duration,
+        },
+        "query expanded for search",
+      );
+
+      return text.trim() || query;
+    } finally {
+      clearTimeout(timeout);
+    }
+  } catch (error) {
+    const duration = Math.round(performance.now() - start);
+    logger.error(
+      {
+        model: LLM_MODEL,
+        operation: "expand_query",
+        inputLength: query.length,
+        duration,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      },
+      "query expansion failed",
+    );
+    return query;
   }
 }

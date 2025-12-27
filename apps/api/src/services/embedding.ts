@@ -1,6 +1,7 @@
 import {
   generateEmbedding as openrouterGenerateEmbedding,
   expandMemory as openrouterExpandMemory,
+  expandQueryForSearch as openrouterExpandQuery,
 } from "../lib/openrouter.js";
 import { logger } from "../lib/logger.js";
 import type { TimingContext } from "../utils/timing.js";
@@ -39,4 +40,21 @@ export async function expandMemory(
   }
 
   return openrouterExpandMemory(content);
+}
+
+export async function expandQueryForSearch(
+  query: string,
+  timing?: TimingContext,
+): Promise<string> {
+  if (!query || query.trim().length === 0) {
+    return query;
+  }
+
+  if (timing) {
+    return withTiming(timing, "expand_query", () =>
+      openrouterExpandQuery(query),
+    );
+  }
+
+  return openrouterExpandQuery(query);
 }

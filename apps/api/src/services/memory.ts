@@ -1,6 +1,13 @@
 import { db, memories, memoryRelations } from "../db/index.js";
-import { generateEmbedding, expandMemory } from "./embedding.js";
-import { classifyRelationship } from "./relation.js";
+import {
+  generateEmbedding,
+  expandMemory,
+  expandQueryForSearch,
+} from "./embedding.js";
+import {
+  classifyWithSimilarMemories,
+  type SimilarMemoryForClassification,
+} from "./relation.js";
 import { incrementMemoryCount, decrementMemoryCount } from "./subscription.js";
 import { normalizeProjectName } from "../utils/index.js";
 import { logger } from "../lib/logger.js";
@@ -17,7 +24,8 @@ import type { TimingContext } from "../utils/timing.js";
 import { withTiming } from "../utils/timing.js";
 
 const SIMILARITY_THRESHOLD = 0.3;
-const SEARCH_THRESHOLD = 0.5;
+const SEARCH_THRESHOLD = 0.4;
+const SIMILAR_MEMORIES_LIMIT = 5;
 
 interface SaveMemoryParams {
   userId: string;
@@ -46,13 +54,13 @@ export async function saveMemory(
   const expandedContent = await expandMemory(content, timing);
   const embedding = await generateEmbedding(expandedContent, timing);
 
-  const similarMemory = await (timing
+  const similarMemories = await (timing
     ? withTiming(timing, "find_similar", () =>
-        findSimilarMemory(userId, embedding),
+        findSimilarMemories(userId, embedding),
       )
-    : findSimilarMemory(userId, embedding));
+    : findSimilarMemories(userId, embedding));
 
-  if (!similarMemory) {
+  if (similarMemories.length === 0) {
     const [newMemory] = await (timing
       ? withTiming(timing, "db_insert", async () =>
           db
@@ -98,13 +106,49 @@ export async function saveMemory(
     };
   }
 
-  const classification = await classifyRelationship(
-    similarMemory.content,
+  const memoriesForClassification: SimilarMemoryForClassification[] =
+    similarMemories.map((m, idx) => ({
+      index: idx,
+      content: m.content,
+    }));
+
+  const classification = await classifyWithSimilarMemories(
+    memoriesForClassification,
     content,
     timing,
   );
 
-  if (classification === "update") {
+  if (classification.action === "noop") {
+    const targetMemory =
+      classification.targetIndex !== undefined
+        ? similarMemories[classification.targetIndex]
+        : similarMemories[0];
+
+    logger.info(
+      {
+        existingMemoryId: targetMemory.id,
+        userId,
+        project,
+        contentLength: content.length,
+        status: "duplicate",
+        reason: classification.reason,
+      },
+      "memory skipped (already exists)",
+    );
+
+    return {
+      id: targetMemory.id,
+      status: "duplicate",
+      existingId: targetMemory.id,
+    };
+  }
+
+  const targetMemory =
+    classification.targetIndex !== undefined
+      ? similarMemories[classification.targetIndex]
+      : similarMemories[0];
+
+  if (classification.action === "update") {
     const [newMemory] = await (timing
       ? withTiming(timing, "db_update", async () =>
           db
@@ -113,12 +157,12 @@ export async function saveMemory(
               userId,
               content,
               embedding,
-              category: category ?? similarMemory.category,
-              project: project ?? similarMemory.project,
+              category: category ?? targetMemory.category,
+              project: project ?? targetMemory.project,
               source,
-              supersedesId: similarMemory.id,
-              rootId: similarMemory.rootId ?? similarMemory.id,
-              version: similarMemory.version + 1,
+              supersedesId: targetMemory.id,
+              rootId: targetMemory.rootId ?? targetMemory.id,
+              version: targetMemory.version + 1,
             })
             .returning({ id: memories.id }),
         )
@@ -128,28 +172,29 @@ export async function saveMemory(
             userId,
             content,
             embedding,
-            category: category ?? similarMemory.category,
-            project: project ?? similarMemory.project,
+            category: category ?? targetMemory.category,
+            project: project ?? targetMemory.project,
             source,
-            supersedesId: similarMemory.id,
-            rootId: similarMemory.rootId ?? similarMemory.id,
-            version: similarMemory.version + 1,
+            supersedesId: targetMemory.id,
+            rootId: targetMemory.rootId ?? targetMemory.id,
+            version: targetMemory.version + 1,
           })
           .returning({ id: memories.id }));
 
     await db
       .update(memories)
       .set({ isCurrent: false })
-      .where(eq(memories.id, similarMemory.id));
+      .where(eq(memories.id, targetMemory.id));
 
     logger.info(
       {
         memoryId: newMemory.id,
-        supersededId: similarMemory.id,
+        supersededId: targetMemory.id,
         userId,
         project,
         contentLength: content.length,
         status: "updated",
+        reason: classification.reason,
       },
       "memory updated (superseded)",
     );
@@ -157,7 +202,7 @@ export async function saveMemory(
     return {
       id: newMemory.id,
       status: "updated",
-      superseded: similarMemory.id,
+      superseded: targetMemory.id,
     };
   }
 
@@ -189,24 +234,25 @@ export async function saveMemory(
 
   await db.insert(memoryRelations).values({
     sourceId: newMemory.id,
-    targetId: similarMemory.id,
-    relationType: classification === "extend" ? "extends" : "similar",
-    strength: 1 - similarMemory.distance,
+    targetId: targetMemory.id,
+    relationType: classification.action === "extend" ? "extends" : "similar",
+    strength: 1 - targetMemory.distance,
   });
 
   await incrementMemoryCount(userId);
 
-  const status = classification === "extend" ? "extended" : "saved";
+  const status = classification.action === "extend" ? "extended" : "saved";
 
   logger.info(
     {
       memoryId: newMemory.id,
-      relatedTo: similarMemory.id,
-      relationType: classification === "extend" ? "extends" : "similar",
+      relatedTo: targetMemory.id,
+      relationType: classification.action === "extend" ? "extends" : "similar",
       userId,
       project,
       contentLength: content.length,
       status,
+      reason: classification.reason,
     },
     `memory ${status}`,
   );
@@ -227,10 +273,10 @@ interface SimilarMemoryResult {
   distance: number;
 }
 
-async function findSimilarMemory(
+async function findSimilarMemories(
   userId: string,
   embedding: number[],
-): Promise<SimilarMemoryResult | null> {
+): Promise<SimilarMemoryResult[]> {
   const start = performance.now();
   const distance = cosineDistance(memories.embedding, embedding);
 
@@ -254,34 +300,24 @@ async function findSimilarMemory(
       ),
     )
     .orderBy(asc(distance))
-    .limit(1);
+    .limit(SIMILAR_MEMORIES_LIMIT);
 
   const duration = Math.round(performance.now() - start);
 
-  if (results.length === 0) {
-    logger.debug(
-      {
-        userId,
-        duration,
-        found: false,
-      },
-      "similar memory search completed",
-    );
-    return null;
-  }
-
-  const result = results[0] as SimilarMemoryResult;
   logger.debug(
     {
       userId,
       duration,
-      found: true,
-      similarityScore: Math.round((1 - result.distance) * 100) / 100,
+      found: results.length,
+      topSimilarity:
+        results.length > 0
+          ? Math.round((1 - (results[0].distance as number)) * 100) / 100
+          : undefined,
     },
-    "similar memory found",
+    "similar memories search completed",
   );
 
-  return result;
+  return results as SimilarMemoryResult[];
 }
 
 export async function searchMemories(
@@ -290,7 +326,8 @@ export async function searchMemories(
   const { userId, query, limit = 5, category, timing } = params;
   const project = normalizeProjectName(params.project);
 
-  const queryEmbedding = await generateEmbedding(query, timing);
+  const expandedQuery = await expandQueryForSearch(query, timing);
+  const queryEmbedding = await generateEmbedding(expandedQuery, timing);
 
   const searchStart = performance.now();
   const distance = cosineDistance(memories.embedding, queryEmbedding);
@@ -360,6 +397,7 @@ export async function searchMemories(
     {
       userId,
       queryLength: query.length,
+      expandedQueryLength: expandedQuery.length,
       project,
       category,
       resultsCount: memoriesWithRelevance.length,
