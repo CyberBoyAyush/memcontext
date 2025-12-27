@@ -230,6 +230,27 @@ Add to your `opencode.json` config:
 </details>
 
 <details>
+<summary><strong>Codex CLI (OpenAI)</strong></summary>
+
+Add to your `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.memcontext]
+url = "https://mcp.memcontext.in/mcp"
+
+[mcp_servers.memcontext.http_headers]
+MEMCONTEXT-API-KEY = "<your-api-key>"
+```
+
+Verify installation:
+
+```bash
+codex mcp list
+```
+
+</details>
+
+<details>
 <summary><strong>Windsurf / Other MCP Clients</strong></summary>
 
 For clients that support Streamable HTTP transport directly:
