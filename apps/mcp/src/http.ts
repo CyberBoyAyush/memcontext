@@ -69,7 +69,8 @@ app.post("/mcp", async (req, res) => {
     return;
   }
 
-  if (!sessionId && isInitializeRequest(req.body)) {
+  // Allow re-initialization if session expired or doesn't exist
+  if (isInitializeRequest(req.body)) {
     if (sessions.size >= MAX_SESSIONS) {
       res.status(503).json({
         error: "Server at capacity. Please try again later.",
@@ -114,7 +115,11 @@ app.post("/mcp", async (req, res) => {
     return;
   }
 
-  res.status(400).json({ error: "Bad Request: No valid session ID provided" });
+  // Session expired or doesn't exist - client should re-initialize
+  res.status(410).json({
+    error: "Session expired or not found. Please re-initialize the connection.",
+    code: "SESSION_EXPIRED",
+  });
 });
 
 const handleSessionRequest = async (
