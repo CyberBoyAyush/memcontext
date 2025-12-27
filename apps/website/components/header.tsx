@@ -4,6 +4,12 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Github, Menu, X } from "lucide-react";
 
+const XIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+  </svg>
+);
+
 const navigation = [
   { name: "Features", href: "#features" },
   { name: "How it Works", href: "#how-it-works" },
@@ -50,6 +56,14 @@ export function Header() {
             </div>
 
             <div className="hidden md:flex items-center gap-4 lg:gap-5">
+              <a
+                href="https://aysh.me/X"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-foreground-muted hover:text-foreground transition-colors hover:scale-110 duration-200"
+              >
+                <XIcon className="w-5 h-5 lg:w-6 lg:h-6" />
+              </a>
               <button
                 onClick={() => setShowGithubModal(true)}
                 className="text-foreground-muted hover:text-foreground transition-colors hover:scale-110 duration-200"
@@ -136,7 +150,7 @@ export function Header() {
                 MemContext will be open source soon. Star the repo to get notified when we go public.
               </p>
               <a
-                href="https://github.com/cyberboyayush/memcontext"
+                href="https://github.com/cyberboyayush"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-medium bg-accent text-background rounded-xl btn-hover-lift transition-all"
@@ -145,7 +159,7 @@ export function Header() {
                 Follow on GitHub
               </a>
               <p className="mt-4 sm:mt-5 text-xs sm:text-sm text-foreground-subtle font-mono">
-                github.com/cyberboyayush/memcontext
+                github.com/cyberboyayush
               </p>
             </div>
           </div>

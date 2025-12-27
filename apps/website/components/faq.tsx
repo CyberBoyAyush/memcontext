@@ -5,24 +5,32 @@ import { ChevronDown } from "lucide-react";
 
 const faqs = [
   {
+    q: "What is MemContext?",
+    a: "MemContext is a persistent memory layer for AI coding assistants. It remembers your preferences, coding style, project context, and past conversations — so your AI never starts from scratch.",
+  },
+  {
     q: "What is MCP?",
-    a: "Model Context Protocol — an open standard by Anthropic for connecting AI tools to external services. It's how MemContext talks to Claude, Cursor, Cline, etc.",
+    a: "Model Context Protocol is an open standard by Anthropic for connecting AI tools to external services. It's how MemContext integrates with Claude Code, Cursor, Codex, and other AI assistants.",
   },
   {
     q: "How does automatic memory work?",
-    a: "When you share preferences or context, MemContext detects what's worth remembering and saves it. Later, when you ask something related, it automatically retrieves relevant memories.",
+    a: "When you share preferences or context, MemContext intelligently detects what's worth remembering and saves it. Later, when you ask something related, it automatically retrieves relevant memories — no manual tagging needed.",
   },
   {
-    q: "Is my data private?",
-    a: "Yes. Memories are encrypted at rest and in transit. We never use your data to train models. You can export or delete anytime.",
+    q: "Is my data private and secure?",
+    a: "Absolutely. All memories are encrypted at rest and in transit. We never use your data to train models or share it with third parties. You own your data — export or delete anytime.",
   },
   {
-    q: "Does it work across multiple tools?",
-    a: "Yes. Connect any MCP-compatible tool and they share the same memory. Preferences set in Claude Desktop work in Cursor too.",
+    q: "Does it work across multiple AI tools?",
+    a: "Yes! Connect any MCP-compatible tool and they share the same memory. Preferences you set in Claude Code automatically work in Cursor, Codex, and other supported tools.",
   },
   {
-    q: "Is it free?",
-    a: "MemContext is open source. Self-host it, or use our hosted service when it launches.",
+    q: "Is there a free plan?",
+    a: "We're still figuring out the exact pricing, but yes — there will definitely be a generous free tier. We want everyone to experience the magic of persistent AI memory.",
+  },
+  {
+    q: "When is MemContext launching?",
+    a: "Soon! Join the waitlist to get early access and be notified the moment we launch. Follow us on X for updates.",
   },
 ];
 

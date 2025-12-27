@@ -189,7 +189,7 @@ export function Hero() {
                 MemContext will be open source soon. Star the repo to get notified when we go public.
               </p>
               <a
-                href="https://github.com/cyberboyayush/memcontext"
+                href="https://github.com/cyberboyayush"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-medium bg-accent text-background rounded-xl btn-hover-lift transition-all"
@@ -198,7 +198,7 @@ export function Hero() {
                 Follow on GitHub
               </a>
               <p className="mt-4 sm:mt-5 text-xs sm:text-sm text-foreground-subtle font-mono">
-                github.com/cyberboyayush/memcontext
+                github.com/cyberboyayush
               </p>
             </div>
           </div>
