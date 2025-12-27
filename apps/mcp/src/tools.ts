@@ -62,7 +62,10 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
     {
       title: "Save Memory",
       description:
-        "Save a memory or preference that should be remembered across sessions. Use this to store user preferences, facts about their coding style, project decisions, or important context.",
+        "Save a memory after searching confirms it's needed. Use when: " +
+        "(1) search found no existing memory on this topic, OR " +
+        "(2) search found conflicting info that needs correction. " +
+        "The system auto-detects updates vs new entries.",
       inputSchema: saveMemorySchema,
     },
     async (args: SaveMemoryInput) => {
@@ -106,7 +109,9 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
     {
       title: "Search Memory",
       description:
-        "Search for relevant memories based on a query. Use this to retrieve previously saved preferences, facts, or context that might be helpful for the current conversation.",
+        "Search for relevant memories. ALWAYS call this FIRST - at conversation start to load context, " +
+        "and before saving to check if the memory already exists. Only save_memory if search shows " +
+        "no match or conflicting information that needs updating.",
       inputSchema: searchMemorySchema,
     },
     async (args: SearchMemoryInput) => {
