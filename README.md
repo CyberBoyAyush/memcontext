@@ -123,21 +123,151 @@ pnpm build
 
 ## Connecting AI Assistants
 
-To connect Claude Desktop, add this to your `claude_desktop_config.json`:
+Add MemContext to your favorite AI coding assistant. Replace `<your-api-key>` with your actual API key (starts with `mc_`).
+
+<details>
+<summary><strong>Claude Code (CLI)</strong></summary>
+
+Add MemContext globally (available across all projects):
+
+```bash
+claude mcp add memcontext --scope user -- npx -y mcp-remote https://mcp.memcontext.in/mcp --header "MEMCONTEXT-API-KEY:<your-api-key>"
+```
+
+Or for a specific project only:
+
+```bash
+claude mcp add memcontext -- npx -y mcp-remote https://mcp.memcontext.in/mcp --header "MEMCONTEXT-API-KEY:<your-api-key>"
+```
+
+Verify installation:
+
+```bash
+claude mcp list
+```
+
+</details>
+
+<details>
+<summary><strong>Claude Desktop</strong></summary>
+
+Add to your `claude_desktop_config.json`:
+
+- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
   "mcpServers": {
     "memcontext": {
-      "type": "streamable-http",
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.memcontext.in/mcp",
+        "--header",
+        "MEMCONTEXT-API-KEY:<your-api-key>"
+      ]
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><strong>Cursor</strong></summary>
+
+Add to your Cursor MCP config:
+
+- **Global:** `~/.cursor/mcp.json`
+- **Project:** `.cursor/mcp.json` in your project root
+
+```json
+{
+  "mcpServers": {
+    "memcontext": {
+      "type": "http",
       "url": "https://mcp.memcontext.in/mcp",
       "headers": {
-        "X-API-Key": "mc_your_api_key_here"
+        "MEMCONTEXT-API-KEY": "<your-api-key>"
       }
     }
   }
 }
 ```
+
+</details>
+
+<details>
+<summary><strong>OpenCode</strong></summary>
+
+Add to your `opencode.json` config:
+
+- **Global:** `~/.config/opencode/opencode.json`
+- **Project:** `opencode.json` in your project root
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "memcontext": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "mcp-remote",
+        "https://mcp.memcontext.in/mcp",
+        "--header",
+        "MEMCONTEXT-API-KEY:<your-api-key>"
+      ],
+      "enabled": true
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><strong>Windsurf / Other MCP Clients</strong></summary>
+
+For clients that support Streamable HTTP transport directly:
+
+```json
+{
+  "mcpServers": {
+    "memcontext": {
+      "type": "http",
+      "url": "https://mcp.memcontext.in/mcp",
+      "headers": {
+        "MEMCONTEXT-API-KEY": "<your-api-key>"
+      }
+    }
+  }
+}
+```
+
+For clients that only support stdio transport, use the `mcp-remote` bridge:
+
+```json
+{
+  "mcpServers": {
+    "memcontext": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.memcontext.in/mcp",
+        "--header",
+        "MEMCONTEXT-API-KEY:<your-api-key>"
+      ]
+    }
+  }
+}
+```
+
+</details>
 
 ## API Endpoints
 
