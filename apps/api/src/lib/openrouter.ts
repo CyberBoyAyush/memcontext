@@ -259,7 +259,11 @@ Expanded version:`,
   }
 }
 
-export async function expandQueryForSearch(query: string): Promise<string> {
+const queryVariantsSchema = z.object({
+  variants: z.array(z.string()).length(3),
+});
+
+export async function generateQueryVariants(query: string): Promise<string[]> {
   const start = performance.now();
 
   try {
@@ -269,35 +273,45 @@ export async function expandQueryForSearch(query: string): Promise<string> {
     const escapedQuery = escapeForPrompt(query);
 
     try {
-      const { text } = await generateText({
+      const { object } = await generateObject({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         model: getOpenRouterAiSdk().chat(LLM_MODEL) as any,
+        schema: queryVariantsSchema,
         abortSignal: controller.signal,
-        prompt: `Given this search query for a user's memory system, write a hypothetical memory entry that would answer this query. Write it as a direct statement (not a question), similar to how memories are stored.
+        prompt: `Generate 3 search query variants to find relevant memories in a personal knowledge base.
 
-Query: "${escapedQuery}"
+Original query: "${escapedQuery}"
+
+Create variants that:
+1. Rephrase using different wording while preserving intent
+2. Include relevant synonyms, related terms, or technical keywords
+3. Approach from a different angle (e.g., if asking about preferences, also try asking about configuration or choices)
+
+The variants should match how memories are stored - as clear statements with keywords and context about preferences, facts, decisions, or configurations.
 
 Examples:
-- Query: "What deployment platform is used?" → "Uses Railway for deployment of projects"
-- Query: "What are the user's testing preferences?" → "Prefers Vitest for testing with good coverage"
-- Query: "How are database transactions handled?" → "Database transactions wrap dependent operations for atomicity"
+- Original: "authentication preferences"
+  Variants: ["What authentication method or API key format does the user prefer?", "User's API security configuration and auth headers", "Authentication and authorization preferences for APIs"]
+  
+- Original: "testing strategies"
+  Variants: ["What testing framework and approach does the user prefer?", "User's preferences for unit tests, integration tests, and test coverage", "Testing tools and methodologies the user likes to use"]
 
-Hypothetical memory (1-2 sentences):`,
+Return exactly 3 variants as a JSON object with a "variants" array.`,
       });
 
       const duration = Math.round(performance.now() - start);
       logger.debug(
         {
           model: LLM_MODEL,
-          operation: "expand_query",
+          operation: "generate_query_variants",
           inputLength: query.length,
-          outputLength: text.length,
+          variantCount: object.variants.length,
           duration,
         },
-        "query expanded for search",
+        "query variants generated",
       );
 
-      return text.trim() || query;
+      return object.variants;
     } finally {
       clearTimeout(timeout);
     }
@@ -306,13 +320,13 @@ Hypothetical memory (1-2 sentences):`,
     logger.error(
       {
         model: LLM_MODEL,
-        operation: "expand_query",
+        operation: "generate_query_variants",
         inputLength: query.length,
         duration,
         errorMessage: error instanceof Error ? error.message : String(error),
       },
-      "query expansion failed",
+      "query variant generation failed, using original query only",
     );
-    return query;
+    return [];
   }
 }
