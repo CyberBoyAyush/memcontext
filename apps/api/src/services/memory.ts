@@ -390,11 +390,14 @@ export async function searchMemories(
 
   const searchStart = performance.now();
 
+  // Filter out empty/whitespace-only variants to prevent embedding failures
+  const validVariants = queryVariants.filter((v) => v && v.trim().length > 0);
+
   // Run original query search AND generate variant embeddings in parallel
   const [originalResults, variantEmbeddings] = await Promise.all([
     runSearch(originalEmbedding),
     Promise.all(
-      queryVariants.map((variant) => generateEmbedding(variant, timing)),
+      validVariants.map((variant) => generateEmbedding(variant, timing)),
     ),
   ]);
 
@@ -453,8 +456,8 @@ export async function searchMemories(
     {
       userId,
       queryLength: query.length,
-      variantCount: queryVariants.length,
-      totalQueries: queryVariants.length + 1,
+      variantCount: validVariants.length,
+      totalQueries: validVariants.length + 1,
       project,
       category,
       resultsCount: memoriesWithRelevance.length,
