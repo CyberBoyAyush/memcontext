@@ -2,6 +2,8 @@ import { db, subscriptions, PLAN_LIMITS } from "../db/index.js";
 import type { PlanType } from "../db/schema.js";
 import { eq, sql } from "drizzle-orm";
 
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 export interface MemoryLimitCheck {
   allowed: boolean;
   current: number;
@@ -44,8 +46,12 @@ export async function checkMemoryLimit(
   };
 }
 
-export async function incrementMemoryCount(userId: string): Promise<void> {
-  await db
+export async function incrementMemoryCount(
+  userId: string,
+  tx?: Transaction,
+): Promise<void> {
+  const executor = tx ?? db;
+  await executor
     .update(subscriptions)
     .set({
       memoryCount: sql`${subscriptions.memoryCount} + 1`,
@@ -54,8 +60,12 @@ export async function incrementMemoryCount(userId: string): Promise<void> {
     .where(eq(subscriptions.userId, userId));
 }
 
-export async function decrementMemoryCount(userId: string): Promise<void> {
-  await db
+export async function decrementMemoryCount(
+  userId: string,
+  tx?: Transaction,
+): Promise<void> {
+  const executor = tx ?? db;
+  await executor
     .update(subscriptions)
     .set({
       memoryCount: sql`GREATEST(${subscriptions.memoryCount} - 1, 0)`,

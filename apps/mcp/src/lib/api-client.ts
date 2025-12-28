@@ -17,6 +17,17 @@ export interface ApiClient {
   ): Promise<T>;
 }
 
+async function parseErrorResponse(res: Response): Promise<string> {
+  try {
+    const error = (await res.json()) as ApiError;
+    return error.errorId
+      ? `${error.error} (Reference: ${error.errorId})`
+      : error.error || `Request failed: ${res.status}`;
+  } catch {
+    return `Request failed: ${res.status} ${res.statusText}`;
+  }
+}
+
 export function createApiClient(config: ApiClientConfig): ApiClient {
   const { apiBase, apiKey } = config;
 
@@ -32,10 +43,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       });
 
       if (!res.ok) {
-        const error = (await res.json()) as ApiError;
-        const message = error.errorId
-          ? `${error.error} (Reference: ${error.errorId})`
-          : error.error || `Request failed: ${res.status}`;
+        const message = await parseErrorResponse(res);
         throw new Error(message);
       }
 
@@ -63,10 +71,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       });
 
       if (!res.ok) {
-        const error = (await res.json()) as ApiError;
-        const message = error.errorId
-          ? `${error.error} (Reference: ${error.errorId})`
-          : error.error || `Request failed: ${res.status}`;
+        const message = await parseErrorResponse(res);
         throw new Error(message);
       }
 

@@ -61,9 +61,26 @@ export async function saveMemory(
     : findSimilarMemories(userId, embedding));
 
   if (similarMemories.length === 0) {
-    const [newMemory] = await (timing
+    const newMemoryId = await (timing
       ? withTiming(timing, "db_insert", async () =>
-          db
+          db.transaction(async (tx) => {
+            const [newMemory] = await tx
+              .insert(memories)
+              .values({
+                userId,
+                content,
+                embedding,
+                category,
+                project,
+                source,
+              })
+              .returning({ id: memories.id });
+            await incrementMemoryCount(userId, tx);
+            return newMemory.id;
+          }),
+        )
+      : db.transaction(async (tx) => {
+          const [newMemory] = await tx
             .insert(memories)
             .values({
               userId,
@@ -73,25 +90,14 @@ export async function saveMemory(
               project,
               source,
             })
-            .returning({ id: memories.id }),
-        )
-      : db
-          .insert(memories)
-          .values({
-            userId,
-            content,
-            embedding,
-            category,
-            project,
-            source,
-          })
-          .returning({ id: memories.id }));
-
-    await incrementMemoryCount(userId);
+            .returning({ id: memories.id });
+          await incrementMemoryCount(userId, tx);
+          return newMemory.id;
+        }));
 
     logger.info(
       {
-        memoryId: newMemory.id,
+        memoryId: newMemoryId,
         userId,
         project,
         contentLength: content.length,
@@ -101,7 +107,7 @@ export async function saveMemory(
     );
 
     return {
-      id: newMemory.id,
+      id: newMemoryId,
       status: "saved",
     };
   }
@@ -149,9 +155,32 @@ export async function saveMemory(
       : similarMemories[0];
 
   if (classification.action === "update") {
-    const [newMemory] = await (timing
+    const newMemoryId = await (timing
       ? withTiming(timing, "db_update", async () =>
-          db
+          db.transaction(async (tx) => {
+            const [newMemory] = await tx
+              .insert(memories)
+              .values({
+                userId,
+                content,
+                embedding,
+                category: category ?? targetMemory.category,
+                project: project ?? targetMemory.project,
+                source,
+                supersedesId: targetMemory.id,
+                rootId: targetMemory.rootId ?? targetMemory.id,
+                version: targetMemory.version + 1,
+              })
+              .returning({ id: memories.id });
+            await tx
+              .update(memories)
+              .set({ isCurrent: false })
+              .where(eq(memories.id, targetMemory.id));
+            return newMemory.id;
+          }),
+        )
+      : db.transaction(async (tx) => {
+          const [newMemory] = await tx
             .insert(memories)
             .values({
               userId,
@@ -164,31 +193,17 @@ export async function saveMemory(
               rootId: targetMemory.rootId ?? targetMemory.id,
               version: targetMemory.version + 1,
             })
-            .returning({ id: memories.id }),
-        )
-      : db
-          .insert(memories)
-          .values({
-            userId,
-            content,
-            embedding,
-            category: category ?? targetMemory.category,
-            project: project ?? targetMemory.project,
-            source,
-            supersedesId: targetMemory.id,
-            rootId: targetMemory.rootId ?? targetMemory.id,
-            version: targetMemory.version + 1,
-          })
-          .returning({ id: memories.id }));
-
-    await db
-      .update(memories)
-      .set({ isCurrent: false })
-      .where(eq(memories.id, targetMemory.id));
+            .returning({ id: memories.id });
+          await tx
+            .update(memories)
+            .set({ isCurrent: false })
+            .where(eq(memories.id, targetMemory.id));
+          return newMemory.id;
+        }));
 
     logger.info(
       {
-        memoryId: newMemory.id,
+        memoryId: newMemoryId,
         supersededId: targetMemory.id,
         userId,
         project,
@@ -200,15 +215,42 @@ export async function saveMemory(
     );
 
     return {
-      id: newMemory.id,
+      id: newMemoryId,
       status: "updated",
       superseded: targetMemory.id,
     };
   }
 
-  const [newMemory] = await (timing
+  const relationType =
+    classification.action === "extend" ? "extends" : "similar";
+  const status = classification.action === "extend" ? "extended" : "saved";
+
+  const newMemoryId = await (timing
     ? withTiming(timing, "db_insert_related", async () =>
-        db
+        db.transaction(async (tx) => {
+          const [newMemory] = await tx
+            .insert(memories)
+            .values({
+              userId,
+              content,
+              embedding,
+              category,
+              project,
+              source,
+            })
+            .returning({ id: memories.id });
+          await tx.insert(memoryRelations).values({
+            sourceId: newMemory.id,
+            targetId: targetMemory.id,
+            relationType,
+            strength: 1 - targetMemory.distance,
+          });
+          await incrementMemoryCount(userId, tx);
+          return newMemory.id;
+        }),
+      )
+    : db.transaction(async (tx) => {
+        const [newMemory] = await tx
           .insert(memories)
           .values({
             userId,
@@ -218,36 +260,22 @@ export async function saveMemory(
             project,
             source,
           })
-          .returning({ id: memories.id }),
-      )
-    : db
-        .insert(memories)
-        .values({
-          userId,
-          content,
-          embedding,
-          category,
-          project,
-          source,
-        })
-        .returning({ id: memories.id }));
-
-  await db.insert(memoryRelations).values({
-    sourceId: newMemory.id,
-    targetId: targetMemory.id,
-    relationType: classification.action === "extend" ? "extends" : "similar",
-    strength: 1 - targetMemory.distance,
-  });
-
-  await incrementMemoryCount(userId);
-
-  const status = classification.action === "extend" ? "extended" : "saved";
+          .returning({ id: memories.id });
+        await tx.insert(memoryRelations).values({
+          sourceId: newMemory.id,
+          targetId: targetMemory.id,
+          relationType,
+          strength: 1 - targetMemory.distance,
+        });
+        await incrementMemoryCount(userId, tx);
+        return newMemory.id;
+      }));
 
   logger.info(
     {
-      memoryId: newMemory.id,
+      memoryId: newMemoryId,
       relatedTo: targetMemory.id,
-      relationType: classification.action === "extend" ? "extends" : "similar",
+      relationType,
       userId,
       project,
       contentLength: content.length,
@@ -258,7 +286,7 @@ export async function saveMemory(
   );
 
   return {
-    id: newMemory.id,
+    id: newMemoryId,
     status,
   };
 }
@@ -419,17 +447,24 @@ export async function deleteMemory(
 ): Promise<boolean> {
   const start = performance.now();
 
-  const result = await db
-    .update(memories)
-    .set({ deletedAt: sql`NOW()` })
-    .where(and(eq(memories.id, memoryId), eq(memories.userId, userId)));
+  const deleted = await db.transaction(async (tx) => {
+    const result = await tx
+      .update(memories)
+      .set({ deletedAt: sql`NOW()` })
+      .where(and(eq(memories.id, memoryId), eq(memories.userId, userId)));
 
-  const deleted = (result.rowCount ?? 0) > 0;
+    const wasDeleted = (result.rowCount ?? 0) > 0;
+
+    if (wasDeleted) {
+      await decrementMemoryCount(userId, tx);
+    }
+
+    return wasDeleted;
+  });
+
   const duration = Math.round(performance.now() - start);
 
   if (deleted) {
-    await decrementMemoryCount(userId);
-
     logger.info(
       {
         memoryId,
