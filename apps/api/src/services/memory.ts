@@ -2,7 +2,7 @@ import { db, memories, memoryRelations } from "../db/index.js";
 import {
   generateEmbedding,
   expandMemory,
-  expandQueryForSearch,
+  generateQueryVariants,
 } from "./embedding.js";
 import {
   classifyWithSimilarMemories,
@@ -24,7 +24,7 @@ import type { TimingContext } from "../utils/timing.js";
 import { withTiming } from "../utils/timing.js";
 
 const SIMILARITY_THRESHOLD = 0.3;
-const SEARCH_THRESHOLD = 0.4;
+const SEARCH_THRESHOLD = 0.5;
 const SIMILAR_MEMORIES_LIMIT = 5;
 
 interface SaveMemoryParams {
@@ -354,16 +354,14 @@ export async function searchMemories(
   const { userId, query, limit = 5, category, timing } = params;
   const project = normalizeProjectName(params.project);
 
-  // Generate both HyDE and original embeddings in parallel
-  const [hydeQuery, originalEmbedding] = await Promise.all([
-    expandQueryForSearch(query, timing),
+  // Step 1: Generate query variants and original embedding in parallel
+  const [queryVariants, originalEmbedding] = await Promise.all([
+    generateQueryVariants(query, timing),
     generateEmbedding(query, timing),
   ]);
-  const hydeEmbedding = await generateEmbedding(hydeQuery, timing);
 
-  const searchStart = performance.now();
-
-  // Helper to run search with a given embedding
+  // Step 2: Generate variant embeddings + run original search in parallel
+  // This saves ~200-300ms by not waiting for variant embeddings before searching
   const runSearch = async (embedding: number[]) => {
     const distance = cosineDistance(memories.embedding, embedding);
     const conditions = [
@@ -390,25 +388,46 @@ export async function searchMemories(
       .limit(limit);
   };
 
-  // Search with both embeddings in parallel
-  const [hydeResults, originalResults] = await (timing
-    ? withTiming(timing, "db_search", () =>
-        Promise.all([runSearch(hydeEmbedding), runSearch(originalEmbedding)]),
-      )
-    : Promise.all([runSearch(hydeEmbedding), runSearch(originalEmbedding)]));
+  const searchStart = performance.now();
 
-  // Merge and dedupe results, keeping highest relevance per memory
+  // Filter out empty/whitespace-only variants to prevent embedding failures
+  const validVariants = queryVariants.filter((v) => v && v.trim().length > 0);
+
+  // Run original query search AND generate variant embeddings in parallel
+  const [originalResults, variantEmbeddings] = await Promise.all([
+    runSearch(originalEmbedding),
+    Promise.all(
+      validVariants.map((variant) => generateEmbedding(variant, timing)),
+    ),
+  ]);
+
+  // Step 3: Search with variant embeddings in parallel
+  const variantResults = await (timing
+    ? withTiming(timing, "db_search_variants", () =>
+        Promise.all(variantEmbeddings.map((emb) => runSearch(emb))),
+      )
+    : Promise.all(variantEmbeddings.map((emb) => runSearch(emb))));
+
+  // Combine all results
+  const allResults = [originalResults, ...variantResults];
+
+  // Merge and dedupe results, keeping highest relevance (lowest distance) per memory
   const mergedMap = new Map<
     string,
-    (typeof hydeResults)[0] & { distance: number }
+    (typeof allResults)[0][0] & { distance: number }
   >();
-  for (const row of [...hydeResults, ...originalResults]) {
-    const existing = mergedMap.get(row.id);
-    if (!existing || (row.distance as number) < (existing.distance as number)) {
-      mergedMap.set(
-        row.id,
-        row as (typeof hydeResults)[0] & { distance: number },
-      );
+  for (const resultSet of allResults) {
+    for (const row of resultSet) {
+      const existing = mergedMap.get(row.id);
+      if (
+        !existing ||
+        (row.distance as number) < (existing.distance as number)
+      ) {
+        mergedMap.set(
+          row.id,
+          row as (typeof allResults)[0][0] & { distance: number },
+        );
+      }
     }
   }
 
@@ -437,7 +456,8 @@ export async function searchMemories(
     {
       userId,
       queryLength: query.length,
-      hydeQueryLength: hydeQuery.length,
+      variantCount: validVariants.length,
+      totalQueries: validVariants.length + 1,
       project,
       category,
       resultsCount: memoriesWithRelevance.length,

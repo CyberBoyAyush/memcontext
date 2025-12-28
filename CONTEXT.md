@@ -213,10 +213,39 @@ pgvector uses cosine distance, not similarity:
 ```
 similarity = 1 - distance
 distance < 0.30 = similarity > 0.70 (LLM classification threshold for saves)
-distance < 0.40 = similarity > 0.60 (search result threshold)
+distance < 0.50 = similarity > 0.50 (search result threshold)
 ```
 
 Use Drizzle's cosineDistance helper with lt() for threshold checks.
+
+---
+
+## Search Flow (Multi-Query)
+
+Search uses multi-query approach for better recall:
+
+```
+User Query: "authentication preferences"
+        |
+        v
+[1] Generate 3 query variants using LLM (parallel with step 2)
+[2] Create embedding for original query
+        |
+        v
+[3] Search with original embedding (parallel with step 4)
+[4] Create embeddings for 3 variants
+        |
+        v
+[5] Search with all 3 variant embeddings (parallel)
+        |
+        v
+[6] Merge results, dedupe by ID, keep highest score per memory
+        |
+        v
+[7] Return top N results sorted by relevance
+```
+
+This approach catches memories stored with different wording than the query.
 
 ---
 
