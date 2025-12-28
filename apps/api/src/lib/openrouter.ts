@@ -273,12 +273,16 @@ export async function expandQueryForSearch(query: string): Promise<string> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         model: getOpenRouterAiSdk().chat(LLM_MODEL) as any,
         abortSignal: controller.signal,
-        prompt: `Given this search query for a user's personal memory system:
-"${escapedQuery}"
+        prompt: `Given this search query for a user's memory system, write a hypothetical memory entry that would answer this query. Write it as a direct statement (not a question), similar to how memories are stored.
 
-Rewrite this as a more specific, keyword-rich search query that would match stored memories about user preferences, facts, decisions, or context. Convert indirect questions like "user's preferences about X" into direct queries like "what X is used". Add relevant synonyms and related concepts. Keep it under 50 words.
+Query: "${escapedQuery}"
 
-Expanded query:`,
+Examples:
+- Query: "What deployment platform is used?" → "Uses Railway for deployment of projects"
+- Query: "What are the user's testing preferences?" → "Prefers Vitest for testing with good coverage"
+- Query: "How are database transactions handled?" → "Database transactions wrap dependent operations for atomicity"
+
+Hypothetical memory (1-2 sentences):`,
       });
 
       const duration = Math.round(performance.now() - start);

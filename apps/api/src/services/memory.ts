@@ -354,60 +354,72 @@ export async function searchMemories(
   const { userId, query, limit = 5, category, timing } = params;
   const project = normalizeProjectName(params.project);
 
-  const expandedQuery = await expandQueryForSearch(query, timing);
-  const queryEmbedding = await generateEmbedding(expandedQuery, timing);
+  // Generate both HyDE and original embeddings in parallel
+  const [hydeQuery, originalEmbedding] = await Promise.all([
+    expandQueryForSearch(query, timing),
+    generateEmbedding(query, timing),
+  ]);
+  const hydeEmbedding = await generateEmbedding(hydeQuery, timing);
 
   const searchStart = performance.now();
-  const distance = cosineDistance(memories.embedding, queryEmbedding);
 
-  const conditions = [
-    eq(memories.userId, userId),
-    eq(memories.isCurrent, true),
-    isNull(memories.deletedAt),
-    lt(distance, SEARCH_THRESHOLD),
-  ];
+  // Helper to run search with a given embedding
+  const runSearch = async (embedding: number[]) => {
+    const distance = cosineDistance(memories.embedding, embedding);
+    const conditions = [
+      eq(memories.userId, userId),
+      eq(memories.isCurrent, true),
+      isNull(memories.deletedAt),
+      lt(distance, SEARCH_THRESHOLD),
+    ];
+    if (category) conditions.push(eq(memories.category, category));
+    if (project) conditions.push(eq(memories.project, project));
 
-  if (category) {
-    conditions.push(eq(memories.category, category));
-  }
+    return db
+      .select({
+        id: memories.id,
+        content: memories.content,
+        category: memories.category,
+        project: memories.project,
+        createdAt: memories.createdAt,
+        distance,
+      })
+      .from(memories)
+      .where(and(...conditions))
+      .orderBy(asc(distance))
+      .limit(limit);
+  };
 
-  if (project) {
-    conditions.push(eq(memories.project, project));
-  }
-
-  const results = await (timing
+  // Search with both embeddings in parallel
+  const [hydeResults, originalResults] = await (timing
     ? withTiming(timing, "db_search", () =>
-        db
-          .select({
-            id: memories.id,
-            content: memories.content,
-            category: memories.category,
-            project: memories.project,
-            createdAt: memories.createdAt,
-            distance,
-          })
-          .from(memories)
-          .where(and(...conditions))
-          .orderBy(asc(distance))
-          .limit(limit),
+        Promise.all([runSearch(hydeEmbedding), runSearch(originalEmbedding)]),
       )
-    : db
-        .select({
-          id: memories.id,
-          content: memories.content,
-          category: memories.category,
-          project: memories.project,
-          createdAt: memories.createdAt,
-          distance,
-        })
-        .from(memories)
-        .where(and(...conditions))
-        .orderBy(asc(distance))
-        .limit(limit));
+    : Promise.all([runSearch(hydeEmbedding), runSearch(originalEmbedding)]));
+
+  // Merge and dedupe results, keeping highest relevance per memory
+  const mergedMap = new Map<
+    string,
+    (typeof hydeResults)[0] & { distance: number }
+  >();
+  for (const row of [...hydeResults, ...originalResults]) {
+    const existing = mergedMap.get(row.id);
+    if (!existing || (row.distance as number) < (existing.distance as number)) {
+      mergedMap.set(
+        row.id,
+        row as (typeof hydeResults)[0] & { distance: number },
+      );
+    }
+  }
+
+  // Sort by distance and limit
+  const merged = Array.from(mergedMap.values())
+    .sort((a, b) => (a.distance as number) - (b.distance as number))
+    .slice(0, limit);
 
   const searchDuration = Math.round(performance.now() - searchStart);
 
-  const memoriesWithRelevance: MemoryWithRelevance[] = results.map((row) => ({
+  const memoriesWithRelevance: MemoryWithRelevance[] = merged.map((row) => ({
     id: row.id,
     content: row.content,
     category: row.category as MemoryCategory | undefined,
@@ -425,7 +437,7 @@ export async function searchMemories(
     {
       userId,
       queryLength: query.length,
-      expandedQueryLength: expandedQuery.length,
+      hydeQueryLength: hydeQuery.length,
       project,
       category,
       resultsCount: memoriesWithRelevance.length,
