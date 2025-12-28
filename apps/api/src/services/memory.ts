@@ -451,7 +451,13 @@ export async function deleteMemory(
     const result = await tx
       .update(memories)
       .set({ deletedAt: sql`NOW()` })
-      .where(and(eq(memories.id, memoryId), eq(memories.userId, userId)));
+      .where(
+        and(
+          eq(memories.id, memoryId),
+          eq(memories.userId, userId),
+          isNull(memories.deletedAt),
+        ),
+      );
 
     const wasDeleted = (result.rowCount ?? 0) > 0;
 
