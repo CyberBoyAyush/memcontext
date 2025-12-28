@@ -10,8 +10,9 @@ const saveMemorySchema = {
   content: z
     .string()
     .describe(
-      "Clear, atomic memory to save. Good: 'User prefers TypeScript over JavaScript'. " +
-        "Bad: 'User likes coding' (too vague).",
+      "Clear, atomic memory to save. Write as a complete, searchable statement. " +
+        "Good: 'User prefers TypeScript over JavaScript for type safety'. " +
+        "Bad: 'User likes coding' (too vague), 'TS > JS' (not searchable).",
     ),
   category: z
     .enum(["preference", "fact", "decision", "context"])
@@ -36,8 +37,9 @@ const searchMemorySchema = {
   query: z
     .string()
     .describe(
-      "Natural language search query. Examples: 'package manager preference', " +
-        "'coding style', 'database choices'.",
+      "Natural language description of what to find - use complete sentences, not keywords. " +
+        "Good: 'What package manager does the user prefer?', 'How should database transactions be handled?'. " +
+        "Bad: 'package manager', 'db transactions' (keywords reduce match quality).",
     ),
   limit: z
     .number()
