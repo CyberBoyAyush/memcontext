@@ -276,7 +276,7 @@ export async function expandQueryForSearch(query: string): Promise<string> {
         prompt: `Given this search query for a user's personal memory system:
 "${escapedQuery}"
 
-Rewrite this as a more specific, keyword-rich search query that would match stored memories about user preferences, facts, decisions, or context. Add relevant synonyms and related concepts. Keep it under 50 words.
+Rewrite this as a more specific, keyword-rich search query that would match stored memories about user preferences, facts, decisions, or context. Convert indirect questions like "user's preferences about X" into direct queries like "what X is used". Add relevant synonyms and related concepts. Keep it under 50 words.
 
 Expanded query:`,
       });
