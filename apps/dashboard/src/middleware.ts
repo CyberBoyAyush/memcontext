@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionCookie } from "better-auth/cookies";
 
 const publicRoutes = ["/login", "/signup"];
 const protectedPrefixes = ["/dashboard", "/memories", "/api-keys", "/settings"];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const sessionCookie = request.cookies.get("better-auth.session_token");
+  const sessionCookie = getSessionCookie(request);
 
   const isPublicRoute = publicRoutes.includes(pathname);
   const isProtectedRoute = protectedPrefixes.some((prefix) =>
