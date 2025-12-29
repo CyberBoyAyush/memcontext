@@ -1,7 +1,12 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import { HTTPException } from "hono/http-exception";
 import { db, apiKeys } from "../db/index.js";
+import {
+  sessionAuthMiddleware,
+  type SessionContext,
+} from "../middleware/session-auth.js";
 import {
   generateApiKey,
   extractKeyPrefix,
@@ -11,14 +16,22 @@ import { invalidateApiKey } from "../services/cache.js";
 import { eq, and } from "drizzle-orm";
 import type { CreateApiKeyResponse, ApiKey } from "@memcontext/types";
 
-const app = new Hono();
+const app = new Hono<{
+  Variables: {
+    session: SessionContext;
+  };
+}>();
+
+// All routes require session authentication
+app.use("*", sessionAuthMiddleware);
 
 const createApiKeySchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
-  userId: z.string().min(1, "User ID is required"),
 });
 
+// POST / - Create API key
 app.post("/", zValidator("json", createApiKeySchema), async (c) => {
+  const { userId } = c.get("session");
   const body = c.req.valid("json");
 
   const key = generateApiKey();
@@ -28,7 +41,7 @@ app.post("/", zValidator("json", createApiKeySchema), async (c) => {
   const [newKey] = await db
     .insert(apiKeys)
     .values({
-      userId: body.userId,
+      userId,
       name: body.name,
       keyHash,
       keyPrefix,
@@ -51,12 +64,9 @@ app.post("/", zValidator("json", createApiKeySchema), async (c) => {
   return c.json(response, 201);
 });
 
+// GET / - List API keys
 app.get("/", async (c) => {
-  const userId = c.req.query("userId");
-
-  if (!userId) {
-    return c.json({ error: "userId query parameter is required" }, 400);
-  }
+  const { userId } = c.get("session");
 
   const keys = await db
     .select({
@@ -82,13 +92,10 @@ app.get("/", async (c) => {
   return c.json({ keys: formattedKeys });
 });
 
+// DELETE /:id - Delete API key
 app.delete("/:id", async (c) => {
+  const { userId } = c.get("session");
   const keyId = c.req.param("id");
-  const userId = c.req.query("userId");
-
-  if (!userId) {
-    return c.json({ error: "userId query parameter is required" }, 400);
-  }
 
   const [deletedKey] = await db
     .delete(apiKeys)
@@ -96,7 +103,7 @@ app.delete("/:id", async (c) => {
     .returning({ keyHash: apiKeys.keyHash });
 
   if (!deletedKey) {
-    return c.json({ error: "API key not found" }, 404);
+    throw new HTTPException(404, { message: "API key not found" });
   }
 
   await invalidateApiKey(deletedKey.keyHash);
