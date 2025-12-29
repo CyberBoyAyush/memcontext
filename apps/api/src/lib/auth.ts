@@ -28,6 +28,8 @@ export const auth = betterAuth({
       sameSite: "lax",
       secure: env.NODE_ENV === "production",
       httpOnly: true,
+      // Share cookie across subdomains (api.memcontext.in & app.memcontext.in)
+      domain: env.NODE_ENV === "production" ? ".memcontext.in" : undefined,
     },
   },
   databaseHooks: {
