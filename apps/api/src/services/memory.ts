@@ -11,7 +11,7 @@ import {
 import { incrementMemoryCount, decrementMemoryCount } from "./subscription.js";
 import { normalizeProjectName } from "../utils/index.js";
 import { logger } from "../lib/logger.js";
-import { eq, and, isNull, lt, asc, sql } from "drizzle-orm";
+import { eq, and, isNull, lt, asc, desc, sql, ne } from "drizzle-orm";
 import { cosineDistance } from "drizzle-orm";
 import type {
   MemoryCategory,
@@ -301,12 +301,25 @@ interface SimilarMemoryResult {
   distance: number;
 }
 
-async function findSimilarMemories(
+export async function findSimilarMemories(
   userId: string,
   embedding: number[],
+  excludeId?: string,
 ): Promise<SimilarMemoryResult[]> {
   const start = performance.now();
   const distance = cosineDistance(memories.embedding, embedding);
+
+  const conditions = [
+    eq(memories.userId, userId),
+    eq(memories.isCurrent, true),
+    isNull(memories.deletedAt),
+    lt(distance, SIMILARITY_THRESHOLD),
+  ];
+
+  // Exclude specific memory if provided (used in updateMemory)
+  if (excludeId) {
+    conditions.push(ne(memories.id, excludeId));
+  }
 
   const results = await db
     .select({
@@ -319,14 +332,7 @@ async function findSimilarMemories(
       distance,
     })
     .from(memories)
-    .where(
-      and(
-        eq(memories.userId, userId),
-        eq(memories.isCurrent, true),
-        isNull(memories.deletedAt),
-        lt(distance, SIMILARITY_THRESHOLD),
-      ),
-    )
+    .where(and(...conditions))
     .orderBy(asc(distance))
     .limit(SIMILAR_MEMORIES_LIMIT);
 
@@ -337,6 +343,7 @@ async function findSimilarMemories(
       userId,
       duration,
       found: results.length,
+      excludeId,
       topSimilarity:
         results.length > 0
           ? Math.round((1 - (results[0].distance as number)) * 100) / 100
@@ -470,6 +477,293 @@ export async function searchMemories(
   return {
     found: memoriesWithRelevance.length,
     memories: memoriesWithRelevance,
+  };
+}
+
+interface UpdateMemoryParams {
+  userId: string;
+  memoryId: string;
+  content?: string;
+  category?: MemoryCategory;
+  project?: string;
+  timing?: TimingContext;
+}
+
+interface UpdateMemoryResult {
+  success: boolean;
+  memory?: {
+    id: string;
+    content: string;
+    category: string | null;
+    project: string | null;
+  };
+  superseded?: string;
+  relatedTo?: string;
+  error?: string;
+}
+
+export async function updateMemory(
+  params: UpdateMemoryParams,
+): Promise<UpdateMemoryResult> {
+  const { userId, memoryId, content, category, timing } = params;
+  const project = normalizeProjectName(params.project);
+  const start = performance.now();
+
+  // 1. Fetch existing memory
+  const [existing] = await db
+    .select()
+    .from(memories)
+    .where(
+      and(
+        eq(memories.id, memoryId),
+        eq(memories.userId, userId),
+        eq(memories.isCurrent, true),
+        isNull(memories.deletedAt),
+      ),
+    );
+
+  if (!existing) {
+    logger.warn({ userId, memoryId }, "update failed - memory not found");
+    return { success: false, error: "Memory not found" };
+  }
+
+  // 2. If only category/project changed, simple update
+  if (!content || content === existing.content) {
+    const [updated] = await db
+      .update(memories)
+      .set({
+        category: category ?? existing.category,
+        project: project ?? existing.project,
+      })
+      .where(eq(memories.id, memoryId))
+      .returning({
+        id: memories.id,
+        content: memories.content,
+        category: memories.category,
+        project: memories.project,
+      });
+
+    const duration = Math.round(performance.now() - start);
+    logger.info(
+      { memoryId, userId, duration, updatedFields: ["category", "project"] },
+      "memory metadata updated",
+    );
+
+    return { success: true, memory: updated };
+  }
+
+  // 3. Content changed - run through classification flow
+  const expandedContent = await expandMemory(content, timing);
+  const embedding = await generateEmbedding(expandedContent, timing);
+
+  // Find similar memories, EXCLUDING current memory
+  const similarMemories = await findSimilarMemories(
+    userId,
+    embedding,
+    memoryId,
+  );
+
+  // 4. If no similar memories, just update in place
+  if (similarMemories.length === 0) {
+    const [updated] = await db
+      .update(memories)
+      .set({
+        content,
+        embedding,
+        category: category ?? existing.category,
+        project: project ?? existing.project,
+      })
+      .where(eq(memories.id, memoryId))
+      .returning({
+        id: memories.id,
+        content: memories.content,
+        category: memories.category,
+        project: memories.project,
+      });
+
+    const duration = Math.round(performance.now() - start);
+    logger.info(
+      { memoryId, userId, duration, contentChanged: true },
+      "memory content updated (no similar memories)",
+    );
+
+    return { success: true, memory: updated };
+  }
+
+  // 5. Classify relationship with OTHER memories
+  const memoriesForClassification = similarMemories.map((m, idx) => ({
+    index: idx,
+    content: m.content,
+  }));
+
+  const classification = await classifyWithSimilarMemories(
+    memoriesForClassification,
+    content,
+    timing,
+  );
+
+  const targetMemory =
+    classification.targetIndex !== undefined
+      ? similarMemories[classification.targetIndex]
+      : similarMemories[0];
+
+  // 6. Handle based on classification
+  if (classification.action === "noop") {
+    const duration = Math.round(performance.now() - start);
+    logger.warn(
+      { memoryId, userId, duration, duplicateOf: targetMemory.id },
+      "update rejected - content duplicates another memory",
+    );
+    return {
+      success: false,
+      error: "Updated content duplicates another memory",
+    };
+  }
+
+  if (classification.action === "update") {
+    // This update supersedes ANOTHER memory
+    await db.transaction(async (tx) => {
+      await tx
+        .update(memories)
+        .set({
+          content,
+          embedding,
+          category: category ?? existing.category,
+          project: project ?? existing.project,
+        })
+        .where(eq(memories.id, memoryId));
+
+      await tx
+        .update(memories)
+        .set({ isCurrent: false })
+        .where(eq(memories.id, targetMemory.id));
+    });
+
+    const duration = Math.round(performance.now() - start);
+    logger.info(
+      { memoryId, userId, duration, superseded: targetMemory.id },
+      "memory updated and superseded another",
+    );
+
+    return { success: true, superseded: targetMemory.id };
+  }
+
+  // extend or similar - update current + create relation
+  const relationType =
+    classification.action === "extend" ? "extends" : "similar";
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(memories)
+      .set({
+        content,
+        embedding,
+        category: category ?? existing.category,
+        project: project ?? existing.project,
+      })
+      .where(eq(memories.id, memoryId));
+
+    await tx.insert(memoryRelations).values({
+      sourceId: memoryId,
+      targetId: targetMemory.id,
+      relationType,
+      strength: 1 - targetMemory.distance,
+    });
+  });
+
+  const duration = Math.round(performance.now() - start);
+  logger.info(
+    { memoryId, userId, duration, relatedTo: targetMemory.id, relationType },
+    "memory updated with relation",
+  );
+
+  return { success: true, relatedTo: targetMemory.id };
+}
+
+interface ListMemoriesParams {
+  userId: string;
+  limit?: number;
+  offset?: number;
+  category?: MemoryCategory;
+  project?: string;
+}
+
+interface ListMemoriesResult {
+  memories: Array<{
+    id: string;
+    content: string;
+    category: string | null;
+    project: string | null;
+    source: string;
+    createdAt: Date;
+  }>;
+  total: number;
+  hasMore: boolean;
+}
+
+export async function listMemories(
+  params: ListMemoriesParams,
+): Promise<ListMemoriesResult> {
+  const { userId, limit = 20, offset = 0, category } = params;
+  const project = normalizeProjectName(params.project);
+  const start = performance.now();
+
+  const conditions = [
+    eq(memories.userId, userId),
+    eq(memories.isCurrent, true),
+    isNull(memories.deletedAt),
+  ];
+
+  if (category) {
+    conditions.push(eq(memories.category, category));
+  }
+  if (project) {
+    conditions.push(eq(memories.project, project));
+  }
+
+  const [results, countResult] = await Promise.all([
+    db
+      .select({
+        id: memories.id,
+        content: memories.content,
+        category: memories.category,
+        project: memories.project,
+        source: memories.source,
+        createdAt: memories.createdAt,
+      })
+      .from(memories)
+      .where(and(...conditions))
+      .orderBy(desc(memories.createdAt))
+      .limit(limit)
+      .offset(offset),
+
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(memories)
+      .where(and(...conditions)),
+  ]);
+
+  const total = countResult[0]?.count ?? 0;
+  const duration = Math.round(performance.now() - start);
+
+  logger.debug(
+    {
+      userId,
+      limit,
+      offset,
+      category,
+      project,
+      found: results.length,
+      total,
+      duration,
+    },
+    "memories listed",
+  );
+
+  return {
+    memories: results,
+    total,
+    hasMore: offset + results.length < total,
   };
 }
 
