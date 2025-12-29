@@ -24,7 +24,7 @@ import type { TimingContext } from "../utils/timing.js";
 import { withTiming } from "../utils/timing.js";
 
 const SIMILARITY_THRESHOLD = 0.3;
-const SEARCH_THRESHOLD = 0.5;
+const SEARCH_THRESHOLD = 0.6;
 const SIMILAR_MEMORIES_LIMIT = 5;
 
 interface SaveMemoryParams {
