@@ -238,7 +238,7 @@ function MemoryDetailPanel({
           "fixed inset-0 z-40 bg-black/10 backdrop-blur-[2px]",
           isClosing ? "animate-backdrop-fade-out" : "animate-backdrop-fade-in",
         )}
-        onClick={handleClose}
+        onClick={updateMutation.isPending ? undefined : handleClose}
       />
 
       {/* Side Panel */}
@@ -249,7 +249,7 @@ function MemoryDetailPanel({
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
+        <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
           <h2 className="text-lg font-semibold">Memory Details</h2>
           <div className="flex items-center gap-2">
             {!isEditing && (
@@ -263,7 +263,12 @@ function MemoryDetailPanel({
                 Edit
               </Button>
             )}
-            <Button variant="ghost" size="icon" onClick={handleClose}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleClose}
+              disabled={updateMutation.isPending}
+            >
               <X className="h-5 w-5" />
             </Button>
           </div>
@@ -386,7 +391,7 @@ function MemoryDetailPanel({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-border p-4 flex-shrink-0">
+        <div className="border-t border-border p-4 shrink-0">
           {isEditing ? (
             <div className="flex items-center gap-3">
               <Button
@@ -734,7 +739,7 @@ export default function MemoriesPage() {
   return (
     <div className="h-[calc(100vh-48px)] flex flex-col animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-6 flex-shrink-0">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-6 shrink-0">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-elevated">
@@ -770,7 +775,7 @@ export default function MemoriesPage() {
             size="icon"
             onClick={handleRefresh}
             disabled={isFetching}
-            className="h-10 w-10 flex-shrink-0"
+            className="h-10 w-10 shrink-0"
           >
             <IoRefresh
               className={cn("h-4 w-4", isFetching && "animate-spin")}
@@ -781,7 +786,7 @@ export default function MemoriesPage() {
 
       {/* Active filters indicator */}
       {category && (
-        <div className="flex items-center gap-2 pb-4 flex-shrink-0">
+        <div className="flex items-center gap-2 pb-4 shrink-0">
           <span className="text-sm text-foreground-muted">Filtered by:</span>
           <button
             onClick={() => {
@@ -938,7 +943,7 @@ export default function MemoriesPage() {
                         <td className="px-4 py-4 hidden lg:table-cell w-36">
                           {memory.project ? (
                             <span className="inline-flex items-center gap-1.5 text-sm text-foreground-muted truncate">
-                              <FolderOpen className="h-3.5 w-3.5 flex-shrink-0" />
+                              <FolderOpen className="h-3.5 w-3.5 shrink-0" />
                               <span className="truncate">{memory.project}</span>
                             </span>
                           ) : (

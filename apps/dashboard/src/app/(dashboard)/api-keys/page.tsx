@@ -227,10 +227,14 @@ function NewKeyModal({
   }
 
   async function copyKey() {
-    await navigator.clipboard.writeText(keyData.key);
-    setCopied(true);
-    toast.success("API key copied to clipboard");
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(keyData.key);
+      setCopied(true);
+      toast.success("API key copied to clipboard");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy to clipboard. Please copy manually.");
+    }
   }
 
   return (
