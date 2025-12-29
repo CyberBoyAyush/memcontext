@@ -102,8 +102,14 @@ function EditMemoryModal({
       await updateMutation.mutateAsync({
         id: memory.id,
         content: content !== memory.content ? content : undefined,
-        category: editCategory !== memory.category ? editCategory : undefined,
-        project: editProject !== memory.project ? editProject : undefined,
+        category:
+          editCategory !== (memory.category || "")
+            ? editCategory || undefined
+            : undefined,
+        project:
+          editProject !== (memory.project || "")
+            ? editProject || undefined
+            : undefined,
       });
       onSuccess("Memory updated successfully");
       onClose();
