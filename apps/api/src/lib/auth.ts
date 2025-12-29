@@ -25,10 +25,11 @@ export const auth = betterAuth({
   },
   advanced: {
     defaultCookieAttributes: {
-      sameSite: "lax",
+      // "none" required for cross-origin cookies (api.memcontext.in -> app.memcontext.in)
+      sameSite: env.NODE_ENV === "production" ? "none" : "lax",
       secure: env.NODE_ENV === "production",
       httpOnly: true,
-      // Share cookie across subdomains (api.memcontext.in & app.memcontext.in)
+      // Share cookie across subdomains
       domain: env.NODE_ENV === "production" ? ".memcontext.in" : undefined,
     },
   },
