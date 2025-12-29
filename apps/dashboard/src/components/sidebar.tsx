@@ -51,7 +51,7 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const mounted = useIsMounted();
 
   return (
@@ -125,9 +125,11 @@ export function Sidebar() {
                 variant="ghost"
                 size="sm"
                 className="w-full justify-start gap-2"
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                onClick={() =>
+                  setTheme(resolvedTheme === "dark" ? "light" : "dark")
+                }
               >
-                {theme === "dark" ? (
+                {resolvedTheme === "dark" ? (
                   <>
                     <Sun className="h-4 w-4" />
                     Light Mode
