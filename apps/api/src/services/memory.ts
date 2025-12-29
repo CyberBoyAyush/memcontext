@@ -11,7 +11,7 @@ import {
 import { incrementMemoryCount, decrementMemoryCount } from "./subscription.js";
 import { normalizeProjectName } from "../utils/index.js";
 import { logger } from "../lib/logger.js";
-import { eq, and, isNull, lt, asc, desc, sql, ne } from "drizzle-orm";
+import { eq, and, isNull, lt, asc, desc, sql, ne, like } from "drizzle-orm";
 import { cosineDistance } from "drizzle-orm";
 import type {
   MemoryCategory,
@@ -718,7 +718,8 @@ export async function listMemories(
     conditions.push(eq(memories.category, category));
   }
   if (project) {
-    conditions.push(eq(memories.project, project));
+    // Use LIKE for partial matching (contains search)
+    conditions.push(like(memories.project, `%${project}%`));
   }
 
   const [results, countResult] = await Promise.all([
