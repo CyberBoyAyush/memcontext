@@ -2,12 +2,25 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { HTTPException } from "hono/http-exception";
-import { authMiddleware, type AuthContext } from "../middleware/auth.js";
+import {
+  eitherAuthMiddleware,
+  type EitherAuthContext,
+} from "../middleware/either-auth.js";
+import {
+  sessionAuthMiddleware,
+  type SessionContext,
+} from "../middleware/session-auth.js";
 import {
   rateLimitSaveMemory,
   rateLimitSearchMemory,
 } from "../middleware/rate-limit.js";
-import { saveMemory, searchMemories } from "../services/memory.js";
+import {
+  saveMemory,
+  searchMemories,
+  deleteMemory,
+  updateMemory,
+  listMemories,
+} from "../services/memory.js";
 import {
   checkMemoryLimit,
   getSubscriptionData,
@@ -20,10 +33,13 @@ import type { TimingContext } from "../utils/timing.js";
 
 const app = new Hono<{
   Variables: {
-    auth: AuthContext;
+    auth: EitherAuthContext;
+    session: SessionContext;
     timing: TimingContext;
   };
 }>();
+
+// === Schemas ===
 
 const saveMemorySchema = z.object({
   content: z
@@ -47,10 +63,26 @@ const searchMemorySchema = z.object({
   project: z.string().max(100, "Project name too long").optional(),
 });
 
+const listMemorySchema = z.object({
+  limit: z.coerce.number().min(1).max(100).optional().default(20),
+  offset: z.coerce.number().min(0).optional().default(0),
+  category: z.enum(["preference", "fact", "decision", "context"]).optional(),
+  project: z.string().max(100, "Project name too long").optional(),
+});
+
+const updateMemorySchema = z.object({
+  content: z.string().trim().min(1).max(10000).optional(),
+  category: z.enum(["preference", "fact", "decision", "context"]).optional(),
+  project: z.string().max(100).optional(),
+});
+
+// === Shared Routes (API Key OR Session) ===
+
+// POST / - Save memory (MCP + Dashboard)
 app.post(
   "/",
   rateLimitSaveMemory,
-  authMiddleware,
+  eitherAuthMiddleware,
   zValidator("json", saveMemorySchema),
   async (c) => {
     const auth = c.get("auth");
@@ -83,8 +115,12 @@ app.post(
       timing,
     });
 
-    // Update cache if memory was saved or extended (not just updated/superseded)
-    if (result.status === "saved" || result.status === "extended") {
+    // Update cache if API key auth and memory count changed
+    if (
+      auth.authType === "api_key" &&
+      auth.keyHash &&
+      (result.status === "saved" || result.status === "extended")
+    ) {
       try {
         const sub = await getSubscriptionData(auth.userId);
         await updateCachedMemoryCount(auth.keyHash, sub.memoryCount);
@@ -103,10 +139,11 @@ app.post(
   },
 );
 
+// GET /search - Search memories (MCP + Dashboard)
 app.get(
   "/search",
   rateLimitSearchMemory,
-  authMiddleware,
+  eitherAuthMiddleware,
   zValidator("query", searchMemorySchema),
   async (c) => {
     const auth = c.get("auth");
@@ -125,5 +162,72 @@ app.get(
     return c.json(result);
   },
 );
+
+// === Dashboard-only Routes (Session Auth) ===
+
+// GET / - List memories (Dashboard only)
+app.get(
+  "/",
+  sessionAuthMiddleware,
+  zValidator("query", listMemorySchema),
+  async (c) => {
+    const { userId } = c.get("session");
+    const query = c.req.valid("query");
+
+    const result = await listMemories({
+      userId,
+      limit: query.limit,
+      offset: query.offset,
+      category: query.category as MemoryCategory | undefined,
+      project: query.project,
+    });
+
+    return c.json(result);
+  },
+);
+
+// PATCH /:id - Update memory (Dashboard only)
+app.patch(
+  "/:id",
+  sessionAuthMiddleware,
+  zValidator("json", updateMemorySchema),
+  async (c) => {
+    const { userId } = c.get("session");
+    const memoryId = c.req.param("id");
+    const body = c.req.valid("json");
+    const timing = getTimingContext(c);
+
+    const result = await updateMemory({
+      userId,
+      memoryId,
+      content: body.content,
+      category: body.category as MemoryCategory | undefined,
+      project: body.project,
+      timing,
+    });
+
+    if (!result.success) {
+      throw new HTTPException(result.error === "Memory not found" ? 404 : 400, {
+        message: result.error ?? "Failed to update memory",
+      });
+    }
+
+    return c.json(result);
+  },
+);
+
+// DELETE /:id - Delete memory (Dashboard only)
+app.delete("/:id", sessionAuthMiddleware, async (c) => {
+  const { userId } = c.get("session");
+  const memoryId = c.req.param("id");
+
+  const deleted = await deleteMemory(userId, memoryId);
+
+  if (!deleted) {
+    throw new HTTPException(404, { message: "Memory not found" });
+  }
+
+  return c.json({ success: true });
+});
 
 export default app;

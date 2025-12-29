@@ -14,8 +14,10 @@ import {
   generateErrorId,
   serializeError,
 } from "./utils/app-error.js";
+import { auth } from "./lib/auth.js";
 import memoriesRoutes from "./routes/memories.js";
 import apiKeysRoutes from "./routes/api-keys.js";
+import userRoutes from "./routes/user.js";
 import type { HealthResponse } from "@memcontext/types";
 
 const app = new Hono();
@@ -25,6 +27,8 @@ app.use("*", requestLogger);
 const ALLOWED_ORIGINS = [
   "http://localhost:3000",
   "http://localhost:3001",
+  "http://localhost:3010",
+  "http://localhost:3020",
   "http://localhost:5173",
 ];
 
@@ -42,8 +46,9 @@ app.use(
       if (isAllowedOrigin(origin)) return origin;
       return null;
     },
-    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization", "X-API-Key"],
+    credentials: true,
   }),
 );
 
@@ -70,8 +75,14 @@ app.get("/health", rateLimitHealth, async (c) => {
   return c.json(response, dbHealthy ? 200 : 503);
 });
 
+// Mount Better Auth handler (BEFORE other /api routes)
+app.on(["POST", "GET"], "/api/auth/*", (c) => {
+  return auth.handler(c.req.raw);
+});
+
 app.route("/api/memories", memoriesRoutes);
 app.route("/api/api-keys", apiKeysRoutes);
+app.route("/api/user", userRoutes);
 
 app.onError((err, c) => {
   const requestId = getRequestId(c);

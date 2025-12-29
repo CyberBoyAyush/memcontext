@@ -81,7 +81,7 @@ export const authMiddleware = createMiddleware<{
   return next();
 });
 
-async function validateApiKey(
+export async function validateApiKey(
   key: string,
   requestId: string,
   ip: string,
