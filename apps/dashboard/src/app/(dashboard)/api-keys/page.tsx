@@ -635,7 +635,7 @@ export default function ApiKeysPage() {
       )}
 
       {/* Info Card */}
-      {data && data.keys.length > 0 && (
+      {/* {data && data.keys.length > 0 && (
         <div className="mt-4 p-4 rounded-xl bg-surface border border-border flex-shrink-0">
           <div className="flex items-start gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10 flex-shrink-0">
@@ -651,7 +651,7 @@ export default function ApiKeysPage() {
             </div>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Loading indicator */}
       {isFetching && !isLoading && (
