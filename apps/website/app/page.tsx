@@ -1,7 +1,6 @@
 import {
   Header,
   Hero,
-  TrustBlock,
   Features,
   HowItWorks,
   FAQ,
@@ -13,9 +12,8 @@ export default function Home() {
   return (
     <>
       <Header />
-      <main>
+      <main className="overflow-hidden px-4">
         <Hero />
-        <TrustBlock />
         <Features />
         <HowItWorks />
         <FAQ />
