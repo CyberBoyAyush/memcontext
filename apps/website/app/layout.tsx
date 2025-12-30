@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { JetBrains_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -56,6 +57,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${jetbrainsMono.variable} antialiased bg-background text-foreground`}
       >
         {children}
+        <Script
+          defer
+          src="https://stats.ayush-sharma.in/script.js"
+          data-website-id="ae3ef413-5642-4f0b-90d6-4d86849adf38"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
