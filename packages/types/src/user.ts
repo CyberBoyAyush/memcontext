@@ -7,7 +7,7 @@ export interface User {
   updatedAt: Date;
 }
 
-export type PlanType = "free" | "hobby" | "pro" | "team";
+export type PlanType = "free" | "hobby" | "pro";
 
 export interface Subscription {
   id: string;

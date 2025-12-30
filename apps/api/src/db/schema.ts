@@ -12,9 +12,8 @@ import {
 
 export const PLAN_LIMITS = {
   free: 300,
-  hobby: 1500,
-  pro: 5000,
-  team: 10000,
+  hobby: 2000,
+  pro: 10000,
 } as const;
 
 export type PlanType = keyof typeof PLAN_LIMITS;

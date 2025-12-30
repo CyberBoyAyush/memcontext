@@ -97,7 +97,7 @@ Better Auth auto-generates its own tables (user, session, account, verification)
 | ------------ | --------- | ------------------------ | ----------------------------------------- |
 | id           | UUID      | PK, default random       |                                           |
 | user_id      | TEXT      | NOT NULL, UNIQUE         | Owner (FK -> user when Better Auth added) |
-| plan         | TEXT      | NOT NULL, default 'free' | free / hobby / pro / team                 |
+| plan         | TEXT      | NOT NULL, default 'free' | free / hobby / pro                        |
 | memory_count | INTEGER   | NOT NULL, default 0      | Current non-deleted memories              |
 | memory_limit | INTEGER   | NOT NULL, default 5000   | Based on plan                             |
 | created_at   | TIMESTAMP | NOT NULL, default now    |                                           |
@@ -105,12 +105,11 @@ Better Auth auto-generates its own tables (user, session, account, verification)
 
 **Plan Limits:**
 
-| Plan  | Limit |
-| ----- | ----- |
-| free  | 300   |
-| hobby | 1500  |
-| pro   | 5000  |
-| team  | 10000 |
+| Plan  | Limit  | Price     |
+| ----- | ------ | --------- |
+| free  | 300    | $0/month  |
+| hobby | 2,000  | $5/month  |
+| pro   | 10,000 | $15/month |
 
 ### api_keys
 

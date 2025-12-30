@@ -105,12 +105,20 @@ Stores hashed API keys.
 
 Tracks user plans and memory usage.
 
-| Field        | Description               |
-| ------------ | ------------------------- |
-| user_id      | Owner                     |
-| plan         | free, hobby, pro, or team |
-| memory_count | Current count             |
-| memory_limit | Based on plan             |
+| Field        | Description         |
+| ------------ | ------------------- |
+| user_id      | Owner               |
+| plan         | free, hobby, or pro |
+| memory_count | Current count       |
+| memory_limit | Based on plan       |
+
+**Plan Limits:**
+
+| Plan  | Limit  | Price     |
+| ----- | ------ | --------- |
+| free  | 300    | $0/month  |
+| hobby | 2,000  | $5/month  |
+| pro   | 10,000 | $15/month |
 
 ## Memory Processing
 
