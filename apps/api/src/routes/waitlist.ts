@@ -21,7 +21,7 @@ function normalizeReferrer(
 }
 
 const joinWaitlistSchema = z.object({
-  email: z.string().email("Invalid email address"),
+  email: z.string().trim().email("Invalid email address"),
   source: z.enum(VALID_SOURCES, {
     errorMap: () => ({ message: "Invalid source" }),
   }),
