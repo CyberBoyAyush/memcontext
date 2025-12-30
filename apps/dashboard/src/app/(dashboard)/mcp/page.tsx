@@ -275,10 +275,18 @@ function ApiKeyInput({
   );
 }
 
-function CursorDeepLinkButton({ apiKey }: { apiKey: string }) {
+function CursorDeepLinkButton({
+  apiKey,
+  disabled,
+}: {
+  apiKey: string;
+  disabled?: boolean;
+}) {
   const toast = useToast();
 
   function handleAddToCursor() {
+    if (disabled) return;
+
     // Cursor deep link expects the server config as base64 encoded JSON
     const serverConfig = {
       url: MCP_SERVER_URL,
@@ -298,7 +306,13 @@ function CursorDeepLinkButton({ apiKey }: { apiKey: string }) {
   return (
     <Button
       onClick={handleAddToCursor}
-      className="gap-2 bg-[#1a1a1a] hover:bg-[#2a2a2a] text-white font-medium border border-[#333] shadow-sm"
+      disabled={disabled}
+      className={cn(
+        "gap-2 font-medium border shadow-sm",
+        disabled
+          ? "bg-[#1a1a1a]/50 text-white/50 border-[#333]/50 cursor-not-allowed"
+          : "bg-[#1a1a1a] hover:bg-[#2a2a2a] text-white border-[#333]"
+      )}
     >
       <Cursor className="w-4 h-4" />
       Add to Cursor
@@ -381,9 +395,14 @@ function AgentConfigSection({
         {/* Add to Cursor Button */}
         {agent.hasCursorDeepLink && (
           <div className="flex items-center gap-4 pt-2">
-            <CursorDeepLinkButton apiKey={apiKey} />
+            <CursorDeepLinkButton
+              apiKey={apiKey}
+              disabled={!apiKey || apiKey === "YOUR_API_KEY"}
+            />
             <span className="text-sm text-foreground-subtle">
-              One-click install for Cursor
+              {!apiKey || apiKey === "YOUR_API_KEY"
+                ? "Enter your API key above to enable"
+                : "One-click install for Cursor"}
             </span>
           </div>
         )}
