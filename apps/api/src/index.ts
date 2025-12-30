@@ -15,6 +15,7 @@ import {
   serializeError,
 } from "./utils/app-error.js";
 import { auth } from "./lib/auth.js";
+import { env } from "./env.js";
 import memoriesRoutes from "./routes/memories.js";
 import apiKeysRoutes from "./routes/api-keys.js";
 import userRoutes from "./routes/user.js";
@@ -56,6 +57,12 @@ app.use(
 app.use("*", bodyLimit({ maxSize: 50 * 1024 }));
 
 app.use("/api/*", rateLimitGlobal);
+
+// Fallback redirect for OAuth - when Better Auth redirects to API root after OAuth,
+// redirect to dashboard. This is a known workaround for Better Auth issue #3407
+app.get("/", (c) => {
+  return c.redirect(env.DASHBOARD_URL);
+});
 
 app.get("/health", rateLimitHealth, async (c) => {
   const dbHealthy = await checkDbConnection();
