@@ -24,6 +24,14 @@ async function fetchWithCredentials<T>(
   });
 
   if (!res.ok) {
+    // Handle 401 by redirecting to login
+    if (res.status === 401) {
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
+      throw new ApiError(401, "Session expired");
+    }
+
     const error = await res.json().catch(() => ({ error: "Unknown error" }));
     throw new ApiError(
       res.status,
