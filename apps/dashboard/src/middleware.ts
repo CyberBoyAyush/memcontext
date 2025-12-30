@@ -30,8 +30,12 @@ export function middleware(request: NextRequest) {
   }
 
   // Redirect to dashboard if accessing auth pages with session
+  // BUT don't redirect if 'from' param exists (means session expired, need to re-login)
   if (isPublicRoute && sessionCookie) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    const hasFromParam = request.nextUrl.searchParams.has("from");
+    if (!hasFromParam) {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
   }
 
   return NextResponse.next();
