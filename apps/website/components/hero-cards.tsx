@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { SiOpenai, SiGooglegemini } from "react-icons/si";
 import { RiClaudeLine } from "react-icons/ri";
 import { VscCopilot } from "react-icons/vsc";
+import Image from "next/image";
 
 // Pre-defined line styles to avoid Math.random during render
 const CODE_LINE_STYLES = [
@@ -58,41 +59,60 @@ function MemoryCard({
   return (
     <div
       className={`
-        absolute w-[150px] sm:w-[170px] h-50 sm:h-[230px] p-3 sm:p-4 rounded-xl
-        bg-surface border border-border
-        shadow-[0_8px_32px_rgba(0,0,0,0.5)]
-        transition-all duration-700 ease-out
-        flex flex-col
+        absolute transition-all duration-700 ease-out
         ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}
         ${className}
       `}
       style={{ transitionDelay: `${delay}ms` }}
     >
-      <div className="flex">
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <h4 className="text-xs sm:text-sm font-medium text-foreground leading-tight">
-        {title}
-      </h4>
-        <span
-          className={`
-          text-[9px] font-mono px-1.5 py-0.5 rounded-full border
-          ${categoryColors[category] || categoryColors.preference}
-        `}
-        >
-          {category}
-        </span>
-        {/* <div className="w-1.5 h-1.5 rounded-full bg-accent/60 animate-pulse" /> */}
-      </div>
-      
-      </div>
-      <p className="text-[10px] sm:text-xs text-foreground-muted leading-relaxed flex-1">
-        {content}
-      </p>
-      <div className="mt-auto pt-2 border-t border-border/50 flex items-center justify-between">
-        <span className="text-[8px] text-foreground-subtle font-mono">
-          mem_01
-        </span>
-        <span className="text-[8px] text-foreground-subtle">now</span>
+      {/* Border glow - top left */}
+      <div
+        className="absolute -top-px -left-px w-20 h-16 rounded-xl blur-[0.5px]"
+        style={{
+          background:
+            "radial-gradient(ellipse at top left, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.2) 30%, transparent 60%)",
+        }}
+      />
+      {/* Border glow - bottom right */}
+      <div
+        className="absolute -bottom-px -right-px w-12 h-10 rounded-xl blur-[0.5px]"
+        style={{
+          background:
+            "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.1) 30%, transparent 60%)",
+        }}
+      />
+      <div
+        className="relative w-[150px] sm:w-[170px] h-50 sm:h-[230px] p-3 sm:p-4 rounded-xl
+        bg-surface border border-white/10
+        shadow-[0_8px_32px_rgba(0,0,0,0.5)]
+        flex flex-col overflow-hidden"
+      >
+        {/* Inner glow overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] via-transparent to-transparent pointer-events-none" />
+        <div className="flex">
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <h4 className="text-xs sm:text-sm font-medium text-foreground leading-tight">
+              {title}
+            </h4>
+            <span
+              className={`
+                text-[9px] font-mono px-1.5 py-0.5 rounded-full border
+                ${categoryColors[category] || categoryColors.preference}
+              `}
+            >
+              {category}
+            </span>
+          </div>
+        </div>
+        <p className="text-[10px] sm:text-xs text-foreground-muted leading-relaxed flex-1">
+          {content}
+        </p>
+        <div className="mt-auto pt-2 border-t border-border/50 flex items-center justify-between">
+          <span className="text-[8px] text-foreground-subtle font-mono">
+            mem_01
+          </span>
+          <span className="text-[8px] text-foreground-subtle">now</span>
+        </div>
       </div>
     </div>
   );
@@ -121,38 +141,59 @@ function FileCard({
   return (
     <div
       className={`
-        absolute w-[140px] sm:w-[160px] h-[190px] sm:h-[220px] rounded-xl overflow-hidden
-        bg-surface-elevated border border-border
-        shadow-[0_8px_32px_rgba(0,0,0,0.5)]
-        transition-all duration-700 ease-out
-        flex flex-col
+        absolute transition-all duration-700 ease-out
         ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}
         ${className}
       `}
       style={{ transitionDelay: `${delay}ms` }}
     >
-      <div className="px-2.5 py-2 bg-background/80 border-b border-border flex items-center gap-2">
-        <div className="flex gap-1">
-          <div className="w-1.5 h-1.5 rounded-full bg-error/60" />
-          <div className="w-1.5 h-1.5 rounded-full bg-warning/60" />
-          <div className="w-1.5 h-1.5 rounded-full bg-success/60" />
-        </div>
-        <span className="text-[8px] font-mono text-foreground-muted truncate">
-          {filename}
-        </span>
-      </div>
-      <div className="p-2.5 font-mono text-[9px] space-y-1.5 flex-1">
-        {lineStyles.map((style, i) => (
-          <div key={i} className="flex gap-1.5">
-            <span className="text-foreground-subtle w-2.5 text-right select-none">
-              {i + 1}
-            </span>
-            <div
-              className="h-2.5 rounded bg-foreground/5"
-              style={{ width: style.width, opacity: style.opacity }}
-            />
+      {/* Border glow - top left */}
+      <div
+        className="absolute -top-px -left-px w-20 h-16 rounded-xl blur-[0.5px]"
+        style={{
+          background:
+            "radial-gradient(ellipse at top left, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.2) 30%, transparent 60%)",
+        }}
+      />
+      {/* Border glow - bottom right */}
+      <div
+        className="absolute -bottom-px -right-px w-12 h-10 rounded-xl blur-[0.5px]"
+        style={{
+          background:
+            "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.1) 30%, transparent 60%)",
+        }}
+      />
+      <div
+        className="relative w-[140px] sm:w-[160px] h-[190px] sm:h-[220px] rounded-xl overflow-hidden
+        bg-surface-elevated border border-white/10
+        shadow-[0_8px_32px_rgba(0,0,0,0.5)]
+        flex flex-col"
+      >
+        {/* Inner glow overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] via-transparent to-transparent pointer-events-none" />
+        <div className="px-2.5 py-2 bg-background/80 border-b border-border flex items-center gap-2">
+          <div className="flex gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-error/60" />
+            <div className="w-1.5 h-1.5 rounded-full bg-warning/60" />
+            <div className="w-1.5 h-1.5 rounded-full bg-success/60" />
           </div>
-        ))}
+          <span className="text-[8px] font-mono text-foreground-muted truncate">
+            {filename}
+          </span>
+        </div>
+        <div className="p-2.5 font-mono text-[9px] space-y-1.5 flex-1">
+          {lineStyles.map((style, i) => (
+            <div key={i} className="flex gap-1.5">
+              <span className="text-foreground-subtle w-2.5 text-right select-none">
+                {i + 1}
+              </span>
+              <div
+                className="h-2.5 rounded bg-foreground/5"
+                style={{ width: style.width, opacity: style.opacity }}
+              />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -187,6 +228,39 @@ function FolderCard({
       `}
       style={{ transitionDelay: `${delay}ms` }}
     >
+      {/* Shiny Logo Container - positioned on top of folder */}
+      <div className="absolute left-1/2 -translate-x-1/2 top-[60px] sm:top-[70px] z-10">
+        <div className="relative">
+          {/* Border glow - top left */}
+          <div
+            className="absolute -top-[1px] -left-[1px] w-8 h-8 rounded-xl blur-[0.5px]"
+            style={{
+              background:
+                "radial-gradient(ellipse at top left, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.4) 30%, transparent 60%)",
+            }}
+          />
+          {/* Border glow - bottom right */}
+          <div
+            className="absolute -bottom-[1px] -right-[1px] w-6 h-6 rounded-xl blur-[0.5px]"
+            style={{
+              background:
+                "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 30%, transparent 60%)",
+            }}
+          />
+          {/* Glass container with dark background */}
+          <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-surface/95 backdrop-blur-sm border border-white/15 flex items-center justify-center overflow-hidden">
+            {/* Inner glow */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent" />
+            <Image
+              src="/sign.png"
+              alt="MemContext Logo"
+              width={40}
+              height={40}
+              className="w-8 h-8 sm:w-10 sm:h-10 relative z-10"
+            />
+          </div>
+        </div>
+      </div>
       <svg
         className="w-[280px] h-50 sm:w-[340px] sm:h-[240px] drop-shadow-[0_10px_30px_rgba(232,97,60,0.35)]"
         viewBox="0 0 340 240"
@@ -205,16 +279,44 @@ function FolderCard({
             <stop offset="0%" stopColor="#E8613C" />
             <stop offset="100%" stopColor="#C94E2E" />
           </linearGradient>
+          {/* Glass shine overlay on top-left */}
+          <radialGradient
+            id="folderGlowHero"
+            cx="0"
+            cy="0"
+            r="1"
+            gradientUnits="userSpaceOnUse"
+            gradientTransform="translate(40 20) scale(120 100)"
+          >
+            <stop offset="0%" stopColor="white" stopOpacity="0.3" />
+            <stop offset="50%" stopColor="white" stopOpacity="0.1" />
+            <stop offset="100%" stopColor="white" stopOpacity="0" />
+          </radialGradient>
+          {/* Top edge glow gradient - horizontal */}
           <linearGradient
-            id="folderShine"
-            x1="0"
-            y1="28"
-            x2="340"
-            y2="150"
+            id="folderEdgeGlowHero"
+            x1="16"
+            y1="0"
+            x2="200"
+            y2="0"
             gradientUnits="userSpaceOnUse"
           >
-            <stop offset="0%" stopColor="white" stopOpacity="0.15" />
-            <stop offset="50%" stopColor="white" stopOpacity="0" />
+            <stop offset="0%" stopColor="white" stopOpacity="0.6" />
+            <stop offset="40%" stopColor="white" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="white" stopOpacity="0.05" />
+          </linearGradient>
+          {/* Left edge glow gradient - vertical */}
+          <linearGradient
+            id="folderEdgeGlowLeftHero"
+            x1="0"
+            y1="20"
+            x2="0"
+            y2="228"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop offset="0%" stopColor="white" stopOpacity="0.6" />
+            <stop offset="40%" stopColor="white" stopOpacity="0.2" />
+            <stop offset="100%" stopColor="white" stopOpacity="0" />
           </linearGradient>
         </defs>
 
@@ -238,7 +340,7 @@ function FolderCard({
           fill="url(#folderGradient)"
         />
 
-        {/* Shine overlay */}
+        {/* Glass glow overlay */}
         <path
           d="M16 20
              C16 14 20 10 26 10
@@ -253,10 +355,10 @@ function FolderCard({
              H32
              C23.163 228 16 220.837 16 212
              V20Z"
-          fill="url(#folderShine)"
+          fill="url(#folderGlowHero)"
         />
 
-        {/* Top edge highlight */}
+        {/* Top edge highlight with glow on left */}
         <path
           d="M16 20
              C16 14 20 10 26 10
@@ -266,24 +368,17 @@ function FolderCard({
              Q130 40 140 40
              H308
              C316.837 40 324 47.163 324 56"
-          stroke="white"
-          strokeOpacity="0.25"
-          strokeWidth="1"
+          stroke="url(#folderEdgeGlowHero)"
+          strokeWidth="1.5"
           fill="none"
         />
-
-        {/* Folder icon */}
-        <g transform="translate(145, 75)">
-          <path
-            d="M5 40a4 4 0 01-4-4V12a4 4 0 014-4h10l4 5h12a4 4 0 014 4v4M5 40h36a4 4 0 004-4V24a4 4 0 00-4-4H21a4 4 0 00-4 4v8a4 4 0 01-4 4H5z"
-            stroke="white"
-            strokeOpacity="0.9"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill="none"
-          />
-        </g>
+        {/* Left edge highlight going down */}
+        <path
+          d="M16 20 V212"
+          stroke="url(#folderEdgeGlowLeftHero)"
+          strokeWidth="1.5"
+          fill="none"
+        />
 
         {/* Folder name */}
         <text
@@ -333,34 +428,55 @@ function PlaneCard({
   return (
     <div
       className={`
-        absolute w-[120px] sm:w-[140px] h-[160px] sm:h-[180px] p-3 rounded-xl
-        bg-gradient-to-br from-surface-elevated to-surface
-        border border-border
-        shadow-[0_8px_32px_rgba(0,0,0,0.5)]
-        transition-all duration-700 ease-out
-        flex flex-col
+        absolute transition-all duration-700 ease-out
         ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}
         ${className}
       `}
       style={{ transitionDelay: `${delay}ms` }}
     >
-      <div className="flex gap-2 items-center mb-1">
-        <div className="w-9 h-9 sm:w-7 sm:h-7 rounded-md bg-accent/15 flex items-center justify-center mb-2">
-          <Save className="w-4 h-4 sm:w-4 sm:h-4 text-accent" />
+      {/* Border glow - top left */}
+      <div
+        className="absolute -top-px -left-px w-16 h-12 rounded-xl blur-[0.5px]"
+        style={{
+          background:
+            "radial-gradient(ellipse at top left, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.2) 30%, transparent 60%)",
+        }}
+      />
+      {/* Border glow - bottom right */}
+      <div
+        className="absolute -bottom-px -right-px w-10 h-8 rounded-xl blur-[0.5px]"
+        style={{
+          background:
+            "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.1) 30%, transparent 60%)",
+        }}
+      />
+      <div
+        className="relative w-[120px] sm:w-[140px] h-[160px] sm:h-[180px] p-3 rounded-xl
+        bg-gradient-to-br from-surface-elevated to-surface
+        border border-white/10
+        shadow-[0_8px_32px_rgba(0,0,0,0.5)]
+        flex flex-col overflow-hidden"
+      >
+        {/* Inner glow overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] via-transparent to-transparent pointer-events-none" />
+        <div className="flex gap-2 items-center mb-1">
+          <div className="w-9 h-9 sm:w-7 sm:h-7 rounded-md bg-accent/15 flex items-center justify-center mb-2">
+            <Save className="w-4 h-4 sm:w-4 sm:h-4 text-accent" />
+          </div>
+          <div className="">
+            <p className="text-[10px] sm:text-xs font-medium text-foreground">
+              Quick Save
+            </p>
+            <p className="text-[8px] sm:text-[9px] text-foreground-muted mb-2">
+              Instant sync
+            </p>
+          </div>
         </div>
-        <div className="">
-          <p className="text-[10px] sm:text-xs font-medium text-foreground ">
-            Quick Save
-          </p>
-          <p className="text-[8px] sm:text-[9px] text-foreground-muted mb-2">
-            Instant sync
-          </p>
+        <div className="space-y-1.5">
+          <div className="h-1.5 w-full rounded bg-foreground/5" />
+          <div className="h-1.5 w-3/4 rounded bg-foreground/5" />
+          <div className="h-1.5 w-1/2 rounded bg-foreground/5" />
         </div>
-      </div>
-      <div className=" space-y-1.5">
-        <div className="h-1.5 w-full rounded bg-foreground/5" />
-        <div className="h-1.5 w-3/4 rounded bg-foreground/5" />
-        <div className="h-1.5 w-1/2 rounded bg-foreground/5" />
       </div>
     </div>
   );
