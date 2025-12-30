@@ -4,7 +4,7 @@ import { Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { SiOpenai, SiGooglegemini } from "react-icons/si";
 import { RiClaudeLine } from "react-icons/ri";
-import { VscCopilot } from "react-icons/vsc";
+import { Cursor } from "@lobehub/icons";
 import Image from "next/image";
 
 // Pre-defined line styles to avoid Math.random during render
@@ -689,7 +689,9 @@ export function HeroCards() {
         />
 
         <AIBadge
-          icon={VscCopilot}
+          icon={({ className }: { className?: string }) => (
+            <Cursor size={32} className={className} />
+          )}
           name="Cursor"
           bgColor="#1a1a1a"
           shinePosition="br"
