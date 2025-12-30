@@ -14,6 +14,25 @@ export function formatDate(date: Date | string): string {
   });
 }
 
+export function formatDateTime(date: Date | string): {
+  time: string;
+  date: string;
+} {
+  const d = typeof date === "string" ? new Date(date) : date;
+  return {
+    time: d.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }),
+    date: d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }),
+  };
+}
+
 export function formatRelativeTime(date: Date | string): string {
   const d = typeof date === "string" ? new Date(date) : date;
   const now = new Date();

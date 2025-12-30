@@ -2,10 +2,28 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Brain, Key, Settings, Menu, X } from "lucide-react";
+import {
+  LayoutDashboard,
+  Brain,
+  Key,
+  Settings,
+  Menu,
+  X,
+  Sun,
+  Moon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
+import { useTheme } from "next-themes";
+
+function useIsMounted() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+}
 
 const navItems = [
   {
@@ -33,6 +51,8 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { resolvedTheme, setTheme } = useTheme();
+  const mounted = useIsMounted();
 
   return (
     <>
@@ -99,7 +119,29 @@ export function Sidebar() {
           </nav>
 
           {/* Footer */}
-          <div className="border-t border-border p-4">
+          <div className="border-t border-border p-4 space-y-3">
+            {mounted && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start gap-2"
+                onClick={() =>
+                  setTheme(resolvedTheme === "dark" ? "light" : "dark")
+                }
+              >
+                {resolvedTheme === "dark" ? (
+                  <>
+                    <Sun className="h-4 w-4" />
+                    Light Mode
+                  </>
+                ) : (
+                  <>
+                    <Moon className="h-4 w-4" />
+                    Dark Mode
+                  </>
+                )}
+              </Button>
+            )}
             <p className="text-xs text-foreground-subtle text-center">
               MemContext v1.0
             </p>
