@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Github, Menu, X } from "lucide-react";
+import { BsGithub } from "react-icons/bs";
 
 const XIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
@@ -118,13 +119,14 @@ export function Header() {
                 onClick={() => setShowGithubModal(true)}
                 className="text-foreground-muted hover:text-foreground transition-colors hover:scale-110 duration-200"
               >
-                <Github className="w-5 h-5 lg:w-6 lg:h-6" />
+                <BsGithub className="w-5 h-5 lg:w-6 lg:h-6" />
               </button>
               <button
                 onClick={scrollToTop}
-                className="px-4 lg:px-5 py-1.5 lg:py-2 text-sm lg:text-base font-medium bg-accent text-foreground rounded-lg btn-hover-lift transition-all"
+                className="px-4 flex items-center gap-2 lg:px-5 py-1.5 lg:py-2 text-sm lg:text-base font-medium bg-accent text-foreground cursor-pointer rounded-lg transition-all"
               >
                 Join Waitlist
+            
               </button>
             </div>
 
@@ -168,12 +170,12 @@ export function Header() {
                 }}
                 className="flex items-center gap-2 py-3 text-base text-foreground-muted hover:text-foreground hover:bg-surface-elevated rounded-lg px-3 transition-all w-full"
               >
-                <Github className="w-5 h-5" />
+                <BsGithub className="w-5 h-5" />
                 GitHub
               </button>
               <button
                 onClick={scrollToTop}
-                className="block w-full mt-3 px-5 py-3 text-center text-base font-medium bg-accent text-background rounded-xl btn-hover-lift"
+                className="block w-full mt-3 px-5 py-3 text-center text-base font-medium bg-accent text-background rounded-xl "
               >
                 Join Waitlist
               </button>
@@ -201,7 +203,7 @@ export function Header() {
 
             <div className="text-center">
               <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-4 sm:mb-5 rounded-full bg-surface-elevated flex items-center justify-center">
-                <Github className="w-7 h-7 sm:w-8 sm:h-8" />
+                <BsGithub className="w-7 h-7 sm:w-8 sm:h-8" />
               </div>
               <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">
                 Coming Soon
@@ -216,7 +218,7 @@ export function Header() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-medium bg-accent text-background rounded-xl btn-hover-lift transition-all"
               >
-                <Github className="w-4 h-4 sm:w-5 sm:h-5" />
+                <BsGithub className="w-4 h-4 sm:w-5 sm:h-5" />
                 Follow on GitHub
               </a>
               <p className="mt-4 sm:mt-5 text-xs sm:text-sm text-foreground-subtle font-mono">
