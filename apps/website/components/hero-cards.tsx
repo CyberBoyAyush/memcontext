@@ -481,11 +481,11 @@ export function HeroCards() {
         {/* Accent glow layer */}
         <div className="absolute w-75 h-75 sm:w-112.5 sm:h-112.5 rounded-full bg-accent/25 blur-[80px] translate-y-5" />
         {/* Purple accent glow - left */}
-        <div className="absolute w-[350px] h-[350px] sm:w-[500px] sm:h-[500px] rounded-full bg-purple-500/10 blur-[100px] -translate-x-[150px] -translate-y-[80px]" />
+        <div className="absolute w-[350px] h-[350px] sm:w-[500px] sm:h-[500px] rounded-full bg-orange-300/10 blur-[100px] -translate-x-[150px] -translate-y-[80px]" />
         {/* Blue accent glow - right */}
-        <div className="absolute w-75 h-75 sm:w-112.5 sm:h-112.5 rounded-full bg-blue-500/10 blur-[100px] translate-x-[150px] translate-y-[50px]" />
+        <div className="absolute w-75 h-75 sm:w-112.5 sm:h-112.5 rounded-full bg-orange-300/10 blur-[100px] translate-x-[150px] translate-y-[50px]" />
         {/* Warm highlight glow */}
-        <div className="absolute w-50 h-50 sm:w-75 sm:h-75 rounded-full bg-orange-400/15 blur-[60px] -translate-y-[30px]" />
+        <div className="absolute w-50 h-50 sm:w-75 sm:h-75 rounded-full bg-orange-300/15 blur-[60px] -translate-y-[30px]" />
       </div>
 
       {/* Card Stack Container */}
