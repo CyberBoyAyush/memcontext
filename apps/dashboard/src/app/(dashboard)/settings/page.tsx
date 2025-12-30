@@ -167,8 +167,10 @@ export default function SettingsPage() {
 
                 <p className="text-sm text-foreground-muted">
                   {subscription?.plan === "free"
-                    ? "Upgrade to Pro for unlimited memories and priority support."
-                    : "Thank you for being a Pro subscriber!"}
+                    ? "Upgrade to Hobby ($5/mo for 2,000 memories) or Pro ($15/mo for 10,000 memories)."
+                    : subscription?.plan === "hobby"
+                      ? "Upgrade to Pro ($15/mo) for 10,000 memories."
+                      : "Thank you for being a Pro subscriber!"}
                 </p>
               </>
             )}
