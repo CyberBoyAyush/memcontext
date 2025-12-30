@@ -719,7 +719,9 @@ export async function listMemories(
   }
   if (project) {
     // Use LIKE for partial matching (contains search)
-    conditions.push(like(memories.project, `%${project}%`));
+    // Escape SQL LIKE wildcards to treat input as literal string
+    const escapedProject = project.replace(/%/g, "\\%").replace(/_/g, "\\_");
+    conditions.push(like(memories.project, `%${escapedProject}%`));
   }
 
   const [results, countResult] = await Promise.all([
