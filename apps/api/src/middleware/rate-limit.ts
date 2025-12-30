@@ -14,6 +14,7 @@ const RATE_LIMIT_CONFIGS = {
   searchMemory: { windowMs: 60_000, max: 60, keyPrefix: "rl:search:" },
   health: { windowMs: 60_000, max: 60, keyPrefix: "rl:health:" },
   global: { windowMs: 60_000, max: 100, keyPrefix: "rl:global:" },
+  waitlist: { windowMs: 3_600_000, max: 5, keyPrefix: "rl:waitlist:" },
 } as const;
 
 async function checkRateLimit(
@@ -109,3 +110,4 @@ export const rateLimitSaveMemory = createRateLimiter("saveMemory");
 export const rateLimitSearchMemory = createRateLimiter("searchMemory");
 export const rateLimitHealth = createRateLimiter("health");
 export const rateLimitGlobal = createRateLimiter("global");
+export const rateLimitWaitlist = createRateLimiter("waitlist");
