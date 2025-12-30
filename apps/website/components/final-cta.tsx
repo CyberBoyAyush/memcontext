@@ -386,7 +386,7 @@ export function FinalCTA() {
 
             <div className="text-center">
               <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-4 sm:mb-5 rounded-full bg-surface-elevated flex items-center justify-center">
-                <Github className="w-7 h-7 sm:w-8 sm:h-8" />
+                <BsGithub className="w-7 h-7 sm:w-8 sm:h-8" />
               </div>
               <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">
                 Coming Soon

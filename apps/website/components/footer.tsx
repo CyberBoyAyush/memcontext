@@ -17,7 +17,7 @@ export function Footer() {
 
   return (
     <>
-      <footer className="relative pt-16 sm:pt-20 pb-0 overflow-hidden">
+      <footer className="relative pt-16 px-3 sm:pt-20 pb-0 overflow-hidden">
         {/* Top border line - fades from center */}
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
@@ -167,7 +167,7 @@ export function Footer() {
         </div>
 
         {/* Large MemContext text at bottom - fading down, cut off at bottom */}
-        <div className="relative h-16 sm:h-22 md:h-28 lg:h-32 overflow-hidden">
+        <div className="relative h-16 sm:h-22 md:h-28 lg:h-36 overflow-hidden">
           {/* Large text - positioned to show top portion, cut off at bottom */}
           <h2
             className="absolute left-1/2 -translate-x-1/2 top-0 text-[4.5rem] sm:text-[6rem] md:text-[7rem] lg:text-[10rem] xl:text-[13rem] font-display font-bold tracking-tighter leading-[0.85] select-none whitespace-nowrap"

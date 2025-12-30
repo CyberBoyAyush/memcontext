@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ArrowRight, Mail, MessageCircle } from "lucide-react";
+import { ChevronDown, ArrowRight, Mail, MessageCircle, XIcon, X } from "lucide-react";
+import { FaXTwitter } from "react-icons/fa6";
+import { BsGithub } from "react-icons/bs";
 
 const faqs = [
   {
@@ -131,7 +133,8 @@ export function FAQ() {
               <div className="flex flex-col sm:flex-row lg:flex-col gap-3">
                 {/* Email Support Card */}
                 <a
-                  href="mailto:hey@aysh.me"
+                  href="https://aysh.me"
+                  target="_blank"
                   className="group relative"
                 >
                   {/* Border glow - top left */}
@@ -165,15 +168,15 @@ export function FAQ() {
                       />
                       <div className="relative w-8 h-8 rounded-lg bg-surface-elevated/90 backdrop-blur-sm border border-white/10 flex items-center justify-center">
                         <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-white/[0.08] via-transparent to-transparent" />
-                        <Mail className="w-4 h-4 text-foreground-muted relative z-10" />
+                        <BsGithub className="w-4 h-4 text-foreground-muted relative z-10" />
                       </div>
                     </div>
                     <div className="relative z-10">
                       <p className="text-sm font-medium text-foreground group-hover:text-white transition-colors">
-                        Email Support
+                        Website 
                       </p>
                       <p className="text-[11px] text-foreground-subtle">
-                        hey@aysh.me
+                        https://aysh.me
                       </p>
                     </div>
                   </div>
@@ -217,7 +220,7 @@ export function FAQ() {
                       />
                       <div className="relative w-8 h-8 rounded-lg bg-surface-elevated/90 backdrop-blur-sm border border-white/10 flex items-center justify-center">
                         <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-white/[0.08] via-transparent to-transparent" />
-                        <MessageCircle className="w-4 h-4 text-foreground-muted relative z-10" />
+                        <FaXTwitter className="w-4 h-4 text-foreground-muted relative z-10" />
                       </div>
                     </div>
                     <div className="relative z-10">
@@ -225,7 +228,7 @@ export function FAQ() {
                         Chat on X
                       </p>
                       <p className="text-[11px] text-foreground-subtle">
-                        @AyushCodes
+                        @theayush
                       </p>
                     </div>
                   </div>
