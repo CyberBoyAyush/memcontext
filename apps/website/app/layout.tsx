@@ -35,6 +35,11 @@ export const metadata: Metadata = {
     "persistent memory",
   ],
   authors: [{ name: "MemContext" }],
+  icons: {
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
   openGraph: {
     title: "MemContext - Persistent Memory for AI Coding Agents",
     description:

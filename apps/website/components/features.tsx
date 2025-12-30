@@ -10,13 +10,14 @@ import {
   LucideIcon,
   Plus,
 } from "lucide-react";
-import { SiOpenai, SiGooglegemini } from "react-icons/si";
+import { SiOpenai } from "react-icons/si";
 import { RiClaudeLine } from "react-icons/ri";
-import { VscCopilot } from "react-icons/vsc";
+import { VscCopilot, VscVscode } from "react-icons/vsc";
 import { GrTopCorner } from "react-icons/gr";
 import { ReactNode } from "react";
 import { BsFillCursorFill } from "react-icons/bs";
 import { IoLockClosed, IoShield } from "react-icons/io5";
+import Image from "next/image";
 
 interface Feature {
   title: string;
@@ -631,78 +632,158 @@ function EncryptedPrivateVisual() {
   );
 }
 
+// Custom icon components for CrossToolSyncVisual
+const CursorIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 466.73 532.09" fill="currentColor" className={className}>
+    <path d="M457.43,125.94L244.42,2.96c-6.84-3.95-15.28-3.95-22.12,0L9.3,125.94c-5.75,3.32-9.3,9.46-9.3,16.11v247.99c0,6.65,3.55,12.79,9.3,16.11l213.01,122.98c6.84,3.95,15.28,3.95,22.12,0l213.01-122.98c5.75-3.32,9.3-9.46,9.3-16.11v-247.99c0-6.65-3.55-12.79-9.3-16.11h-.01ZM444.05,151.99l-205.63,356.16c-1.39,2.4-5.06,1.42-5.06-1.36v-233.21c0-4.66-2.49-8.97-6.53-11.31L24.87,145.67c-2.4-1.39-1.42-5.06,1.36-5.06h411.26c5.84,0,9.49,6.33,6.57,11.39h-.01Z" />
+  </svg>
+);
+
+const OpenCodeIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 240 300" fill="none" className={className}>
+    <path d="M180 240H60V120H180V240Z" fill="#4B4646" />
+    <path d="M180 60H60V240H180V60ZM240 300H0V0H240V300Z" fill="currentColor" />
+  </svg>
+);
+
+const DroidIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 67 65" fill="currentColor" className={className}>
+    <path d="M47.75 11.15a.867.867 0 0 1-.671-.806.84.84 0 0 1 .067-.362c1.688-4.007 2.433-7.213 1.23-8.555-3.183-3.56-15.952 3.52-20.024 5.919a.9.9 0 0 1-1.273-.41c-1.711-3.998-3.51-6.78-5.334-6.9-4.833-.323-8.73 13.49-9.87 17.992a.85.85 0 0 1-.459.563.9.9 0 0 1-.737.027c-4.109-1.647-7.398-2.373-8.773-1.2-3.651 3.104 3.609 15.557 6.068 19.528a.85.85 0 0 1-.11 1.031.9.9 0 0 1-.31.21C3.455 39.856.604 41.61.478 43.389c-.329 4.713 13.834 8.513 18.452 9.625q.186.046.337.163a.87.87 0 0 1 .332.642.84.84 0 0 1-.067.362c-1.688 4.007-2.433 7.214-1.23 8.555 3.183 3.561 15.954-3.519 20.025-5.917a.9.9 0 0 1 1.058.107.9.9 0 0 1 .215.302c1.711 3.997 3.509 6.779 5.334 6.9 4.833.322 8.73-13.49 9.868-17.993a.85.85 0 0 1 .168-.33.88.88 0 0 1 .659-.324.9.9 0 0 1 .371.066c4.109 1.647 7.397 2.372 8.773 1.2 3.651-3.105-3.61-15.559-6.07-19.53a.85.85 0 0 1 .111-1.03.9.9 0 0 1 .31-.21c4.1-1.67 6.952-3.424 7.075-5.203.331-4.713-13.833-8.513-18.45-9.623m-5.546-4.518c.93 1.624-3.858 12.446-7.42 20.015a.7.7 0 0 1-.28.303.71.71 0 0 1-.796-.059.7.7 0 0 1-.23-.341c-1.439-4.921-3.082-10.704-4.841-15.612a.84.84 0 0 1 .01-.594.87.87 0 0 1 .401-.446c4.392-2.34 11.908-5.446 13.156-3.266m-21.048 1.34c1.833.507 6.294 11.46 9.264 19.268a.67.67 0 0 1-.2.754.71.71 0 0 1-.794.08c-4.589-2.485-9.94-5.444-14.743-7.702a.87.87 0 0 1-.422-.427.84.84 0 0 1-.04-.591c1.414-4.679 4.471-12.063 6.935-11.383M7.243 23.433c1.664-.906 12.762 3.763 20.522 7.235.13.058.239.154.311.274a.67.67 0 0 1-.06.776.7.7 0 0 1-.35.225c-5.045 1.403-10.976 3.006-16.01 4.721a.9.9 0 0 1-.607-.01.88.88 0 0 1-.456-.391c-2.395-4.284-5.586-11.613-3.35-12.83M8.617 43.96c.519-1.788 11.752-6.14 19.758-9.035a.72.72 0 0 1 .773.195.67.67 0 0 1 .081.774c-2.548 4.475-5.582 9.694-7.898 14.377a.87.87 0 0 1-.437.413.9.9 0 0 1-.607.039c-4.797-1.37-12.37-4.36-11.67-6.763m15.855 13.568c-.93-1.623 3.859-12.446 7.42-20.014a.7.7 0 0 1 .28-.303.715.715 0 0 1 .796.059.7.7 0 0 1 .23.34c1.439 4.92 3.083 10.705 4.841 15.613a.84.84 0 0 1-.01.593.87.87 0 0 1-.402.445c-4.391 2.335-11.908 5.447-13.15 3.267zm21.049-1.34c-1.836-.506-6.297-11.461-9.266-19.269a.67.67 0 0 1 .2-.755.71.71 0 0 1 .795-.078c4.587 2.484 9.94 5.445 14.742 7.703.189.088.339.24.423.426a.84.84 0 0 1 .039.592c-1.413 4.686-4.47 12.063-6.933 11.381m13.912-15.462c-1.665.907-12.762-3.763-20.523-7.236a.7.7 0 0 1-.311-.273.67.67 0 0 1 .06-.777.7.7 0 0 1 .35-.225c5.046-1.402 10.975-3.005 16.009-4.72a.9.9 0 0 1 .609.01.88.88 0 0 1 .457.392c2.393 4.282 5.584 11.613 3.349 12.829M58.06 20.2c-.521 1.79-11.753 6.14-19.759 9.036a.72.72 0 0 1-.774-.195.67.67 0 0 1-.08-.776c2.547-4.474 5.581-9.694 7.897-14.377a.87.87 0 0 1 .437-.412.9.9 0 0 1 .607-.038c4.797 1.377 12.37 4.359 11.672 6.762" />
+  </svg>
+);
+
+const GeminiColorIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" className={className}>
+    <defs>
+      <linearGradient
+        gradientUnits="userSpaceOnUse"
+        id="gemini-fill-0"
+        x1="7"
+        x2="11"
+        y1="15.5"
+        y2="12"
+      >
+        <stop stopColor="#08B962" />
+        <stop offset="1" stopColor="#08B962" stopOpacity="0" />
+      </linearGradient>
+      <linearGradient
+        gradientUnits="userSpaceOnUse"
+        id="gemini-fill-1"
+        x1="8"
+        x2="11.5"
+        y1="5.5"
+        y2="11"
+      >
+        <stop stopColor="#F94543" />
+        <stop offset="1" stopColor="#F94543" stopOpacity="0" />
+      </linearGradient>
+      <linearGradient
+        gradientUnits="userSpaceOnUse"
+        id="gemini-fill-2"
+        x1="3.5"
+        x2="17.5"
+        y1="13.5"
+        y2="12"
+      >
+        <stop stopColor="#FABC12" />
+        <stop offset=".46" stopColor="#FABC12" stopOpacity="0" />
+      </linearGradient>
+    </defs>
+    <path
+      d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z"
+      fill="#3186FF"
+    />
+    <path
+      d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z"
+      fill="url(#gemini-fill-0)"
+    />
+    <path
+      d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z"
+      fill="url(#gemini-fill-1)"
+    />
+    <path
+      d="M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z"
+      fill="url(#gemini-fill-2)"
+    />
+  </svg>
+);
+
 function CrossToolSyncVisual() {
   // Grid configuration: 5 columns x 4 rows
-  // null = empty cell, string = icon type, with opacity
-  type CellConfig = {
-    icon: "claude" | "openai" | "copilot" | "gemini";
-    opacity: number;
-  } | null;
+  // null = empty cell, string = icon type
+  type IconType =
+    | "claude"
+    | "openai"
+    | "copilot"
+    | "vscode"
+    | "gemini"
+    | "cursor"
+    | "opencode"
+    | "droid"
+    | "zed";
+  type CellConfig = { icon: IconType; opacity: number } | null;
 
   const grid: CellConfig[][] = [
-    // Row 0 (top) - mostly faded/empty
+    // Row 0 (top)
     [
       null,
       { icon: "copilot", opacity: 1 },
       null,
-      { icon: "gemini", opacity: 1},
+      { icon: "cursor", opacity: 1 },
       null,
     ],
     // Row 1
     [
-      { icon: "gemini", opacity: 1},
+      { icon: "gemini", opacity: 1 },
       null,
-      { icon: "claude", opacity: 1},
+      { icon: "claude", opacity: 1 },
       null,
       { icon: "openai", opacity: 1 },
     ],
-    // Row 2 - center row, most prominent
+    // Row 2 - center row
     [
       null,
-      { icon: "openai", opacity: 1 },
+      { icon: "opencode", opacity: 1 },
       null,
-      { icon: "copilot", opacity: 1},
+      { icon: "droid", opacity: 1 },
       null,
     ],
     // Row 3 (bottom)
     [
+      { icon: "vscode", opacity: 1 },
+      null,
+      { icon: "zed", opacity: 1 },
+      null,
       { icon: "claude", opacity: 1 },
-      null,
-      { icon: "gemini", opacity: 1},
-      null,
-      { icon: "claude", opacity: 1},
     ],
   ];
 
-  const getIcon = (type: string, opacity: number) => {
-    const iconOpacity = opacity > 0.5 ? 1 : opacity + 0.3;
+  const getIcon = (type: IconType) => {
     switch (type) {
       case "claude":
-        return (
-          <RiClaudeLine
-            className="w-5 h-5"
-            style={{ color: `rgba(217, 119, 87, 1)` }}
-          />
-        );
+        return <RiClaudeLine className="w-5 h-5 text-[#D97757]" />;
       case "openai":
-        return (
-          <SiOpenai
-            className="w-5 h-5"
-            style={{ color: `rgba(255, 255, 255, 1)` }}
-          />
-        );
+        return <SiOpenai className="w-5 h-5 text-[#10A37F]" />;
       case "copilot":
-        return (
-          <VscCopilot
-            className="w-5 h-5"
-            style={{ color: `rgba(255, 255, 255, 1)` }}
-          />
-        );
+        return <VscCopilot className="w-5 h-5 text-white" />;
+      case "vscode":
+        return <VscVscode className="w-5 h-5 text-[#007ACC]" />;
       case "gemini":
+        return <GeminiColorIcon className="w-5 h-5" />;
+      case "cursor":
+        return <CursorIcon className="w-5 h-5 text-white" />;
+      case "opencode":
+        return <OpenCodeIcon className="w-5 h-5 text-white" />;
+      case "droid":
+        return <DroidIcon className="w-5 h-5 text-[#E8613C]" />;
+      case "zed":
         return (
-          <SiGooglegemini
+          <Image
+            src="/zed.png"
+            alt="Zed"
+            width={20}
+            height={20}
             className="w-5 h-5"
-            style={{ color: `rgba(96, 165, 250, 1)` }}
           />
         );
       default:
@@ -731,7 +812,7 @@ function CrossToolSyncVisual() {
                 : "1px solid rgba(255,255,255,0.03)",
             }}
           >
-            {cell && getIcon(cell.icon, cell.opacity)}
+            {cell && getIcon(cell.icon)}
           </div>
         ))}
       </div>
