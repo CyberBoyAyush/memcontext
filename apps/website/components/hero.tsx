@@ -1,9 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { ArrowRight, Github, Loader2, Check, X } from "lucide-react";
+import { useState } from "react";
+import {
+  Loader2,
+  Check,
+  ArrowRight,
+  ArrowUpRight,
+  Sparkles,
+} from "lucide-react";
 import { useReferrer } from "@/lib/use-referrer";
 import { joinWaitlist } from "@/lib/waitlist";
+import { HeroCards } from "./hero-cards";
+import { TrustBlock } from "./trust-block";
 
 export function Hero() {
   const [email, setEmail] = useState("");
@@ -11,16 +19,7 @@ export function Hero() {
     "idle" | "loading" | "success" | "exists" | "error"
   >("idle");
   const [errorMessage, setErrorMessage] = useState("");
-  const [showGithubModal, setShowGithubModal] = useState(false);
-  const [demoStep, setDemoStep] = useState(0);
   const { referrer, clearReferrer } = useReferrer();
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setDemoStep((prev) => (prev < 4 ? prev + 1 : prev));
-    }, 800);
-    return () => clearInterval(timer);
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,217 +46,195 @@ export function Hero() {
     }
   };
 
+  // Generate dots with varying opacities for the glow effect
+  const generateDots = (count: number, seed: number) => {
+    const dots = [];
+    for (let i = 0; i < count; i++) {
+      const x = (i * 17 + seed) % 100;
+      const y = (i * 23 + seed * 7) % 100;
+      const opacity = [0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6][i % 7];
+      const size = [2, 2, 3, 3, 4][i % 5];
+      dots.push({ x, y, opacity, size });
+    }
+    return dots;
+  };
+
+  const leftDots = generateDots(25, 42);
+  const rightDots = generateDots(25, 73);
+
   return (
-    <>
-      <section className="pt-28 pb-16 sm:pt-36 sm:pb-24 lg:pt-44 lg:pb-32">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6">
-          <div className="text-center">
-            <p className="animate-fade-in opacity-0 text-sm sm:text-base text-foreground-muted mb-4 sm:mb-5 font-mono tracking-wide">
-              Persistent memory for AI coding agents
-            </p>
+    <section className="pt-20 pb-8 sm:pt-24 sm:pb-12 lg:pt-24 lg:pb-16 min-h-screen flex flex-col relative overflow-visible">
+      {/* Dotted glow background - Top Left */}
+      <div className="absolute top-0 left-0 w-75 h-75 sm:w-100 sm:h-100 pointer-events-none">
+        <div className="relative w-full h-full">
+          {leftDots.map((dot, i) => (
+            <div
+              key={`left-${i}`}
+              className="absolute rounded-full bg-white"
+              style={{
+                left: `${dot.x}%`,
+                top: `${dot.y}%`,
+                width: `${dot.size}px`,
+                height: `${dot.size}px`,
+                opacity: dot.opacity,
+                boxShadow: `0 0 ${dot.size * 3}px ${dot.size}px rgba(255, 255, 255, ${dot.opacity * 0.5})`,
+              }}
+            />
+          ))}
+        </div>
+        {/* Gradient fade */}
+        <div className="absolute inset-0 bg-linear-to-br from-transparent via-transparent to-background" />
+      </div>
 
-            <h1 className="animate-fade-in opacity-0 animation-delay-100 text-3xl sm:text-5xl lg:text-7xl font-semibold tracking-tight leading-[1.1]">
-              Your AI remembers
-              <br className="hidden sm:block" />
-              <span className="sm:hidden"> </span>
-              everything.
-              <br />
-              <span className="text-foreground-muted">Automatically.</span>
-            </h1>
+      {/* Dotted glow background - Top Right */}
+      <div className="absolute top-0 right-0 w-75 h-75 sm:w-100 sm:h-100 pointer-events-none">
+        <div className="relative w-full h-full">
+          {rightDots.map((dot, i) => (
+            <div
+              key={`right-${i}`}
+              className="absolute rounded-full bg-white"
+              style={{
+                left: `${dot.x}%`,
+                top: `${dot.y}%`,
+                width: `${dot.size}px`,
+                height: `${dot.size}px`,
+                opacity: dot.opacity,
+                boxShadow: `0 0 ${dot.size * 3}px ${dot.size}px rgba(255, 255, 255, ${dot.opacity * 0.5})`,
+              }}
+            />
+          ))}
+        </div>
+        {/* Gradient fade */}
+        <div className="absolute inset-0 bg-linear-to-bl from-transparent via-transparent to-background" />
+      </div>
 
-            <p className="animate-fade-in opacity-0 animation-delay-200 mt-6 sm:mt-8 text-base sm:text-xl text-foreground-muted max-w-2xl mx-auto leading-relaxed px-2">
-              Connect the MCP server to Claude, Cursor, or Cline. Chat normally.
-              Context is saved and retrieved without any extra work.
-            </p>
+      <div className="mx-auto max-w-5xl px-4 sm:px-6 relative z-10">
+        <div className="text-center">
+          {/* Glowing badge */}
+          <div className="animate-fade-in opacity-0 flex justify-center mb-4 sm:mb-4">
+            <div className="group relative">
+              {/* Border glow spot - top left */}
+              <div
+                className="absolute -top-px -left-px w-20 h-11 rounded-full blur-[1px]"
+                style={{
+                  background:
+                    "radial-gradient(ellipse at top left, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.3) 30%, transparent 70%)",
+                }}
+              />
+              {/* Border glow spot - bottom right */}
+              <div
+                className="absolute -bottom-px -right-px w-20 h-11 rounded-full blur-[1px]"
+                style={{
+                  background:
+                    "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 30%, transparent 70%)",
+                }}
+              />
 
-            {/* Email Signup Form */}
-            <div className="animate-fade-in opacity-0 animation-delay-300 mt-8 sm:mt-12 max-w-lg mx-auto px-2">
-              <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <div className="flex-1 relative">
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@email.com"
-                      required
-                      disabled={status === "loading" || status === "success"}
-                      className="w-full px-4 sm:px-5 py-3 sm:py-3.5 text-base font-mono bg-background border border-border rounded-xl input-focus-glow focus:outline-none focus:border-foreground transition-all placeholder:text-foreground-subtle disabled:opacity-50"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={
-                      status === "loading" ||
-                      status === "success" ||
-                      status === "exists"
-                    }
-                    className="px-6 py-3 sm:py-3.5 text-base font-medium bg-accent text-background rounded-xl btn-hover-lift transition-all disabled:opacity-50 flex items-center justify-center gap-2 group"
-                  >
-                    {status === "loading" ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        <span>Joining...</span>
-                      </>
-                    ) : status === "success" ? (
-                      <>
-                        <Check className="w-5 h-5" />
-                        <span>You&apos;re in!</span>
-                      </>
-                    ) : status === "exists" ? (
-                      <>
-                        <Check className="w-5 h-5" />
-                        <span>Already on the list!</span>
-                      </>
-                    ) : status === "error" ? (
-                      <span className="text-sm">{errorMessage}</span>
-                    ) : (
-                      <>
-                        <span>Get Early Access</span>
-                        <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
-                      </>
-                    )}
-                  </button>
+              {/* Subtle border all around */}
+              <div className="absolute -inset-0.5 rounded-full border border-white/10" />
+
+              {/* Main container */}
+              <div className="relative inline-flex items-center gap-2 sm:gap-3 px-1.5 py-1.5 sm:px-2 sm:py-2 rounded-full bg-surface/95 backdrop-blur-sm transition-all duration-300 cursor-default overflow-hidden">
+                {/* Inner glow - top left */}
+                <div className="absolute top-0 left-0 w-20 h-12 bg-white/8 rounded-full blur-xl -translate-x-1/3 -translate-y-1/2" />
+                {/* Inner glow - bottom right */}
+                <div className="absolute bottom-0 right-0 w-20 h-12 bg-white/8 rounded-full blur-xl translate-x-1/3 translate-y-1/2" />
+
+                {/* Left icon */}
+                <div className="relative z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-linear-to-br from-surface to-border-hover border border-border-hover/60 flex items-center justify-center">
+                  <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground-muted" />
                 </div>
-              </form>
-              <p className="mt-3 sm:mt-4 text-xs sm:text-sm text-foreground-subtle">
-                We&apos;ll notify you when MemContext is ready. No spam, ever.
-              </p>
-            </div>
 
-            {/* GitHub Link */}
-            <div className="animate-fade-in opacity-0 animation-delay-400 mt-6 sm:mt-8">
-              <button
-                onClick={() => setShowGithubModal(true)}
-                className="inline-flex items-center gap-2 text-sm sm:text-base text-foreground-muted hover:text-foreground transition-colors font-mono link-underline"
-              >
-                <Github className="w-4 h-4 sm:w-5 sm:h-5" />
-                View on GitHub
-              </button>
-            </div>
-          </div>
-
-          {/* Demo Terminal */}
-          <div className="animate-fade-in opacity-0 animation-delay-500 mt-12 sm:mt-20 px-2">
-            <div className="border border-border rounded-xl sm:rounded-2xl overflow-hidden bg-surface-elevated shadow-sm hover:shadow-md transition-shadow duration-300">
-              <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-border bg-background flex items-center justify-between">
-                <div className="flex gap-1.5 sm:gap-2">
-                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-red-400/60" />
-                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-yellow-400/60" />
-                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-green-400/60" />
-                </div>
-                <span className="text-xs text-foreground-subtle font-mono hidden sm:block">
-                  terminal
+                {/* Text */}
+                <span className="relative z-10 text-xs sm:text-sm text-foreground font-medium pr-1 sm:pr-2">
+                  Persistent memory for AI coding agents
                 </span>
-              </div>
 
-              <div className="p-4 sm:p-8 space-y-4 sm:space-y-5 font-mono text-sm sm:text-base">
-                <div
-                  className={`transition-opacity duration-300 ${demoStep >= 1 ? "opacity-100" : "opacity-0"}`}
-                >
-                  <span className="text-foreground-subtle text-xs sm:text-sm">
-                    you
-                  </span>
-                  <p className="mt-1 sm:mt-1.5">
-                    I prefer TypeScript strict mode and pnpm for packages.
-                  </p>
-                </div>
-
-                <div
-                  className={`transition-opacity duration-300 ${demoStep >= 2 ? "opacity-100" : "opacity-0"}`}
-                >
-                  <span className="text-foreground-subtle text-xs sm:text-sm">
-                    claude
-                  </span>
-                  <p className="mt-1 sm:mt-1.5 text-foreground-muted">
-                    <span className="text-success inline-flex items-center gap-1">
-                      <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      Saved
-                    </span>
-                    <span className="mx-2">—</span>
-                    Got it, I&apos;ll remember that.
-                  </p>
-                </div>
-
-                <div
-                  className={`pt-4 sm:pt-5 border-t border-border transition-opacity duration-300 ${demoStep >= 3 ? "opacity-100" : "opacity-0"}`}
-                >
-                  <p className="text-xs text-foreground-subtle mb-3 sm:mb-4 flex items-center gap-2">
-                    <span className="w-8 h-px bg-border" />
-                    next session
-                    <span className="w-8 h-px bg-border" />
-                  </p>
-                  <span className="text-foreground-subtle text-xs sm:text-sm">
-                    you
-                  </span>
-                  <p className="mt-1 sm:mt-1.5">Set up a new project for me.</p>
-                </div>
-
-                <div
-                  className={`transition-opacity duration-300 ${demoStep >= 4 ? "opacity-100" : "opacity-0"}`}
-                >
-                  <span className="text-foreground-subtle text-xs sm:text-sm">
-                    claude
-                  </span>
-                  <p className="mt-1 sm:mt-1.5 text-foreground-muted">
-                    <span className="text-foreground inline-flex items-center gap-1">
-                      <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 rotate-180" />
-                      Retrieved
-                    </span>
-                    <span className="mx-2">—</span>
-                    I&apos;ll use TypeScript with strict mode and pnpm.
-                  </p>
-                </div>
+                {/* Right arrow */}
+                {/* <div className="relative z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-surface-elevated flex items-center justify-center">
+                  <ArrowUpRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground-muted" />
+                </div> */}
               </div>
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* GitHub Coming Soon Modal */}
-      {showGithubModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-fade-in"
-          onClick={() => setShowGithubModal(false)}
-        >
-          <div
-            className="relative bg-background border border-border rounded-2xl p-6 sm:p-10 max-w-md w-full shadow-xl animate-fade-in-up"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setShowGithubModal(false)}
-              className="absolute top-4 right-4 sm:top-5 sm:right-5 text-foreground-subtle hover:text-foreground transition-colors hover:rotate-90 duration-200"
+          <h1 className="animate-fade-in opacity-0 animation-delay-100 text-3xl sm:text-5xl lg:text-6xl font-display font-bold tracking-tight leading-[1.1]">
+            Your AI remembers everything.
+            <br />
+            <span className="text-foreground-muted">Automatically.</span>
+          </h1>
+
+          <p className="animate-fade-in opacity-0 animation-delay-200 mt-4 sm:mt-5 text-sm sm:text-base text-foreground-muted/80 max-w-2xl mx-auto leading-relaxed">
+            Connect the MCP server to Claude, Cursor, or Cline. Chat normally.
+            Context is saved and retrieved automatically.
+          </p>
+
+          {/* Email Signup Form */}
+          <div className="animate-fade-in opacity-0 animation-delay-300 mt-6 sm:mt-8 max-w-lg mx-auto px-2">
+            <form
+              onSubmit={handleSubmit}
+              className="flex flex-row gap-1.5 md:gap-3"
             >
-              <X className="w-5 h-5 sm:w-6 sm:h-6" />
-            </button>
-
-            <div className="text-center">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-4 sm:mb-5 rounded-full bg-surface-elevated flex items-center justify-center">
-                <Github className="w-7 h-7 sm:w-8 sm:h-8" />
+              <div className="flex-1 relative">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@email.com"
+                  required
+                  disabled={status === "loading" || status === "success"}
+                  className="w-full px-4 sm:px-5 py-2.5 sm:py-3 text-sm sm:text-base font-mono bg-neutral-950/70 border border-neutral-700/60 rounded-xl input-focus-glow focus:outline-none focus:border-foreground transition-all placeholder:text-foreground-subtle "
+                />
               </div>
-              <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">
-                Coming Soon
-              </h3>
-              <p className="text-foreground-muted text-sm sm:text-base mb-6 sm:mb-8">
-                MemContext will be open source soon. Star the repo to get
-                notified when we go public.
-              </p>
-              <a
-                href="https://github.com/cyberboyayush"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-medium bg-accent text-background rounded-xl btn-hover-lift transition-all"
+              <button
+                type="submit"
+                disabled={
+                  status === "loading" ||
+                  status === "success" ||
+                  status === "exists"
+                }
+                className="px-3 sm:px-6 py-1 sm:py-3 text-xs sm:text-base font-medium bg-accent cursor-pointer text-background rounded-xl  transition-all disabled:opacity-50 flex items-center justify-center gap-2 group"
               >
-                <Github className="w-4 h-4 sm:w-5 sm:h-5" />
-                Follow on GitHub
-              </a>
-              <p className="mt-4 sm:mt-5 text-xs sm:text-sm text-foreground-subtle font-mono">
-                github.com/cyberboyayush
-              </p>
-            </div>
+                {status === "loading" ? (
+                  <>
+                    <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                    <span>Joining...</span>
+                  </>
+                ) : status === "success" ? (
+                  <>
+                    <Check className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span>You&apos;re in!</span>
+                  </>
+                ) : status === "exists" ? (
+                  <>
+                    <Check className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span>Already on the list!</span>
+                  </>
+                ) : status === "error" ? (
+                  <span className="text-sm">{errorMessage}</span>
+                ) : (
+                  <>
+                    <span className="text-foreground font-display font-semibold">
+                      Get Early Access
+                    </span>
+                    <ArrowRight className="w-3 h-3 sm:w-5 sm:h-5 transition-transform text-foreground group-hover:translate-x-1" />
+                  </>
+                )}
+              </button>
+            </form>
           </div>
         </div>
-      )}
-    </>
+      </div>
+
+      {/* Hero Cards Stack - Visual showcase */}
+      <div className="animate-fade-in opacity-0 animation-delay-400 mt-8 sm:mt-10 lg:mt-16 flex-1 flex items-center justify-center">
+        <HeroCards />
+      </div>
+
+      {/* Trust Block - overlays hero cards */}
+      <div className="animate-fade-in opacity-0 animation-delay-500 relative z-30">
+        <TrustBlock />
+      </div>
+    </section>
   );
 }
