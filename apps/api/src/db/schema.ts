@@ -92,3 +92,14 @@ export type MemoryRow = typeof memories.$inferSelect;
 export type NewMemoryRow = typeof memories.$inferInsert;
 export type MemoryRelationRow = typeof memoryRelations.$inferSelect;
 export type NewMemoryRelationRow = typeof memoryRelations.$inferInsert;
+
+export const waitlist = pgTable("waitlist", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull().unique(),
+  source: text("source").notNull(),
+  referrer: text("referrer"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type WaitlistRow = typeof waitlist.$inferSelect;
+export type NewWaitlistRow = typeof waitlist.$inferInsert;

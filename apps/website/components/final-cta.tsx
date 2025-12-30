@@ -2,21 +2,41 @@
 
 import { useState } from "react";
 import { ArrowRight, Loader2, Check, Github, X } from "lucide-react";
+import { useReferrer } from "@/lib/use-referrer";
+import { joinWaitlist } from "@/lib/waitlist";
 
 export function FinalCTA() {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "success">("idle");
+  const [status, setStatus] = useState<
+    "idle" | "loading" | "success" | "exists" | "error"
+  >("idle");
+  const [errorMessage, setErrorMessage] = useState("");
   const [showGithubModal, setShowGithubModal] = useState(false);
+  const { referrer, clearReferrer } = useReferrer();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
 
     setStatus("loading");
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setStatus("success");
-    setEmail("");
-    setTimeout(() => setStatus("idle"), 3000);
+    setErrorMessage("");
+
+    const result = await joinWaitlist({
+      email,
+      source: "final-cta",
+      referrer,
+    });
+
+    if (result.success) {
+      setStatus(result.alreadyExists ? "exists" : "success");
+      setEmail("");
+      clearReferrer();
+      setTimeout(() => setStatus("idle"), 4000);
+    } else {
+      setStatus("error");
+      setErrorMessage(result.error);
+      setTimeout(() => setStatus("idle"), 4000);
+    }
   };
 
   return (
@@ -46,7 +66,11 @@ export function FinalCTA() {
               />
               <button
                 type="submit"
-                disabled={status === "loading" || status === "success"}
+                disabled={
+                  status === "loading" ||
+                  status === "success" ||
+                  status === "exists"
+                }
                 className="px-6 py-3 sm:py-3.5 text-base font-medium bg-accent text-background rounded-xl btn-hover-lift transition-all disabled:opacity-50 flex items-center justify-center gap-2 group"
               >
                 {status === "loading" ? (
@@ -59,6 +83,13 @@ export function FinalCTA() {
                     <Check className="w-5 h-5" />
                     <span>You&apos;re in!</span>
                   </>
+                ) : status === "exists" ? (
+                  <>
+                    <Check className="w-5 h-5" />
+                    <span>Already on the list!</span>
+                  </>
+                ) : status === "error" ? (
+                  <span className="text-sm">{errorMessage}</span>
                 ) : (
                   <>
                     <span>Get Early Access</span>
@@ -100,9 +131,12 @@ export function FinalCTA() {
               <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-4 sm:mb-5 rounded-full bg-surface-elevated flex items-center justify-center">
                 <Github className="w-7 h-7 sm:w-8 sm:h-8" />
               </div>
-              <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">Coming Soon</h3>
+              <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">
+                Coming Soon
+              </h3>
               <p className="text-foreground-muted text-sm sm:text-base mb-6 sm:mb-8">
-                MemContext will be open source soon. Star the repo to get notified when we go public.
+                MemContext will be open source soon. Star the repo to get
+                notified when we go public.
               </p>
               <a
                 href="https://github.com/cyberboyayush"

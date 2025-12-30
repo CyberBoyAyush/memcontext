@@ -2,12 +2,18 @@
 
 import { useState, useEffect } from "react";
 import { ArrowRight, Github, Loader2, Check, X } from "lucide-react";
+import { useReferrer } from "@/lib/use-referrer";
+import { joinWaitlist } from "@/lib/waitlist";
 
 export function Hero() {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [status, setStatus] = useState<
+    "idle" | "loading" | "success" | "exists" | "error"
+  >("idle");
+  const [errorMessage, setErrorMessage] = useState("");
   const [showGithubModal, setShowGithubModal] = useState(false);
   const [demoStep, setDemoStep] = useState(0);
+  const { referrer, clearReferrer } = useReferrer();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -21,10 +27,24 @@ export function Hero() {
     if (!email) return;
 
     setStatus("loading");
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setStatus("success");
-    setEmail("");
-    setTimeout(() => setStatus("idle"), 3000);
+    setErrorMessage("");
+
+    const result = await joinWaitlist({
+      email,
+      source: "hero",
+      referrer,
+    });
+
+    if (result.success) {
+      setStatus(result.alreadyExists ? "exists" : "success");
+      setEmail("");
+      clearReferrer();
+      setTimeout(() => setStatus("idle"), 4000);
+    } else {
+      setStatus("error");
+      setErrorMessage(result.error);
+      setTimeout(() => setStatus("idle"), 4000);
+    }
   };
 
   return (
@@ -46,8 +66,8 @@ export function Hero() {
             </h1>
 
             <p className="animate-fade-in opacity-0 animation-delay-200 mt-6 sm:mt-8 text-base sm:text-xl text-foreground-muted max-w-2xl mx-auto leading-relaxed px-2">
-              Connect the MCP server to Claude, Cursor, or Cline.
-              Chat normally. Context is saved and retrieved without any extra work.
+              Connect the MCP server to Claude, Cursor, or Cline. Chat normally.
+              Context is saved and retrieved without any extra work.
             </p>
 
             {/* Email Signup Form */}
@@ -67,7 +87,11 @@ export function Hero() {
                   </div>
                   <button
                     type="submit"
-                    disabled={status === "loading" || status === "success"}
+                    disabled={
+                      status === "loading" ||
+                      status === "success" ||
+                      status === "exists"
+                    }
                     className="px-6 py-3 sm:py-3.5 text-base font-medium bg-accent text-background rounded-xl btn-hover-lift transition-all disabled:opacity-50 flex items-center justify-center gap-2 group"
                   >
                     {status === "loading" ? (
@@ -80,6 +104,13 @@ export function Hero() {
                         <Check className="w-5 h-5" />
                         <span>You&apos;re in!</span>
                       </>
+                    ) : status === "exists" ? (
+                      <>
+                        <Check className="w-5 h-5" />
+                        <span>Already on the list!</span>
+                      </>
+                    ) : status === "error" ? (
+                      <span className="text-sm">{errorMessage}</span>
                     ) : (
                       <>
                         <span>Get Early Access</span>
@@ -115,17 +146,29 @@ export function Hero() {
                   <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-yellow-400/60" />
                   <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-green-400/60" />
                 </div>
-                <span className="text-xs text-foreground-subtle font-mono hidden sm:block">terminal</span>
+                <span className="text-xs text-foreground-subtle font-mono hidden sm:block">
+                  terminal
+                </span>
               </div>
 
               <div className="p-4 sm:p-8 space-y-4 sm:space-y-5 font-mono text-sm sm:text-base">
-                <div className={`transition-opacity duration-300 ${demoStep >= 1 ? "opacity-100" : "opacity-0"}`}>
-                  <span className="text-foreground-subtle text-xs sm:text-sm">you</span>
-                  <p className="mt-1 sm:mt-1.5">I prefer TypeScript strict mode and pnpm for packages.</p>
+                <div
+                  className={`transition-opacity duration-300 ${demoStep >= 1 ? "opacity-100" : "opacity-0"}`}
+                >
+                  <span className="text-foreground-subtle text-xs sm:text-sm">
+                    you
+                  </span>
+                  <p className="mt-1 sm:mt-1.5">
+                    I prefer TypeScript strict mode and pnpm for packages.
+                  </p>
                 </div>
 
-                <div className={`transition-opacity duration-300 ${demoStep >= 2 ? "opacity-100" : "opacity-0"}`}>
-                  <span className="text-foreground-subtle text-xs sm:text-sm">claude</span>
+                <div
+                  className={`transition-opacity duration-300 ${demoStep >= 2 ? "opacity-100" : "opacity-0"}`}
+                >
+                  <span className="text-foreground-subtle text-xs sm:text-sm">
+                    claude
+                  </span>
                   <p className="mt-1 sm:mt-1.5 text-foreground-muted">
                     <span className="text-success inline-flex items-center gap-1">
                       <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -136,18 +179,26 @@ export function Hero() {
                   </p>
                 </div>
 
-                <div className={`pt-4 sm:pt-5 border-t border-border transition-opacity duration-300 ${demoStep >= 3 ? "opacity-100" : "opacity-0"}`}>
+                <div
+                  className={`pt-4 sm:pt-5 border-t border-border transition-opacity duration-300 ${demoStep >= 3 ? "opacity-100" : "opacity-0"}`}
+                >
                   <p className="text-xs text-foreground-subtle mb-3 sm:mb-4 flex items-center gap-2">
                     <span className="w-8 h-px bg-border" />
                     next session
                     <span className="w-8 h-px bg-border" />
                   </p>
-                  <span className="text-foreground-subtle text-xs sm:text-sm">you</span>
+                  <span className="text-foreground-subtle text-xs sm:text-sm">
+                    you
+                  </span>
                   <p className="mt-1 sm:mt-1.5">Set up a new project for me.</p>
                 </div>
 
-                <div className={`transition-opacity duration-300 ${demoStep >= 4 ? "opacity-100" : "opacity-0"}`}>
-                  <span className="text-foreground-subtle text-xs sm:text-sm">claude</span>
+                <div
+                  className={`transition-opacity duration-300 ${demoStep >= 4 ? "opacity-100" : "opacity-0"}`}
+                >
+                  <span className="text-foreground-subtle text-xs sm:text-sm">
+                    claude
+                  </span>
                   <p className="mt-1 sm:mt-1.5 text-foreground-muted">
                     <span className="text-foreground inline-flex items-center gap-1">
                       <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 rotate-180" />
@@ -184,9 +235,12 @@ export function Hero() {
               <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-4 sm:mb-5 rounded-full bg-surface-elevated flex items-center justify-center">
                 <Github className="w-7 h-7 sm:w-8 sm:h-8" />
               </div>
-              <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">Coming Soon</h3>
+              <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">
+                Coming Soon
+              </h3>
               <p className="text-foreground-muted text-sm sm:text-base mb-6 sm:mb-8">
-                MemContext will be open source soon. Star the repo to get notified when we go public.
+                MemContext will be open source soon. Star the repo to get
+                notified when we go public.
               </p>
               <a
                 href="https://github.com/cyberboyayush"

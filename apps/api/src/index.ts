@@ -18,6 +18,7 @@ import { auth } from "./lib/auth.js";
 import memoriesRoutes from "./routes/memories.js";
 import apiKeysRoutes from "./routes/api-keys.js";
 import userRoutes from "./routes/user.js";
+import waitlistRoutes from "./routes/waitlist.js";
 import type { HealthResponse } from "@memcontext/types";
 
 const app = new Hono();
@@ -83,6 +84,7 @@ app.on(["POST", "GET"], "/api/auth/*", (c) => {
 app.route("/api/memories", memoriesRoutes);
 app.route("/api/api-keys", apiKeysRoutes);
 app.route("/api/user", userRoutes);
+app.route("/api/waitlist", waitlistRoutes);
 
 app.onError((err, c) => {
   const requestId = getRequestId(c);
