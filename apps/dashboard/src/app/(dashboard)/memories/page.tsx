@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Brain,
@@ -691,6 +691,8 @@ function CategoryFilter({
 export default function MemoriesPage() {
   const [category, setCategory] = useState("");
   const [project, setProject] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
   const [deletingMemory, setDeletingMemory] = useState<Memory | null>(null);
@@ -700,12 +702,22 @@ export default function MemoriesPage() {
   const queryClient = useQueryClient();
   const offset = page * ITEMS_PER_PAGE;
 
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(0);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
   const { data, isLoading, error, isFetching } = useQuery(
     memoriesQueryOptions({
       limit: ITEMS_PER_PAGE,
       offset,
       category: category || undefined,
       project: project || undefined,
+      search: search || undefined,
     }),
   );
 
@@ -756,18 +768,29 @@ export default function MemoriesPage() {
           </div>
         </div>
 
-        {/* Search and Refresh */}
+        {/* Search and Filters */}
         <div className="flex items-center gap-2">
-          <div className="relative w-full sm:w-72">
+          {/* Content Search */}
+          <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground-subtle" />
             <Input
-              placeholder="Search by project..."
+              placeholder="Search memories..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="pl-9 h-10 bg-surface border-border"
+            />
+          </div>
+          {/* Project Filter */}
+          <div className="relative hidden sm:block w-40">
+            <FolderOpen className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground-subtle" />
+            <Input
+              placeholder="Project..."
               value={project}
               onChange={(e) => {
                 setProject(e.target.value);
                 setPage(0);
               }}
-              className="pl-9 h-10 bg-surface border-border"
+              className="pl-9 h-10 bg-surface border-border text-sm"
             />
           </div>
           <Button
@@ -785,25 +808,54 @@ export default function MemoriesPage() {
       </div>
 
       {/* Active filters indicator */}
-      {category && (
-        <div className="flex items-center gap-2 pb-4 shrink-0">
+      {(category || search || project) && (
+        <div className="flex items-center gap-2 pb-4 shrink-0 flex-wrap">
           <span className="text-sm text-foreground-muted">Filtered by:</span>
-          <button
-            onClick={() => {
-              setCategory("");
-              setPage(0);
-            }}
-            className={cn(
-              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
-              categoryConfig[category]?.lightBg,
-              categoryConfig[category]?.lightText,
-              "hover:opacity-80",
-            )}
-          >
-            <Tag className="h-3 w-3" />
-            {category}
-            <X className="h-3 w-3 ml-0.5" />
-          </button>
+          {search && (
+            <button
+              onClick={() => {
+                setSearchInput("");
+                setSearch("");
+                setPage(0);
+              }}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors bg-surface-elevated text-foreground hover:opacity-80"
+            >
+              <Search className="h-3 w-3" />
+              &quot;{search}&quot;
+              <X className="h-3 w-3 ml-0.5" />
+            </button>
+          )}
+          {project && (
+            <button
+              onClick={() => {
+                setProject("");
+                setPage(0);
+              }}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors bg-surface-elevated text-foreground-muted hover:opacity-80"
+            >
+              <FolderOpen className="h-3 w-3" />
+              {project}
+              <X className="h-3 w-3 ml-0.5" />
+            </button>
+          )}
+          {category && (
+            <button
+              onClick={() => {
+                setCategory("");
+                setPage(0);
+              }}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
+                categoryConfig[category]?.lightBg,
+                categoryConfig[category]?.lightText,
+                "hover:opacity-80",
+              )}
+            >
+              <Tag className="h-3 w-3" />
+              {category}
+              <X className="h-3 w-3 ml-0.5" />
+            </button>
+          )}
         </div>
       )}
 
