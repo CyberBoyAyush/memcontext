@@ -249,7 +249,7 @@ export function FAQ() {
                 >
                   <button
                     onClick={() => setOpen(open === i ? null : i)}
-                    className={`w-full flex items-center justify-between  text-left ${open === i ? "p-5 sm:p-6 pb-2 md:pb-2" : "p-5 sm:p-6"
+                    className={`w-full flex cursor-pointer items-center justify-between  text-left ${open === i ? "p-5 sm:p-6 pb-2 md:pb-2" : "p-5 sm:p-6"
                       }`}
                   >
                     <div className="flex items-center gap-4">
@@ -275,7 +275,7 @@ export function FAQ() {
                           }}
                         >
                           {/* Inner glow - softer */}
-                          <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-white/[0.06] via-transparent to-transparent" />
+                          <div className="absolute inset-0 rounded-lg bg-linear-to-br from-white/[0.06] via-transparent to-transparent" />
                           <span className="relative z-10">
                             {String(i + 1).padStart(2, "0")}
                           </span>
