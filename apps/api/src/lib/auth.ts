@@ -6,6 +6,26 @@ import { env } from "../env.js";
 import { getOrCreateSubscription } from "../services/subscription.js";
 import { logger } from "./logger.js";
 
+// Build social providers config only if credentials are provided
+const socialProviders: Record<
+  string,
+  { clientId: string; clientSecret: string }
+> = {};
+
+if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
+  socialProviders.google = {
+    clientId: env.GOOGLE_CLIENT_ID,
+    clientSecret: env.GOOGLE_CLIENT_SECRET,
+  };
+}
+
+if (env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET) {
+  socialProviders.github = {
+    clientId: env.GITHUB_CLIENT_ID,
+    clientSecret: env.GITHUB_CLIENT_SECRET,
+  };
+}
+
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
@@ -17,12 +37,14 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  // Only include socialProviders if at least one is configured
+  ...(Object.keys(socialProviders).length > 0 && { socialProviders }),
   session: {
-    expiresIn: 60 * 60 * 24 * 7, 
-    updateAge: 60 * 60 * 24, 
+    expiresIn: 60 * 60 * 24 * 7,
+    updateAge: 60 * 60 * 24,
     cookieCache: {
       enabled: true,
-      maxAge: 60 * 60 * 24 * 7, 
+      maxAge: 60 * 60 * 24 * 7,
     },
   },
   advanced: {
