@@ -65,7 +65,7 @@ export function Hero() {
   return (
     <section className="pt-20 pb-8 sm:pt-24 sm:pb-12 lg:pt-24 lg:pb-16 min-h-screen flex flex-col relative overflow-visible">
       {/* Dotted glow background - Top Left */}
-      <div className="absolute top-0 left-0 w-[300px] h-[300px] sm:w-[400px] sm:h-[400px] pointer-events-none">
+      <div className="absolute top-0 left-0 w-75 h-75 sm:w-100 sm:h-100 pointer-events-none">
         <div className="relative w-full h-full">
           {leftDots.map((dot, i) => (
             <div
@@ -83,11 +83,11 @@ export function Hero() {
           ))}
         </div>
         {/* Gradient fade */}
-        <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-background" />
+        <div className="absolute inset-0 bg-linear-to-br from-transparent via-transparent to-background" />
       </div>
 
       {/* Dotted glow background - Top Right */}
-      <div className="absolute top-0 right-0 w-[300px] h-[300px] sm:w-[400px] sm:h-[400px] pointer-events-none">
+      <div className="absolute top-0 right-0 w-75 h-75 sm:w-100 sm:h-100 pointer-events-none">
         <div className="relative w-full h-full">
           {rightDots.map((dot, i) => (
             <div
@@ -105,7 +105,7 @@ export function Hero() {
           ))}
         </div>
         {/* Gradient fade */}
-        <div className="absolute inset-0 bg-gradient-to-bl from-transparent via-transparent to-background" />
+        <div className="absolute inset-0 bg-linear-to-bl from-transparent via-transparent to-background" />
       </div>
 
       <div className="mx-auto max-w-5xl px-4 sm:px-6 relative z-10">
@@ -115,7 +115,7 @@ export function Hero() {
             <div className="group relative">
               {/* Border glow spot - top left */}
               <div
-                className="absolute -top-[1px] -left-[1px] w-20 h-11 rounded-full blur-[1px]"
+                className="absolute -top-px -left-px w-20 h-11 rounded-full blur-[1px]"
                 style={{
                   background:
                     "radial-gradient(ellipse at top left, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.3) 30%, transparent 70%)",
@@ -123,7 +123,7 @@ export function Hero() {
               />
               {/* Border glow spot - bottom right */}
               <div
-                className="absolute -bottom-[1px] -right-[1px] w-20 h-11 rounded-full blur-[1px]"
+                className="absolute -bottom-px -right-px w-20 h-11 rounded-full blur-[1px]"
                 style={{
                   background:
                     "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 30%, transparent 70%)",
@@ -131,7 +131,7 @@ export function Hero() {
               />
 
               {/* Subtle border all around */}
-              <div className="absolute -inset-[2px] rounded-full border border-white/10" />
+              <div className="absolute -inset-0.5 rounded-full border border-white/10" />
 
               {/* Main container */}
               <div className="relative inline-flex items-center gap-2 sm:gap-3 px-1.5 py-1.5 sm:px-2 sm:py-2 rounded-full bg-surface/95 backdrop-blur-sm transition-all duration-300 cursor-default overflow-hidden">
@@ -141,7 +141,7 @@ export function Hero() {
                 <div className="absolute bottom-0 right-0 w-20 h-12 bg-white/8 rounded-full blur-xl translate-x-1/3 translate-y-1/2" />
 
                 {/* Left icon */}
-                <div className="relative z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-surface to-border-hover border border-border-hover/60 flex items-center justify-center">
+                <div className="relative z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-linear-to-br from-surface to-border-hover border border-border-hover/60 flex items-center justify-center">
                   <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground-muted" />
                 </div>
 

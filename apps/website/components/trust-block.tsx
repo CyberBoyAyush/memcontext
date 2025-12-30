@@ -44,9 +44,9 @@ export function TrustBlock() {
         {/* Right side - Marquee */}
         <div className="relative w-full overflow-hidden">
           {/* Left fade */}
-          <div className="absolute left-0 top-0 bottom-0 w-12 sm:w-20 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
+          <div className="absolute left-0 top-0 bottom-0 w-12 sm:w-20 bg-linear-to-r from-background to-transparent z-10 pointer-events-none" />
           {/* Right fade */}
-          <div className="absolute right-0 top-0 bottom-0 w-12 sm:w-20 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-12 sm:w-20 bg-linear-to-l from-background to-transparent z-10 pointer-events-none" />
           
           {/* Scrolling content - two identical tracks for seamless loop */}
           <div className="flex animate-marquee py-2 sm:py-4">
