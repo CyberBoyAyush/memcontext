@@ -11,6 +11,7 @@ import {
   X,
   Sun,
   Moon,
+  Plug,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,11 @@ const navItems = [
     label: "API Keys",
     href: "/api-keys",
     icon: Key,
+  },
+  {
+    label: "MCP Setup",
+    href: "/mcp",
+    icon: Plug,
   },
   {
     label: "Settings",
