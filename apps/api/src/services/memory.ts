@@ -11,7 +11,18 @@ import {
 import { incrementMemoryCount, decrementMemoryCount } from "./subscription.js";
 import { normalizeProjectName } from "../utils/index.js";
 import { logger } from "../lib/logger.js";
-import { eq, and, isNull, lt, asc, desc, sql, ne, like } from "drizzle-orm";
+import {
+  eq,
+  and,
+  isNull,
+  lt,
+  asc,
+  desc,
+  sql,
+  ne,
+  like,
+  ilike,
+} from "drizzle-orm";
 import { cosineDistance } from "drizzle-orm";
 import type {
   MemoryCategory,
@@ -686,6 +697,7 @@ interface ListMemoriesParams {
   offset?: number;
   category?: MemoryCategory;
   project?: string;
+  search?: string;
 }
 
 interface ListMemoriesResult {
@@ -704,7 +716,7 @@ interface ListMemoriesResult {
 export async function listMemories(
   params: ListMemoriesParams,
 ): Promise<ListMemoriesResult> {
-  const { userId, limit = 20, offset = 0, category } = params;
+  const { userId, limit = 20, offset = 0, category, search } = params;
   const project = normalizeProjectName(params.project);
   const start = performance.now();
 
@@ -718,10 +730,20 @@ export async function listMemories(
     conditions.push(eq(memories.category, category));
   }
   if (project) {
-    // Use LIKE for partial matching (contains search)
-    // Escape SQL LIKE wildcards to treat input as literal string
-    const escapedProject = project.replace(/%/g, "\\%").replace(/_/g, "\\_");
+    // Escape SQL LIKE special chars: backslash first, then wildcards
+    const escapedProject = project
+      .replace(/\\/g, "\\\\")
+      .replace(/%/g, "\\%")
+      .replace(/_/g, "\\_");
     conditions.push(like(memories.project, `%${escapedProject}%`));
+  }
+  if (search) {
+    // Escape SQL LIKE special chars: backslash first, then wildcards
+    const escapedSearch = search
+      .replace(/\\/g, "\\\\")
+      .replace(/%/g, "\\%")
+      .replace(/_/g, "\\_");
+    conditions.push(ilike(memories.content, `%${escapedSearch}%`));
   }
 
   const [results, countResult] = await Promise.all([
@@ -756,6 +778,7 @@ export async function listMemories(
       offset,
       category,
       project,
+      searchLength: search?.length,
       found: results.length,
       total,
       duration,

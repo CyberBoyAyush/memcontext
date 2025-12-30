@@ -68,6 +68,7 @@ const listMemorySchema = z.object({
   offset: z.coerce.number().min(0).optional().default(0),
   category: z.enum(["preference", "fact", "decision", "context"]).optional(),
   project: z.string().max(100, "Project name too long").optional(),
+  search: z.string().max(200, "Search query too long").optional(),
 });
 
 const updateMemorySchema = z.object({
@@ -180,6 +181,7 @@ app.get(
       offset: query.offset,
       category: query.category as MemoryCategory | undefined,
       project: query.project,
+      search: query.search,
     });
 
     return c.json(result);
