@@ -308,7 +308,7 @@ export function HowItWorks() {
               />
 
               {/* Main code container */}
-              <div className="relative rounded-xl overflow-hidden bg-surface/60 backdrop-blur-md border border-white/[0.08] shadow-lg shadow-black/20">
+              <div className="relative rounded-xl bg-surface/60 backdrop-blur-md border border-white/[0.08] shadow-lg shadow-black/20 overflow-hidden">
                 {/* Inner glow overlay */}
                 <div className="absolute inset-0 bg-gradient-to-br from-white/[0.04] via-transparent to-transparent rounded-xl pointer-events-none" />
 
@@ -346,30 +346,32 @@ export function HowItWorks() {
                   </button>
                 </div>
 
-                {/* Code content */}
-                <pre className="relative p-5 text-sm font-mono overflow-x-auto min-h-[180px]">
-                  <code className="text-foreground/90 whitespace-pre-wrap">
-                    {currentTool.config
-                      .split("{{BLURRED_URL}}")
-                      .map((part, i, arr) => (
-                        <span key={i}>
-                          {part}
-                          {i < arr.length - 1 && (
-                            <span className="relative inline-block group/url cursor-default">
-                              <span className="blur-[4px] select-none text-foreground-muted">
-                                {HIDDEN_URL}
-                              </span>
-                              <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/url:opacity-100 transition-opacity duration-200 pointer-events-none">
-                                <span className="bg-accent text-white text-xs px-2 py-0.5 rounded-md whitespace-nowrap font-sans">
-                                  Coming Soon
+                {/* Code content - horizontally scrollable */}
+                <div className="overflow-x-auto max-w-[85vw] sm:max-w-none">
+                  <pre className="p-5 text-sm font-mono min-h-[180px]">
+                    <code className="text-foreground/90 whitespace-pre">
+                      {currentTool.config
+                        .split("{{BLURRED_URL}}")
+                        .map((part, i, arr) => (
+                          <span key={i}>
+                            {part}
+                            {i < arr.length - 1 && (
+                              <span className="relative inline-block group/url cursor-default">
+                                <span className="blur-[4px] select-none text-foreground-muted">
+                                  {HIDDEN_URL}
+                                </span>
+                                <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/url:opacity-100 transition-opacity duration-200 pointer-events-none">
+                                  <span className="bg-accent text-white text-xs px-2 py-0.5 rounded-md whitespace-nowrap font-sans">
+                                    Coming Soon
+                                  </span>
                                 </span>
                               </span>
-                            </span>
-                          )}
-                        </span>
-                      ))}
-                  </code>
-                </pre>
+                            )}
+                          </span>
+                        ))}
+                    </code>
+                  </pre>
+                </div>
               </div>
             </div>
 
