@@ -36,9 +36,23 @@ export function Header() {
 
   return (
     <>
-      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "bg-background/95 backdrop-blur-md border-b border-border shadow-sm" : "bg-background/80 backdrop-blur-sm border-b border-transparent"}`}>
-        <nav className="mx-auto max-w-5xl px-4 sm:px-6">
-          <div className="flex h-14 sm:h-16 items-center justify-between">
+      <header 
+        className={`fixed top-0 mx-2 left-0 right-0 z-50 transition-all duration-500 ${
+          scrolled 
+            ? "py-3 sm:py-4" 
+            : "py-2 sm:py-3"
+        }`}
+      >
+        <nav 
+          className={`mx-auto max-w-5xl px-4 sm:px-6 transition-all duration-500 border rounded-xl ${
+            scrolled 
+              ? "bg-surface/90 backdrop-blur-md border-border shadow-lg mx-4 sm:mx-6 lg:mx-auto" 
+              : "border-transparent bg-transparent"
+          }`}
+        >
+          <div className={`flex items-center justify-between transition-all duration-500 ${
+            scrolled ? "h-12 sm:h-14 px-2 sm:px-4" : "h-14 sm:h-16"
+          }`}>
             <Link href="/" className="flex items-center gap-2 font-medium font-mono group">
               <span className="text-lg sm:text-xl group-hover:opacity-70 transition-opacity">MemContext</span>
             </Link>
@@ -72,7 +86,7 @@ export function Header() {
               </button>
               <button
                 onClick={scrollToTop}
-                className="px-4 lg:px-5 py-1.5 lg:py-2 text-sm lg:text-base font-medium bg-accent text-background rounded-lg btn-hover-lift transition-all"
+                className="px-4 lg:px-5 py-1.5 lg:py-2 text-sm lg:text-base font-medium bg-accent text-foreground rounded-lg btn-hover-lift transition-all"
               >
                 Join Waitlist
               </button>
@@ -90,8 +104,8 @@ export function Header() {
           </div>
 
           {/* Mobile Menu */}
-          <div className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${isMobileMenuOpen ? "max-h-80 opacity-100" : "max-h-0 opacity-0"}`}>
-            <div className="py-4 border-t border-border space-y-1">
+          <div className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${isMobileMenuOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"}`}>
+            <div className={`py-4 space-y-1 mt-2 rounded-xl bg-surface/95 backdrop-blur-md border border-border/50 px-2`}>
               {navigation.map((item, index) => (
                 <Link
                   key={item.name}
