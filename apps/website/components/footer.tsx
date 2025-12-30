@@ -78,7 +78,7 @@ export function Footer() {
                   </a>
                   {" & "}
                   <a
-                    href="https://vrandgarg.in"
+                    href="https://vrandagarg.in"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-foreground-muted hover:text-foreground transition-colors"
