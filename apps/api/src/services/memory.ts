@@ -730,14 +730,19 @@ export async function listMemories(
     conditions.push(eq(memories.category, category));
   }
   if (project) {
-    // Use LIKE for partial matching (contains search)
-    // Escape SQL LIKE wildcards to treat input as literal string
-    const escapedProject = project.replace(/%/g, "\\%").replace(/_/g, "\\_");
+    // Escape SQL LIKE special chars: backslash first, then wildcards
+    const escapedProject = project
+      .replace(/\\/g, "\\\\")
+      .replace(/%/g, "\\%")
+      .replace(/_/g, "\\_");
     conditions.push(like(memories.project, `%${escapedProject}%`));
   }
   if (search) {
-    // Case-insensitive content search
-    const escapedSearch = search.replace(/%/g, "\\%").replace(/_/g, "\\_");
+    // Escape SQL LIKE special chars: backslash first, then wildcards
+    const escapedSearch = search
+      .replace(/\\/g, "\\\\")
+      .replace(/%/g, "\\%")
+      .replace(/_/g, "\\_");
     conditions.push(ilike(memories.content, `%${escapedSearch}%`));
   }
 
@@ -773,7 +778,7 @@ export async function listMemories(
       offset,
       category,
       project,
-      search,
+      searchLength: search?.length,
       found: results.length,
       total,
       duration,
