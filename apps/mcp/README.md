@@ -69,11 +69,14 @@ Add this to your `claude_desktop_config.json`:
 {
   "mcpServers": {
     "memcontext": {
-      "type": "streamable-http",
-      "url": "https://mcp.memcontext.in/mcp",
-      "headers": {
-        "X-API-Key": "mc_your_api_key_here"
-      }
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.memcontext.in/mcp",
+        "--header",
+        "MEMCONTEXT-API-KEY:<your-api-key>"
+      ]
     }
   }
 }

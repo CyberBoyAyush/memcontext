@@ -114,11 +114,11 @@ Tracks user plans and memory usage.
 
 **Plan Limits:**
 
-| Plan  | Limit  | Price     |
-| ----- | ------ | --------- |
-| free  | 300    | $0/month  |
-| hobby | 2,000  | $5/month  |
-| pro   | 10,000 | $15/month |
+| Plan  | Limit  |
+| ----- | ------ |
+| free  | 300    |
+| hobby | 2,000  |
+| pro   | 10,000 |
 
 ## Memory Processing
 

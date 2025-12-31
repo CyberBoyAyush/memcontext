@@ -25,6 +25,8 @@ This is a Turborepo monorepo with the following structure:
 | ---------------- | ------------------------------------------------------------------------------ |
 | `apps/api`       | Hono backend containing all business logic, database access, and AI processing |
 | `apps/mcp`       | MCP server that connects AI assistants to the API                              |
+| `apps/dashboard` | Next.js dashboard for users to manage memories, API keys, and settings         |
+| `apps/website`   | Marketing landing page                                                         |
 | `packages/types` | Shared TypeScript type definitions                                             |
 
 All business logic lives in the API. The MCP server is a thin wrapper that translates MCP protocol calls into API requests.
@@ -317,9 +319,8 @@ The MCP server exposes two tools to AI assistants:
 | Plan  | Memory Limit |
 | ----- | ------------ |
 | free  | 300          |
-| hobby | 1,500        |
-| pro   | 5,000        |
-| team  | 10,000       |
+| hobby | 2,000        |
+| pro   | 10,000       |
 
 ## License
 
