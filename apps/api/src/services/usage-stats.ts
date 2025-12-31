@@ -1,6 +1,5 @@
 import {
   queryBetterStack,
-  logsTable,
   getSourceTable,
   isBetterStackConfigured,
 } from "../lib/betterstack.js";
@@ -71,7 +70,6 @@ export async function getUserUsageStats(
   }
 
   const escapedUserId = escapeClickHouseString(userId);
-  const hotTable = logsTable();
   const allLogs = allLogsUnion();
 
   // Log structure:
@@ -84,7 +82,7 @@ export async function getUserUsageStats(
       name: "searchesLast24h",
       sql: `
         SELECT count(*) as count
-        FROM ${hotTable}
+        FROM ${allLogs}
         WHERE JSONExtractString(raw, 'userId') = '${escapedUserId}'
           AND JSONExtractString(raw, 'path') = '/api/memories/search'
           AND JSONExtractInt(raw, 'statusCode') = 200
@@ -116,7 +114,7 @@ export async function getUserUsageStats(
       name: "lastActivity",
       sql: `
         SELECT max(dt) as lastActivity
-        FROM ${hotTable}
+        FROM ${allLogs}
         WHERE JSONExtractString(raw, 'userId') = '${escapedUserId}'
       `,
     },
