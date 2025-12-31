@@ -32,6 +32,16 @@ export const auth = betterAuth({
       maxAge: 60 * 60 * 24 * 7,
     },
   },
+  user: {
+    additionalFields: {
+      role: {
+        type: "string",
+        required: true,
+        defaultValue: "user",
+        input: false,
+      },
+    },
+  },
   advanced: {
     // Cross-subdomain cookies for api.memcontext.in <-> app.memcontext.in
     crossSubDomainCookies:

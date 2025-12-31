@@ -9,6 +9,7 @@ interface User {
   email: string;
   name: string | null;
   image: string | null;
+  role: string;
 }
 
 interface Session {
@@ -52,6 +53,20 @@ export async function requireSession(): Promise<Session> {
 
   if (!session) {
     redirect("/login");
+  }
+
+  return session;
+}
+
+export async function requireAdmin(): Promise<Session> {
+  const session = await getSession();
+
+  if (!session) {
+    redirect("/login?redirect=/legend");
+  }
+
+  if (session.user.role !== "admin") {
+    redirect("/dashboard?error=access_denied");
   }
 
   return session;
