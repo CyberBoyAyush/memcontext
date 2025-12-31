@@ -84,7 +84,7 @@ export async function getUserUsageStats(
       name: "searchesLast24h",
       sql: `
         SELECT count(*) as count
-        FROM ${hotTable}
+        FROM ${allLogs}
         WHERE JSONExtractString(raw, 'userId') = '${escapedUserId}'
           AND JSONExtractString(raw, 'path') = '/api/memories/search'
           AND JSONExtractInt(raw, 'statusCode') = 200
