@@ -10,6 +10,8 @@ import {
   ExternalLink,
   Plug,
   KeyRound,
+  Sparkles,
+  Wand2,
 } from "lucide-react";
 import { Claude, Cursor, OpenAI } from "@lobehub/icons";
 import Link from "next/link";
@@ -30,6 +32,8 @@ interface AgentConfig {
   getConfig: (apiKey: string) => string;
   cliCommand?: (apiKey: string) => string;
   hasCursorDeepLink?: boolean;
+  supportsAutoConfig?: boolean;
+  getAutoConfigPrompt?: (apiKey: string) => string;
 }
 
 const MCP_SERVER_URL = "https://mcp.memcontext.in/mcp";
@@ -66,6 +70,109 @@ function OpenCodeIcon() {
   );
 }
 
+function getClaudeAutoConfigPrompt(apiKey: string): string {
+  const hasApiKey = apiKey && apiKey !== "YOUR_API_KEY";
+
+  return `Configure MemContext MCP server for Claude Code. Do the following:
+
+## Step 1: Add MCP Server Configuration
+
+Run this CLI command to add the MCP server:
+\`\`\`bash
+claude mcp add memcontext --scope user --transport http ${MCP_SERVER_URL} --header "MEMCONTEXT-API-KEY:${hasApiKey ? apiKey : "<YOUR_API_KEY>"}"
+\`\`\`
+${!hasApiKey ? "\n⚠️ IMPORTANT: Replace <YOUR_API_KEY> with the actual API key from https://memcontext.com/api-keys\n" : ""}
+## Step 2: Add User Preferences
+
+Append the following to the file \`~/.claude/CLAUDE.md\` (create it if it doesn't exist):
+
+\`\`\`markdown
+${USER_PREFERENCES}
+\`\`\`
+
+After completing both steps, confirm the setup is complete.`;
+}
+
+function getOpenCodeAutoConfigPrompt(apiKey: string): string {
+  const hasApiKey = apiKey && apiKey !== "YOUR_API_KEY";
+
+  const configJson = JSON.stringify(
+    {
+      $schema: "https://opencode.ai/config.json",
+      mcp: {
+        memcontext: {
+          type: "local",
+          command: [
+            "npx",
+            "-y",
+            "mcp-remote",
+            MCP_SERVER_URL,
+            "--header",
+            `MEMCONTEXT-API-KEY:${hasApiKey ? apiKey : "<YOUR_API_KEY>"}`,
+          ],
+          enabled: true,
+        },
+      },
+    },
+    null,
+    2,
+  );
+
+  return `Configure MemContext MCP server for OpenCode. Do the following:
+
+## Step 1: Update OpenCode Configuration
+
+Read the existing config file at \`~/.config/opencode/opencode.json\` (if it exists) and merge the following MCP configuration into it. If the file doesn't exist, create it with this content:
+
+\`\`\`json
+${configJson}
+\`\`\`
+${!hasApiKey ? "\n⚠️ IMPORTANT: Replace <YOUR_API_KEY> with the actual API key from https://memcontext.com/api-keys\n" : ""}
+**Note:** If there's existing config, preserve other settings and only add/update the \`mcp.memcontext\` section.
+
+## Step 2: Add User Preferences
+
+Append the following to the file \`~/.config/opencode/AGENTS.md\` (create it if it doesn't exist, preserve existing content):
+
+\`\`\`markdown
+${USER_PREFERENCES}
+\`\`\`
+
+After completing both steps, confirm the setup is complete.`;
+}
+
+function getCodexAutoConfigPrompt(apiKey: string): string {
+  const hasApiKey = apiKey && apiKey !== "YOUR_API_KEY";
+
+  const configToml = `[mcp_servers.memcontext]
+url = "${MCP_SERVER_URL}"
+
+[mcp_servers.memcontext.http_headers]
+MEMCONTEXT-API-KEY = "${hasApiKey ? apiKey : "<YOUR_API_KEY>"}"`;
+
+  return `Configure MemContext MCP server for Codex CLI. Do the following:
+
+## Step 1: Update Codex Configuration
+
+Read the existing config file at \`~/.codex/config.toml\` (if it exists) and add the following MCP configuration to it. If the file doesn't exist, create it with this content:
+
+\`\`\`toml
+${configToml}
+\`\`\`
+${!hasApiKey ? "\n⚠️ IMPORTANT: Replace <YOUR_API_KEY> with the actual API key from https://memcontext.com/api-keys\n" : ""}
+**Note:** If there's existing config, preserve other settings and only add the \`[mcp_servers.memcontext]\` section.
+
+## Step 2: Add User Preferences
+
+Append the following to the file \`~/.codex/instructions.md\` (create it if it doesn't exist, preserve existing content):
+
+\`\`\`markdown
+${USER_PREFERENCES}
+\`\`\`
+
+After completing both steps, confirm the setup is complete.`;
+}
+
 const agents: AgentConfig[] = [
   {
     id: "claude-code",
@@ -90,6 +197,8 @@ const agents: AgentConfig[] = [
       ),
     cliCommand: (apiKey: string) =>
       `claude mcp add memcontext --scope user --transport http ${MCP_SERVER_URL} --header "MEMCONTEXT-API-KEY:${apiKey}"`,
+    supportsAutoConfig: true,
+    getAutoConfigPrompt: getClaudeAutoConfigPrompt,
   },
   {
     id: "cursor",
@@ -113,6 +222,7 @@ const agents: AgentConfig[] = [
         2,
       ),
     hasCursorDeepLink: true,
+    supportsAutoConfig: false,
   },
   {
     id: "opencode",
@@ -142,6 +252,8 @@ const agents: AgentConfig[] = [
         null,
         2,
       ),
+    supportsAutoConfig: true,
+    getAutoConfigPrompt: getOpenCodeAutoConfigPrompt,
   },
   {
     id: "codex",
@@ -155,6 +267,8 @@ url = "${MCP_SERVER_URL}"
 
 [mcp_servers.memcontext.http_headers]
 MEMCONTEXT-API-KEY = "${apiKey}"`,
+    supportsAutoConfig: true,
+    getAutoConfigPrompt: getCodexAutoConfigPrompt,
   },
 ];
 
@@ -295,7 +409,6 @@ function CursorDeepLinkButton({
   function handleAddToCursor() {
     if (disabled) return;
 
-    // Cursor deep link expects the server config as base64 encoded JSON
     const serverConfig = {
       url: MCP_SERVER_URL,
       headers: {
@@ -303,7 +416,6 @@ function CursorDeepLinkButton({
       },
     };
 
-    // Base64 encode the config (Cursor expects base64, not URL encoding)
     const base64Config = btoa(JSON.stringify(serverConfig));
     const deepLink = `cursor://anysphere.cursor-deeplink/mcp/install?name=memcontext&config=${base64Config}`;
 
@@ -326,6 +438,86 @@ function CursorDeepLinkButton({
       Add to Cursor
       <ExternalLink className="w-3.5 h-3.5 opacity-60" />
     </Button>
+  );
+}
+
+function AutoConfigButton({
+  agent,
+  apiKey,
+}: {
+  agent: AgentConfig;
+  apiKey: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  const toast = useToast();
+
+  if (!agent.supportsAutoConfig || !agent.getAutoConfigPrompt) {
+    return null;
+  }
+
+  const hasApiKey = apiKey && apiKey !== "YOUR_API_KEY";
+
+  async function handleCopyPrompt() {
+    if (!agent.getAutoConfigPrompt) return;
+
+    try {
+      const prompt = agent.getAutoConfigPrompt(apiKey);
+      await navigator.clipboard.writeText(prompt);
+      setCopied(true);
+      toast.success("Prompt copied! Paste it in your " + agent.name);
+      setTimeout(() => setCopied(false), 3000);
+    } catch {
+      toast.error("Failed to copy prompt");
+    }
+  }
+
+  return (
+    <div className="relative rounded-xl border border-accent/30 bg-accent/5 p-4 space-y-3">
+      <div className="flex items-start gap-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/10 shrink-0">
+          <Wand2 className="h-4.5 w-4.5 text-accent" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h4 className="font-medium flex items-center gap-2">
+            Auto-Configure with AI
+            <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-accent/20 text-accent">
+              Quick Setup
+            </span>
+          </h4>
+          <p className="text-sm text-foreground-muted mt-1">
+            Copy this prompt and paste it in {agent.name} running in your home
+            directory. It will automatically configure MemContext for you.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          onClick={handleCopyPrompt}
+          className="gap-2"
+          variant={copied ? "secondary" : "default"}
+        >
+          {copied ? (
+            <>
+              <Check className="h-4 w-4" />
+              Copied!
+            </>
+          ) : (
+            <>
+              <Sparkles className="h-4 w-4" />
+              Copy Setup Prompt
+            </>
+          )}
+        </Button>
+
+        {!hasApiKey && (
+          <span className="text-xs text-foreground-muted">
+            <AlertCircle className="h-3.5 w-3.5 inline mr-1" />
+            Enter API key above for complete configuration
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -365,86 +557,102 @@ function AgentConfigSection({
 }) {
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* Step 1: MCP Configuration */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-accent-foreground text-sm font-bold">
-            1
-          </div>
-          <div>
-            <h3 className="font-semibold">Add MCP Configuration</h3>
-            <p className="text-sm text-foreground-muted">
-              Add this to your{" "}
-              <code className="px-1.5 py-0.5 rounded bg-surface-elevated font-mono text-xs">
-                {agent.configFile}
-              </code>
-            </p>
-          </div>
-        </div>
+      {/* Auto-Config Button (for CLI tools) */}
+      <AutoConfigButton agent={agent} apiKey={apiKey} />
 
-        <CodeBlock
-          code={agent.getConfig(apiKey)}
-          language={agent.id === "codex" ? "toml" : "json"}
-          filename={agent.configFile}
-        />
-
-        {/* CLI Command for Claude Code */}
-        {agent.cliCommand && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm text-foreground-muted">
-              <Terminal className="w-4 h-4" />
-              <span>Or use the CLI command:</span>
-            </div>
-            <CodeBlock code={agent.cliCommand(apiKey)} language="bash" />
-          </div>
-        )}
-
-        {/* Add to Cursor Button */}
-        {agent.hasCursorDeepLink && (
-          <div className="flex items-center gap-4 pt-2">
-            <CursorDeepLinkButton
-              apiKey={apiKey}
-              disabled={!apiKey || apiKey === "YOUR_API_KEY"}
-            />
-            <span className="text-sm text-foreground-subtle">
-              {!apiKey || apiKey === "YOUR_API_KEY"
-                ? "Enter your API key above to enable"
-                : "One-click install for Cursor"}
+      {/* Manual Configuration Section */}
+      <div className="space-y-6">
+        {agent.supportsAutoConfig && (
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-xs text-foreground-subtle px-2">
+              or configure manually
             </span>
+            <div className="h-px flex-1 bg-border" />
           </div>
         )}
-      </div>
 
-      {/* Step 2: User Preferences */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-accent-foreground text-sm font-bold">
-            2
+        {/* Step 1: MCP Configuration */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-accent-foreground text-sm font-bold">
+              1
+            </div>
+            <div>
+              <h3 className="font-semibold">Add MCP Configuration</h3>
+              <p className="text-sm text-foreground-muted">
+                Add this to your{" "}
+                <code className="px-1.5 py-0.5 rounded bg-surface-elevated font-mono text-xs">
+                  {agent.configFile}
+                </code>
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-semibold">
-              Add User Preferences (Recommended)
-            </h3>
-            <p className="text-sm text-foreground-muted">
-              Add this to{" "}
-              <code className="px-1.5 py-0.5 rounded bg-surface-elevated font-mono text-xs">
-                {agent.preferencesFile}
-              </code>{" "}
-              for best results
-            </p>
-          </div>
+
+          <CodeBlock
+            code={agent.getConfig(apiKey)}
+            language={agent.id === "codex" ? "toml" : "json"}
+            filename={agent.configFile}
+          />
+
+          {/* CLI Command for Claude Code */}
+          {agent.cliCommand && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm text-foreground-muted">
+                <Terminal className="w-4 h-4" />
+                <span>Or use the CLI command:</span>
+              </div>
+              <CodeBlock code={agent.cliCommand(apiKey)} language="bash" />
+            </div>
+          )}
+
+          {/* Add to Cursor Button */}
+          {agent.hasCursorDeepLink && (
+            <div className="flex items-center gap-4 pt-2">
+              <CursorDeepLinkButton
+                apiKey={apiKey}
+                disabled={!apiKey || apiKey === "YOUR_API_KEY"}
+              />
+              <span className="text-sm text-foreground-subtle">
+                {!apiKey || apiKey === "YOUR_API_KEY"
+                  ? "Enter your API key above to enable"
+                  : "One-click install for Cursor"}
+              </span>
+            </div>
+          )}
         </div>
 
-        <CodeBlock
-          code={USER_PREFERENCES}
-          language="markdown"
-          filename={agent.preferencesFile}
-        />
+        {/* Step 2: User Preferences */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-accent-foreground text-sm font-bold">
+              2
+            </div>
+            <div>
+              <h3 className="font-semibold">
+                Add User Preferences (Recommended)
+              </h3>
+              <p className="text-sm text-foreground-muted">
+                Add this to{" "}
+                <code className="px-1.5 py-0.5 rounded bg-surface-elevated font-mono text-xs">
+                  {agent.preferencesFile}
+                </code>{" "}
+                for best results
+              </p>
+            </div>
+          </div>
 
-        <p className="text-sm text-foreground-subtle pl-11">
-          These instructions help your AI agent use MemContext more effectively
-          by automatically searching and saving memories.
-        </p>
+          <CodeBlock
+            code={USER_PREFERENCES}
+            language="markdown"
+            filename={agent.preferencesFile}
+          />
+
+          <p className="text-sm text-foreground-subtle pl-11">
+            These instructions help your AI agent use MemContext more
+            effectively by automatically searching and saving memories.
+          </p>
+        </div>
       </div>
     </div>
   );

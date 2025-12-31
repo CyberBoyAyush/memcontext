@@ -5,17 +5,17 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Key,
   Plus,
-  Trash2,
-  Loader2,
+  Trash,
+  SpinnerGap,
   Copy,
   Check,
   Eye,
-  EyeOff,
+  EyeSlash,
   X,
-  Shield,
-  AlertTriangle,
-} from "lucide-react";
-import { IoRefresh } from "react-icons/io5";
+  ShieldCheck,
+  Warning,
+  ArrowsClockwise,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -192,12 +192,15 @@ function CreateKeyModal({
             >
               {createMutation.isPending ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <SpinnerGap
+                    className="h-4 w-4 animate-spin mr-2"
+                    weight="bold"
+                  />
                   Creating...
                 </>
               ) : (
                 <>
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus className="h-4 w-4 mr-2" weight="bold" />
                   Create Key
                 </>
               )}
@@ -285,9 +288,9 @@ function NewKeyModal({
                   onClick={() => setShowKey(!showKey)}
                 >
                   {showKey ? (
-                    <EyeOff className="h-4 w-4" />
+                    <EyeSlash className="h-4 w-4" weight="duotone" />
                   ) : (
-                    <Eye className="h-4 w-4" />
+                    <Eye className="h-4 w-4" weight="duotone" />
                   )}
                 </Button>
                 <Button
@@ -355,7 +358,7 @@ function DeleteConfirmDialog({
       <div className="relative w-full max-w-md bg-background border border-border rounded-2xl shadow-2xl animate-scale-in">
         <div className="p-6 space-y-4">
           <div className="flex items-center justify-center w-12 h-12 mx-auto rounded-full bg-error/10">
-            <AlertTriangle className="h-6 w-6 text-error" />
+            <Warning className="h-6 w-6 text-error" weight="duotone" />
           </div>
 
           <div className="text-center space-y-2">
@@ -398,12 +401,15 @@ function DeleteConfirmDialog({
           >
             {isDeleting ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <SpinnerGap
+                  className="h-4 w-4 animate-spin mr-2"
+                  weight="bold"
+                />
                 Revoking...
               </>
             ) : (
               <>
-                <Trash2 className="h-4 w-4 mr-2" />
+                <Trash className="h-4 w-4 mr-2" weight="duotone" />
                 Revoke Key
               </>
             )}
@@ -433,9 +439,9 @@ function DeleteButton({
       disabled={isDeleting}
     >
       {isDeleting ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
+        <SpinnerGap className="h-4 w-4 animate-spin" weight="bold" />
       ) : (
-        <Trash2 className="h-4 w-4" />
+        <Trash className="h-4 w-4" weight="duotone" />
       )}
     </Button>
   );
@@ -490,7 +496,10 @@ export default function ApiKeysPage() {
         <div className="space-y-1">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-elevated">
-              <Shield className="h-5 w-5 text-foreground-muted" />
+              <ShieldCheck
+                className="h-5 w-5 text-foreground-muted"
+                weight="duotone"
+              />
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight">API Keys</h1>
@@ -511,8 +520,9 @@ export default function ApiKeysPage() {
             disabled={isFetching}
             className="h-10 w-10"
           >
-            <IoRefresh
+            <ArrowsClockwise
               className={cn("h-4 w-4", isFetching && "animate-spin")}
+              weight="bold"
             />
           </Button>
           <Button onClick={() => setShowCreateModal(true)} className="gap-2">
@@ -660,7 +670,7 @@ export default function ApiKeysPage() {
       {/* Loading indicator */}
       {isFetching && !isLoading && (
         <div className="fixed bottom-4 right-4 bg-surface-elevated px-4 py-2 rounded-lg border border-border shadow-lg flex items-center gap-2 animate-fade-in">
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <SpinnerGap className="h-4 w-4 animate-spin" weight="bold" />
           <span className="text-sm">Refreshing...</span>
         </div>
       )}

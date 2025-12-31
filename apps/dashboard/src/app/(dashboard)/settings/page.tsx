@@ -3,14 +3,14 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   User,
-  Mail,
+  Envelope,
   Calendar,
-  LogOut,
-  Loader2,
-  Sparkles,
+  SignOut,
+  SpinnerGap,
+  Sparkle,
   Brain,
-  Zap,
-} from "lucide-react";
+  Lightning,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { signOut } from "@/lib/auth-client";
@@ -92,7 +92,10 @@ export default function SettingsPage() {
           <div className="relative p-6">
             {profileLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-foreground-muted" />
+                <SpinnerGap
+                  className="h-6 w-6 animate-spin text-foreground-muted"
+                  weight="bold"
+                />
               </div>
             ) : (
               <div className="flex flex-col sm:flex-row sm:items-center gap-6">
@@ -121,7 +124,7 @@ export default function SettingsPage() {
                     {user?.name || "No name set"}
                   </h2>
                   <div className="flex items-center gap-2 text-foreground-muted mt-1">
-                    <Mail className="h-4 w-4 shrink-0" />
+                    <Envelope className="h-4 w-4 shrink-0" weight="duotone" />
                     <span className="text-sm truncate">{user?.email}</span>
                   </div>
                   <div className="flex items-center gap-2 text-foreground-subtle mt-2">
@@ -161,7 +164,10 @@ export default function SettingsPage() {
           <div className="relative p-6">
             {subLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-foreground-muted" />
+                <SpinnerGap
+                  className="h-6 w-6 animate-spin text-foreground-muted"
+                  weight="bold"
+                />
               </div>
             ) : (
               <div className="space-y-6">
@@ -169,7 +175,10 @@ export default function SettingsPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-                      <Sparkles className="h-6 w-6 text-accent" />
+                      <Sparkle
+                        className="h-6 w-6 text-accent"
+                        weight="duotone"
+                      />
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold">Current Plan</h3>
@@ -219,7 +228,10 @@ export default function SettingsPage() {
                   {/* Memory Limit Card */}
                   <div className="relative p-4 rounded-xl bg-surface-elevated/50 border border-border">
                     <div className="flex items-center gap-2 mb-3">
-                      <Zap className="h-4 w-4 text-accent" />
+                      <Lightning
+                        className="h-4 w-4 text-accent"
+                        weight="fill"
+                      />
                       <span className="text-sm font-medium">Memory Limit</span>
                     </div>
                     <div className="text-2xl font-bold">
@@ -246,7 +258,7 @@ export default function SettingsPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-error/10 flex items-center justify-center">
-                <LogOut className="h-5 w-5 text-error" />
+                <SignOut className="h-5 w-5 text-error" weight="duotone" />
               </div>
               <div>
                 <h3 className="font-semibold">Sign Out</h3>
@@ -263,12 +275,15 @@ export default function SettingsPage() {
             >
               {isSigningOut ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <SpinnerGap
+                    className="h-4 w-4 animate-spin mr-2"
+                    weight="bold"
+                  />
                   Signing out...
                 </>
               ) : (
                 <>
-                  <LogOut className="h-4 w-4 mr-2" />
+                  <SignOut className="h-4 w-4 mr-2" weight="duotone" />
                   Sign Out
                 </>
               )}

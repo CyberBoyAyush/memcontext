@@ -4,19 +4,19 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  LayoutDashboard,
+  SquaresFour,
   Brain,
   Key,
-  Settings,
-  Menu,
+  GearSix,
+  List,
   X,
   Sun,
   Moon,
-  Plug,
+  Plugs,
   User,
-  LogOut,
-  ExternalLink,
-} from "lucide-react";
+  SignOut,
+  ArrowSquareOut,
+} from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useState, useSyncExternalStore, useRef, useEffect } from "react";
@@ -46,7 +46,7 @@ const navItems = [
   {
     label: "Dashboard",
     href: "/dashboard",
-    icon: LayoutDashboard,
+    icon: SquaresFour,
   },
   {
     label: "Memories",
@@ -61,12 +61,12 @@ const navItems = [
   {
     label: "MCP Setup",
     href: "/mcp",
-    icon: Plug,
+    icon: Plugs,
   },
   {
     label: "Settings",
     href: "/settings",
-    icon: Settings,
+    icon: GearSix,
   },
 ];
 
@@ -118,7 +118,10 @@ function UserProfileDropdown({
                 className="w-full h-full object-cover"
               />
             ) : (
-              <User className="h-5 w-5 text-foreground-muted" />
+              <User
+                className="h-5 w-5 text-foreground-muted"
+                weight="duotone"
+              />
             )}
           </div>
           <div className="min-w-0 flex-1">
@@ -138,7 +141,7 @@ function UserProfileDropdown({
           onClick={handleSettings}
           className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground-muted hover:text-foreground hover:bg-surface-elevated rounded-lg transition-colors"
         >
-          <Settings className="h-4 w-4" />
+          <GearSix className="h-4 w-4" weight="duotone" />
           Settings
         </button>
         <button
@@ -146,7 +149,7 @@ function UserProfileDropdown({
           disabled={isSigningOut}
           className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-error hover:bg-error/10 rounded-lg transition-colors disabled:opacity-50"
         >
-          <LogOut className="h-4 w-4" />
+          <SignOut className="h-4 w-4" weight="duotone" />
           {isSigningOut ? "Signing out..." : "Sign Out"}
         </button>
       </div>
@@ -192,7 +195,11 @@ export function Sidebar() {
         className="fixed top-4 left-4 z-50 md:hidden"
         onClick={() => setMobileOpen(!mobileOpen)}
       >
-        {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        {mobileOpen ? (
+          <X className="h-5 w-5" weight="bold" />
+        ) : (
+          <List className="h-5 w-5" weight="bold" />
+        )}
       </Button>
 
       {/* Mobile overlay */}
@@ -269,6 +276,7 @@ export function Sidebar() {
                       "h-5 w-5 transition-colors",
                       isActive ? "text-accent" : "text-foreground-muted",
                     )}
+                    weight={isActive ? "fill" : "duotone"}
                   />
                   {item.label}
                 </Link>
@@ -290,12 +298,12 @@ export function Sidebar() {
               >
                 {resolvedTheme === "dark" ? (
                   <>
-                    <Sun className="h-4 w-4" />
+                    <Sun className="h-4 w-4" weight="duotone" />
                     Light Mode
                   </>
                 ) : (
                   <>
-                    <Moon className="h-4 w-4" />
+                    <Moon className="h-4 w-4" weight="duotone" />
                     Dark Mode
                   </>
                 )}
@@ -323,7 +331,10 @@ export function Sidebar() {
                 <XIcon className="h-3.5 w-3.5" />
                 <span className="text-xs font-medium">Chat on X</span>
                 <span className="text-xs text-foreground-muted">@theayush</span>
-                <ExternalLink className="h-3 w-3 text-foreground-subtle" />
+                <ArrowSquareOut
+                  className="h-3 w-3 text-foreground-subtle"
+                  weight="bold"
+                />
               </a>
             </div>
 
@@ -354,7 +365,10 @@ export function Sidebar() {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <User className="h-4 w-4 text-foreground-muted" />
+                    <User
+                      className="h-4 w-4 text-foreground-muted"
+                      weight="duotone"
+                    />
                   )}
                 </div>
                 <div className="flex-1 min-w-0 text-left">
