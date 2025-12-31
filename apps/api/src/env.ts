@@ -27,6 +27,13 @@ const envSchema = z.object({
     .default("info"),
   LOGTAIL_SOURCE_TOKEN: z.string().optional(),
   LOGTAIL_INGEST_ENDPOINT: z.string().url().optional(),
+
+  // Better Stack Query API (optional - for usage analytics)
+  BETTERSTACK_QUERY_ENDPOINT: z.string().url().optional(),
+  BETTERSTACK_QUERY_USER: z.string().optional(),
+  BETTERSTACK_QUERY_PASSWORD: z.string().optional(),
+  BETTERSTACK_SOURCE_TABLE: z.string().optional(),
+
   // Better Auth
   BETTER_AUTH_SECRET: z
     .string()

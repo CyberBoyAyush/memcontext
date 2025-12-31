@@ -40,3 +40,10 @@ export interface UpdatePlanResponse {
   newPlan: string;
   newLimit: number;
 }
+
+export interface UserUsageStats {
+  searchesLast24h: number;
+  searchesThisMonth: number;
+  searchesAllTime: number;
+  lastActivityAt: string | null;
+}

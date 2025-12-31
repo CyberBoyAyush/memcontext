@@ -18,11 +18,16 @@ import {
   CaretDown,
   Check,
   Warning,
+  ChartLine,
+  MagnifyingGlass,
+  Clock,
+  ArrowsClockwise,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   adminUserDetailsQueryOptions,
+  adminUserUsageQueryOptions,
   useUpdateUserPlan,
   type PlanType,
 } from "@/lib/queries/admin";
@@ -234,6 +239,218 @@ function ConfirmDialog({
         </div>
       </div>
     </div>
+  );
+}
+
+function UsageStatsCard({ userId }: { userId: string }) {
+  const [isEnabled, setIsEnabled] = useState(false);
+
+  const {
+    data: usage,
+    isLoading,
+    error,
+    refetch,
+    isFetching,
+  } = useQuery({
+    ...adminUserUsageQueryOptions(userId),
+    enabled: isEnabled,
+  });
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "Never";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      if (diffHours === 0) {
+        const diffMins = Math.floor(diffMs / (1000 * 60));
+        return diffMins <= 1 ? "Just now" : `${diffMins} min ago`;
+      }
+      return diffHours === 1 ? "1 hour ago" : `${diffHours} hours ago`;
+    }
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays} days ago`;
+    return formatDateTime(dateString).date;
+  };
+
+  const handleLoadStats = () => {
+    setIsEnabled(true);
+  };
+
+  const handleRefresh = () => {
+    refetch();
+  };
+
+  // Not loaded yet - show Load Stats button
+  if (!isEnabled) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-elevated">
+              <ChartLine
+                className="h-5 w-5 text-foreground-muted"
+                weight="duotone"
+              />
+            </div>
+            <div>
+              <h3 className="font-semibold">Usage Statistics</h3>
+              <p className="text-sm text-foreground-muted">
+                From Better Stack logs
+              </p>
+            </div>
+          </div>
+          <div className="p-6 rounded-lg bg-surface border border-border text-center space-y-4">
+            <p className="text-sm text-foreground-muted">
+              Click to load usage statistics from Better Stack
+            </p>
+            <Button onClick={handleLoadStats} variant="outline">
+              <ChartLine className="h-4 w-4 mr-2" weight="duotone" />
+              Load Usage Stats
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-elevated">
+              <ChartLine
+                className="h-5 w-5 text-foreground-muted"
+                weight="duotone"
+              />
+            </div>
+            <div>
+              <h3 className="font-semibold">Usage Statistics</h3>
+              <p className="text-sm text-foreground-muted">
+                From Better Stack logs
+              </p>
+            </div>
+          </div>
+          <div className="p-4 rounded-lg bg-surface border border-border text-center">
+            <p className="text-sm text-foreground-muted">
+              Usage stats unavailable
+            </p>
+            <p className="text-xs text-foreground-subtle mt-1">
+              Better Stack Query API not configured
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-elevated">
+              <ChartLine
+                className="h-5 w-5 text-foreground-muted"
+                weight="duotone"
+              />
+            </div>
+            <div>
+              <h3 className="font-semibold">Usage Statistics</h3>
+              <p className="text-sm text-foreground-muted">
+                From Better Stack logs
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={isFetching}
+            className={cn(
+              "p-2 rounded-lg hover:bg-surface-elevated transition-colors",
+              isFetching && "opacity-50 cursor-not-allowed",
+            )}
+            title="Refresh stats"
+          >
+            <ArrowsClockwise
+              className={cn(
+                "h-4 w-4 text-foreground-muted",
+                isFetching && "animate-spin",
+              )}
+              weight="bold"
+            />
+          </button>
+        </div>
+
+        {isLoading ? (
+          <div className="space-y-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="animate-pulse flex justify-between py-3 border-b border-border last:border-0"
+              >
+                <div className="h-4 w-32 bg-surface-elevated rounded" />
+                <div className="h-4 w-16 bg-surface-elevated rounded" />
+              </div>
+            ))}
+          </div>
+        ) : usage ? (
+          <div className="space-y-4">
+            {/* Searches Section */}
+            <div>
+              <h4 className="text-xs font-medium text-foreground-subtle uppercase tracking-wider mb-2">
+                Searches
+              </h4>
+              <div className="space-y-0 divide-y divide-border rounded-lg bg-surface p-1">
+                <div className="flex items-center justify-between py-2 px-2">
+                  <div className="flex items-center gap-2 text-sm text-foreground-muted">
+                    <MagnifyingGlass className="h-4 w-4" weight="duotone" />
+                    Last 24 Hours
+                  </div>
+                  <span className="text-sm font-medium">
+                    {usage.searchesLast24h.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-2 px-2">
+                  <div className="flex items-center gap-2 text-sm text-foreground-muted">
+                    <MagnifyingGlass className="h-4 w-4" weight="duotone" />
+                    This Month
+                  </div>
+                  <span className="text-sm font-medium">
+                    {usage.searchesThisMonth.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-2 px-2">
+                  <div className="flex items-center gap-2 text-sm text-foreground-muted">
+                    <MagnifyingGlass className="h-4 w-4" weight="duotone" />
+                    All Time
+                  </div>
+                  <span className="text-sm font-medium">
+                    {usage.searchesAllTime.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Last Activity */}
+            <div className="pt-2 border-t border-border">
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-2 text-sm text-foreground-muted">
+                  <Clock className="h-4 w-4" weight="duotone" />
+                  Last Activity
+                </div>
+                <span className="text-sm font-medium">
+                  {formatDate(usage.lastActivityAt)}
+                </span>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -517,6 +734,9 @@ export default function AdminUserDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Usage Statistics Card */}
+      <UsageStatsCard userId={userId} />
 
       {/* Confirm Dialog */}
       {showConfirm && selectedPlan && (

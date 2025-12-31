@@ -42,6 +42,13 @@ interface UpdatePlanResponse {
   newLimit: number;
 }
 
+interface UserUsageStats {
+  searchesLast24h: number;
+  searchesThisMonth: number;
+  searchesAllTime: number;
+  lastActivityAt: string | null;
+}
+
 type PlanType = "free" | "hobby" | "pro";
 
 interface ListUsersParams {
@@ -83,6 +90,16 @@ export const adminStatsQueryOptions = () =>
     },
   });
 
+export const adminUserUsageQueryOptions = (userId: string) =>
+  queryOptions({
+    queryKey: ["admin", "user", userId, "usage"] as const,
+    queryFn: async () => {
+      return api.get<UserUsageStats>(`/api/admin/users/${userId}/usage`);
+    },
+    staleTime: 0,
+    retry: false,
+  });
+
 export function useUpdateUserPlan() {
   const queryClient = useQueryClient();
 
@@ -114,4 +131,5 @@ export type {
   AdminStats,
   ListUsersResponse,
   PlanType,
+  UserUsageStats,
 };
