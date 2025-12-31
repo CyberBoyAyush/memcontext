@@ -227,15 +227,3 @@ export function logsTable(): string {
 export function historicalLogsTable(): string {
   return `s3Cluster(primary, ${getSourceTable()}_s3)`;
 }
-
-// Combined query for all logs (recent + historical)
-export function allLogsQuery(whereClause: string): string {
-  return `
-    SELECT * FROM (
-      SELECT dt, raw FROM ${logsTable()}
-      UNION ALL
-      SELECT dt, raw FROM ${historicalLogsTable()} WHERE _row_type = 1
-    )
-    WHERE ${whereClause}
-  `;
-}
