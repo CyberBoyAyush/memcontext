@@ -23,7 +23,10 @@ interface Session {
 
 export async function getSession(): Promise<Session | null> {
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("better-auth.session_token");
+  // In production with HTTPS + cross-subdomain cookies, better-auth prefixes with __Secure-
+  const sessionCookie =
+    cookieStore.get("__Secure-better-auth.session_token") ??
+    cookieStore.get("better-auth.session_token");
 
   if (!sessionCookie) {
     return null;
@@ -32,7 +35,7 @@ export async function getSession(): Promise<Session | null> {
   try {
     const res = await fetch(`${API_URL}/api/auth/get-session`, {
       headers: {
-        cookie: `better-auth.session_token=${sessionCookie.value}`,
+        cookie: `${sessionCookie.name}=${sessionCookie.value}`,
       },
       cache: "no-store",
     });
