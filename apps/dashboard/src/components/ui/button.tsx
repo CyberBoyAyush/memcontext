@@ -4,19 +4,20 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         default:
-          "bg-accent text-accent-foreground shadow-sm hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0",
-        destructive: "bg-error text-white shadow-sm hover:bg-error/90",
+          "bg-accent text-accent-foreground shadow-sm hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(232,97,60,0.3)] active:translate-y-0",
+        destructive:
+          "bg-error text-white shadow-sm hover:bg-error/90 hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(239,68,68,0.3)] active:translate-y-0",
         outline:
-          "border border-border bg-transparent hover:bg-surface-elevated hover:text-foreground",
+          "border border-border bg-transparent hover:bg-surface-elevated hover:border-border-hover hover:text-foreground",
         secondary:
-          "bg-surface text-foreground shadow-sm hover:bg-surface-elevated",
-        ghost: "hover:bg-surface hover:text-foreground",
-        link: "text-foreground underline-offset-4 hover:underline",
+          "bg-surface-elevated text-foreground shadow-sm border border-border hover:bg-surface-hover hover:border-border-hover",
+        ghost: "hover:bg-surface-elevated hover:text-foreground",
+        link: "text-accent underline-offset-4 hover:underline",
       },
       size: {
         default: "h-10 px-4 py-2",

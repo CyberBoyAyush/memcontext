@@ -354,8 +354,8 @@ function DeleteConfirmDialog({
 
       <div className="relative w-full max-w-md bg-background border border-border rounded-2xl shadow-2xl animate-scale-in">
         <div className="p-6 space-y-4">
-          <div className="flex items-center justify-center w-12 h-12 mx-auto rounded-full bg-red-500/10">
-            <AlertTriangle className="h-6 w-6 text-red-500" />
+          <div className="flex items-center justify-center w-12 h-12 mx-auto rounded-full bg-error/10">
+            <AlertTriangle className="h-6 w-6 text-error" />
           </div>
 
           <div className="text-center space-y-2">
@@ -425,7 +425,7 @@ function DeleteButton({
     <Button
       variant="ghost"
       size="icon"
-      className="h-8 w-8 text-foreground-muted hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10"
+      className="h-8 w-8 text-foreground-muted hover:text-error hover:bg-error/10"
       onClick={(e) => {
         e.stopPropagation();
         onDelete();

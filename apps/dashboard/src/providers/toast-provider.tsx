@@ -37,22 +37,25 @@ export function useToast() {
 
 const toastConfig: Record<
   ToastType,
-  { icon: typeof CheckCircle; bg: string; border: string }
+  { icon: typeof CheckCircle; bg: string; border: string; iconColor: string }
 > = {
   success: {
     icon: CheckCircle,
-    bg: "bg-emerald-500/10",
-    border: "border-emerald-500/30",
+    bg: "bg-success/10",
+    border: "border-success/30",
+    iconColor: "text-success",
   },
   error: {
     icon: AlertCircle,
-    bg: "bg-red-500/10",
-    border: "border-red-500/30",
+    bg: "bg-error/10",
+    border: "border-error/30",
+    iconColor: "text-error",
   },
   info: {
     icon: Info,
-    bg: "bg-blue-500/10",
-    border: "border-blue-500/30",
+    bg: "bg-accent/10",
+    border: "border-accent/30",
+    iconColor: "text-accent",
   },
 };
 
@@ -100,14 +103,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 config.border,
               )}
             >
-              <Icon
-                className={cn(
-                  "h-5 w-5 shrink-0",
-                  toast.type === "success" && "text-emerald-400",
-                  toast.type === "error" && "text-red-400",
-                  toast.type === "info" && "text-blue-400",
-                )}
-              />
+              <Icon className={cn("h-5 w-5 shrink-0", config.iconColor)} />
               <p className="text-sm flex-1">{toast.message}</p>
               <button
                 onClick={() => removeToast(toast.id)}

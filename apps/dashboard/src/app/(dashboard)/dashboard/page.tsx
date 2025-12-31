@@ -32,13 +32,13 @@ export default function DashboardPage() {
       value: subLoading ? "..." : (subscription?.memoryCount ?? 0),
       limit: subLoading ? undefined : subscription?.memoryLimit,
       icon: Brain,
-      color: "text-blue-400",
+      color: "text-accent",
     },
     {
       title: "API Keys",
       value: keysLoading ? "..." : (apiKeys?.keys?.length ?? 0),
       icon: Key,
-      color: "text-green-400",
+      color: "text-success",
     },
     {
       title: "Current Plan",
@@ -47,7 +47,7 @@ export default function DashboardPage() {
         : (subscription?.plan?.charAt(0).toUpperCase() ?? "") +
           (subscription?.plan?.slice(1) ?? ""),
       icon: TrendingUp,
-      color: "text-purple-400",
+      color: "text-info",
     },
   ];
 

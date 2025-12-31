@@ -2,16 +2,10 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Brain, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { signIn } from "@/lib/auth-client";
+import Image from "next/image";
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -74,7 +68,7 @@ function LoginForm() {
   return (
     <div className="space-y-4">
       {error && (
-        <div className="p-3 rounded-lg bg-error/10 border border-error/20 text-error text-sm">
+        <div className="p-3 rounded-xl bg-error/10 border border-error/20 text-error text-sm">
           {error}
         </div>
       )}
@@ -83,28 +77,28 @@ function LoginForm() {
         <Button
           type="button"
           variant="outline"
-          className="w-full"
+          className="w-full h-12 text-sm font-medium"
           onClick={() => handleOAuthSignIn("google")}
           disabled={isDisabled}
         >
           {oauthLoading === "google" ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
-            <GoogleIcon className="h-4 w-4" />
+            <GoogleIcon className="h-5 w-5" />
           )}
           Continue with Google
         </Button>
         <Button
           type="button"
           variant="outline"
-          className="w-full"
+          className="w-full h-12 text-sm font-medium"
           onClick={() => handleOAuthSignIn("github")}
           disabled={isDisabled}
         >
           {oauthLoading === "github" ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
-            <GitHubIcon className="h-4 w-4" />
+            <GitHubIcon className="h-5 w-5" />
           )}
           Continue with GitHub
         </Button>
@@ -116,29 +110,110 @@ function LoginForm() {
 function LoginFormFallback() {
   return (
     <div className="space-y-3">
-      <div className="h-10 w-full bg-surface-elevated rounded-lg animate-pulse" />
-      <div className="h-10 w-full bg-surface-elevated rounded-lg animate-pulse" />
+      <div className="h-12 w-full bg-surface-elevated rounded-xl animate-pulse" />
+      <div className="h-12 w-full bg-surface-elevated rounded-xl animate-pulse" />
     </div>
   );
 }
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <Card className="w-full max-w-md animate-fade-in">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <Brain className="h-12 w-12" />
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-background">
+      {/* Background effects */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {/* Primary large glow */}
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-accent/8 blur-[150px]" />
+        {/* Secondary glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-accent/12 blur-[100px]" />
+        {/* Accent glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full bg-accent/15 blur-[80px]" />
+      </div>
+
+      {/* Main card */}
+      <div className="relative w-full max-w-md animate-fade-in">
+        {/* Card with premium styling */}
+        <div className="relative">
+          {/* Border glow - top left */}
+          <div
+            className="absolute -top-px -left-px w-32 h-24 rounded-2xl blur-[1px]"
+            style={{
+              background:
+                "radial-gradient(ellipse at top left, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 30%, transparent 60%)",
+            }}
+          />
+          {/* Border glow - bottom right */}
+          <div
+            className="absolute -bottom-px -right-px w-24 h-20 rounded-2xl blur-[1px]"
+            style={{
+              background:
+                "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.1) 30%, transparent 60%)",
+            }}
+          />
+
+          {/* Main card content */}
+          <div className="relative rounded-2xl border border-white/10 bg-surface/80 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+            {/* Inner glow overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] via-transparent to-transparent pointer-events-none" />
+
+            {/* Content */}
+            <div className="relative p-8 sm:p-10">
+              {/* Logo and header */}
+              <div className="text-center mb-8">
+                {/* Logo container with glass effect */}
+                <div className="flex justify-center mb-5">
+                  <div className="relative">
+                    {/* Border glow */}
+                    <div
+                      className="absolute -top-[1px] -left-[1px] w-10 h-10 rounded-xl blur-[0.5px]"
+                      style={{
+                        background:
+                          "radial-gradient(ellipse at top left, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 30%, transparent 60%)",
+                      }}
+                    />
+                    <div
+                      className="absolute -bottom-[1px] -right-[1px] w-8 h-8 rounded-xl blur-[0.5px]"
+                      style={{
+                        background:
+                          "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 60%)",
+                      }}
+                    />
+                    {/* Glass container */}
+                    <div className="relative w-16 h-16 rounded-xl bg-surface/90 backdrop-blur-sm border border-white/15 flex items-center justify-center overflow-hidden">
+                      {/* Inner glow */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent" />
+                      <Image
+                        src="/sign.png"
+                        alt="MemContext Logo"
+                        width={40}
+                        height={40}
+                        className="w-10 h-10 relative z-10"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <h1 className="text-2xl font-bold tracking-tight mb-2">
+                  Welcome to MemContext
+                </h1>
+                <p className="text-foreground-muted text-sm">
+                  Sign in to access your dashboard
+                </p>
+              </div>
+
+              {/* Login form */}
+              <Suspense fallback={<LoginFormFallback />}>
+                <LoginForm />
+              </Suspense>
+
+              {/* Footer text */}
+              <p className="mt-6 text-center text-xs text-foreground-subtle">
+                By continuing, you agree to our Terms of Service and Privacy
+                Policy
+              </p>
+            </div>
           </div>
-          <CardTitle className="text-2xl">Welcome to MemContext</CardTitle>
-          <CardDescription>Continue with your account</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Suspense fallback={<LoginFormFallback />}>
-            <LoginForm />
-          </Suspense>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

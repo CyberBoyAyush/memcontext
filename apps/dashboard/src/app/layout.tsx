@@ -21,6 +21,11 @@ export const metadata: Metadata = {
     template: "%s | MemContext",
   },
   description: "Manage your memories and API keys for AI assistants",
+  icons: {
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
   robots: {
     index: false,
     follow: false,

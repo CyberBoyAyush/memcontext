@@ -18,6 +18,7 @@ import {
   Check,
   Clock,
   FileText,
+  Globe,
 } from "lucide-react";
 import { IoRefresh } from "react-icons/io5";
 import { Button } from "@/components/ui/button";
@@ -68,12 +69,12 @@ const categoryConfig: Record<
   }
 > = {
   preference: {
-    bg: "bg-blue-500/10",
-    text: "text-blue-400",
-    border: "border-blue-500/20",
-    lightBg: "bg-blue-50 dark:bg-blue-500/10",
-    lightText: "text-blue-600 dark:text-blue-400",
-    dot: "bg-blue-500",
+    bg: "bg-accent/10",
+    text: "text-accent",
+    border: "border-accent/20",
+    lightBg: "bg-accent/5 dark:bg-accent/10",
+    lightText: "text-accent dark:text-accent",
+    dot: "bg-accent",
   },
   fact: {
     bg: "bg-emerald-500/10",
@@ -84,12 +85,12 @@ const categoryConfig: Record<
     dot: "bg-emerald-500",
   },
   decision: {
-    bg: "bg-purple-500/10",
-    text: "text-purple-400",
-    border: "border-purple-500/20",
-    lightBg: "bg-purple-50 dark:bg-purple-500/10",
-    lightText: "text-purple-600 dark:text-purple-400",
-    dot: "bg-purple-500",
+    bg: "bg-violet-500/10",
+    text: "text-violet-400",
+    border: "border-violet-500/20",
+    lightBg: "bg-violet-50 dark:bg-violet-500/10",
+    lightText: "text-violet-600 dark:text-violet-400",
+    dot: "bg-violet-500",
   },
   context: {
     bg: "bg-amber-500/10",
@@ -288,7 +289,7 @@ function MemoryDetailPanel({
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   rows={6}
-                  className="flex w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-foreground placeholder:text-foreground-subtle focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent/50 resize-none"
+                  className="flex w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-foreground placeholder:text-foreground-subtle focus:outline-none focus:border-foreground-subtle resize-none"
                   placeholder="Memory content..."
                 />
               </div>
@@ -357,8 +358,9 @@ function MemoryDetailPanel({
                   {memory.project ? (
                     <span className="text-sm">{memory.project}</span>
                   ) : (
-                    <span className="text-sm text-foreground-subtle">
-                      No project
+                    <span className="text-sm text-foreground-subtle flex items-center gap-1.5">
+                      <Globe className="h-3.5 w-3.5" />
+                      Global
                     </span>
                   )}
                 </div>
@@ -419,7 +421,7 @@ function MemoryDetailPanel({
           ) : (
             <Button
               variant="outline"
-              className="w-full text-red-500 dark:text-red-400 hover:bg-red-500/10 hover:text-red-500 dark:hover:text-red-400"
+              className="w-full text-error hover:bg-error/10 hover:text-error"
               onClick={onDelete}
             >
               <Trash2 className="h-4 w-4 mr-2" />
@@ -452,8 +454,8 @@ function DeleteConfirmDialog({
 
       <div className="relative w-full max-w-md bg-background border border-border rounded-2xl shadow-2xl animate-scale-in">
         <div className="p-6 space-y-4">
-          <div className="flex items-center justify-center w-12 h-12 mx-auto rounded-full bg-red-500/10">
-            <Trash2 className="h-6 w-6 text-red-500" />
+          <div className="flex items-center justify-center w-12 h-12 mx-auto rounded-full bg-error/10">
+            <Trash2 className="h-6 w-6 text-error" />
           </div>
 
           <div className="text-center space-y-2">
@@ -512,7 +514,7 @@ function DeleteButton({
     <Button
       variant="ghost"
       size="icon"
-      className="h-8 w-8 text-foreground-muted hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10"
+      className="h-8 w-8 text-foreground-muted hover:text-error hover:bg-error/10"
       onClick={(e) => {
         e.stopPropagation();
         onDelete();
@@ -999,8 +1001,9 @@ export default function MemoriesPage() {
                               <span className="truncate">{memory.project}</span>
                             </span>
                           ) : (
-                            <span className="text-xs text-foreground-subtle">
-                              —
+                            <span className="inline-flex items-center gap-1.5 text-sm text-foreground-subtle">
+                              <Globe className="h-3.5 w-3.5 shrink-0" />
+                              <span>Global</span>
                             </span>
                           )}
                         </td>

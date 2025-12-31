@@ -51,7 +51,13 @@ function OpenCodeIcon() {
       xmlns="http://www.w3.org/2000/svg"
       className="w-6 h-6"
     >
-      <rect x="60" y="120" width="120" height="120" className="fill-foreground-muted" />
+      <rect
+        x="60"
+        y="120"
+        width="120"
+        height="120"
+        className="fill-foreground-muted"
+      />
       <path
         d="M180 60H60V240H180V60ZM240 300H0V0H240V300Z"
         className="fill-foreground"
@@ -80,7 +86,7 @@ const agents: AgentConfig[] = [
           },
         },
         null,
-        2
+        2,
       ),
     cliCommand: (apiKey: string) =>
       `claude mcp add memcontext --scope user --transport http ${MCP_SERVER_URL} --header "MEMCONTEXT-API-KEY:${apiKey}"`,
@@ -90,7 +96,7 @@ const agents: AgentConfig[] = [
     name: "Cursor",
     icon: <Cursor className="w-6 h-6" />,
     configFile: "~/.cursor/mcp.json",
-    preferencesFile: "~/.cursor/rules/memcontext.mdc",
+    preferencesFile: "Cursor Settings > Rules",
     getConfig: (apiKey: string) =>
       JSON.stringify(
         {
@@ -104,7 +110,7 @@ const agents: AgentConfig[] = [
           },
         },
         null,
-        2
+        2,
       ),
     hasCursorDeepLink: true,
   },
@@ -134,7 +140,7 @@ const agents: AgentConfig[] = [
           },
         },
         null,
-        2
+        2,
       ),
   },
   {
@@ -207,7 +213,9 @@ function CodeBlock({
       )}
       <div className="relative">
         <pre className="p-4 overflow-x-auto text-sm font-mono leading-relaxed max-w-full">
-          <code className={`language-${language} break-all whitespace-pre-wrap`}>
+          <code
+            className={`language-${language} break-all whitespace-pre-wrap`}
+          >
             {code}
           </code>
         </pre>
@@ -265,7 +273,7 @@ function ApiKeyInput({
         {!value && (
           <p className="mt-3 text-xs text-foreground-subtle">
             Don&apos;t have an API key?{" "}
-            <Link href="/api-keys" className="text-blue-500 hover:underline">
+            <Link href="/api-keys" className="text-accent hover:underline">
               Create one here
             </Link>
           </p>
@@ -311,7 +319,7 @@ function CursorDeepLinkButton({
         "gap-2 font-medium border shadow-sm",
         disabled
           ? "bg-[#1a1a1a]/50 text-white/50 border-[#333]/50 cursor-not-allowed"
-          : "bg-[#1a1a1a] hover:bg-[#2a2a2a] text-white border-[#333]"
+          : "bg-[#1a1a1a] hover:bg-[#2a2a2a] text-white border-[#333]",
       )}
     >
       <Cursor className="w-4 h-4" />
@@ -334,10 +342,10 @@ function AgentTab({
     <button
       onClick={onClick}
       className={cn(
-        "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200",
+        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
         isActive
-          ? "bg-surface-elevated text-foreground shadow-sm border border-border"
-          : "text-foreground-muted hover:text-foreground hover:bg-surface/50"
+          ? "bg-accent/10 text-accent"
+          : "text-foreground-muted hover:text-foreground hover:bg-surface-elevated/50",
       )}
     >
       <span className="flex items-center justify-center w-6 h-6">
@@ -355,7 +363,6 @@ function AgentConfigSection({
   agent: AgentConfig;
   apiKey: string;
 }) {
-
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Step 1: MCP Configuration */}
@@ -415,7 +422,9 @@ function AgentConfigSection({
             2
           </div>
           <div>
-            <h3 className="font-semibold">Add User Preferences (Recommended)</h3>
+            <h3 className="font-semibold">
+              Add User Preferences (Recommended)
+            </h3>
             <p className="text-sm text-foreground-muted">
               Add this to{" "}
               <code className="px-1.5 py-0.5 rounded bg-surface-elevated font-mono text-xs">
@@ -494,8 +503,8 @@ export default function McpPage() {
           <Card className="border-border/50">
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10 shrink-0">
-                  <AlertCircle className="h-4 w-4 text-blue-500" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10 shrink-0">
+                  <AlertCircle className="h-4 w-4 text-accent" />
                 </div>
                 <div className="text-sm space-y-1">
                   <p className="font-medium">Paste your API key above</p>
@@ -504,7 +513,7 @@ export default function McpPage() {
                     ready-to-use configurations. Don&apos;t have a key yet?{" "}
                     <Link
                       href="/api-keys"
-                      className="text-blue-500 hover:underline"
+                      className="text-accent hover:underline"
                     >
                       Create one here
                     </Link>
@@ -518,4 +527,3 @@ export default function McpPage() {
     </div>
   );
 }
-
