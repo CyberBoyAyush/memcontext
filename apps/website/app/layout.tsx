@@ -47,12 +47,28 @@ export const metadata: Metadata = {
     url: "https://memcontext.in",
     siteName: "MemContext",
     type: "website",
+    images: [
+      {
+        url: "https://1kf0b6y5pd.ufs.sh/f/whL3sWlbNOAP9SnpSCReBrI1hfDzyJn2Mm6gKN489Y7cOLFx",
+        width: 2858,
+        height: 1702,
+        alt: "MemContext - Persistent Memory for AI Coding Agents",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "MemContext - Persistent Memory for AI Coding Agents",
     description:
       "Your AI assistant never forgets. Save context once, retrieve it forever.",
+    images: [
+      {
+        url: "https://1kf0b6y5pd.ufs.sh/f/whL3sWlbNOAP9SnpSCReBrI1hfDzyJn2Mm6gKN489Y7cOLFx",
+        width: 2858,
+        height: 1702,
+        alt: "MemContext - Persistent Memory for AI Coding Agents",
+      },
+    ],
   },
 };
 
