@@ -16,6 +16,7 @@ import {
   User,
   SignOut,
   ArrowSquareOut,
+  ShieldCheck,
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ interface UserProfile {
     name: string;
     email: string;
     image: string | null;
+    role: string;
   };
 }
 
@@ -69,6 +71,12 @@ const navItems = [
     icon: GearSix,
   },
 ];
+
+const adminNavItem = {
+  label: "Admin",
+  href: "/legend",
+  icon: ShieldCheck,
+};
 
 function XIcon({ className }: { className?: string }) {
   return (
@@ -282,6 +290,34 @@ export function Sidebar() {
                 </Link>
               );
             })}
+
+            {/* Admin Link - Only visible to admins */}
+            {user?.role === "admin" && (
+              <>
+                <div className="my-2 border-t border-border/50" />
+                <Link
+                  href={adminNavItem.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200",
+                    pathname.startsWith("/legend")
+                      ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                      : "text-foreground-muted hover:bg-surface-elevated hover:text-foreground border border-transparent",
+                  )}
+                >
+                  <adminNavItem.icon
+                    className={cn(
+                      "h-5 w-5 transition-colors",
+                      pathname.startsWith("/legend")
+                        ? "text-amber-500"
+                        : "text-foreground-muted",
+                    )}
+                    weight={pathname.startsWith("/legend") ? "fill" : "duotone"}
+                  />
+                  {adminNavItem.label}
+                </Link>
+              </>
+            )}
           </nav>
 
           {/* Footer */}

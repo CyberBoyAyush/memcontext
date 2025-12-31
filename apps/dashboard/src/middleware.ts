@@ -2,7 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 
 const publicRoutes = ["/login"];
-const protectedPrefixes = ["/dashboard", "/memories", "/api-keys", "/settings"];
+const protectedPrefixes = [
+  "/dashboard",
+  "/memories",
+  "/api-keys",
+  "/settings",
+  "/legend",
+  "/mcp",
+];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

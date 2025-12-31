@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
 import {
   Brain,
   Key,
@@ -19,6 +21,7 @@ import {
 import { api } from "@/lib/api";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/providers/toast-provider";
 
 interface SubscriptionData {
   plan: string;
@@ -72,6 +75,21 @@ const categoryConfig: Record<
 };
 
 export default function DashboardPage() {
+  const searchParams = useSearchParams();
+  const toast = useToast();
+  const hasShownError = useRef(false);
+
+  useEffect(() => {
+    const error = searchParams.get("error");
+    if (error === "access_denied" && !hasShownError.current) {
+      hasShownError.current = true;
+      window.history.replaceState({}, "", "/dashboard");
+      setTimeout(() => {
+        toast.error("Access denied. Admin privileges required.");
+      }, 100);
+    }
+  }, [searchParams, toast]);
+
   const { data: subscription, isLoading: subLoading } = useQuery({
     queryKey: ["subscription"],
     queryFn: () => api.get<SubscriptionData>("/api/user/subscription"),

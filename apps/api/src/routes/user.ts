@@ -28,6 +28,7 @@ app.get("/profile", async (c) => {
       name: userTable.name,
       email: userTable.email,
       image: userTable.image,
+      role: userTable.role,
       createdAt: userTable.createdAt,
     })
     .from(userTable)
