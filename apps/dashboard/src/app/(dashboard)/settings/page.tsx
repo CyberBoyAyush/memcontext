@@ -1,25 +1,29 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { User, Mail, CreditCard, LogOut, Loader2 } from "lucide-react";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  User,
+  Envelope,
+  Calendar,
+  SignOut,
+  SpinnerGap,
+  Sparkle,
+  Brain,
+  Lightning,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { signOut } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import Image from "next/image";
 
 interface UserProfile {
   user: {
     id: string;
     name: string;
     email: string;
+    image: string | null;
     createdAt: string;
   };
 }
@@ -55,159 +59,237 @@ export default function SettingsPage() {
   };
 
   const user = profile?.user;
+  const usagePercentage = Math.min(
+    ((subscription?.memoryCount ?? 0) / (subscription?.memoryLimit ?? 100)) *
+      100,
+    100,
+  );
 
   return (
     <div className="space-y-8 animate-fade-in">
+      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
         <p className="text-foreground-muted mt-1">
-          Manage your account settings and preferences
+          Manage your account and preferences
         </p>
       </div>
 
-      <div className="grid gap-6">
-        {/* Profile Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Profile
-            </CardTitle>
-            <CardDescription>Your account information</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      {/* Profile Card - Premium Design */}
+      <div className="relative">
+        {/* Border glow */}
+        <div
+          className="absolute -top-px -left-px w-32 h-24 rounded-2xl blur-[1px] pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(ellipse at top left, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 60%)",
+          }}
+        />
+        <div className="relative rounded-2xl border border-border bg-surface overflow-hidden">
+          {/* Inner glow */}
+          <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] via-transparent to-transparent pointer-events-none" />
+
+          <div className="relative p-6">
             {profileLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-foreground-muted" />
+              <div className="flex items-center justify-center py-12">
+                <SpinnerGap
+                  className="h-6 w-6 animate-spin text-foreground-muted"
+                  weight="bold"
+                />
               </div>
             ) : (
-              <>
-                <div className="flex items-center gap-4 p-4 rounded-lg border border-border bg-surface">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-elevated">
-                    <User className="h-6 w-6 text-foreground-muted" />
+              <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+                {/* Avatar */}
+                <div className="relative shrink-0">
+                  <div className="w-20 h-20 rounded-full bg-surface-elevated border border-border overflow-hidden flex items-center justify-center">
+                    {user?.image ? (
+                      <Image
+                        src={user.image}
+                        alt={user.name || "User"}
+                        width={80}
+                        height={80}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User className="h-10 w-10 text-foreground-muted" />
+                    )}
                   </div>
-                  <div>
-                    <div className="font-medium">
-                      {user?.name || "No name set"}
-                    </div>
-                    <div className="text-sm text-foreground-muted flex items-center gap-1">
-                      <Mail className="h-3 w-3" />
-                      {user?.email}
-                    </div>
-                  </div>
+                  {/* Online indicator */}
+                  <div className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-success border-2 border-surface" />
                 </div>
 
-                <div className="text-sm text-foreground-muted">
-                  <span className="font-medium">Account created:</span>{" "}
-                  {user?.createdAt
-                    ? new Date(user.createdAt).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })
-                    : "Unknown"}
+                {/* User Info */}
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-xl font-semibold truncate">
+                    {user?.name || "No name set"}
+                  </h2>
+                  <div className="flex items-center gap-2 text-foreground-muted mt-1">
+                    <Envelope className="h-4 w-4 shrink-0" weight="duotone" />
+                    <span className="text-sm truncate">{user?.email}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-foreground-subtle mt-2">
+                    <Calendar className="h-4 w-4 shrink-0" />
+                    <span className="text-sm">
+                      Joined{" "}
+                      {user?.createdAt
+                        ? new Date(user.createdAt).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })
+                        : "Unknown"}
+                    </span>
+                  </div>
                 </div>
-              </>
+              </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+      </div>
 
-        {/* Subscription Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
-              Subscription
-            </CardTitle>
-            <CardDescription>Your current plan and usage</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      {/* Subscription Card - Premium Design */}
+      <div className="relative">
+        {/* Border glow */}
+        <div
+          className="absolute -top-px -left-px w-32 h-24 rounded-2xl blur-[1px] pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(ellipse at top left, rgba(232,97,60,0.3) 0%, rgba(232,97,60,0.1) 30%, transparent 60%)",
+          }}
+        />
+        <div className="relative rounded-2xl border border-border bg-surface overflow-hidden">
+          {/* Inner glow */}
+          <div className="absolute inset-0 bg-gradient-to-br from-accent/[0.03] via-transparent to-transparent pointer-events-none" />
+
+          <div className="relative p-6">
             {subLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-foreground-muted" />
+              <div className="flex items-center justify-center py-12">
+                <SpinnerGap
+                  className="h-6 w-6 animate-spin text-foreground-muted"
+                  weight="bold"
+                />
               </div>
             ) : (
-              <>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="p-4 rounded-lg border border-border bg-surface">
-                    <div className="text-sm text-foreground-muted">
-                      Current Plan
+              <div className="space-y-6">
+                {/* Plan Badge and Title */}
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
+                      <Sparkle
+                        className="h-6 w-6 text-accent"
+                        weight="duotone"
+                      />
                     </div>
-                    <div className="text-2xl font-bold mt-1 capitalize">
-                      {subscription?.plan || "Free"}
+                    <div>
+                      <h3 className="text-lg font-semibold">Current Plan</h3>
+                      <p className="text-sm text-foreground-muted">
+                        Your subscription details
+                      </p>
                     </div>
                   </div>
+                  <div className="px-3 py-1.5 rounded-full bg-accent/10 border border-accent/20">
+                    <span className="text-sm font-medium text-accent capitalize">
+                      {subscription?.plan || "Free"}
+                    </span>
+                  </div>
+                </div>
 
-                  <div className="p-4 rounded-lg border border-border bg-surface">
-                    <div className="text-sm text-foreground-muted">
-                      Memory Usage
+                {/* Stats Grid */}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {/* Memory Usage Card */}
+                  <div className="relative p-4 rounded-xl bg-surface-elevated/50 border border-border">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Brain className="h-4 w-4 text-accent" />
+                        <span className="text-sm font-medium">
+                          Memory Usage
+                        </span>
+                      </div>
+                      <span className="text-xs text-foreground-muted">
+                        {usagePercentage.toFixed(0)}%
+                      </span>
                     </div>
-                    <div className="text-2xl font-bold mt-1">
+                    <div className="text-2xl font-bold">
                       {subscription?.memoryCount ?? 0}
                       <span className="text-sm font-normal text-foreground-muted">
                         {" "}
                         / {subscription?.memoryLimit ?? 100}
                       </span>
                     </div>
-                    <div className="mt-2 h-2 rounded-full bg-surface-elevated overflow-hidden">
+                    {/* Progress bar */}
+                    <div className="mt-3 h-2 rounded-full bg-background overflow-hidden">
                       <div
-                        className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all"
-                        style={{
-                          width: `${Math.min(
-                            ((subscription?.memoryCount ?? 0) /
-                              (subscription?.memoryLimit ?? 100)) *
-                              100,
-                            100,
-                          )}%`,
-                        }}
+                        className="h-full rounded-full bg-gradient-to-r from-accent to-accent-hover transition-all duration-500"
+                        style={{ width: `${usagePercentage}%` }}
                       />
                     </div>
                   </div>
+
+                  {/* Memory Limit Card */}
+                  <div className="relative p-4 rounded-xl bg-surface-elevated/50 border border-border">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Lightning
+                        className="h-4 w-4 text-accent"
+                        weight="fill"
+                      />
+                      <span className="text-sm font-medium">Memory Limit</span>
+                    </div>
+                    <div className="text-2xl font-bold">
+                      {subscription?.memoryLimit ?? 100}
+                      <span className="text-sm font-normal text-foreground-muted">
+                        {" "}
+                        memories
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs text-foreground-subtle">
+                      Maximum memories for your plan
+                    </p>
+                  </div>
                 </div>
-
-                <p className="text-sm text-foreground-muted">
-                  {subscription?.plan === "free"
-                    ? "Upgrade to Hobby ($5/mo for 2,000 memories) or Pro ($15/mo for 10,000 memories)."
-                    : subscription?.plan === "hobby"
-                      ? "Upgrade to Pro ($15/mo) for 10,000 memories."
-                      : "Thank you for being a Pro subscriber!"}
-                </p>
-              </>
+              </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+      </div>
 
-        {/* Sign Out Section */}
-        <Card className="border-red-900/30">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-400">
-              <LogOut className="h-5 w-5" />
-              Sign Out
-            </CardTitle>
-            <CardDescription>
-              Sign out of your account on this device
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+      {/* Sign Out Card */}
+      <div className="relative rounded-2xl border border-error/20 bg-surface overflow-hidden">
+        <div className="p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-error/10 flex items-center justify-center">
+                <SignOut className="h-5 w-5 text-error" weight="duotone" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Sign Out</h3>
+                <p className="text-sm text-foreground-muted">
+                  Sign out of your account on this device
+                </p>
+              </div>
+            </div>
             <Button
               variant="destructive"
               onClick={handleSignOut}
               disabled={isSigningOut}
+              className="sm:w-auto w-full"
             >
               {isSigningOut ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <SpinnerGap
+                    className="h-4 w-4 animate-spin mr-2"
+                    weight="bold"
+                  />
                   Signing out...
                 </>
               ) : (
                 <>
-                  <LogOut className="h-4 w-4 mr-2" />
+                  <SignOut className="h-4 w-4 mr-2" weight="duotone" />
                   Sign Out
                 </>
               )}
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

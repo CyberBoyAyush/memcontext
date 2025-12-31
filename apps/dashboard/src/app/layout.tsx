@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { QueryProvider } from "@/providers/query-provider";
 import { ToastProvider } from "@/providers/toast-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
+import { SkeletonProvider } from "@/providers/skeleton-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -21,6 +22,11 @@ export const metadata: Metadata = {
     template: "%s | MemContext",
   },
   description: "Manage your memories and API keys for AI assistants",
+  icons: {
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
   robots: {
     index: false,
     follow: false,
@@ -38,9 +44,11 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background text-foreground`}
       >
         <ThemeProvider>
-          <QueryProvider>
-            <ToastProvider>{children}</ToastProvider>
-          </QueryProvider>
+          <SkeletonProvider>
+            <QueryProvider>
+              <ToastProvider>{children}</ToastProvider>
+            </QueryProvider>
+          </SkeletonProvider>
         </ThemeProvider>
       </body>
     </html>

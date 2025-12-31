@@ -4,22 +4,23 @@ import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Brain,
-  Trash2,
-  Loader2,
-  ChevronLeft,
-  ChevronRight,
+  Trash,
+  SpinnerGap,
+  CaretLeft,
+  CaretRight,
   Calendar,
   Tag,
   FolderOpen,
-  Pencil,
+  PencilSimple,
   X,
-  Search,
-  ChevronDown,
+  MagnifyingGlass,
+  CaretDown,
   Check,
   Clock,
   FileText,
-} from "lucide-react";
-import { IoRefresh } from "react-icons/io5";
+  Globe,
+  ArrowsClockwise,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,7 @@ import {
 } from "@/lib/queries/memories";
 import { formatDateTime, cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
+import { api } from "@/lib/api";
 
 interface Memory {
   id: string;
@@ -68,12 +70,12 @@ const categoryConfig: Record<
   }
 > = {
   preference: {
-    bg: "bg-blue-500/10",
-    text: "text-blue-400",
-    border: "border-blue-500/20",
-    lightBg: "bg-blue-50 dark:bg-blue-500/10",
-    lightText: "text-blue-600 dark:text-blue-400",
-    dot: "bg-blue-500",
+    bg: "bg-accent/10",
+    text: "text-accent",
+    border: "border-accent/20",
+    lightBg: "bg-accent/5 dark:bg-accent/10",
+    lightText: "text-accent dark:text-accent",
+    dot: "bg-accent",
   },
   fact: {
     bg: "bg-emerald-500/10",
@@ -84,12 +86,12 @@ const categoryConfig: Record<
     dot: "bg-emerald-500",
   },
   decision: {
-    bg: "bg-purple-500/10",
-    text: "text-purple-400",
-    border: "border-purple-500/20",
-    lightBg: "bg-purple-50 dark:bg-purple-500/10",
-    lightText: "text-purple-600 dark:text-purple-400",
-    dot: "bg-purple-500",
+    bg: "bg-violet-500/10",
+    text: "text-violet-400",
+    border: "border-violet-500/20",
+    lightBg: "bg-violet-50 dark:bg-violet-500/10",
+    lightText: "text-violet-600 dark:text-violet-400",
+    dot: "bg-violet-500",
   },
   context: {
     bg: "bg-amber-500/10",
@@ -102,6 +104,164 @@ const categoryConfig: Record<
 };
 
 const ITEMS_PER_PAGE = 10;
+
+interface DashboardStats {
+  categories: {
+    preference: number;
+    fact: number;
+    decision: number;
+    context: number;
+    uncategorized: number;
+  };
+  projects: Array<{ name: string; count: number }>;
+  recentMemories: Array<{
+    id: string;
+    content: string;
+    category: string | null;
+    project: string;
+    createdAt: string;
+  }>;
+}
+
+function ProjectSelect({
+  value,
+  onChange,
+  projects,
+  isLoading,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  projects: Array<{ name: string; count: number }>;
+  isLoading: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+
+  // Separate global from other projects
+  const globalProject = projects.find((p) => p.name === "Global");
+  const otherProjects = projects.filter((p) => p.name !== "Global");
+
+  const selectedLabel =
+    value === "" ? "All Projects" : value === "__global__" ? "Global" : value;
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        disabled={isLoading}
+        className={cn(
+          "flex h-10 w-full items-center gap-2 rounded-xl border border-border bg-surface px-3 text-sm transition-colors",
+          "hover:bg-surface-elevated focus:outline-none",
+          isLoading && "opacity-50 cursor-not-allowed",
+        )}
+      >
+        <FolderOpen className="h-4 w-4 text-foreground-subtle shrink-0" />
+        <span className="flex-1 text-left truncate">
+          {isLoading ? "Loading..." : selectedLabel}
+        </span>
+        <CaretDown
+          className={cn(
+            "h-4 w-4 text-foreground-muted transition-transform shrink-0",
+            open && "rotate-180",
+          )}
+          weight="bold"
+        />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-full mt-2 z-50 w-56 bg-background border border-border rounded-xl shadow-lg py-1 animate-scale-in max-h-64 overflow-y-auto">
+            {/* All Projects */}
+            <button
+              className={cn(
+                "w-full px-3 py-2.5 text-sm text-left hover:bg-surface flex items-center justify-between gap-2 transition-colors",
+                value === "" && "bg-surface",
+              )}
+              onClick={() => {
+                onChange("");
+                setOpen(false);
+              }}
+            >
+              <span className="flex items-center gap-2">
+                <FolderOpen className="h-4 w-4 text-foreground-muted" />
+                All Projects
+              </span>
+              {value === "" && (
+                <Check className="h-4 w-4 text-accent" weight="bold" />
+              )}
+            </button>
+
+            {/* Global (no project) */}
+            {globalProject && (
+              <button
+                className={cn(
+                  "w-full px-3 py-2.5 text-sm text-left hover:bg-surface flex items-center justify-between gap-2 transition-colors",
+                  value === "__global__" && "bg-surface",
+                )}
+                onClick={() => {
+                  onChange("__global__");
+                  setOpen(false);
+                }}
+              >
+                <span className="flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-foreground-muted" />
+                  Global
+                  <span className="text-xs text-foreground-subtle">
+                    ({globalProject.count})
+                  </span>
+                </span>
+                {value === "__global__" && (
+                  <Check className="h-4 w-4 text-accent" weight="bold" />
+                )}
+              </button>
+            )}
+
+            {/* Divider */}
+            {otherProjects.length > 0 && (
+              <div className="my-1 mx-3 border-t border-border" />
+            )}
+
+            {/* Other Projects */}
+            {otherProjects.map((proj) => (
+              <button
+                key={proj.name}
+                className={cn(
+                  "w-full px-3 py-2.5 text-sm text-left hover:bg-surface flex items-center justify-between gap-2 transition-colors",
+                  value === proj.name && "bg-surface",
+                )}
+                onClick={() => {
+                  onChange(proj.name);
+                  setOpen(false);
+                }}
+              >
+                <span className="flex items-center gap-2 min-w-0">
+                  <FolderOpen className="h-4 w-4 text-violet-400 shrink-0" />
+                  <span className="truncate">{proj.name}</span>
+                  <span className="text-xs text-foreground-subtle shrink-0">
+                    ({proj.count})
+                  </span>
+                </span>
+                {value === proj.name && (
+                  <Check
+                    className="h-4 w-4 text-accent shrink-0"
+                    weight="bold"
+                  />
+                )}
+              </button>
+            ))}
+
+            {/* Empty state */}
+            {!isLoading && otherProjects.length === 0 && !globalProject && (
+              <div className="px-3 py-4 text-sm text-foreground-muted text-center">
+                No projects yet
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 function TableSkeleton() {
   return (
@@ -259,7 +419,7 @@ function MemoryDetailPanel({
                 onClick={() => setIsEditing(true)}
                 className="gap-1.5"
               >
-                <Pencil className="h-3.5 w-3.5" />
+                <PencilSimple className="h-3.5 w-3.5" weight="bold" />
                 Edit
               </Button>
             )}
@@ -288,7 +448,7 @@ function MemoryDetailPanel({
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   rows={6}
-                  className="flex w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-foreground placeholder:text-foreground-subtle focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent/50 resize-none"
+                  className="flex w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-foreground placeholder:text-foreground-subtle focus:outline-none focus:border-foreground-subtle resize-none"
                   placeholder="Memory content..."
                 />
               </div>
@@ -357,8 +517,9 @@ function MemoryDetailPanel({
                   {memory.project ? (
                     <span className="text-sm">{memory.project}</span>
                   ) : (
-                    <span className="text-sm text-foreground-subtle">
-                      No project
+                    <span className="text-sm text-foreground-subtle flex items-center gap-1.5">
+                      <Globe className="h-3.5 w-3.5" />
+                      Global
                     </span>
                   )}
                 </div>
@@ -408,7 +569,10 @@ function MemoryDetailPanel({
               >
                 {updateMutation.isPending ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <SpinnerGap
+                      className="h-4 w-4 animate-spin mr-2"
+                      weight="bold"
+                    />
                     Saving...
                   </>
                 ) : (
@@ -419,10 +583,10 @@ function MemoryDetailPanel({
           ) : (
             <Button
               variant="outline"
-              className="w-full text-red-500 dark:text-red-400 hover:bg-red-500/10 hover:text-red-500 dark:hover:text-red-400"
+              className="w-full text-error hover:bg-error/10 hover:text-error"
               onClick={onDelete}
             >
-              <Trash2 className="h-4 w-4 mr-2" />
+              <Trash className="h-4 w-4 mr-2" weight="duotone" />
               Delete Memory
             </Button>
           )}
@@ -452,8 +616,8 @@ function DeleteConfirmDialog({
 
       <div className="relative w-full max-w-md bg-background border border-border rounded-2xl shadow-2xl animate-scale-in">
         <div className="p-6 space-y-4">
-          <div className="flex items-center justify-center w-12 h-12 mx-auto rounded-full bg-red-500/10">
-            <Trash2 className="h-6 w-6 text-red-500" />
+          <div className="flex items-center justify-center w-12 h-12 mx-auto rounded-full bg-error/10">
+            <Trash className="h-6 w-6 text-error" weight="duotone" />
           </div>
 
           <div className="text-center space-y-2">
@@ -488,7 +652,10 @@ function DeleteConfirmDialog({
           >
             {isDeleting ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <SpinnerGap
+                  className="h-4 w-4 animate-spin mr-2"
+                  weight="bold"
+                />
                 Deleting...
               </>
             ) : (
@@ -512,7 +679,7 @@ function DeleteButton({
     <Button
       variant="ghost"
       size="icon"
-      className="h-8 w-8 text-foreground-muted hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10"
+      className="h-8 w-8 text-foreground-muted hover:text-error hover:bg-error/10"
       onClick={(e) => {
         e.stopPropagation();
         onDelete();
@@ -520,9 +687,9 @@ function DeleteButton({
       disabled={isDeleting}
     >
       {isDeleting ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
+        <SpinnerGap className="h-4 w-4 animate-spin" weight="bold" />
       ) : (
-        <Trash2 className="h-4 w-4" />
+        <Trash className="h-4 w-4" weight="duotone" />
       )}
     </Button>
   );
@@ -558,11 +725,12 @@ function CategorySelect({
             {selectedCategory?.label || "Select category"}
           </span>
         </span>
-        <ChevronDown
+        <CaretDown
           className={cn(
             "h-4 w-4 text-foreground-muted transition-transform",
             open && "rotate-180",
           )}
+          weight="bold"
         />
       </button>
 
@@ -644,8 +812,9 @@ function CategoryFilter({
         )}
       >
         Category
-        <ChevronDown
+        <CaretDown
           className={cn("h-3 w-3 transition-transform", open && "rotate-180")}
+          weight="bold"
         />
       </button>
 
@@ -702,6 +871,12 @@ export default function MemoriesPage() {
   const queryClient = useQueryClient();
   const offset = page * ITEMS_PER_PAGE;
 
+  // Fetch dashboard stats for project list (reuses cache if already fetched on dashboard)
+  const { data: dashboardStats, isLoading: statsLoading } = useQuery({
+    queryKey: ["dashboard-stats"],
+    queryFn: () => api.get<DashboardStats>("/api/user/dashboard-stats"),
+  });
+
   // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -711,12 +886,18 @@ export default function MemoriesPage() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
+  // Convert project filter value for API
+  // "__global__" means filter for memories with no project (null)
+  const projectFilter = project === "__global__" ? "" : project || undefined;
+  // For global filter, we pass empty string which will match null projects
+  const isGlobalFilter = project === "__global__";
+
   const { data, isLoading, error, isFetching } = useQuery(
     memoriesQueryOptions({
       limit: ITEMS_PER_PAGE,
       offset,
       category: category || undefined,
-      project: project || undefined,
+      project: isGlobalFilter ? "__null__" : projectFilter,
       search: search || undefined,
     }),
   );
@@ -772,7 +953,10 @@ export default function MemoriesPage() {
         <div className="flex items-center gap-2">
           {/* Content Search */}
           <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground-subtle" />
+            <MagnifyingGlass
+              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground-subtle"
+              weight="bold"
+            />
             <Input
               placeholder="Search memories..."
               value={searchInput}
@@ -781,16 +965,15 @@ export default function MemoriesPage() {
             />
           </div>
           {/* Project Filter */}
-          <div className="relative hidden sm:block w-40">
-            <FolderOpen className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground-subtle" />
-            <Input
-              placeholder="Project..."
+          <div className="hidden sm:block w-44">
+            <ProjectSelect
               value={project}
-              onChange={(e) => {
-                setProject(e.target.value);
+              onChange={(val) => {
+                setProject(val);
                 setPage(0);
               }}
-              className="pl-9 h-10 bg-surface border-border text-sm"
+              projects={dashboardStats?.projects ?? []}
+              isLoading={statsLoading}
             />
           </div>
           <Button
@@ -800,8 +983,9 @@ export default function MemoriesPage() {
             disabled={isFetching}
             className="h-10 w-10 shrink-0"
           >
-            <IoRefresh
+            <ArrowsClockwise
               className={cn("h-4 w-4", isFetching && "animate-spin")}
+              weight="bold"
             />
           </Button>
         </div>
@@ -820,7 +1004,7 @@ export default function MemoriesPage() {
               }}
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors bg-surface-elevated text-foreground hover:opacity-80"
             >
-              <Search className="h-3 w-3" />
+              <MagnifyingGlass className="h-3 w-3" weight="bold" />
               &quot;{search}&quot;
               <X className="h-3 w-3 ml-0.5" />
             </button>
@@ -833,8 +1017,12 @@ export default function MemoriesPage() {
               }}
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors bg-surface-elevated text-foreground-muted hover:opacity-80"
             >
-              <FolderOpen className="h-3 w-3" />
-              {project}
+              {project === "__global__" ? (
+                <Globe className="h-3 w-3" />
+              ) : (
+                <FolderOpen className="h-3 w-3" />
+              )}
+              {project === "__global__" ? "Global" : project}
               <X className="h-3 w-3 ml-0.5" />
             </button>
           )}
@@ -999,8 +1187,9 @@ export default function MemoriesPage() {
                               <span className="truncate">{memory.project}</span>
                             </span>
                           ) : (
-                            <span className="text-xs text-foreground-subtle">
-                              —
+                            <span className="inline-flex items-center gap-1.5 text-sm text-foreground-subtle">
+                              <Globe className="h-3.5 w-3.5 shrink-0" />
+                              <span>Global</span>
                             </span>
                           )}
                         </td>
@@ -1058,7 +1247,7 @@ export default function MemoriesPage() {
                   disabled={page === 0 || isFetching}
                   className="gap-1"
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <CaretLeft className="h-4 w-4" weight="bold" />
                   <span className="hidden sm:inline">Previous</span>
                 </Button>
 
@@ -1098,7 +1287,7 @@ export default function MemoriesPage() {
                   className="gap-1"
                 >
                   <span className="hidden sm:inline">Next</span>
-                  <ChevronRight className="h-4 w-4" />
+                  <CaretRight className="h-4 w-4" weight="bold" />
                 </Button>
               </div>
             </div>
@@ -1107,7 +1296,7 @@ export default function MemoriesPage() {
           {/* Loading indicator */}
           {isFetching && !isLoading && (
             <div className="fixed bottom-4 right-4 bg-surface-elevated px-4 py-2 rounded-lg border border-border shadow-lg flex items-center gap-2 animate-fade-in">
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <SpinnerGap className="h-4 w-4 animate-spin" weight="bold" />
               <span className="text-sm">Loading...</span>
             </div>
           )}

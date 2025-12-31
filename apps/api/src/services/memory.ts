@@ -729,7 +729,10 @@ export async function listMemories(
   if (category) {
     conditions.push(eq(memories.category, category));
   }
-  if (project) {
+  if (project === "__null__") {
+    // Special filter for memories with no project (Global)
+    conditions.push(isNull(memories.project));
+  } else if (project) {
     // Escape SQL LIKE special chars: backslash first, then wildcards
     const escapedProject = project
       .replace(/\\/g, "\\\\")

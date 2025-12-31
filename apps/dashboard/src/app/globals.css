@@ -1,20 +1,39 @@
 @import "tailwindcss";
 
 :root {
-  /* Light theme colors */
-  --background: #ffffff;
+  /* Light theme colors - matching website light mode */
+  --background: #fafafa;
+  --background-secondary: #f5f5f5;
   --foreground: #0a0a0a;
   --foreground-muted: #525252;
   --foreground-subtle: #737373;
+
+  /* Borders */
   --border: #e5e5e5;
-  --border-subtle: #f5f5f5;
-  --accent: #0a0a0a;
+  --border-subtle: #f0f0f0;
+  --border-hover: #d4d4d4;
+
+  /* Accent - Orange/Coral from the website design */
+  --accent: #e8613c;
+  --accent-hover: #d95530;
   --accent-foreground: #ffffff;
-  --surface: #fafafa;
-  --surface-elevated: #f5f5f5;
+  --accent-light: rgba(232, 97, 60, 0.1);
+  --accent-glow: rgba(232, 97, 60, 0.2);
+
+  /* Surfaces */
+  --surface: #ffffff;
+  --surface-elevated: #fafafa;
+  --surface-hover: #f5f5f5;
+
+  /* Status colors */
   --success: #22c55e;
+  --success-bg: rgba(34, 197, 94, 0.1);
   --error: #ef4444;
+  --error-bg: rgba(239, 68, 68, 0.1);
   --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.1);
+  --info: #3b82f6;
+  --info-bg: rgba(59, 130, 246, 0.1);
 
   /* Radius */
   --radius: 0.75rem;
@@ -22,37 +41,68 @@
 }
 
 .dark {
-  /* Dark theme colors (original) */
+  /* Dark theme colors - matching website dark mode */
   --background: #0a0a0a;
-  --foreground: #ffffff;
+  --background-secondary: #0f0f0f;
+  --foreground: #fafafa;
   --foreground-muted: #a1a1a1;
   --foreground-subtle: #6b6b6b;
-  --border: #262626;
-  --border-subtle: #1a1a1a;
-  --accent: #ffffff;
-  --accent-foreground: #0a0a0a;
-  --surface: #141414;
-  --surface-elevated: #1a1a1a;
+
+  /* Borders */
+  --border: #1f1f1f;
+  --border-subtle: #171717;
+  --border-hover: #2a2a2a;
+
+  /* Accent - Orange/Coral (same in dark mode) */
+  --accent: #e8613c;
+  --accent-hover: #d95530;
+  --accent-foreground: #ffffff;
+  --accent-light: rgba(232, 97, 60, 0.15);
+  --accent-glow: rgba(232, 97, 60, 0.4);
+
+  /* Surfaces */
+  --surface: #111111;
+  --surface-elevated: #171717;
+  --surface-hover: #1a1a1a;
+
+  /* Status colors - adjusted for dark mode */
   --success: #22c55e;
+  --success-bg: rgba(34, 197, 94, 0.15);
   --error: #ef4444;
+  --error-bg: rgba(239, 68, 68, 0.15);
   --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.15);
+  --info: #3b82f6;
+  --info-bg: rgba(59, 130, 246, 0.15);
+
   color-scheme: dark;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-background-secondary: var(--background-secondary);
   --color-foreground: var(--foreground);
   --color-foreground-muted: var(--foreground-muted);
   --color-foreground-subtle: var(--foreground-subtle);
   --color-border: var(--border);
   --color-border-subtle: var(--border-subtle);
+  --color-border-hover: var(--border-hover);
   --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
   --color-accent-foreground: var(--accent-foreground);
+  --color-accent-light: var(--accent-light);
+  --color-accent-glow: var(--accent-glow);
   --color-surface: var(--surface);
   --color-surface-elevated: var(--surface-elevated);
+  --color-surface-hover: var(--surface-hover);
   --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
   --color-error: var(--error);
+  --color-error-bg: var(--error-bg);
   --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-bg);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --radius: var(--radius);
@@ -62,6 +112,8 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Animations */
@@ -186,6 +238,29 @@ body {
   }
 }
 
+@keyframes glow-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 20px var(--accent-glow),
+      0 0 40px var(--accent-light);
+  }
+  50% {
+    box-shadow:
+      0 0 30px var(--accent-glow),
+      0 0 60px var(--accent-light);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
 .animate-fade-in {
   animation: fade-in 0.3s ease-out;
 }
@@ -249,7 +324,16 @@ body {
   animation: spin 1s linear infinite;
 }
 
-/* Scrollbar styling */
+.animate-glow-pulse {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+/* Custom Scrollbar - matching website style */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-hover) var(--background);
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -260,12 +344,16 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: var(--border-hover);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--foreground-subtle);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--background);
 }
 
 /* Hide scrollbar utility */
@@ -278,16 +366,23 @@ body {
   display: none;
 }
 
-/* Selection */
+/* Selection - accent color */
 ::selection {
   background: var(--accent);
   color: var(--accent-foreground);
 }
 
-/* Focus ring */
+/* Focus ring - subtle accent color */
 *:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-light);
   outline-offset: 2px;
+}
+
+/* Remove outline for inputs - they have their own focus styles */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
 }
 
 /* Button hover lift effect */
@@ -299,22 +394,196 @@ body {
 
 .btn-hover-lift:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.dark .btn-hover-lift:hover:not(:disabled) {
-  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px var(--accent-glow);
 }
 
 .btn-hover-lift:active:not(:disabled) {
   transform: translateY(0);
 }
 
-/* Input focus glow */
+/* Input focus glow - accent color */
 .input-focus-glow:focus {
-  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 0 4px var(--accent-light);
+  border-color: var(--accent);
 }
 
-.dark .input-focus-glow:focus {
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+/* Card styles matching the website premium aesthetic */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  border-color: var(--border-hover);
+}
+
+.card-elevated {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+}
+
+.dark .card-elevated {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Premium card with glow effect */
+.card-premium {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.card-premium::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 100%
+  );
+}
+
+.dark .card-premium::before {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 100%
+  );
+}
+
+/* Accent glow effect for important elements */
+.accent-glow {
+  box-shadow:
+    0 0 20px var(--accent-glow),
+    0 0 40px var(--accent-light);
+}
+
+.accent-glow-subtle {
+  box-shadow: 0 0 10px var(--accent-light);
+}
+
+/* Primary button styles - matching website */
+.btn-primary {
+  background: linear-gradient(
+    135deg,
+    var(--accent) 0%,
+    var(--accent-hover) 100%
+  );
+  color: white;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px var(--accent-glow);
+}
+
+/* Secondary button styles */
+.btn-secondary {
+  background: var(--surface-elevated);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  border-color: var(--border-hover);
+  background: var(--surface-hover);
+}
+
+/* Link underline animation */
+.link-underline {
+  position: relative;
+}
+
+.link-underline::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+.link-underline:hover::after {
+  width: 100%;
+}
+
+/* Status badges matching website */
+.badge-success {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid var(--success);
+}
+
+.badge-warning {
+  background: var(--warning-bg);
+  color: var(--warning);
+  border: 1px solid var(--warning);
+}
+
+.badge-error {
+  background: var(--error-bg);
+  color: var(--error);
+  border: 1px solid var(--error);
+}
+
+.badge-info {
+  background: var(--info-bg);
+  color: var(--info);
+  border: 1px solid var(--info);
+}
+
+/* Glass morphism effect */
+.glass {
+  background: rgba(17, 17, 17, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+}
+
+/* Light mode glass */
+:root .glass {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+/* Shimmer loading effect */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--surface) 25%,
+    var(--surface-elevated) 50%,
+    var(--surface) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Grid background pattern */
+.bg-grid {
+  background-image:
+    linear-gradient(var(--border-subtle) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Dot pattern overlay */
+.bg-dots {
+  background-image: radial-gradient(var(--border) 1px, transparent 1px);
+  background-size: 16px 16px;
 }
