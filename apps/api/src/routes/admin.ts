@@ -11,6 +11,7 @@ import {
   updateUserPlan,
   getStats,
 } from "../services/admin.js";
+import { getUserUsageStats } from "../services/usage-stats.js";
 import { PLAN_LIMITS, type PlanType } from "../db/schema.js";
 
 const app = new Hono<{
@@ -121,5 +122,28 @@ app.get("/stats", async (c) => {
 
   return c.json(stats);
 });
+
+// Get user usage stats from Better Stack logs
+app.get(
+  "/users/:userId/usage",
+  zValidator("param", userIdParamSchema),
+  async (c) => {
+    const { userId } = c.req.valid("param");
+
+    const usage = await getUserUsageStats(userId);
+
+    if (!usage) {
+      return c.json(
+        {
+          error: "Usage stats unavailable",
+          message: "Better Stack Query API not configured or query failed",
+        },
+        503,
+      );
+    }
+
+    return c.json(usage);
+  },
+);
 
 export default app;
