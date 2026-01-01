@@ -18,6 +18,8 @@ export const PLAN_LIMITS = {
 
 export type PlanType = keyof typeof PLAN_LIMITS;
 
+// Note: Foreign keys to user table are managed via SQL migration
+// to avoid cross-file import issues with drizzle-kit
 export const subscriptions = pgTable("subscriptions", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id").notNull().unique(),
@@ -74,14 +76,21 @@ export const memories = pgTable(
   ],
 );
 
-export const memoryRelations = pgTable("memory_relations", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  sourceId: uuid("source_id").notNull(),
-  targetId: uuid("target_id").notNull(),
-  relationType: text("relation_type").notNull(),
-  strength: real("strength"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+export const memoryRelations = pgTable(
+  "memory_relations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sourceId: uuid("source_id").notNull(),
+    targetId: uuid("target_id").notNull(),
+    relationType: text("relation_type").notNull(),
+    strength: real("strength"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("memory_relations_source_idx").on(table.sourceId),
+    index("memory_relations_target_idx").on(table.targetId),
+  ],
+);
 
 export type SubscriptionRow = typeof subscriptions.$inferSelect;
 export type NewSubscriptionRow = typeof subscriptions.$inferInsert;

@@ -11,16 +11,22 @@ export interface MemoryLimitCheck {
   plan: PlanType;
 }
 
-export async function getOrCreateSubscription(userId: string) {
-  const existing = await db.query.subscriptions.findFirst({
-    where: eq(subscriptions.userId, userId),
-  });
+export async function getOrCreateSubscription(
+  userId: string,
+  tx?: Transaction,
+) {
+  const executor = tx ?? db;
+  const [existing] = await executor
+    .select()
+    .from(subscriptions)
+    .where(eq(subscriptions.userId, userId))
+    .limit(1);
 
   if (existing) {
     return existing;
   }
 
-  const [newSub] = await db
+  const [newSub] = await executor
     .insert(subscriptions)
     .values({
       userId,
@@ -35,8 +41,9 @@ export async function getOrCreateSubscription(userId: string) {
 
 export async function checkMemoryLimit(
   userId: string,
+  tx?: Transaction,
 ): Promise<MemoryLimitCheck> {
-  const sub = await getOrCreateSubscription(userId);
+  const sub = await getOrCreateSubscription(userId, tx);
 
   return {
     allowed: sub.memoryCount < sub.memoryLimit,

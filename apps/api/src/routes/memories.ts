@@ -77,6 +77,10 @@ const updateMemorySchema = z.object({
   project: z.string().max(100).optional(),
 });
 
+const memoryIdParamSchema = z.object({
+  id: z.string().uuid("Invalid memory ID format"),
+});
+
 // === Shared Routes (API Key OR Session) ===
 
 // POST / - Save memory (MCP + Dashboard)
@@ -90,20 +94,11 @@ app.post(
     const body = c.req.valid("json");
     const timing = getTimingContext(c);
 
+    // Early limit check - saves LLM/embedding costs when user is already at limit
     const limitCheck = await checkMemoryLimit(auth.userId);
     if (!limitCheck.allowed) {
-      logger.warn(
-        {
-          userId: auth.userId,
-          currentCount: limitCheck.current,
-          limit: limitCheck.limit,
-          plan: auth.plan,
-        },
-        "memory limit exceeded",
-      );
-
       throw new HTTPException(403, {
-        message: `Memory limit exceeded. Current: ${limitCheck.current}, Limit: ${limitCheck.limit}. Upgrade your plan for more storage.`,
+        message: `Memory limit exceeded. Current: ${limitCheck.current}, Limit: ${limitCheck.limit}. Upgrade your plan at https://app.memcontext.in/settings`,
       });
     }
 
@@ -115,6 +110,13 @@ app.post(
       source: body.source as MemorySource,
       timing,
     });
+
+    // Transaction-level check handles race condition edge case (e.g., 299/300 + concurrent requests)
+    if (result.status === "limit_exceeded") {
+      throw new HTTPException(403, {
+        message: `Memory limit exceeded. Current: ${result.current}, Limit: ${result.limit}. Upgrade your plan at https://app.memcontext.in/settings`,
+      });
+    }
 
     // Update cache if API key auth and memory count changed
     if (
@@ -192,10 +194,11 @@ app.get(
 app.patch(
   "/:id",
   sessionAuthMiddleware,
+  zValidator("param", memoryIdParamSchema),
   zValidator("json", updateMemorySchema),
   async (c) => {
     const { userId } = c.get("session");
-    const memoryId = c.req.param("id");
+    const { id: memoryId } = c.req.valid("param");
     const body = c.req.valid("json");
     const timing = getTimingContext(c);
 
@@ -219,17 +222,22 @@ app.patch(
 );
 
 // DELETE /:id - Delete memory (Dashboard only)
-app.delete("/:id", sessionAuthMiddleware, async (c) => {
-  const { userId } = c.get("session");
-  const memoryId = c.req.param("id");
+app.delete(
+  "/:id",
+  sessionAuthMiddleware,
+  zValidator("param", memoryIdParamSchema),
+  async (c) => {
+    const { userId } = c.get("session");
+    const { id: memoryId } = c.req.valid("param");
 
-  const deleted = await deleteMemory(userId, memoryId);
+    const deleted = await deleteMemory(userId, memoryId);
 
-  if (!deleted) {
-    throw new HTTPException(404, { message: "Memory not found" });
-  }
+    if (!deleted) {
+      throw new HTTPException(404, { message: "Memory not found" });
+    }
 
-  return c.json({ success: true });
-});
+    return c.json({ success: true });
+  },
+);
 
 export default app;

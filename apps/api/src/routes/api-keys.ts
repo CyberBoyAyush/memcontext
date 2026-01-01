@@ -29,6 +29,10 @@ const createApiKeySchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
 });
 
+const apiKeyIdParamSchema = z.object({
+  id: z.string().uuid("Invalid API key ID format"),
+});
+
 // POST / - Create API key
 app.post("/", zValidator("json", createApiKeySchema), async (c) => {
   const { userId } = c.get("session");
@@ -93,9 +97,9 @@ app.get("/", async (c) => {
 });
 
 // DELETE /:id - Delete API key
-app.delete("/:id", async (c) => {
+app.delete("/:id", zValidator("param", apiKeyIdParamSchema), async (c) => {
   const { userId } = c.get("session");
-  const keyId = c.req.param("id");
+  const { id: keyId } = c.req.valid("param");
 
   const [deletedKey] = await db
     .delete(apiKeys)
