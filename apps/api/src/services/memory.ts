@@ -8,7 +8,11 @@ import {
   classifyWithSimilarMemories,
   type SimilarMemoryForClassification,
 } from "./relation.js";
-import { incrementMemoryCount, decrementMemoryCount } from "./subscription.js";
+import {
+  incrementMemoryCount,
+  decrementMemoryCount,
+  checkMemoryLimit,
+} from "./subscription.js";
 import { normalizeProjectName } from "../utils/index.js";
 import { logger } from "../lib/logger.js";
 import {
@@ -72,9 +76,17 @@ export async function saveMemory(
     : findSimilarMemories(userId, embedding));
 
   if (similarMemories.length === 0) {
-    const newMemoryId = await (timing
+    const result = await (timing
       ? withTiming(timing, "db_insert", async () =>
           db.transaction(async (tx) => {
+            const limitCheck = await checkMemoryLimit(userId, tx);
+            if (!limitCheck.allowed) {
+              return {
+                limitExceeded: true,
+                current: limitCheck.current,
+                limit: limitCheck.limit,
+              };
+            }
             const [newMemory] = await tx
               .insert(memories)
               .values({
@@ -87,10 +99,18 @@ export async function saveMemory(
               })
               .returning({ id: memories.id });
             await incrementMemoryCount(userId, tx);
-            return newMemory.id;
+            return { limitExceeded: false, id: newMemory.id };
           }),
         )
       : db.transaction(async (tx) => {
+          const limitCheck = await checkMemoryLimit(userId, tx);
+          if (!limitCheck.allowed) {
+            return {
+              limitExceeded: true,
+              current: limitCheck.current,
+              limit: limitCheck.limit,
+            };
+          }
           const [newMemory] = await tx
             .insert(memories)
             .values({
@@ -103,12 +123,25 @@ export async function saveMemory(
             })
             .returning({ id: memories.id });
           await incrementMemoryCount(userId, tx);
-          return newMemory.id;
+          return { limitExceeded: false, id: newMemory.id };
         }));
+
+    if (result.limitExceeded) {
+      logger.warn(
+        { userId, current: result.current, limit: result.limit },
+        "memory limit exceeded",
+      );
+      return {
+        id: "",
+        status: "limit_exceeded",
+        current: result.current,
+        limit: result.limit,
+      };
+    }
 
     logger.info(
       {
-        memoryId: newMemoryId,
+        memoryId: result.id,
         userId,
         project,
         contentLength: content.length,
@@ -118,7 +151,7 @@ export async function saveMemory(
     );
 
     return {
-      id: newMemoryId,
+      id: result.id!,
       status: "saved",
     };
   }
@@ -234,11 +267,20 @@ export async function saveMemory(
 
   const relationType =
     classification.action === "extend" ? "extends" : "similar";
-  const status = classification.action === "extend" ? "extended" : "saved";
+  const classificationStatus =
+    classification.action === "extend" ? "extended" : "saved";
 
-  const newMemoryId = await (timing
+  const result = await (timing
     ? withTiming(timing, "db_insert_related", async () =>
         db.transaction(async (tx) => {
+          const limitCheck = await checkMemoryLimit(userId, tx);
+          if (!limitCheck.allowed) {
+            return {
+              limitExceeded: true,
+              current: limitCheck.current,
+              limit: limitCheck.limit,
+            };
+          }
           const [newMemory] = await tx
             .insert(memories)
             .values({
@@ -257,10 +299,18 @@ export async function saveMemory(
             strength: 1 - targetMemory.distance,
           });
           await incrementMemoryCount(userId, tx);
-          return newMemory.id;
+          return { limitExceeded: false, id: newMemory.id };
         }),
       )
     : db.transaction(async (tx) => {
+        const limitCheck = await checkMemoryLimit(userId, tx);
+        if (!limitCheck.allowed) {
+          return {
+            limitExceeded: true,
+            current: limitCheck.current,
+            limit: limitCheck.limit,
+          };
+        }
         const [newMemory] = await tx
           .insert(memories)
           .values({
@@ -279,26 +329,39 @@ export async function saveMemory(
           strength: 1 - targetMemory.distance,
         });
         await incrementMemoryCount(userId, tx);
-        return newMemory.id;
+        return { limitExceeded: false, id: newMemory.id };
       }));
+
+  if (result.limitExceeded) {
+    logger.warn(
+      { userId, current: result.current, limit: result.limit },
+      "memory limit exceeded",
+    );
+    return {
+      id: "",
+      status: "limit_exceeded",
+      current: result.current,
+      limit: result.limit,
+    };
+  }
 
   logger.info(
     {
-      memoryId: newMemoryId,
+      memoryId: result.id,
       relatedTo: targetMemory.id,
       relationType,
       userId,
       project,
       contentLength: content.length,
-      status,
+      status: classificationStatus,
       reason: classification.reason,
     },
-    `memory ${status}`,
+    `memory ${classificationStatus}`,
   );
 
   return {
-    id: newMemoryId,
-    status,
+    id: result.id!,
+    status: classificationStatus,
   };
 }
 

@@ -11,16 +11,15 @@ export interface MemoryLimitCheck {
   plan: PlanType;
 }
 
-export async function getOrCreateSubscription(userId: string) {
-  const existing = await db.query.subscriptions.findFirst({
-    where: eq(subscriptions.userId, userId),
-  });
+export async function getOrCreateSubscription(
+  userId: string,
+  tx?: Transaction,
+) {
+  const executor = tx ?? db;
 
-  if (existing) {
-    return existing;
-  }
-
-  const [newSub] = await db
+  // Use upsert to handle concurrent requests for new users
+  // ON CONFLICT DO UPDATE with no-op just to return the existing row
+  const [sub] = await executor
     .insert(subscriptions)
     .values({
       userId,
@@ -28,15 +27,20 @@ export async function getOrCreateSubscription(userId: string) {
       memoryCount: 0,
       memoryLimit: PLAN_LIMITS.free,
     })
+    .onConflictDoUpdate({
+      target: subscriptions.userId,
+      set: { updatedAt: sql`${subscriptions.updatedAt}` }, // No-op, keeps existing value
+    })
     .returning();
 
-  return newSub;
+  return sub;
 }
 
 export async function checkMemoryLimit(
   userId: string,
+  tx?: Transaction,
 ): Promise<MemoryLimitCheck> {
-  const sub = await getOrCreateSubscription(userId);
+  const sub = await getOrCreateSubscription(userId, tx);
 
   return {
     allowed: sub.memoryCount < sub.memoryLimit,

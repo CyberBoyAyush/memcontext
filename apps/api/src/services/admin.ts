@@ -9,6 +9,7 @@ import {
 } from "../db/schema.js";
 import { eq, ilike, or, count, isNull, and, sql } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
+import { invalidateApiKey } from "./cache.js";
 
 export interface ListUsersParams {
   limit?: number;
@@ -211,6 +212,16 @@ export async function updateUserPlan(
       },
     });
 
+  // Invalidate cached API keys so they get fresh plan data on next request
+  const userApiKeys = await db
+    .select({ keyHash: apiKeys.keyHash })
+    .from(apiKeys)
+    .where(eq(apiKeys.userId, userId));
+
+  for (const { keyHash } of userApiKeys) {
+    await invalidateApiKey(keyHash);
+  }
+
   logger.info(
     {
       adminId,
@@ -218,6 +229,7 @@ export async function updateUserPlan(
       previousPlan,
       newPlan: plan,
       newLimit,
+      invalidatedKeys: userApiKeys.length,
     },
     "admin updated user plan",
   );
