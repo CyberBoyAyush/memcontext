@@ -16,17 +16,10 @@ export async function getOrCreateSubscription(
   tx?: Transaction,
 ) {
   const executor = tx ?? db;
-  const [existing] = await executor
-    .select()
-    .from(subscriptions)
-    .where(eq(subscriptions.userId, userId))
-    .limit(1);
 
-  if (existing) {
-    return existing;
-  }
-
-  const [newSub] = await executor
+  // Use upsert to handle concurrent requests for new users
+  // ON CONFLICT DO UPDATE with no-op just to return the existing row
+  const [sub] = await executor
     .insert(subscriptions)
     .values({
       userId,
@@ -34,9 +27,13 @@ export async function getOrCreateSubscription(
       memoryCount: 0,
       memoryLimit: PLAN_LIMITS.free,
     })
+    .onConflictDoUpdate({
+      target: subscriptions.userId,
+      set: { updatedAt: sql`${subscriptions.updatedAt}` }, // No-op, keeps existing value
+    })
     .returning();
 
-  return newSub;
+  return sub;
 }
 
 export async function checkMemoryLimit(
