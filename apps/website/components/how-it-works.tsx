@@ -105,25 +105,38 @@ export function HowItWorks() {
 
   const { ref, isInView } = useInView<HTMLElement>({ threshold: 0.2 });
   const prefersReducedMotion = useReducedMotion();
-  const animationRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timeoutIds = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
   const currentTool = tools[selectedTool];
 
   // Pause animation when not in view or user prefers reduced motion
   const shouldAnimate = isInView && !prefersReducedMotion;
 
+  // Helper to create tracked timeouts
+  const createTimeout = (callback: () => void, delay: number) => {
+    const id = setTimeout(() => {
+      timeoutIds.current.delete(id);
+      callback();
+    }, delay);
+    timeoutIds.current.add(id);
+    return id;
+  };
+
+  // Clear all queued timeouts
+  const clearAllTimeouts = () => {
+    timeoutIds.current.forEach((id) => clearTimeout(id));
+    timeoutIds.current.clear();
+  };
+
   useEffect(() => {
-    // Don't start animation if reduced motion is preferred or not in view
     if (!shouldAnimate) {
-      if (animationRef.current) {
-        clearTimeout(animationRef.current);
-      }
+      clearAllTimeouts();
       return;
     }
 
     const showMessage = (index: number) => {
       if (index >= chatSequence.length) {
-        animationRef.current = setTimeout(() => {
+        createTimeout(() => {
           setVisibleMessages([]);
           setCurrentPhase(0);
           showMessage(0);
@@ -135,14 +148,14 @@ export function HowItWorks() {
 
       if (message.type === "ai") {
         setIsTyping(true);
-        animationRef.current = setTimeout(() => {
+        createTimeout(() => {
           setIsTyping(false);
           setVisibleMessages((prev) => [...prev, index]);
           setCurrentPhase(index);
           showMessage(index + 1);
         }, 800);
       } else {
-        animationRef.current = setTimeout(
+        createTimeout(
           () => {
             setVisibleMessages((prev) => [...prev, index]);
             setCurrentPhase(index);
@@ -153,12 +166,10 @@ export function HowItWorks() {
       }
     };
 
-    animationRef.current = setTimeout(() => showMessage(0), 1000);
+    createTimeout(() => showMessage(0), 1000);
 
     return () => {
-      if (animationRef.current) {
-        clearTimeout(animationRef.current);
-      }
+      clearAllTimeouts();
     };
   }, [shouldAnimate]);
 
