@@ -37,6 +37,7 @@ app.post("/mcp", async (req, res) => {
   const apiKey = extractApiKey(req);
 
   if (!apiKey) {
+    const requestId = req.body?.id ?? null;
     res.status(401).json({
       jsonrpc: "2.0",
       error: {
@@ -44,7 +45,7 @@ app.post("/mcp", async (req, res) => {
         message:
           "Missing API key. Provide MEMCONTEXT-API-Key or X-API-Key header.",
       },
-      id: null,
+      id: requestId,
     });
     return;
   }
