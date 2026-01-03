@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect, ReactNode } from "react";
+import { useState, useEffect, ReactNode, useRef } from "react";
 import { Copy, Check, Bookmark, ArrowDownToLine, Circle } from "lucide-react";
 import { IoSend } from "react-icons/io5";
 import { Claude, Cursor, OpenAI } from "@lobehub/icons";
+import { useInView } from "@/lib/use-in-view";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
 
 interface ChatMessage {
   type: "user" | "ai" | "system";
@@ -101,12 +103,27 @@ export function HowItWorks() {
   const [isTyping, setIsTyping] = useState(false);
   const [currentPhase, setCurrentPhase] = useState(0);
 
+  const { ref, isInView } = useInView<HTMLElement>({ threshold: 0.2 });
+  const prefersReducedMotion = useReducedMotion();
+  const animationRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const currentTool = tools[selectedTool];
 
+  // Pause animation when not in view or user prefers reduced motion
+  const shouldAnimate = isInView && !prefersReducedMotion;
+
   useEffect(() => {
+    // Don't start animation if reduced motion is preferred or not in view
+    if (!shouldAnimate) {
+      if (animationRef.current) {
+        clearTimeout(animationRef.current);
+      }
+      return;
+    }
+
     const showMessage = (index: number) => {
       if (index >= chatSequence.length) {
-        setTimeout(() => {
+        animationRef.current = setTimeout(() => {
           setVisibleMessages([]);
           setCurrentPhase(0);
           showMessage(0);
@@ -118,14 +135,14 @@ export function HowItWorks() {
 
       if (message.type === "ai") {
         setIsTyping(true);
-        setTimeout(() => {
+        animationRef.current = setTimeout(() => {
           setIsTyping(false);
           setVisibleMessages((prev) => [...prev, index]);
           setCurrentPhase(index);
           showMessage(index + 1);
         }, 800);
       } else {
-        setTimeout(
+        animationRef.current = setTimeout(
           () => {
             setVisibleMessages((prev) => [...prev, index]);
             setCurrentPhase(index);
@@ -136,9 +153,14 @@ export function HowItWorks() {
       }
     };
 
-    const timer = setTimeout(() => showMessage(0), 1000);
-    return () => clearTimeout(timer);
-  }, []);
+    animationRef.current = setTimeout(() => showMessage(0), 1000);
+
+    return () => {
+      if (animationRef.current) {
+        clearTimeout(animationRef.current);
+      }
+    };
+  }, [shouldAnimate]);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(currentTool.config);
@@ -147,7 +169,11 @@ export function HowItWorks() {
   };
 
   return (
-    <section id="how-it-works" className="py-20 sm:py-28 overflow-hidden">
+    <section
+      ref={ref}
+      id="how-it-works"
+      className="py-20 sm:py-28 overflow-hidden"
+    >
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         {/* Section Header */}
         <div className="text-center mb-12 sm:mb-16">
@@ -589,15 +615,15 @@ export function HowItWorks() {
                         <div className="bg-surface/80 backdrop-blur-sm px-4 py-3 rounded-xl rounded-tl-sm border border-white/[0.06]">
                           <div className="flex gap-1">
                             <span
-                              className="w-1.5 h-1.5 bg-foreground-subtle rounded-full animate-bounce"
+                              className={`w-1.5 h-1.5 bg-foreground-subtle rounded-full ${prefersReducedMotion ? "" : "animate-bounce"}`}
                               style={{ animationDelay: "0ms" }}
                             ></span>
                             <span
-                              className="w-1.5 h-1.5 bg-foreground-subtle rounded-full animate-bounce"
+                              className={`w-1.5 h-1.5 bg-foreground-subtle rounded-full ${prefersReducedMotion ? "" : "animate-bounce"}`}
                               style={{ animationDelay: "150ms" }}
                             ></span>
                             <span
-                              className="w-1.5 h-1.5 bg-foreground-subtle rounded-full animate-bounce"
+                              className={`w-1.5 h-1.5 bg-foreground-subtle rounded-full ${prefersReducedMotion ? "" : "animate-bounce"}`}
                               style={{ animationDelay: "300ms" }}
                             ></span>
                           </div>

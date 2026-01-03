@@ -193,10 +193,39 @@ html {
 
 .animate-float {
   animation: float 3s ease-in-out infinite;
+  will-change: transform, opacity;
 }
 
 .animate-marquee {
   animation: marquee 25s linear infinite;
+  will-change: transform;
+}
+
+/* Reduced motion preference - disable animations globally */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-float,
+  .animate-marquee,
+  .animate-bounce,
+  .animate-pulse-subtle,
+  .animate-glow-pulse {
+    animation: none !important;
+  }
+}
+
+/* GPU acceleration for animated elements */
+.gpu-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
 }
 
 .animate-fade-in {
