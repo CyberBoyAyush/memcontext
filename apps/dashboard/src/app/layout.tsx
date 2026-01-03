@@ -23,7 +23,9 @@ export const metadata: Metadata = {
   },
   description: "Manage your memories and API keys for AI assistants",
   icons: {
-    icon: "/logo.png",
+    icon: [
+      { url: "/logo.png", type: "image/png" },
+    ],
     shortcut: "/logo.png",
     apple: "/logo.png",
   },
