@@ -27,31 +27,14 @@ export function Footer() {
             {/* Left side - Logo, description, and links */}
             <div className="flex-1 max-w-md">
               {/* Logo */}
-              <Link href="/" className="inline-flex items-center gap-2.5 group">
-                <div className="relative">
-                  {/* Border glow spot */}
-                  <div
-                    className="absolute -top-[0.5px] -left-[0.5px] w-6 h-6 rounded-lg blur-[0.5px]"
-                    style={{
-                      background:
-                        "radial-gradient(ellipse at top left, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.4) 30%, transparent 60%)",
-                    }}
-                  />
-                  {/* Glass container */}
-                  <div className="relative w-8 h-8 rounded-lg bg-surface/80 backdrop-blur-sm border border-white/10 flex items-center justify-center overflow-hidden group-hover:opacity-80 transition-all">
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent" />
-                    <Image
-                      src="/sign.png"
-                      alt="MemContext Logo"
-                      width={20}
-                      height={20}
-                      className="w-5 h-5 relative z-10"
-                    />
-                  </div>
-                </div>
-                <span className="text-lg font-mono font-medium group-hover:opacity-80 transition-opacity">
-                  MemContext
-                </span>
+              <Link href="/" className="inline-flex items-center group">
+                <Image
+                  src="/logo.png"
+                  alt="MemContext Logo"
+                  width={120}
+                  height={32}
+                  className="h-6 sm:h-7 w-auto group-hover:opacity-80 transition-opacity"
+                />
               </Link>
 
               <p className="mt-4 text-sm text-foreground-muted leading-relaxed">

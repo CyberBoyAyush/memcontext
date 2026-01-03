@@ -6,6 +6,8 @@ import { SiOpenai, SiGooglegemini } from "react-icons/si";
 import { RiClaudeLine } from "react-icons/ri";
 import { Cursor } from "@lobehub/icons";
 import Image from "next/image";
+import { useInView } from "@/lib/use-in-view";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
 
 // Pre-defined line styles to avoid Math.random during render
 const CODE_LINE_STYLES = [
@@ -586,8 +588,17 @@ function AIBadge({
 
 // Main Hero Cards Stack Component
 export function HeroCards() {
+  const { ref, isInView } = useInView<HTMLDivElement>({ threshold: 0.1 });
+  const prefersReducedMotion = useReducedMotion();
+
+  // Pause floating animation when not in view or user prefers reduced motion
+  const shouldAnimate = isInView && !prefersReducedMotion;
+
   return (
-    <div className="relative w-full h-[380px] sm:h-[420px] lg:h-[460px] flex items-center justify-center">
+    <div
+      ref={ref}
+      className="relative w-full h-[380px] sm:h-[420px] lg:h-[460px] flex items-center justify-center"
+    >
       {/* Enhanced glow background */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-visible">
         {/* Primary large glow - accent color */}
@@ -710,7 +721,7 @@ export function HeroCards() {
         {PARTICLE_POSITIONS.map((particle, i) => (
           <div
             key={i}
-            className="absolute w-1 h-1 rounded-full bg-accent/30 animate-float"
+            className={`absolute w-1 h-1 rounded-full bg-accent/30 will-change-transform ${shouldAnimate ? "animate-float" : ""}`}
             style={{
               left: particle.left,
               top: particle.top,

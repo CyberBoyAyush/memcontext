@@ -12,6 +12,8 @@ import {
   Kimi,
 } from "@lobehub/icons";
 import { ReactNode } from "react";
+import { useInView } from "@/lib/use-in-view";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
 
 interface Tool {
   name: string;
@@ -31,8 +33,14 @@ const tools: Tool[] = [
 ];
 
 export function TrustBlock() {
+  const { ref, isInView } = useInView<HTMLDivElement>({ threshold: 0.1 });
+  const prefersReducedMotion = useReducedMotion();
+
+  // Pause animation when not in view or user prefers reduced motion
+  const shouldAnimate = isInView && !prefersReducedMotion;
+
   return (
-    <section className="py-6 sm:py-8 relative z-20">
+    <section ref={ref} className="py-6 sm:py-8 relative z-20">
       <div className="flex flex-col items-center gap-2 gap-y-4 overflow-hidden">
         {/* Left side - Label */}
         <div className="shrink-0 pl-4 sm:pl-8 pr-4 sm:pr-6">
@@ -40,16 +48,21 @@ export function TrustBlock() {
             Compatible with any MCP-compatible tool
           </p>
         </div>
-        
+
         {/* Right side - Marquee */}
         <div className="relative w-full overflow-hidden">
           {/* Left fade */}
           <div className="absolute hidden md:block left-0 top-0 bottom-0 w-12 sm:w-20 bg-linear-to-r from-background to-transparent z-10 pointer-events-none" />
           {/* Right fade */}
           <div className="absolute hidden md:block right-0 top-0 bottom-0 w-12 sm:w-20 bg-linear-to-l from-background to-transparent z-10 pointer-events-none" />
-          
+
           {/* Scrolling content - two identical tracks for seamless loop */}
-          <div className="flex animate-marquee py-2 sm:py-4">
+          <div
+            className="flex py-2 sm:py-4 will-change-transform"
+            style={{
+              animation: shouldAnimate ? "marquee 25s linear infinite" : "none",
+            }}
+          >
             {/* First track */}
             <div className="flex shrink-0 gap-6 sm:gap-10">
               {tools.map((tool, index) => (
@@ -57,10 +70,10 @@ export function TrustBlock() {
                   key={`first-${tool.name}-${index}`}
                   className="flex items-center gap-2 text-foreground px-3 sm:px-5 shrink-0"
                 >
-                  <span className="">
-                    {tool.icon}
+                  <span className="">{tool.icon}</span>
+                  <span className="text-xs sm:text-3xl font-medium whitespace-nowrap">
+                    {tool.name}
                   </span>
-                  <span className="text-xs sm:text-3xl font-medium whitespace-nowrap">{tool.name}</span>
                 </div>
               ))}
             </div>
@@ -71,10 +84,10 @@ export function TrustBlock() {
                   key={`second-${tool.name}-${index}`}
                   className="flex items-center gap-2 text-foreground px-3 sm:px-5 shrink-0"
                 >
-                  <span className="">
-                    {tool.icon}
+                  <span className="">{tool.icon}</span>
+                  <span className="text-xs sm:text-3xl font-medium whitespace-nowrap">
+                    {tool.name}
                   </span>
-                  <span className="text-xs sm:text-3xl font-medium whitespace-nowrap">{tool.name}</span>
                 </div>
               ))}
             </div>

@@ -33,10 +33,13 @@ function getInitialReferrer(): StoredReferrer | null {
   const params = new URLSearchParams(window.location.search);
   const refParam = params.get("ref") || params.get("utm_source");
 
-  if (refParam && isAcceptedReferrer(refParam)) {
-    const normalized = normalizeReferrer(refParam);
-    localStorage.setItem(STORAGE_KEY, normalized);
-    return normalized;
+  if (refParam) {
+    const lowerRef = refParam.toLowerCase();
+    if (isAcceptedReferrer(lowerRef)) {
+      const normalized = normalizeReferrer(lowerRef);
+      localStorage.setItem(STORAGE_KEY, normalized);
+      return normalized;
+    }
   }
 
   return null;

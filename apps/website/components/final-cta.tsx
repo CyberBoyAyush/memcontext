@@ -332,7 +332,7 @@ export function FinalCTA() {
                     />
                     {/* Border glow spot - top left (longer) */}
                     <div
-                      className="absolute -top-[1px] -left-[1px] w-32 h-28 rounded-2xl blur-[0.5px]"
+                      className="absolute -top-px -left-px w-32 h-28 rounded-2xl blur-[0.5px]"
                       style={{
                         background:
                           "radial-gradient(ellipse at top left, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.45) 25%, rgba(255,255,255,0.15) 50%, transparent 70%)",
@@ -340,7 +340,7 @@ export function FinalCTA() {
                     />
                     {/* Border glow spot - bottom right (smaller) */}
                     <div
-                      className="absolute -bottom-[1px] -right-[1px] w-14 h-12 rounded-2xl blur-[0.5px]"
+                      className="absolute -bottom-px -right-px w-14 h-12 rounded-2xl blur-[0.5px]"
                       style={{
                         background:
                           "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 35%, transparent 65%)",
@@ -349,7 +349,7 @@ export function FinalCTA() {
                     {/* Glass container */}
                     <div className="relative w-40 h-40 xl:w-48 xl:h-48 rounded-2xl bg-surface/80 backdrop-blur-sm border border-white/10 flex items-center justify-center overflow-hidden">
                       {/* Inner glow */}
-                      <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent" />
+                      <div className="absolute inset-0 bg-linear-to-br from-white/10 via-transparent to-transparent" />
 
                       <Image
                         src="/sign.png"
