@@ -16,7 +16,7 @@ app.use((_req, res, next) => {
   res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.header(
     "Access-Control-Allow-Headers",
-    "Content-Type, Accept, X-API-Key, MEMCONTEXT-API-Key",
+    "Content-Type, Accept, X-API-Key, MEMCONTEXT-API-Key, Mcp-Session-Id",
   );
   if (_req.method === "OPTIONS") {
     res.sendStatus(204);
@@ -54,13 +54,14 @@ app.post("/mcp", async (req, res) => {
     enableJsonResponse: true,
   });
 
-  res.on("close", () => {
-    transport.close();
-  });
-
   const server = new McpServer({
     name: "memcontext",
     version: "1.0.0",
+  });
+
+  res.on("close", () => {
+    transport.close();
+    server.close();
   });
 
   const apiClient = createApiClient({ apiBase, apiKey });
@@ -68,6 +69,30 @@ app.post("/mcp", async (req, res) => {
 
   await server.connect(transport);
   await transport.handleRequest(req, res, req.body);
+});
+
+app.get("/mcp", (_req, res) => {
+  res.status(405).json({
+    jsonrpc: "2.0",
+    error: {
+      code: -32000,
+      message:
+        "SSE streams not supported. This server operates in stateless mode.",
+    },
+    id: null,
+  });
+});
+
+app.delete("/mcp", (_req, res) => {
+  res.status(405).json({
+    jsonrpc: "2.0",
+    error: {
+      code: -32000,
+      message:
+        "Session termination not supported. This server operates in stateless mode.",
+    },
+    id: null,
+  });
 });
 
 app.get("/health", (_req, res) => {
