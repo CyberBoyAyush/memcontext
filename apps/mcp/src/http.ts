@@ -68,8 +68,24 @@ app.post("/mcp", async (req, res) => {
   const apiClient = createApiClient({ apiBase, apiKey });
   registerTools(server, apiClient);
 
-  await server.connect(transport);
-  await transport.handleRequest(req, res, req.body);
+  try {
+    await server.connect(transport);
+    await transport.handleRequest(req, res, req.body);
+  } catch {
+    transport.close();
+    server.close();
+    if (!res.headersSent) {
+      const requestId = req.body?.id ?? null;
+      res.status(500).json({
+        jsonrpc: "2.0",
+        error: {
+          code: -32603,
+          message: "Internal server error",
+        },
+        id: requestId,
+      });
+    }
+  }
 });
 
 app.get("/mcp", (_req, res) => {
