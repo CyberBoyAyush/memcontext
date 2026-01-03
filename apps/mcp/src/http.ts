@@ -13,7 +13,7 @@ const apiBase = process.env.MEMCONTEXT_API_URL || "http://localhost:3000";
 
 app.use((_req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
   res.header(
     "Access-Control-Allow-Headers",
     "Content-Type, Accept, X-API-Key, MEMCONTEXT-API-Key, Mcp-Session-Id",
