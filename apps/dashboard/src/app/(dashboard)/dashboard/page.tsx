@@ -69,7 +69,10 @@ const chartConfig: ChartConfig = {
 };
 
 const ACCENT_COLOR = "#e8613c";
-const STRIPE_COLOR = "rgba(255,255,255,0.8)"; // White stripes with better visibility
+const STRIPE_COLOR = "rgba(255,255,255,0.8)";
+const STRIPE_WIDTH = 3;
+const STRIPE_GAP = 4;
+const STRIPED_GRADIENT = `repeating-linear-gradient(45deg, ${ACCENT_COLOR}, ${ACCENT_COLOR} ${STRIPE_WIDTH}px, ${STRIPE_COLOR} ${STRIPE_WIDTH}px, ${STRIPE_COLOR} ${STRIPE_GAP}px)`;
 
 function getTimeAgo(dateString: string): string {
   const date = new Date(dateString);
@@ -155,9 +158,6 @@ function CategoriesChart({
 
   const activeData = activeIndex !== null ? chartData[activeIndex] : null;
 
-  // CSS gradient that matches the SVG pattern (45deg, 6px pattern, 3px stripe)
-  const stripedGradient = `repeating-linear-gradient(45deg, ${ACCENT_COLOR}, ${ACCENT_COLOR} 3px, ${STRIPE_COLOR} 3px, ${STRIPE_COLOR} 4px)`;
-
   return (
     <div className="rounded-2xl border border-border bg-surface overflow-hidden">
       <div className="p-5">
@@ -184,7 +184,9 @@ function CategoriesChart({
                 <span
                   className="w-3 h-3 rounded-sm"
                   style={{
-                    background: item.hasStripe ? stripedGradient : ACCENT_COLOR,
+                    background: item.hasStripe
+                      ? STRIPED_GRADIENT
+                      : ACCENT_COLOR,
                     opacity:
                       activeIndex === null
                         ? 1
@@ -349,23 +351,30 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
         {/* Memory Usage Card */}
         <Link href="/memories" className="group">
-          <div className="h-full rounded-2xl border border-border bg-surface group-hover:border-border-hover transition-colors p-4 flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm text-foreground-muted">Memories</p>
-              <div className="text-3xl font-semibold mt-1">
+          <div className="h-full rounded-xl sm:rounded-2xl border border-border bg-surface group-hover:border-border-hover transition-colors p-3 sm:p-4 flex items-center justify-between gap-2 sm:gap-4">
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm text-foreground-muted">
+                Memories
+              </p>
+              <div className="text-xl sm:text-3xl font-semibold mt-0.5 sm:mt-1">
                 {subLoading ? "..." : (subscription?.memoryCount ?? 0)}
-                <span className="text-base font-normal text-foreground-muted">
+                <span className="text-xs sm:text-base font-normal text-foreground-muted">
                   /{subscription?.memoryLimit ?? 100}
                 </span>
               </div>
             </div>
-            <div className="w-14 h-14 rounded-xl bg-surface-elevated border-border border flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl bg-surface-elevated border-border border flex items-center justify-center shrink-0">
+              <Brain
+                size={18}
+                className="text-foreground-muted sm:hidden"
+                weight="duotone"
+              />
               <Brain
                 size={24}
-                className="text-foreground-muted"
+                className="text-foreground-muted hidden sm:block"
                 weight="duotone"
               />
             </div>
@@ -374,17 +383,24 @@ export default function DashboardPage() {
 
         {/* API Keys Card */}
         <Link href="/api-keys" className="group">
-          <div className="h-full rounded-2xl border border-border bg-surface group-hover:border-border-hover transition-colors p-4 flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm text-foreground-muted">API Keys</p>
-              <div className="text-3xl font-semibold mt-1">
+          <div className="h-full rounded-xl sm:rounded-2xl border border-border bg-surface group-hover:border-border-hover transition-colors p-3 sm:p-4 flex items-center justify-between gap-2 sm:gap-4">
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm text-foreground-muted">
+                API Keys
+              </p>
+              <div className="text-xl sm:text-3xl font-semibold mt-0.5 sm:mt-1">
                 {keysLoading ? "..." : (apiKeys?.keys?.length ?? 0)}
               </div>
             </div>
-            <div className="w-14 h-14 rounded-xl bg-surface-elevated border border-border flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl bg-surface-elevated border border-border flex items-center justify-center shrink-0">
+              <Key
+                size={18}
+                className="text-foreground-muted sm:hidden"
+                weight="duotone"
+              />
               <Key
                 size={24}
-                className="text-foreground-muted"
+                className="text-foreground-muted hidden sm:block"
                 weight="duotone"
               />
             </div>
@@ -393,17 +409,24 @@ export default function DashboardPage() {
 
         {/* Projects Card */}
         <Link href="/memories" className="group">
-          <div className="h-full rounded-2xl border border-border bg-surface group-hover:border-border-hover transition-colors p-4 flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm text-foreground-muted">Projects</p>
-              <div className="text-3xl font-semibold mt-1">
+          <div className="h-full rounded-xl sm:rounded-2xl border border-border bg-surface group-hover:border-border-hover transition-colors p-3 sm:p-4 flex items-center justify-between gap-2 sm:gap-4">
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm text-foreground-muted">
+                Projects
+              </p>
+              <div className="text-xl sm:text-3xl font-semibold mt-0.5 sm:mt-1">
                 {statsLoading ? "..." : (stats?.projects?.length ?? 0)}
               </div>
             </div>
-            <div className="w-14 h-14 rounded-xl bg-surface-elevated border border-border flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl bg-surface-elevated border border-border flex items-center justify-center shrink-0">
+              <FolderOpen
+                size={18}
+                className="text-foreground-muted sm:hidden"
+                weight="duotone"
+              />
               <FolderOpen
                 size={24}
-                className="text-foreground-muted"
+                className="text-foreground-muted hidden sm:block"
                 weight="duotone"
               />
             </div>
@@ -412,17 +435,24 @@ export default function DashboardPage() {
 
         {/* Current Plan Card */}
         <Link href="/settings" className="group">
-          <div className="h-full rounded-2xl border border-border bg-surface group-hover:border-border-hover transition-colors p-4 flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm text-foreground-muted">Current Plan</p>
-              <div className="text-3xl font-semibold mt-1 capitalize">
+          <div className="h-full rounded-xl sm:rounded-2xl border border-border bg-surface group-hover:border-border-hover transition-colors p-3 sm:p-4 flex items-center justify-between gap-2 sm:gap-4">
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm text-foreground-muted">
+                Current Plan
+              </p>
+              <div className="text-xl sm:text-3xl font-semibold mt-0.5 sm:mt-1 capitalize">
                 {subLoading ? "..." : subscription?.plan || "Free"}
               </div>
             </div>
-            <div className="w-14 h-14 rounded-xl bg-surface-elevated border border-border flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl bg-surface-elevated border border-border flex items-center justify-center shrink-0">
+              <ChartLineUp
+                size={18}
+                className="text-foreground-muted sm:hidden"
+                weight="duotone"
+              />
               <ChartLineUp
                 size={24}
-                className="text-foreground-muted"
+                className="text-foreground-muted hidden sm:block"
                 weight="duotone"
               />
             </div>
