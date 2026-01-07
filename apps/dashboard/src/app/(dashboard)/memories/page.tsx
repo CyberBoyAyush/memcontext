@@ -524,7 +524,7 @@ function DeleteConfirmDialog({
             variant="outline"
             onClick={onClose}
             disabled={isDeleting}
-            className="hover:translate-y-0 hover:shadow-none"
+            className="hover:translate-y-0 hover:shadow-none cursor-pointer"
           >
             Cancel
           </Button>
@@ -532,7 +532,7 @@ function DeleteConfirmDialog({
             variant="destructive"
             onClick={onConfirm}
             disabled={isDeleting || !confirmed}
-            className="hover:translate-y-0 hover:shadow-none"
+            className="hover:translate-y-0 hover:shadow-none cursor-pointer"
           >
             {isDeleting ? (
               <>
