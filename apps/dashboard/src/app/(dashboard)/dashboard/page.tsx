@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import {
@@ -12,16 +12,17 @@ import {
   Tag,
   FolderOpen,
   Clock,
-  Lightbulb,
-  CheckSquare,
-  ChatCircle,
-  FileText,
-  Globe,
 } from "@phosphor-icons/react";
+import { Bar, BarChart, XAxis, Cell, ResponsiveContainer } from "recharts";
 import { api } from "@/lib/api";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 
 interface SubscriptionData {
   plan: string;
@@ -60,19 +61,223 @@ interface DashboardStats {
   }>;
 }
 
-const categoryConfig: Record<
-  string,
-  { color: string; bg: string; icon: typeof Lightbulb }
-> = {
-  preference: { color: "text-accent", bg: "bg-accent/10", icon: Lightbulb },
-  fact: { color: "text-emerald-400", bg: "bg-emerald-500/10", icon: FileText },
-  decision: {
-    color: "text-violet-400",
-    bg: "bg-violet-500/10",
-    icon: CheckSquare,
-  },
-  context: { color: "text-amber-400", bg: "bg-amber-500/10", icon: ChatCircle },
+const chartConfig: ChartConfig = {
+  preference: { label: "Preference", color: "var(--accent)" },
+  fact: { label: "Fact", color: "var(--accent)" },
+  decision: { label: "Decision", color: "var(--accent)" },
+  context: { label: "Context", color: "var(--accent)" },
 };
+
+const ACCENT_COLOR = "#e8613c";
+const STRIPE_COLOR = "rgba(255,255,255,0.8)"; // White stripes with better visibility
+
+function getTimeAgo(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) return "Just now";
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+  if (diffInSeconds < 172800) return "Yesterday";
+  if (diffInSeconds < 604800)
+    return `${Math.floor(diffInSeconds / 86400)}d ago`;
+  if (diffInSeconds < 2592000)
+    return `${Math.floor(diffInSeconds / 604800)}w ago`;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+const ChartPatterns = () => (
+  <>
+    {/* Dotted background pattern */}
+    <pattern
+      id="categories-pattern-dots"
+      x="0"
+      y="0"
+      width="10"
+      height="10"
+      patternUnits="userSpaceOnUse"
+    >
+      <circle cx="2" cy="2" r="1" fill="var(--border)" />
+    </pattern>
+    {/* Coral with diagonal stripes - 45deg angle, 6px pattern */}
+    <pattern
+      id="coral-striped"
+      x="0"
+      y="0"
+      width="6"
+      height="6"
+      patternUnits="userSpaceOnUse"
+      patternTransform="rotate(-45)"
+    >
+      <rect width="6" height="6" fill={ACCENT_COLOR} />
+      <line x1="0" y1="0" x2="0" y2="6" stroke={STRIPE_COLOR} strokeWidth="2" />
+    </pattern>
+  </>
+);
+
+function CategoriesChart({
+  stats,
+  hasMemories,
+  totalCategorized,
+}: {
+  stats: DashboardStats | undefined;
+  hasMemories: boolean;
+  totalCategorized: number;
+}) {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+
+  const chartData = useMemo(
+    () => [
+      {
+        category: "Preference",
+        count: stats?.categories.preference ?? 0,
+        hasStripe: true,
+      },
+      {
+        category: "Fact",
+        count: stats?.categories.fact ?? 0,
+        hasStripe: false,
+      },
+      {
+        category: "Decision",
+        count: stats?.categories.decision ?? 0,
+        hasStripe: true,
+      },
+      {
+        category: "Context",
+        count: stats?.categories.context ?? 0,
+        hasStripe: false,
+      },
+    ],
+    [stats],
+  );
+
+  const activeData = activeIndex !== null ? chartData[activeIndex] : null;
+
+  // CSS gradient that matches the SVG pattern (45deg, 6px pattern, 3px stripe)
+  const stripedGradient = `repeating-linear-gradient(45deg, ${ACCENT_COLOR}, ${ACCENT_COLOR} 3px, ${STRIPE_COLOR} 3px, ${STRIPE_COLOR} 4px)`;
+
+  return (
+    <div className="rounded-2xl border border-border bg-surface overflow-hidden">
+      <div className="p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div>
+              <h3 className="font-semibold">Categories</h3>
+              <p className="text-xs text-foreground-muted">
+                {activeData
+                  ? `${activeData.category}: ${activeData.count} memories`
+                  : `${totalCategorized} categorized`}
+              </p>
+            </div>
+          </div>
+          {/* Legend */}
+          <div className="flex items-center gap-4">
+            {chartData.map((item, index) => (
+              <div
+                key={item.category}
+                className="flex items-center gap-1.5 cursor-pointer"
+                onMouseEnter={() => setActiveIndex(index)}
+                onMouseLeave={() => setActiveIndex(null)}
+              >
+                <span
+                  className="w-3 h-3 rounded-sm"
+                  style={{
+                    background: item.hasStripe ? stripedGradient : ACCENT_COLOR,
+                    opacity:
+                      activeIndex === null
+                        ? 1
+                        : activeIndex === index
+                          ? 1
+                          : 0.3,
+                    transition: "opacity 200ms",
+                  }}
+                />
+                <span
+                  className="text-xs text-foreground-muted"
+                  style={{
+                    opacity:
+                      activeIndex === null
+                        ? 1
+                        : activeIndex === index
+                          ? 1
+                          : 0.5,
+                    transition: "opacity 200ms",
+                  }}
+                >
+                  {item.category}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {hasMemories ? (
+          <ChartContainer config={chartConfig} className="h-[280px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={chartData}
+                onMouseLeave={() => setActiveIndex(null)}
+                margin={{ top: 10, right: 10, left: 10, bottom: 5 }}
+                barCategoryGap="15%"
+              >
+                <defs>
+                  <ChartPatterns />
+                </defs>
+                <rect
+                  x="0"
+                  y="0"
+                  width="100%"
+                  height="100%"
+                  fill="url(#categories-pattern-dots)"
+                />
+                <XAxis
+                  dataKey="category"
+                  tickLine={false}
+                  tickMargin={12}
+                  axisLine={false}
+                  tick={{ fontSize: 12, fill: "var(--foreground-muted)" }}
+                />
+                <ChartTooltip
+                  cursor={false}
+                  content={
+                    <ChartTooltipContent indicator="dot" labelKey="category" />
+                  }
+                />
+                <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={100}>
+                  {chartData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={
+                        entry.hasStripe ? "url(#coral-striped)" : ACCENT_COLOR
+                      }
+                      fillOpacity={
+                        activeIndex === null
+                          ? 1
+                          : activeIndex === index
+                            ? 1
+                            : 0.3
+                      }
+                      onMouseEnter={() => setActiveIndex(index)}
+                      style={{ cursor: "pointer", transition: "opacity 200ms" }}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartContainer>
+        ) : (
+          <div className="py-6 text-center">
+            <p className="text-sm text-foreground-muted">
+              No memories yet. Start chatting with your AI to save memories!
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const searchParams = useSearchParams();
@@ -110,12 +315,6 @@ export default function DashboardPage() {
     queryFn: () => api.get<DashboardStats>("/api/user/dashboard-stats"),
   });
 
-  const usagePercentage = Math.min(
-    ((subscription?.memoryCount ?? 0) / (subscription?.memoryLimit ?? 100)) *
-      100,
-    100,
-  );
-
   const userName = profile?.user?.name?.split(" ")[0] || "there";
   const hasMemories = (subscription?.memoryCount ?? 0) > 0;
 
@@ -149,154 +348,83 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Stats Grid - All equal height */}
+      {/* Stats Grid */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         {/* Memory Usage Card */}
         <Link href="/memories" className="group">
-          <div className="relative h-full">
-            <div
-              className="absolute -top-px -left-px w-20 h-14 rounded-2xl blur-[1px] pointer-events-none"
-              style={{
-                background:
-                  "radial-gradient(ellipse at top left, rgba(232,97,60,0.4) 0%, rgba(232,97,60,0.1) 30%, transparent 60%)",
-              }}
-            />
-            <div className="relative h-full rounded-2xl border border-border bg-surface overflow-hidden group-hover:border-accent/30 transition-colors">
-              <div className="absolute inset-0 bg-gradient-to-br from-accent/[0.03] via-transparent to-transparent pointer-events-none" />
-              <div className="relative p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center">
-                    <Brain
-                      className="h-4.5 w-4.5 text-accent"
-                      weight="duotone"
-                    />
-                  </div>
-                  <span className="text-xs text-foreground-muted">
-                    {usagePercentage.toFixed(0)}%
-                  </span>
-                </div>
-                <div className="text-2xl font-bold">
-                  {subLoading ? "..." : (subscription?.memoryCount ?? 0)}
-                  <span className="text-sm font-normal text-foreground-muted">
-                    {" "}
-                    / {subscription?.memoryLimit ?? 100}
-                  </span>
-                </div>
-                <p className="text-sm text-foreground-muted mt-0.5">Memories</p>
-                <div className="mt-3 h-1.5 rounded-full bg-surface-elevated overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-accent to-accent-hover transition-all duration-500"
-                    style={{ width: `${usagePercentage}%` }}
-                  />
-                </div>
+          <div className="h-full rounded-2xl border border-border bg-surface group-hover:border-border-hover transition-colors p-4 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm text-foreground-muted">Memories</p>
+              <div className="text-3xl font-semibold mt-1">
+                {subLoading ? "..." : (subscription?.memoryCount ?? 0)}
+                <span className="text-base font-normal text-foreground-muted">
+                  /{subscription?.memoryLimit ?? 100}
+                </span>
               </div>
+            </div>
+            <div className="w-14 h-14 rounded-xl bg-surface-elevated border-border border flex items-center justify-center shrink-0">
+              <Brain
+                size={24}
+                className="text-foreground-muted"
+                weight="duotone"
+              />
             </div>
           </div>
         </Link>
 
         {/* API Keys Card */}
         <Link href="/api-keys" className="group">
-          <div className="relative h-full">
-            <div
-              className="absolute -top-px -left-px w-20 h-14 rounded-2xl blur-[1px] pointer-events-none"
-              style={{
-                background:
-                  "radial-gradient(ellipse at top left, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.1) 30%, transparent 60%)",
-              }}
-            />
-            <div className="relative h-full rounded-2xl border border-border bg-surface overflow-hidden group-hover:border-emerald-500/30 transition-colors">
-              <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] via-transparent to-transparent pointer-events-none" />
-              <div className="relative p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                    <Key
-                      className="h-4.5 w-4.5 text-emerald-400"
-                      weight="duotone"
-                    />
-                  </div>
-                  <ArrowRight
-                    className="h-4 w-4 text-foreground-subtle group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all"
-                    weight="bold"
-                  />
-                </div>
-                <div className="text-2xl font-bold">
-                  {keysLoading ? "..." : (apiKeys?.keys?.length ?? 0)}
-                </div>
-                <p className="text-sm text-foreground-muted mt-0.5">API Keys</p>
-                <div className="mt-3 h-1.5" />
+          <div className="h-full rounded-2xl border border-border bg-surface group-hover:border-border-hover transition-colors p-4 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm text-foreground-muted">API Keys</p>
+              <div className="text-3xl font-semibold mt-1">
+                {keysLoading ? "..." : (apiKeys?.keys?.length ?? 0)}
               </div>
+            </div>
+            <div className="w-14 h-14 rounded-xl bg-surface-elevated border border-border flex items-center justify-center shrink-0">
+              <Key
+                size={24}
+                className="text-foreground-muted"
+                weight="duotone"
+              />
             </div>
           </div>
         </Link>
 
         {/* Projects Card */}
         <Link href="/memories" className="group">
-          <div className="relative h-full">
-            <div
-              className="absolute -top-px -left-px w-20 h-14 rounded-2xl blur-[1px] pointer-events-none"
-              style={{
-                background:
-                  "radial-gradient(ellipse at top left, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.1) 30%, transparent 60%)",
-              }}
-            />
-            <div className="relative h-full rounded-2xl border border-border bg-surface overflow-hidden group-hover:border-violet-500/30 transition-colors">
-              <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] via-transparent to-transparent pointer-events-none" />
-              <div className="relative p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="w-9 h-9 rounded-xl bg-violet-500/10 flex items-center justify-center">
-                    <FolderOpen
-                      className="h-4.5 w-4.5 text-violet-400"
-                      weight="duotone"
-                    />
-                  </div>
-                  <ArrowRight
-                    className="h-4 w-4 text-foreground-subtle group-hover:text-violet-400 group-hover:translate-x-0.5 transition-all"
-                    weight="bold"
-                  />
-                </div>
-                <div className="text-2xl font-bold">
-                  {statsLoading ? "..." : (stats?.projects?.length ?? 0)}
-                </div>
-                <p className="text-sm text-foreground-muted mt-0.5">Projects</p>
-                <div className="mt-3 h-1.5" />
+          <div className="h-full rounded-2xl border border-border bg-surface group-hover:border-border-hover transition-colors p-4 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm text-foreground-muted">Projects</p>
+              <div className="text-3xl font-semibold mt-1">
+                {statsLoading ? "..." : (stats?.projects?.length ?? 0)}
               </div>
+            </div>
+            <div className="w-14 h-14 rounded-xl bg-surface-elevated border border-border flex items-center justify-center shrink-0">
+              <FolderOpen
+                size={24}
+                className="text-foreground-muted"
+                weight="duotone"
+              />
             </div>
           </div>
         </Link>
 
         {/* Current Plan Card */}
         <Link href="/settings" className="group">
-          <div className="relative h-full">
-            <div
-              className="absolute -top-px -left-px w-20 h-14 rounded-2xl blur-[1px] pointer-events-none"
-              style={{
-                background:
-                  "radial-gradient(ellipse at top left, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.1) 30%, transparent 60%)",
-              }}
-            />
-            <div className="relative h-full rounded-2xl border border-border bg-surface overflow-hidden group-hover:border-amber-500/30 transition-colors">
-              <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] via-transparent to-transparent pointer-events-none" />
-              <div className="relative p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                    <ChartLineUp
-                      className="h-4.5 w-4.5 text-amber-400"
-                      weight="duotone"
-                    />
-                  </div>
-                  <ArrowRight
-                    className="h-4 w-4 text-foreground-subtle group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all"
-                    weight="bold"
-                  />
-                </div>
-                <div className="text-2xl font-bold capitalize">
-                  {subLoading ? "..." : subscription?.plan || "Free"}
-                </div>
-                <p className="text-sm text-foreground-muted mt-0.5">
-                  Current Plan
-                </p>
-                <div className="mt-3 h-1.5" />
+          <div className="h-full rounded-2xl border border-border bg-surface group-hover:border-border-hover transition-colors p-4 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm text-foreground-muted">Current Plan</p>
+              <div className="text-3xl font-semibold mt-1 capitalize">
+                {subLoading ? "..." : subscription?.plan || "Free"}
               </div>
+            </div>
+            <div className="w-14 h-14 rounded-xl bg-surface-elevated border border-border flex items-center justify-center shrink-0">
+              <ChartLineUp
+                size={24}
+                className="text-foreground-muted"
+                weight="duotone"
+              />
             </div>
           </div>
         </Link>
@@ -305,230 +433,137 @@ export default function DashboardPage() {
       {/* Two Column Layout */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Category Breakdown */}
-        <div className="relative">
-          <div
-            className="absolute -top-px -left-px w-28 h-16 rounded-2xl blur-[1px] pointer-events-none"
-            style={{
-              background:
-                "radial-gradient(ellipse at top left, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.1) 30%, transparent 60%)",
-            }}
-          />
-          <div className="relative rounded-2xl border border-border bg-surface overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] via-transparent to-transparent pointer-events-none" />
+        <CategoriesChart
+          stats={stats}
+          hasMemories={hasMemories}
+          totalCategorized={totalCategorized}
+        />
 
-            <div className="relative p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-surface-elevated flex items-center justify-center">
-                    <Tag
-                      className="h-4.5 w-4.5 text-foreground-muted"
-                      weight="duotone"
-                    />
-                  </div>
-                  <h3 className="font-semibold">Categories</h3>
+        {/* Recent Memories */}
+        <div className="rounded-2xl border border-border bg-surface overflow-hidden">
+          <div className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold">Recent Memories</h3>
+              {hasMemories && (
+                <Link
+                  href="/memories"
+                  className="text-xs text-foreground-muted hover:text-foreground flex items-center gap-1"
+                >
+                  View all
+                  <ArrowRight className="h-3 w-3" weight="bold" />
+                </Link>
+              )}
+            </div>
+
+            {hasMemories && stats?.recentMemories?.length ? (
+              <div className="border border-border rounded-lg">
+                {/* Table header */}
+                <div className="flex items-center gap-4 px-3 bg-surface-elevated py-2 text-xs text-foreground-muted border-b border-border">
+                  <span className="flex-1">Memory</span>
+                  <span className="w-28 text-center">Category</span>
+                  <span className="w-20 text-right">Created</span>
                 </div>
-                <span className="text-xs text-foreground-muted">
-                  {totalCategorized} categorized
-                </span>
-              </div>
 
-              {hasMemories ? (
-                <div className="space-y-3">
-                  {Object.entries(categoryConfig).map(([key, config]) => {
-                    const count =
-                      stats?.categories[key as keyof typeof stats.categories] ??
-                      0;
-                    const percentage =
-                      totalCategorized > 0
-                        ? Math.round((count / totalCategorized) * 100)
-                        : 0;
-                    const Icon = config.icon;
-
+                {/* Table rows */}
+                <div className="divide-y divide-border">
+                  {stats.recentMemories.slice(0, 5).map((memory) => {
+                    const timeAgo = getTimeAgo(memory.createdAt);
                     return (
-                      <div key={key} className="flex items-center gap-3">
-                        <div
-                          className={cn(
-                            "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-                            config.bg,
-                          )}
-                        >
-                          <Icon
-                            className={cn("h-4 w-4", config.color)}
-                            weight="duotone"
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm capitalize">{key}</span>
-                            <span className="text-xs text-foreground-muted">
-                              {count}
+                      <Link
+                        key={memory.id}
+                        href="/memories"
+                        className="group flex items-center gap-4 py-4 hover:bg-surface-elevated/50 px-3  transition-colors"
+                      >
+                        {/* Content - truncated */}
+                        <p className="flex-1 text-sm truncate min-w-0">
+                          {memory.content}
+                        </p>
+
+                        {/* Category badge */}
+                        <div className="w-28 flex justify-center shrink-0">
+                          {memory.category ? (
+                            <span className="text-xs px-2.5 py-1 rounded-full bg-accent/10 text-accent capitalize">
+                              {memory.category}
                             </span>
-                          </div>
-                          <div className="h-1.5 rounded-full bg-surface-elevated overflow-hidden">
-                            <div
-                              className={cn(
-                                "h-full rounded-full transition-all duration-500",
-                                key === "preference" &&
-                                  "bg-gradient-to-r from-accent to-accent-hover",
-                                key === "fact" && "bg-emerald-500",
-                                key === "decision" && "bg-violet-500",
-                                key === "context" && "bg-amber-500",
-                              )}
-                              style={{ width: `${percentage}%` }}
-                            />
-                          </div>
+                          ) : (
+                            <span className="text-xs px-2.5 py-1 rounded-full bg-surface-elevated text-foreground-muted">
+                              Uncategorized
+                            </span>
+                          )}
                         </div>
-                      </div>
+
+                        {/* Time ago */}
+                        <div className="flex items-center gap-1 text-xs text-foreground-muted shrink-0 w-20 justify-end">
+                          <span>{timeAgo}</span>
+                        </div>
+                      </Link>
                     );
                   })}
                 </div>
-              ) : (
-                <div className="py-6 text-center">
-                  <p className="text-sm text-foreground-muted">
-                    No memories yet. Start chatting with your AI to save
-                    memories!
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Recent Memories */}
-        <div className="relative">
-          <div
-            className="absolute -top-px -left-px w-28 h-16 rounded-2xl blur-[1px] pointer-events-none"
-            style={{
-              background:
-                "radial-gradient(ellipse at top left, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.1) 30%, transparent 60%)",
-            }}
-          />
-          <div className="relative rounded-2xl border border-border bg-surface overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] via-transparent to-transparent pointer-events-none" />
-
-            <div className="relative p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-surface-elevated flex items-center justify-center">
-                    <Clock
-                      className="h-4.5 w-4.5 text-foreground-muted"
-                      weight="duotone"
-                    />
-                  </div>
-                  <h3 className="font-semibold">Recent Memories</h3>
-                </div>
-                {hasMemories && (
-                  <Link
-                    href="/memories"
-                    className="text-xs text-accent hover:underline flex items-center gap-1"
-                  >
-                    View all
-                    <ArrowRight className="h-3 w-3" weight="bold" />
-                  </Link>
-                )}
               </div>
-
-              {hasMemories && stats?.recentMemories?.length ? (
-                <div className="space-y-2">
-                  {stats.recentMemories.slice(0, 4).map((memory) => (
-                    <Link
-                      key={memory.id}
-                      href="/memories"
-                      className="group block p-3 rounded-xl bg-surface-elevated/30 border border-border hover:border-accent/20 transition-colors"
-                    >
-                      <p className="text-sm line-clamp-1 group-hover:text-accent transition-colors">
-                        {memory.content}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1.5">
-                        {memory.category && (
-                          <span
-                            className={cn(
-                              "text-xs px-1.5 py-0.5 rounded",
-                              categoryConfig[memory.category]?.bg,
-                              categoryConfig[memory.category]?.color,
-                            )}
-                          >
-                            {memory.category}
-                          </span>
-                        )}
-                        <span className="text-xs text-foreground-subtle flex items-center gap-1">
-                          {memory.project === "Global" ? (
-                            <Globe className="h-3 w-3" weight="duotone" />
-                          ) : (
-                            <FolderOpen className="h-3 w-3" weight="duotone" />
-                          )}
-                          {memory.project}
-                        </span>
-                      </div>
-                    </Link>
-                  ))}
+            ) : (
+              <div className="py-8 text-center">
+                <div className="w-12 h-12 rounded-xl bg-surface-elevated border border-border flex items-center justify-center mx-auto mb-3">
+                  <Brain
+                    size={24}
+                    className="text-foreground-muted"
+                    weight="duotone"
+                  />
                 </div>
-              ) : (
-                <div className="py-6 text-center">
-                  <p className="text-sm text-foreground-muted">
-                    Your recent memories will appear here
-                  </p>
-                </div>
-              )}
-            </div>
+                <p className="text-sm text-foreground-muted">
+                  Your recent memories will appear here
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* Quick Actions - Only show when no memories (onboarding) */}
       {!hasMemories && (
-        <div className="relative">
-          <div
-            className="absolute -top-px -left-px w-28 h-16 rounded-2xl blur-[1px] pointer-events-none"
-            style={{
-              background:
-                "radial-gradient(ellipse at top left, rgba(232,97,60,0.3) 0%, rgba(232,97,60,0.1) 30%, transparent 60%)",
-            }}
-          />
-          <div className="relative rounded-2xl border border-accent/20 bg-surface overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-accent/[0.03] via-transparent to-transparent pointer-events-none" />
+        <div className="rounded-2xl border border-border bg-surface overflow-hidden">
+          <div className="p-5">
+            <h3 className="text-lg font-semibold mb-2">Get Started</h3>
+            <p className="text-sm text-foreground-muted mb-4">
+              Set up MemContext in 2 simple steps
+            </p>
 
-            <div className="relative p-5">
-              <h3 className="text-lg font-semibold mb-2">Get Started</h3>
-              <p className="text-sm text-foreground-muted mb-4">
-                Set up MemContext in 2 simple steps
-              </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Link
+                href="/api-keys"
+                className="group flex items-center gap-3 p-4 rounded-xl bg-surface-elevated/50 border border-border hover:border-border-hover transition-all"
+              >
+                <div className="w-10 h-10 rounded-xl bg-surface-elevated flex items-center justify-center shrink-0">
+                  <Key
+                    className="h-5 w-5 text-foreground-muted"
+                    weight="duotone"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm">1. Create API Key</div>
+                  <div className="text-xs text-foreground-muted">
+                    Generate a key for your AI
+                  </div>
+                </div>
+              </Link>
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Link
-                  href="/api-keys"
-                  className="group flex items-center gap-3 p-4 rounded-xl bg-surface-elevated/50 border border-border hover:border-accent/30 transition-all"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors shrink-0">
-                    <Key className="h-5 w-5 text-accent" weight="duotone" />
+              <Link
+                href="/mcp"
+                className="group flex items-center gap-3 p-4 rounded-xl bg-surface-elevated/50 border border-border hover:border-border-hover transition-all"
+              >
+                <div className="w-10 h-10 rounded-xl bg-surface-elevated flex items-center justify-center shrink-0">
+                  <Brain
+                    className="h-5 w-5 text-foreground-muted"
+                    weight="duotone"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm">2. Configure MCP</div>
+                  <div className="text-xs text-foreground-muted">
+                    Add config to your AI tool
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm group-hover:text-accent transition-colors">
-                      1. Create API Key
-                    </div>
-                    <div className="text-xs text-foreground-muted">
-                      Generate a key for your AI
-                    </div>
-                  </div>
-                </Link>
-
-                <Link
-                  href="/mcp"
-                  className="group flex items-center gap-3 p-4 rounded-xl bg-surface-elevated/50 border border-border hover:border-accent/30 transition-all"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors shrink-0">
-                    <Brain className="h-5 w-5 text-accent" weight="duotone" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm group-hover:text-accent transition-colors">
-                      2. Configure MCP
-                    </div>
-                    <div className="text-xs text-foreground-muted">
-                      Add config to your AI tool
-                    </div>
-                  </div>
-                </Link>
-              </div>
+                </div>
+              </Link>
             </div>
           </div>
         </div>

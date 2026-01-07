@@ -17,6 +17,7 @@ import {
   SignOut,
   ArrowSquareOut,
   ShieldCheck,
+  CaretUpDown,
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -89,9 +90,13 @@ function XIcon({ className }: { className?: string }) {
 function UserProfileDropdown({
   user,
   onClose,
+  resolvedTheme,
+  setTheme,
 }: {
   user: UserProfile["user"] | undefined;
   onClose: () => void;
+  resolvedTheme: string | undefined;
+  setTheme: (theme: string) => void;
 }) {
   const router = useRouter();
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -111,8 +116,12 @@ function UserProfileDropdown({
     onClose();
   };
 
+  const handleThemeToggle = () => {
+    setTheme(resolvedTheme === "dark" ? "light" : "dark");
+  };
+
   return (
-    <div className="absolute bottom-full left-0 right-0 mb-2 mx-2 rounded-xl border border-border bg-surface shadow-xl animate-scale-in overflow-hidden">
+    <div className="absolute bottom-full left-0 right-0 mb-2 rounded-xl border border-border bg-surface shadow-xl animate-scale-in overflow-hidden">
       {/* User Info */}
       <div className="p-3 border-b border-border">
         <div className="flex items-center gap-3">
@@ -152,6 +161,23 @@ function UserProfileDropdown({
           <GearSix className="h-4 w-4" weight="duotone" />
           Settings
         </button>
+        <button
+          onClick={handleThemeToggle}
+          className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground-muted hover:text-foreground hover:bg-surface-elevated rounded-lg transition-colors"
+        >
+          {resolvedTheme === "dark" ? (
+            <>
+              <Sun className="h-4 w-4" weight="duotone" />
+              Light Mode
+            </>
+          ) : (
+            <>
+              <Moon className="h-4 w-4" weight="duotone" />
+              Dark Mode
+            </>
+          )}
+        </button>
+        <div className="my-1 border-t border-border" />
         <button
           onClick={handleSignOut}
           disabled={isSigningOut}
@@ -221,19 +247,19 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-40 h-screen w-64 border-r border-border bg-background/95 backdrop-blur-sm transition-transform duration-300 md:translate-x-0",
+          "fixed left-0 top-0 z-40 h-screen w-64  bg-background/95 backdrop-blur-sm transition-transform duration-300 md:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <div className="flex h-full flex-col">
-          {/* Logo */}
-          <div className="flex h-16 items-center border-b border-border px-6">
+          {/* Logo - Always dark mode styling */}
+          <div className="flex h-16 items-center px-6">
             <Link
               href="/dashboard"
               className="flex items-center gap-2.5 font-semibold text-lg group"
               onClick={() => setMobileOpen(false)}
             >
-              {/* Glass logo container matching website header */}
+              {/* Glass logo container - fixed dark styling */}
               <div className="relative">
                 {/* Border glow spots */}
                 <div
@@ -243,8 +269,14 @@ export function Sidebar() {
                       "radial-gradient(ellipse at top left, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.3) 30%, transparent 60%)",
                   }}
                 />
-                {/* Glass container */}
-                <div className="relative w-8 h-8 rounded-lg bg-surface/80 backdrop-blur-sm border border-white/10 flex items-center justify-center overflow-hidden group-hover:opacity-80 transition-all">
+                {/* Glass container - always dark background */}
+                <div
+                  className="relative w-8 h-8 rounded-lg backdrop-blur-sm flex items-center justify-center overflow-hidden group-hover:opacity-80 transition-all"
+                  style={{
+                    backgroundColor: "#111111",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                  }}
+                >
                   {/* Inner glow */}
                   <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent" />
                   <Image
@@ -275,14 +307,17 @@ export function Sidebar() {
                   className={cn(
                     "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200",
                     isActive
-                      ? "bg-accent/10 text-accent border border-accent/20"
+                      ? "bg-border text-sidebar-active border border-border"
                       : "text-foreground-muted hover:bg-surface-elevated hover:text-foreground border border-transparent",
                   )}
                 >
                   <item.icon
+                    size={20}
                     className={cn(
-                      "h-5 w-5 transition-colors",
-                      isActive ? "text-accent" : "text-foreground-muted",
+                      "transition-colors",
+                      isActive
+                        ? "text-sidebar-active"
+                        : "text-foreground-muted",
                     )}
                     weight={isActive ? "fill" : "duotone"}
                   />
@@ -322,30 +357,6 @@ export function Sidebar() {
 
           {/* Footer */}
           <div className="border-t border-border p-4 space-y-3">
-            {/* Theme Toggle */}
-            {mounted && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start gap-2 text-foreground-muted hover:text-foreground"
-                onClick={() =>
-                  setTheme(resolvedTheme === "dark" ? "light" : "dark")
-                }
-              >
-                {resolvedTheme === "dark" ? (
-                  <>
-                    <Sun className="h-4 w-4" weight="duotone" />
-                    Light Mode
-                  </>
-                ) : (
-                  <>
-                    <Moon className="h-4 w-4" weight="duotone" />
-                    Dark Mode
-                  </>
-                )}
-              </Button>
-            )}
-
             {/* Beta Testing Info */}
             <div className="p-3 rounded-xl bg-surface-elevated/50 border border-border space-y-2">
               <p className="text-xs text-foreground-muted leading-relaxed">
@@ -376,19 +387,21 @@ export function Sidebar() {
 
             {/* User Profile */}
             <div className="relative" ref={profileRef}>
-              {profileOpen && (
+              {profileOpen && mounted && (
                 <UserProfileDropdown
                   user={user}
                   onClose={() => setProfileOpen(false)}
+                  resolvedTheme={resolvedTheme}
+                  setTheme={setTheme}
                 />
               )}
               <button
                 onClick={() => setProfileOpen(!profileOpen)}
                 className={cn(
-                  "w-full flex items-center gap-3 p-2 rounded-xl transition-colors",
+                  "w-full flex items-center gap-3 p-2.5 rounded-xl border transition-colors",
                   profileOpen
-                    ? "bg-surface-elevated"
-                    : "hover:bg-surface-elevated",
+                    ? "bg-surface-elevated border-border"
+                    : "bg-surface-elevated/50 border-border/50 hover:bg-surface-elevated hover:border-border",
                 )}
               >
                 <div className="w-8 h-8 rounded-full bg-surface-elevated border border-border overflow-hidden flex items-center justify-center shrink-0">
@@ -415,6 +428,10 @@ export function Sidebar() {
                     {user?.email || "Loading..."}
                   </p>
                 </div>
+                <CaretUpDown
+                  className="h-4 w-4 text-foreground-muted shrink-0"
+                  weight="bold"
+                />
               </button>
             </div>
           </div>
