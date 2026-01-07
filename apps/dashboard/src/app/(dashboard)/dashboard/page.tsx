@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo, memo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import {
@@ -18,7 +18,6 @@ import { useToast } from "@/providers/toast-provider";
 import {
   ChartContainer,
   ChartTooltip,
-  ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
 
@@ -60,17 +59,63 @@ interface DashboardStats {
 }
 
 const chartConfig: ChartConfig = {
-  preference: { label: "Preference", color: "var(--accent)" },
-  fact: { label: "Fact", color: "var(--accent)" },
-  decision: { label: "Decision", color: "var(--accent)" },
-  context: { label: "Context", color: "var(--accent)" },
+  count: { label: "Count", color: "var(--accent)" },
 };
 
 const ACCENT_COLOR = "#e8613c";
-const STRIPE_COLOR = "rgba(255,255,255,0.8)";
-const STRIPE_WIDTH = 3;
-const STRIPE_GAP = 4;
-const STRIPED_GRADIENT = `repeating-linear-gradient(45deg, ${ACCENT_COLOR}, ${ACCENT_COLOR} ${STRIPE_WIDTH}px, ${STRIPE_COLOR} ${STRIPE_WIDTH}px, ${STRIPE_COLOR} ${STRIPE_GAP}px)`;
+const ACCENT_LIGHT = "#f0856a";
+const STRIPE_COLOR = "rgba(255,255,255,0.6)";
+
+type PatternType = "diagonal" | "solid" | "dotted" | "gradient";
+
+const PATTERN_GRADIENTS: Record<PatternType, string> = {
+  diagonal: `repeating-linear-gradient(45deg, ${ACCENT_COLOR}, ${ACCENT_COLOR} 2px, ${STRIPE_COLOR} 2px, ${STRIPE_COLOR} 4px)`,
+  solid: ACCENT_COLOR,
+  dotted: `radial-gradient(circle, ${STRIPE_COLOR} 1px, ${ACCENT_COLOR} 1px)`,
+  gradient: `linear-gradient(180deg, ${ACCENT_LIGHT} 0%, ${ACCENT_COLOR} 100%)`,
+};
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    payload: {
+      category: string;
+      count: number;
+      pattern: PatternType;
+    };
+  }>;
+}
+
+const CustomTooltip = memo(function CustomTooltip({
+  active,
+  payload,
+}: CustomTooltipProps) {
+  if (!active || !payload || !payload.length) return null;
+
+  const data = payload[0].payload;
+  const isDotted = data.pattern === "dotted";
+
+  return (
+    <div className="rounded-lg border border-border bg-background px-3 py-2 shadow-lg">
+      <p className="text-sm font-medium mb-1">{data.category}</p>
+      <div className="flex items-center gap-2">
+        <span
+          className="w-3 h-3 rounded-sm shrink-0"
+          style={{
+            backgroundImage: PATTERN_GRADIENTS[data.pattern],
+            backgroundColor: isDotted ? ACCENT_COLOR : undefined,
+            backgroundSize: isDotted ? "5px 5px" : undefined,
+            backgroundRepeat: isDotted ? "repeat" : undefined,
+          }}
+        />
+        <span className="text-sm text-foreground-muted">
+          count:{" "}
+          <span className="text-foreground font-medium">{data.count}</span>
+        </span>
+      </div>
+    </div>
+  );
+});
 
 function getTimeAgo(dateString: string): string {
   const date = new Date(dateString);
@@ -88,44 +133,86 @@ function getTimeAgo(dateString: string): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-const ChartPatterns = () => (
-  <>
-    {/* Dotted background pattern */}
-    <pattern
-      id="categories-pattern-dots"
-      x="0"
-      y="0"
-      width="10"
-      height="10"
-      patternUnits="userSpaceOnUse"
-    >
-      <circle cx="2" cy="2" r="1" fill="var(--border)" />
-    </pattern>
-    {/* Coral with diagonal stripes - 45deg angle, 6px pattern */}
-    <pattern
-      id="coral-striped"
-      x="0"
-      y="0"
-      width="6"
-      height="6"
-      patternUnits="userSpaceOnUse"
-      patternTransform="rotate(-45)"
-    >
-      <rect width="6" height="6" fill={ACCENT_COLOR} />
-      <line x1="0" y1="0" x2="0" y2="6" stroke={STRIPE_COLOR} strokeWidth="2" />
-    </pattern>
-  </>
-);
+const ChartPatterns = memo(function ChartPatterns() {
+  return (
+    <>
+      {/* Dotted background pattern for chart area */}
+      <pattern
+        id="categories-pattern-dots"
+        x="0"
+        y="0"
+        width="10"
+        height="10"
+        patternUnits="userSpaceOnUse"
+      >
+        <circle cx="2" cy="2" r="1" fill="var(--border)" />
+      </pattern>
+      {/* Diagonal stripes pattern - for Preference (thinner lines) */}
+      <pattern
+        id="pattern-diagonal"
+        x="0"
+        y="0"
+        width="5"
+        height="5"
+        patternUnits="userSpaceOnUse"
+        patternTransform="rotate(-45)"
+      >
+        <rect width="5" height="5" fill={ACCENT_COLOR} />
+        <line
+          x1="0"
+          y1="0"
+          x2="0"
+          y2="5"
+          stroke={STRIPE_COLOR}
+          strokeWidth="1.5"
+        />
+      </pattern>
+      {/* Dotted pattern - for Decision (smaller dots) */}
+      <pattern
+        id="pattern-dotted"
+        x="0"
+        y="0"
+        width="5"
+        height="5"
+        patternUnits="userSpaceOnUse"
+      >
+        <rect width="5" height="5" fill={ACCENT_COLOR} />
+        <circle cx="2.5" cy="2.5" r="1" fill={STRIPE_COLOR} />
+      </pattern>
+      {/* Gradient - for Context (lighter top to darker bottom) */}
+      <linearGradient id="pattern-gradient" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor={ACCENT_LIGHT} />
+        <stop offset="100%" stopColor={ACCENT_COLOR} />
+      </linearGradient>
+    </>
+  );
+});
 
-function CategoriesChart({
-  stats,
-  hasMemories,
-  totalCategorized,
-}: {
+// Utility function to get fill pattern - moved outside component to avoid recreation
+function getPatternFill(pattern: PatternType): string {
+  switch (pattern) {
+    case "diagonal":
+      return "url(#pattern-diagonal)";
+    case "dotted":
+      return "url(#pattern-dotted)";
+    case "gradient":
+      return "url(#pattern-gradient)";
+    default:
+      return ACCENT_COLOR;
+  }
+}
+
+interface CategoriesChartProps {
   stats: DashboardStats | undefined;
   hasMemories: boolean;
   totalCategorized: number;
-}) {
+}
+
+const CategoriesChart = memo(function CategoriesChart({
+  stats,
+  hasMemories,
+  totalCategorized,
+}: CategoriesChartProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const chartData = useMemo(
@@ -133,28 +220,33 @@ function CategoriesChart({
       {
         category: "Preference",
         count: stats?.categories.preference ?? 0,
-        hasStripe: true,
+        pattern: "diagonal" as PatternType,
       },
       {
         category: "Fact",
         count: stats?.categories.fact ?? 0,
-        hasStripe: false,
+        pattern: "solid" as PatternType,
       },
       {
         category: "Decision",
         count: stats?.categories.decision ?? 0,
-        hasStripe: true,
+        pattern: "dotted" as PatternType,
       },
       {
         category: "Context",
         count: stats?.categories.context ?? 0,
-        hasStripe: false,
+        pattern: "gradient" as PatternType,
       },
     ],
     [stats],
   );
 
-  const activeData = activeIndex !== null ? chartData[activeIndex] : null;
+  const activeData = useMemo(
+    () => (activeIndex !== null ? chartData[activeIndex] : null),
+    [activeIndex, chartData],
+  );
+
+  const handleMouseLeave = useCallback(() => setActiveIndex(null), []);
 
   return (
     <div className="rounded-2xl border border-border bg-surface overflow-hidden">
@@ -170,44 +262,39 @@ function CategoriesChart({
           </div>
           {/* Legend */}
           <div className="grid grid-cols-4 sm:flex sm:items-center gap-2 sm:gap-4">
-            {chartData.map((item, index) => (
-              <div
-                key={item.category}
-                className="flex items-center gap-1.5 cursor-pointer"
-                onMouseEnter={() => setActiveIndex(index)}
-                onMouseLeave={() => setActiveIndex(null)}
-              >
-                <span
-                  className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm shrink-0"
-                  style={{
-                    background: item.hasStripe
-                      ? STRIPED_GRADIENT
-                      : ACCENT_COLOR,
-                    opacity:
-                      activeIndex === null
-                        ? 1
-                        : activeIndex === index
-                          ? 1
-                          : 0.3,
-                    transition: "opacity 200ms",
-                  }}
-                />
-                <span
-                  className="text-[10px] sm:text-xs text-foreground-muted whitespace-nowrap"
-                  style={{
-                    opacity:
-                      activeIndex === null
-                        ? 1
-                        : activeIndex === index
-                          ? 1
-                          : 0.5,
-                    transition: "opacity 200ms",
-                  }}
+            {chartData.map((item, index) => {
+              const isDotted = item.pattern === "dotted";
+              const isActive = activeIndex === null || activeIndex === index;
+              return (
+                <div
+                  key={item.category}
+                  className="flex items-center gap-1.5 cursor-pointer"
+                  onMouseEnter={() => setActiveIndex(index)}
+                  onMouseLeave={() => setActiveIndex(null)}
                 >
-                  {item.category}
-                </span>
-              </div>
-            ))}
+                  <span
+                    className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm shrink-0"
+                    style={{
+                      backgroundImage: PATTERN_GRADIENTS[item.pattern],
+                      backgroundColor: isDotted ? ACCENT_COLOR : undefined,
+                      backgroundSize: isDotted ? "6px 6px" : undefined,
+                      backgroundRepeat: isDotted ? "repeat" : undefined,
+                      opacity: isActive ? 1 : 0.3,
+                      transition: "opacity 200ms",
+                    }}
+                  />
+                  <span
+                    className="text-[10px] sm:text-xs text-foreground-muted whitespace-nowrap"
+                    style={{
+                      opacity: isActive ? 1 : 0.5,
+                      transition: "opacity 200ms",
+                    }}
+                  >
+                    {item.category}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -216,7 +303,7 @@ function CategoriesChart({
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={chartData}
-                onMouseLeave={() => setActiveIndex(null)}
+                onMouseLeave={handleMouseLeave}
                 margin={{ top: 10, right: 10, left: 10, bottom: 5 }}
                 barCategoryGap="15%"
               >
@@ -237,19 +324,12 @@ function CategoriesChart({
                   axisLine={false}
                   tick={{ fontSize: 12, fill: "var(--foreground-muted)" }}
                 />
-                <ChartTooltip
-                  cursor={false}
-                  content={
-                    <ChartTooltipContent indicator="dot" labelKey="category" />
-                  }
-                />
+                <ChartTooltip cursor={false} content={<CustomTooltip />} />
                 <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={100}>
                   {chartData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={
-                        entry.hasStripe ? "url(#coral-striped)" : ACCENT_COLOR
-                      }
+                      fill={getPatternFill(entry.pattern)}
                       fillOpacity={
                         activeIndex === null
                           ? 1
@@ -258,7 +338,10 @@ function CategoriesChart({
                             : 0.3
                       }
                       onMouseEnter={() => setActiveIndex(index)}
-                      style={{ cursor: "pointer", transition: "opacity 200ms" }}
+                      style={{
+                        cursor: "pointer",
+                        transition: "opacity 200ms",
+                      }}
                     />
                   ))}
                 </Bar>
@@ -275,7 +358,7 @@ function CategoriesChart({
       </div>
     </div>
   );
-}
+});
 
 export default function DashboardPage() {
   const searchParams = useSearchParams();
@@ -487,26 +570,26 @@ export default function DashboardPage() {
                   <table className="w-full min-w-[420px]">
                     <thead>
                       <tr className="bg-surface-elevated border-b border-border">
-                        <th className="text-left px-3 py-2 text-xs font-normal text-foreground-muted w-48">
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-48 border-r border-border">
                           Memory
                         </th>
-                        <th className="text-center px-3 py-2 text-xs font-normal text-foreground-muted w-28">
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-28 border-r border-border">
                           Category
                         </th>
-                        <th className="text-right px-3 py-2 text-xs font-normal text-foreground-muted w-20">
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-20">
                           Created
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-border">
+                    <tbody>
                       {stats.recentMemories.slice(0, 5).map((memory) => {
                         const timeAgo = getTimeAgo(memory.createdAt);
                         return (
                           <tr
                             key={memory.id}
-                            className="group hover:bg-surface-elevated/50 transition-colors"
+                            className="group hover:bg-surface-elevated/50 transition-colors border-b border-border last:border-b-0"
                           >
-                            <td className="px-3 py-3">
+                            <td className="px-3 py-3 border-r border-border">
                               <Link
                                 href="/memories"
                                 className="text-sm truncate block max-w-[180px]"
@@ -514,7 +597,7 @@ export default function DashboardPage() {
                                 {memory.content}
                               </Link>
                             </td>
-                            <td className="px-3 py-3 text-center">
+                            <td className="px-3 py-3 border-r border-border">
                               {memory.category ? (
                                 <span className="text-xs px-2.5 py-1 rounded-full bg-accent/10 text-accent capitalize">
                                   {memory.category}
@@ -525,7 +608,7 @@ export default function DashboardPage() {
                                 </span>
                               )}
                             </td>
-                            <td className="px-3 py-3 text-right">
+                            <td className="px-3 py-3">
                               <span className="text-xs text-foreground-muted">
                                 {timeAgo}
                               </span>

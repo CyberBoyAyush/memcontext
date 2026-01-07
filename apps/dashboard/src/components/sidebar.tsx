@@ -222,24 +222,22 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile menu button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="fixed top-4 left-4 z-50 md:hidden"
-        onClick={() => setMobileOpen(!mobileOpen)}
-      >
-        {mobileOpen ? (
-          <X className="h-5 w-5" weight="bold" />
-        ) : (
+      {/* Mobile menu button - only show when sidebar is closed */}
+      {!mobileOpen && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="fixed top-4 left-4 z-50 md:hidden cursor-pointer"
+          onClick={() => setMobileOpen(true)}
+        >
           <List className="h-5 w-5" weight="bold" />
-        )}
-      </Button>
+        </Button>
+      )}
 
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden animate-backdrop-fade-in"
+          className="fixed inset-0 z-40 bg-background/20 backdrop-blur-md md:hidden animate-backdrop-fade-in"
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -253,7 +251,7 @@ export function Sidebar() {
       >
         <div className="flex h-full flex-col">
           {/* Logo - Always dark mode styling */}
-          <div className="flex h-16 items-center px-6">
+          <div className="flex h-16 items-center justify-between px-6">
             <Link
               href="/dashboard"
               className="flex items-center gap-2.5 font-semibold text-lg group"
@@ -292,6 +290,15 @@ export function Sidebar() {
                 MemContext
               </span>
             </Link>
+            {/* Mobile close button - inside sidebar */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden h-8 w-8 cursor-pointer"
+              onClick={() => setMobileOpen(false)}
+            >
+              <X className="h-5 w-5" weight="bold" />
+            </Button>
           </div>
 
           {/* Navigation */}
@@ -401,7 +408,7 @@ export function Sidebar() {
                   "w-full flex items-center cursor-pointer gap-3 p-2.5 rounded-xl border transition-colors",
                   profileOpen
                     ? "bg-surface-elevated border-border"
-                    : "bg-surface-elevated border-border/50 hover:bg-surface-elevated hover:border-border",
+                    : "bg-surface border-border/50 hover:bg-surface-elevated hover:border-border",
                 )}
               >
                 <div className="w-8 h-8 rounded-full bg-surface-elevated border border-border overflow-hidden flex items-center justify-center shrink-0">
