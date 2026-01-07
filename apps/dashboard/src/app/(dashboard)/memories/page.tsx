@@ -126,53 +126,56 @@ interface DashboardStats {
 function TableSkeleton() {
   return (
     <Card className="overflow-hidden flex-1 min-h-0 flex flex-col">
-      <div className="overflow-auto flex-1 scrollbar-hide">
-        <table className="w-full min-w-[700px]">
-          <thead className="sticky top-0 z-10 bg-surface-elevated border-b border-border">
-            <tr>
-              <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 border-r border-border">
+      <div className="overflow-auto flex-1 scrollbar-hide flex flex-col">
+        <table className="w-full min-w-[700px] flex-1 flex flex-col">
+          <thead className="sticky top-0 z-10 border-b border-border shrink-0">
+            <tr className="flex bg-surface-elevated w-full">
+              <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 shrink-0 border-r border-border flex items-center justify-center">
                 #
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-64 border-r border-border">
+              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-48 md:flex-1 md:w-auto border-r border-border flex items-center">
                 Content
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-28 border-r border-border">
+              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-28 shrink-0 border-r border-border flex items-center">
                 Category
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-32 border-r border-border">
+              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-32 shrink-0 border-r border-border flex items-center">
                 Project
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-44 border-r border-border">
+              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-48 shrink-0 border-r border-border flex items-center">
                 Created
               </th>
-              <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12">
+              <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 shrink-0 flex items-center justify-center">
                 <span className="sr-only">Actions</span>
               </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="flex-1 flex flex-col">
             {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => (
-              <tr key={i} className="animate-pulse border-b border-border">
-                <td className="py-3 w-12 border-r border-border">
-                  <div className="h-4 bg-surface-elevated rounded w-6 mx-auto" />
+              <tr
+                key={i}
+                className="animate-pulse border-b border-border last:border-b-0 flex flex-1 w-full"
+              >
+                <td className="py-3 w-12 shrink-0 border-r border-border flex items-center justify-center">
+                  <div className="h-4 bg-surface-elevated rounded w-6" />
                 </td>
-                <td className="px-4 py-3 w-64 border-r border-border">
-                  <div className="space-y-2">
+                <td className="px-4 py-3 w-48 md:flex-1 md:w-auto border-r border-border flex items-center">
+                  <div className="space-y-2 w-full">
                     <div className="h-4 bg-surface-elevated rounded w-full" />
                     <div className="h-4 bg-surface-elevated rounded w-3/4" />
                   </div>
                 </td>
-                <td className="px-4 py-3 w-28 border-r border-border">
+                <td className="px-4 py-3 w-28 shrink-0 border-r border-border flex items-center">
                   <div className="h-6 bg-surface-elevated rounded-full w-20" />
                 </td>
-                <td className="px-4 py-3 w-32 border-r border-border">
+                <td className="px-4 py-3 w-32 shrink-0 border-r border-border flex items-center">
                   <div className="h-4 bg-surface-elevated rounded w-24" />
                 </td>
-                <td className="px-4 py-3 w-44 border-r border-border">
+                <td className="px-4 py-3 w-48 shrink-0 border-r border-border flex items-center">
                   <div className="h-4 bg-surface-elevated rounded w-32" />
                 </td>
-                <td className="py-3 w-12">
-                  <div className="h-8 w-8 bg-surface-elevated rounded mx-auto" />
+                <td className="py-3 w-12 shrink-0 flex items-center justify-center">
+                  <div className="h-8 w-8 bg-surface-elevated rounded" />
                 </td>
               </tr>
             ))}
@@ -1021,17 +1024,17 @@ export default function MemoriesPage() {
         <div className="flex flex-col flex-1 min-h-0 gap-4">
           {/* Table */}
           <Card className="overflow-hidden flex-1 min-h-0 flex flex-col">
-            <div className="overflow-auto flex-1 scrollbar-hide">
-              <table className="w-full min-w-[700px]">
-                <thead className="sticky top-0 z-10 bg-surface-elevated border-b border-border">
-                  <tr>
-                    <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 border-r border-border">
+            <div className="overflow-auto flex-1 scrollbar-hide flex flex-col">
+              <table className="w-full min-w-[700px] flex-1 flex flex-col">
+                <thead className="sticky top-0 z-10 border-b border-border shrink-0">
+                  <tr className="flex bg-surface-elevated w-full">
+                    <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 shrink-0 border-r border-border flex items-center justify-center">
                       #
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-64 border-r border-border">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-48 md:flex-1 md:w-auto border-r border-border flex items-center">
                       Content
                     </th>
-                    <th className="text-left px-4 py-3 w-28 border-r border-border">
+                    <th className="text-left px-4 py-3 w-28 shrink-0 border-r border-border flex items-center">
                       <CategoryFilter
                         value={category}
                         onChange={(val) => {
@@ -1040,7 +1043,7 @@ export default function MemoriesPage() {
                         }}
                       />
                     </th>
-                    <th className="text-left px-4 py-3 w-32 border-r border-border">
+                    <th className="text-left px-4 py-3 w-32 shrink-0 border-r border-border flex items-center">
                       <ProjectFilter
                         value={project}
                         onChange={(val) => {
@@ -1051,15 +1054,15 @@ export default function MemoriesPage() {
                         isLoading={statsLoading}
                       />
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-44 border-r border-border">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-48 shrink-0 border-r border-border flex items-center">
                       Created
                     </th>
-                    <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12">
+                    <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 shrink-0 flex items-center justify-center">
                       <span className="sr-only">Actions</span>
                     </th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="flex-1 flex flex-col">
                   {data?.memories.map((memory, index) => {
                     const config = memory.category
                       ? categoryConfig[memory.category]
@@ -1069,25 +1072,25 @@ export default function MemoriesPage() {
                       <tr
                         key={memory.id}
                         className={cn(
-                          "group hover:bg-surface/50 transition-colors cursor-pointer border-b border-border",
+                          "group hover:bg-surface/50 transition-colors cursor-pointer border-b border-border flex flex-1 w-full",
                           selectedMemory?.id === memory.id && "bg-surface/50",
                         )}
                         onClick={() => setSelectedMemory(memory)}
                       >
                         {/* Serial Number */}
-                        <td className="py-3 text-center text-sm text-foreground-muted font-medium w-12 border-r border-border">
+                        <td className="py-3 text-center text-sm text-foreground-muted font-medium w-12 shrink-0 border-r border-border flex items-center justify-center">
                           {offset + index + 1}
                         </td>
 
                         {/* Content */}
-                        <td className="px-4 py-3 w-64 border-r border-border">
+                        <td className="px-4 py-3 w-48 md:flex-1 md:w-auto border-r border-border flex items-center">
                           <p className="text-sm leading-relaxed line-clamp-2">
                             {memory.content}
                           </p>
                         </td>
 
                         {/* Category */}
-                        <td className="px-4 py-3 w-28 border-r border-border">
+                        <td className="px-4 py-3 w-28 shrink-0 border-r border-border flex items-center">
                           {memory.category && config ? (
                             <span
                               className={cn(
@@ -1106,14 +1109,14 @@ export default function MemoriesPage() {
                         </td>
 
                         {/* Project */}
-                        <td className="px-4 py-3 w-32 border-r border-border">
+                        <td className="px-4 py-3 w-32 shrink-0 border-r border-border flex items-center">
                           <span className="text-sm text-foreground-muted truncate block">
                             {memory.project || "Global"}
                           </span>
                         </td>
 
                         {/* Created */}
-                        <td className="px-4 py-3 w-44 border-r border-border">
+                        <td className="px-4 py-3 w-48 shrink-0 border-r border-border flex items-center">
                           <span className="text-sm text-foreground-muted whitespace-nowrap">
                             {formatDateTime(memory.createdAt).date},{" "}
                             {formatDateTime(memory.createdAt).time}
@@ -1121,15 +1124,13 @@ export default function MemoriesPage() {
                         </td>
 
                         {/* Actions */}
-                        <td className="py-3 w-12">
-                          <div className="flex justify-center">
-                            <DeleteButton
-                              onDelete={() => setDeletingMemory(memory)}
-                              isDeleting={
-                                isDeleting && deletingMemory?.id === memory.id
-                              }
-                            />
-                          </div>
+                        <td className="py-3 w-12 shrink-0 flex items-center justify-center">
+                          <DeleteButton
+                            onDelete={() => setDeletingMemory(memory)}
+                            isDeleting={
+                              isDeleting && deletingMemory?.id === memory.id
+                            }
+                          />
                         </td>
                       </tr>
                     );
@@ -1142,24 +1143,24 @@ export default function MemoriesPage() {
                     }).map((_, index) => (
                       <tr
                         key={`empty-${index}`}
-                        className="border-b border-border"
+                        className="border-b border-border last:border-b-0 flex flex-1 w-full"
                       >
-                        <td className="py-3 w-12 border-r border-border">
+                        <td className="py-3 w-12 shrink-0 border-r border-border">
                           &nbsp;
                         </td>
-                        <td className="px-4 py-3 w-64 border-r border-border">
+                        <td className="px-4 py-3 w-48 md:flex-1 md:w-auto border-r border-border">
                           &nbsp;
                         </td>
-                        <td className="px-4 py-3 w-28 border-r border-border">
+                        <td className="px-4 py-3 w-28 shrink-0 border-r border-border">
                           &nbsp;
                         </td>
-                        <td className="px-4 py-3 w-32 border-r border-border">
+                        <td className="px-4 py-3 w-32 shrink-0 border-r border-border">
                           &nbsp;
                         </td>
-                        <td className="px-4 py-3 w-44 border-r border-border">
+                        <td className="px-4 py-3 w-48 shrink-0 border-r border-border">
                           &nbsp;
                         </td>
-                        <td className="py-3 w-12">&nbsp;</td>
+                        <td className="py-3 w-12 shrink-0">&nbsp;</td>
                       </tr>
                     ))}
                 </tbody>
