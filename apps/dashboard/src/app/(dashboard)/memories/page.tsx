@@ -123,199 +123,56 @@ interface DashboardStats {
   }>;
 }
 
-function ProjectSelect({
-  value,
-  onChange,
-  projects,
-  isLoading,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  projects: Array<{ name: string; count: number }>;
-  isLoading: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-
-  // Separate global from other projects
-  const globalProject = projects.find((p) => p.name === "Global");
-  const otherProjects = projects.filter((p) => p.name !== "Global");
-
-  const selectedLabel =
-    value === "" ? "All Projects" : value === "__global__" ? "Global" : value;
-
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        disabled={isLoading}
-        className={cn(
-          "flex h-10 w-full items-center gap-2 rounded-xl border border-border bg-surface px-3 text-sm transition-colors",
-          "hover:bg-surface-elevated focus:outline-none",
-          isLoading && "opacity-50 cursor-not-allowed",
-        )}
-      >
-        <FolderOpen className="h-4 w-4 text-foreground-subtle shrink-0" />
-        <span className="flex-1 text-left truncate">
-          {isLoading ? "Loading..." : selectedLabel}
-        </span>
-        <CaretDown
-          className={cn(
-            "h-4 w-4 text-foreground-muted transition-transform shrink-0",
-            open && "rotate-180",
-          )}
-          weight="bold"
-        />
-      </button>
-
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full mt-2 z-50 w-56 bg-background border border-border rounded-xl shadow-lg py-1 animate-scale-in max-h-64 overflow-y-auto">
-            {/* All Projects */}
-            <button
-              className={cn(
-                "w-full px-3 py-2.5 text-sm text-left hover:bg-surface flex items-center justify-between gap-2 transition-colors",
-                value === "" && "bg-surface",
-              )}
-              onClick={() => {
-                onChange("");
-                setOpen(false);
-              }}
-            >
-              <span className="flex items-center gap-2">
-                <FolderOpen className="h-4 w-4 text-foreground-muted" />
-                All Projects
-              </span>
-              {value === "" && (
-                <Check className="h-4 w-4 text-accent" weight="bold" />
-              )}
-            </button>
-
-            {/* Global (no project) */}
-            {globalProject && (
-              <button
-                className={cn(
-                  "w-full px-3 py-2.5 text-sm text-left hover:bg-surface flex items-center justify-between gap-2 transition-colors",
-                  value === "__global__" && "bg-surface",
-                )}
-                onClick={() => {
-                  onChange("__global__");
-                  setOpen(false);
-                }}
-              >
-                <span className="flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-foreground-muted" />
-                  Global
-                  <span className="text-xs text-foreground-subtle">
-                    ({globalProject.count})
-                  </span>
-                </span>
-                {value === "__global__" && (
-                  <Check className="h-4 w-4 text-accent" weight="bold" />
-                )}
-              </button>
-            )}
-
-            {/* Divider */}
-            {otherProjects.length > 0 && (
-              <div className="my-1 mx-3 border-t border-border" />
-            )}
-
-            {/* Other Projects */}
-            {otherProjects.map((proj) => (
-              <button
-                key={proj.name}
-                className={cn(
-                  "w-full px-3 py-2.5 text-sm text-left hover:bg-surface flex items-center justify-between gap-2 transition-colors",
-                  value === proj.name && "bg-surface",
-                )}
-                onClick={() => {
-                  onChange(proj.name);
-                  setOpen(false);
-                }}
-              >
-                <span className="flex items-center gap-2 min-w-0">
-                  <FolderOpen className="h-4 w-4 text-violet-400 shrink-0" />
-                  <span className="truncate">{proj.name}</span>
-                  <span className="text-xs text-foreground-subtle shrink-0">
-                    ({proj.count})
-                  </span>
-                </span>
-                {value === proj.name && (
-                  <Check
-                    className="h-4 w-4 text-accent shrink-0"
-                    weight="bold"
-                  />
-                )}
-              </button>
-            ))}
-
-            {/* Empty state */}
-            {!isLoading && otherProjects.length === 0 && !globalProject && (
-              <div className="px-3 py-4 text-sm text-foreground-muted text-center">
-                No projects yet
-              </div>
-            )}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
 function TableSkeleton() {
   return (
-    <Card className="overflow-hidden flex-1 min-h-0">
-      <div className="overflow-y-auto h-full scrollbar-hide">
+    <Card className="overflow-hidden flex-1 min-h-0 flex flex-col">
+      <div className="overflow-y-auto flex-1 scrollbar-hide">
         <table className="w-full table-fixed">
-          <thead className="sticky top-0 z-10 bg-surface-elevated/95 dark:bg-surface-elevated backdrop-blur-sm">
-            <tr className="border-b border-border">
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-14">
+          <thead className="sticky top-0 z-10 bg-surface-elevated border-b border-border">
+            <tr>
+              <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 border-r border-border">
                 #
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider">
+              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider border-r border-border">
                 Content
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden md:table-cell w-36">
+              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden md:table-cell w-32 border-r border-border">
                 Category
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden lg:table-cell w-36">
+              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden lg:table-cell w-36 border-r border-border">
                 Project
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden sm:table-cell w-32">
+              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden sm:table-cell w-48 border-r border-border">
                 Created
               </th>
-              <th className="text-right px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-14">
+              <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12">
                 <span className="sr-only">Actions</span>
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <tr key={i} className="animate-pulse">
-                <td className="px-4 py-4 w-14">
-                  <div className="h-4 bg-surface-elevated rounded w-6" />
+          <tbody>
+            {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => (
+              <tr key={i} className="animate-pulse border-b border-border">
+                <td className="py-4 w-12 border-r border-border">
+                  <div className="h-4 bg-surface-elevated rounded w-6 mx-auto" />
                 </td>
-                <td className="px-4 py-4">
+                <td className="px-4 py-4 border-r border-border">
                   <div className="space-y-2">
                     <div className="h-4 bg-surface-elevated rounded w-full" />
                     <div className="h-4 bg-surface-elevated rounded w-3/4" />
                   </div>
                 </td>
-                <td className="px-4 py-4 hidden md:table-cell w-36">
+                <td className="px-4 py-4 hidden md:table-cell w-32 border-r border-border">
                   <div className="h-6 bg-surface-elevated rounded-full w-20" />
                 </td>
-                <td className="px-4 py-4 hidden lg:table-cell w-36">
+                <td className="px-4 py-4 hidden lg:table-cell w-36 border-r border-border">
                   <div className="h-4 bg-surface-elevated rounded w-24" />
                 </td>
-                <td className="px-4 py-4 hidden sm:table-cell w-32">
-                  <div className="space-y-1">
-                    <div className="h-4 bg-surface-elevated rounded w-16" />
-                    <div className="h-3 bg-surface-elevated rounded w-20" />
-                  </div>
+                <td className="px-4 py-4 hidden sm:table-cell w-48 border-r border-border">
+                  <div className="h-4 bg-surface-elevated rounded w-32" />
                 </td>
-                <td className="px-4 py-4 text-right w-14">
-                  <div className="h-8 w-8 bg-surface-elevated rounded ml-auto" />
+                <td className="py-4 w-12">
+                  <div className="h-8 w-8 bg-surface-elevated rounded mx-auto" />
                 </td>
               </tr>
             ))}
@@ -607,6 +464,8 @@ function DeleteConfirmDialog({
   onConfirm: () => void;
   isDeleting: boolean;
 }) {
+  const [confirmed, setConfirmed] = useState(false);
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div
@@ -614,41 +473,66 @@ function DeleteConfirmDialog({
         onClick={isDeleting ? undefined : onClose}
       />
 
-      <div className="relative w-full max-w-md bg-background border border-border rounded-2xl shadow-2xl animate-scale-in">
-        <div className="p-6 space-y-4">
-          <div className="flex items-center justify-center w-12 h-12 mx-auto rounded-full bg-error/10">
-            <Trash className="h-6 w-6 text-error" weight="duotone" />
-          </div>
-
-          <div className="text-center space-y-2">
-            <h3 className="text-lg font-semibold">Delete Memory</h3>
-            <p className="text-sm text-foreground-muted">
-              Are you sure you want to delete this memory? This action cannot be
-              undone.
-            </p>
-          </div>
-
-          <div className="p-3 rounded-lg bg-surface border border-border">
-            <p className="text-sm text-foreground-muted line-clamp-2">
-              {memory.content}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 p-4 border-t border-border bg-surface/50 rounded-b-2xl">
-          <Button
-            variant="outline"
-            className="flex-1"
+      <div className="relative w-full max-w-md bg-background border border-border rounded-xl shadow-2xl animate-scale-in">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 pb-0">
+          <h3 className="text-lg font-semibold">Delete Memory</h3>
+          <button
             onClick={onClose}
             disabled={isDeleting}
+            className="p-1 rounded-md text-foreground-muted hover:text-foreground hover:bg-surface transition-colors cursor-pointer disabled:opacity-50"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-4 space-y-4">
+          <p className="text-sm text-foreground-muted">
+            Are you sure you want to delete this memory?
+          </p>
+
+          <p className="text-sm font-medium">This action is irreversible.</p>
+
+          {/* Checkbox confirmation */}
+          <label className="flex items-center gap-3 cursor-pointer">
+            <div className="relative">
+              <input
+                type="checkbox"
+                checked={confirmed}
+                onChange={(e) => setConfirmed(e.target.checked)}
+                className="peer sr-only"
+              />
+              <div className="w-5 h-5 rounded-sm border-2 border-foreground-muted peer-checked:bg-foreground peer-checked:border-foreground transition-colors flex items-center justify-center">
+                {confirmed && (
+                  <Check
+                    className="h-3.5 w-3.5 text-background"
+                    weight="bold"
+                  />
+                )}
+              </div>
+            </div>
+            <span className="text-sm text-foreground-muted">
+              I understand and confirm
+            </span>
+          </label>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 p-4 pt-0">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            disabled={isDeleting}
+            className="hover:translate-y-0 hover:shadow-none"
           >
             Cancel
           </Button>
           <Button
             variant="destructive"
-            className="flex-1"
             onClick={onConfirm}
-            disabled={isDeleting}
+            disabled={isDeleting || !confirmed}
+            className="hover:translate-y-0 hover:shadow-none"
           >
             {isDeleting ? (
               <>
@@ -805,7 +689,7 @@ function CategoryFilter({
       <button
         onClick={() => setOpen(!open)}
         className={cn(
-          "inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider transition-colors",
+          "inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer",
           value
             ? "text-foreground"
             : "text-foreground-muted hover:text-foreground",
@@ -821,35 +705,110 @@ function CategoryFilter({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full mt-2 z-50 min-w-[160px] bg-background border border-border rounded-lg shadow-lg py-1 animate-scale-in">
+          <div className="absolute left-0 top-full mt-2 z-50 min-w-[140px] bg-surface-elevated border border-border rounded-lg overflow-hidden animate-scale-in">
             {categories.map((cat) => (
               <button
                 key={cat.value}
                 className={cn(
-                  "w-full px-3 py-2 text-sm text-left hover:bg-surface flex items-center justify-between gap-2",
-                  value === cat.value && "bg-surface",
+                  "w-full px-3 py-2.5 text-sm text-left transition-colors cursor-pointer flex items-center gap-2",
+                  value === cat.value
+                    ? "bg-surface-hover text-foreground"
+                    : "text-foreground-muted hover:bg-surface hover:text-foreground",
                 )}
                 onClick={() => {
                   onChange(cat.value);
                   setOpen(false);
                 }}
               >
-                <span className="flex items-center gap-2">
-                  {cat.value && categoryConfig[cat.value] && (
-                    <span
-                      className={cn(
-                        "w-2 h-2 rounded-full",
-                        categoryConfig[cat.value].dot,
-                      )}
-                    />
-                  )}
-                  {cat.label}
-                </span>
-                {value === cat.value && (
-                  <Check className="h-4 w-4 text-foreground" />
+                {cat.value && categoryConfig[cat.value] && (
+                  <span
+                    className={cn(
+                      "w-2 h-2 rounded-full shrink-0",
+                      categoryConfig[cat.value].dot,
+                    )}
+                  />
                 )}
+                {cat.label}
               </button>
             ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ProjectFilter({
+  value,
+  onChange,
+  projects,
+  isLoading,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  projects: Array<{ name: string; count: number }>;
+  isLoading: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const globalProject = projects.find((p) => p.name === "Global");
+  const otherProjects = projects.filter((p) => p.name !== "Global");
+
+  // Build project options list
+  const projectOptions = [
+    { value: "", label: "All" },
+    ...(globalProject ? [{ value: "__global__", label: "Global" }] : []),
+    ...otherProjects.map((p) => ({ value: p.name, label: p.name })),
+  ];
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        disabled={isLoading}
+        className={cn(
+          "inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer",
+          value
+            ? "text-foreground"
+            : "text-foreground-muted hover:text-foreground",
+          isLoading && "opacity-50 !cursor-not-allowed",
+        )}
+      >
+        Project
+        <CaretDown
+          className={cn("h-3 w-3 transition-transform", open && "rotate-180")}
+          weight="bold"
+        />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-full mt-2 z-50 min-w-[140px] bg-surface-elevated border border-border rounded-lg overflow-hidden animate-scale-in max-h-64 overflow-y-auto">
+            {projectOptions.map((proj) => (
+              <button
+                key={proj.value}
+                className={cn(
+                  "w-full px-3 py-2.5 text-sm text-left transition-colors cursor-pointer truncate",
+                  value === proj.value
+                    ? "bg-surface-hover text-foreground"
+                    : "text-foreground-muted hover:bg-surface hover:text-foreground",
+                )}
+                onClick={() => {
+                  onChange(proj.value);
+                  setOpen(false);
+                }}
+              >
+                {proj.label}
+              </button>
+            ))}
+
+            {/* Empty state */}
+            {!isLoading && projectOptions.length === 1 && (
+              <div className="px-3 py-4 text-sm text-foreground-muted text-center">
+                No projects yet
+              </div>
+            )}
           </div>
         </>
       )}
@@ -930,21 +889,22 @@ export default function MemoriesPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-48px)] flex flex-col animate-fade-in">
+    <div className="h-full flex flex-col animate-fade-in overflow-hidden">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-6 shrink-0">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-elevated">
-              <Brain className="h-5 w-5 text-foreground-muted" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">Memories</h1>
-              <p className="text-sm text-foreground-muted">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl font-bold tracking-tight">
+                Memories
+              </span>
+              <span className="text-sm -mb-2 text-foreground-muted">
+                (
                 {data?.total
                   ? `${data.total} memories stored`
                   : "Manage your saved memories"}
-              </p>
+                )
+              </span>
             </div>
           </div>
         </div>
@@ -962,18 +922,6 @@ export default function MemoriesPage() {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="pl-9 h-10 bg-surface border-border"
-            />
-          </div>
-          {/* Project Filter */}
-          <div className="hidden sm:block w-44">
-            <ProjectSelect
-              value={project}
-              onChange={(val) => {
-                setProject(val);
-                setPage(0);
-              }}
-              projects={dashboardStats?.projects ?? []}
-              isLoading={statsLoading}
             />
           </div>
           <Button
@@ -1002,7 +950,7 @@ export default function MemoriesPage() {
                 setSearch("");
                 setPage(0);
               }}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors bg-surface-elevated text-foreground hover:opacity-80"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors bg-surface-elevated text-foreground hover:opacity-80 cursor-pointer"
             >
               <MagnifyingGlass className="h-3 w-3" weight="bold" />
               &quot;{search}&quot;
@@ -1015,7 +963,7 @@ export default function MemoriesPage() {
                 setProject("");
                 setPage(0);
               }}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors bg-surface-elevated text-foreground-muted hover:opacity-80"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors bg-surface-elevated text-foreground-muted hover:opacity-80 cursor-pointer"
             >
               {project === "__global__" ? (
                 <Globe className="h-3 w-3" />
@@ -1033,7 +981,7 @@ export default function MemoriesPage() {
                 setPage(0);
               }}
               className={cn(
-                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
+                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer",
                 categoryConfig[category]?.lightBg,
                 categoryConfig[category]?.lightText,
                 "hover:opacity-80",
@@ -1073,18 +1021,18 @@ export default function MemoriesPage() {
       ) : (
         <div className="flex flex-col flex-1 min-h-0 gap-4">
           {/* Table */}
-          <Card className="overflow-hidden flex-1 min-h-0">
-            <div className="overflow-y-auto h-full scrollbar-hide">
+          <Card className="overflow-hidden flex-1 min-h-0 flex flex-col">
+            <div className="overflow-y-auto flex-1 scrollbar-hide">
               <table className="w-full table-fixed">
-                <thead className="sticky top-0 z-10 bg-surface-elevated/95 dark:bg-surface-elevated backdrop-blur-sm">
-                  <tr className="border-b border-border">
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-14">
+                <thead className="sticky top-0 z-10 bg-surface-elevated border-b border-border">
+                  <tr>
+                    <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 border-r border-border">
                       #
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider border-r border-border">
                       Content
                     </th>
-                    <th className="text-left px-4 py-3 hidden md:table-cell w-36">
+                    <th className="text-left px-4 py-3 hidden md:table-cell w-32 border-r border-border">
                       <CategoryFilter
                         value={category}
                         onChange={(val) => {
@@ -1093,18 +1041,26 @@ export default function MemoriesPage() {
                         }}
                       />
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden lg:table-cell w-36">
-                      Project
+                    <th className="text-left px-4 py-3 hidden lg:table-cell w-36 border-r border-border">
+                      <ProjectFilter
+                        value={project}
+                        onChange={(val) => {
+                          setProject(val);
+                          setPage(0);
+                        }}
+                        projects={dashboardStats?.projects ?? []}
+                        isLoading={statsLoading}
+                      />
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden sm:table-cell w-32">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden sm:table-cell w-48 border-r border-border">
                       Created
                     </th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-14">
+                    <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12">
                       <span className="sr-only">Actions</span>
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody>
                   {data?.memories.map((memory, index) => {
                     const config = memory.category
                       ? categoryConfig[memory.category]
@@ -1114,18 +1070,18 @@ export default function MemoriesPage() {
                       <tr
                         key={memory.id}
                         className={cn(
-                          "group hover:bg-surface/50 transition-colors cursor-pointer",
+                          "group hover:bg-surface/50 transition-colors cursor-pointer border-b border-border",
                           selectedMemory?.id === memory.id && "bg-surface/50",
                         )}
                         onClick={() => setSelectedMemory(memory)}
                       >
                         {/* Serial Number */}
-                        <td className="px-4 py-4 text-sm text-foreground-muted font-medium w-14">
+                        <td className="py-4 text-center text-sm text-foreground-muted font-medium w-12 border-r border-border">
                           {offset + index + 1}
                         </td>
 
                         {/* Content */}
-                        <td className="px-4 py-4">
+                        <td className="px-4 py-4 border-r border-border">
                           <div className="space-y-2">
                             <p className="text-sm leading-relaxed line-clamp-2">
                               {memory.content}
@@ -1135,18 +1091,16 @@ export default function MemoriesPage() {
                               {memory.category && config && (
                                 <span
                                   className={cn(
-                                    "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium",
+                                    "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
                                     config.lightBg,
                                     config.lightText,
                                   )}
                                 >
-                                  <Tag className="h-3 w-3" />
                                   {memory.category}
                                 </span>
                               )}
                               {memory.project && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-surface-elevated text-foreground-muted">
-                                  <FolderOpen className="h-3 w-3" />
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-surface-elevated text-foreground-muted">
                                   {memory.project}
                                 </span>
                               )}
@@ -1160,16 +1114,15 @@ export default function MemoriesPage() {
                         </td>
 
                         {/* Category */}
-                        <td className="px-4 py-4 hidden md:table-cell w-36">
+                        <td className="px-4 py-4 hidden md:table-cell w-32 border-r border-border">
                           {memory.category && config ? (
                             <span
                               className={cn(
-                                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
+                                "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
                                 config.lightBg,
                                 config.lightText,
                               )}
                             >
-                              <Tag className="h-3 w-3" />
                               {memory.category}
                             </span>
                           ) : (
@@ -1180,44 +1133,62 @@ export default function MemoriesPage() {
                         </td>
 
                         {/* Project */}
-                        <td className="px-4 py-4 hidden lg:table-cell w-36">
-                          {memory.project ? (
-                            <span className="inline-flex items-center gap-1.5 text-sm text-foreground-muted truncate">
-                              <FolderOpen className="h-3.5 w-3.5 shrink-0" />
-                              <span className="truncate">{memory.project}</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 text-sm text-foreground-subtle">
-                              <Globe className="h-3.5 w-3.5 shrink-0" />
-                              <span>Global</span>
-                            </span>
-                          )}
+                        <td className="px-4 py-4 hidden lg:table-cell w-36 border-r border-border">
+                          <span className="text-sm text-foreground-muted truncate">
+                            {memory.project || "Global"}
+                          </span>
                         </td>
 
                         {/* Created */}
-                        <td className="px-4 py-4 hidden sm:table-cell w-32">
-                          <div className="space-y-0.5">
-                            <div className="text-sm text-foreground">
-                              {formatDateTime(memory.createdAt).time}
-                            </div>
-                            <div className="text-xs text-foreground-subtle">
-                              {formatDateTime(memory.createdAt).date}
-                            </div>
-                          </div>
+                        <td className="px-4 py-4 hidden sm:table-cell w-48 border-r border-border">
+                          <span className="text-sm text-foreground-muted whitespace-nowrap">
+                            {formatDateTime(memory.createdAt).date},{" "}
+                            {formatDateTime(memory.createdAt).time}
+                          </span>
                         </td>
 
                         {/* Actions */}
-                        <td className="px-4 py-4 text-right w-14">
-                          <DeleteButton
-                            onDelete={() => setDeletingMemory(memory)}
-                            isDeleting={
-                              isDeleting && deletingMemory?.id === memory.id
-                            }
-                          />
+                        <td className="py-4 w-12">
+                          <div className="flex justify-center">
+                            <DeleteButton
+                              onDelete={() => setDeletingMemory(memory)}
+                              isDeleting={
+                                isDeleting && deletingMemory?.id === memory.id
+                              }
+                            />
+                          </div>
                         </td>
                       </tr>
                     );
                   })}
+                  {/* Empty placeholder rows to always show 10 rows */}
+                  {data?.memories &&
+                    data.memories.length < ITEMS_PER_PAGE &&
+                    Array.from({
+                      length: ITEMS_PER_PAGE - data.memories.length,
+                    }).map((_, index) => (
+                      <tr
+                        key={`empty-${index}`}
+                        className="border-b border-border"
+                      >
+                        <td className="py-4 w-12 border-r border-border">
+                          &nbsp;
+                        </td>
+                        <td className="px-4 py-4 border-r border-border">
+                          &nbsp;
+                        </td>
+                        <td className="px-4 py-4 hidden md:table-cell w-32 border-r border-border">
+                          &nbsp;
+                        </td>
+                        <td className="px-4 py-4 hidden lg:table-cell w-36 border-r border-border">
+                          &nbsp;
+                        </td>
+                        <td className="px-4 py-4 hidden sm:table-cell w-48 border-r border-border">
+                          &nbsp;
+                        </td>
+                        <td className="py-4 w-12">&nbsp;</td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>
@@ -1239,19 +1210,23 @@ export default function MemoriesPage() {
                 </span>
               </p>
 
-              <div className="flex items-center gap-2 order-1 sm:order-2">
-                <Button
-                  variant="outline"
-                  size="sm"
+              <div className="flex items-center gap-1.5 order-1 sm:order-2">
+                <button
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                   disabled={page === 0 || isFetching}
-                  className="gap-1"
+                  className={cn(
+                    "inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm font-medium transition-colors cursor-pointer",
+                    "bg-surface-elevated border border-border",
+                    page === 0 || isFetching
+                      ? "opacity-50 !cursor-not-allowed"
+                      : "hover:bg-surface-hover hover:border-border-hover",
+                  )}
                 >
                   <CaretLeft className="h-4 w-4" weight="bold" />
                   <span className="hidden sm:inline">Previous</span>
-                </Button>
+                </button>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 bg-surface-elevated border border-border rounded-lg p-1">
                   {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                     let pageNum: number;
                     if (totalPages <= 5) {
@@ -1265,30 +1240,38 @@ export default function MemoriesPage() {
                     }
 
                     return (
-                      <Button
+                      <button
                         key={pageNum}
-                        variant={page === pageNum ? "default" : "ghost"}
-                        size="sm"
-                        className="w-9 h-9 p-0"
                         onClick={() => setPage(pageNum)}
                         disabled={isFetching}
+                        className={cn(
+                          "w-8 h-8 rounded-md text-sm font-medium transition-colors cursor-pointer",
+                          page === pageNum
+                            ? "bg-accent text-white"
+                            : "text-foreground-muted hover:text-foreground hover:bg-surface",
+                          isFetching && "opacity-50 !cursor-not-allowed",
+                        )}
                       >
                         {pageNum + 1}
-                      </Button>
+                      </button>
                     );
                   })}
                 </div>
 
-                <Button
-                  variant="outline"
-                  size="sm"
+                <button
                   onClick={() => setPage((p) => p + 1)}
                   disabled={!data.hasMore || isFetching}
-                  className="gap-1"
+                  className={cn(
+                    "inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm font-medium transition-colors cursor-pointer",
+                    "bg-surface-elevated border border-border",
+                    !data.hasMore || isFetching
+                      ? "opacity-50 !cursor-not-allowed"
+                      : "hover:bg-surface-hover hover:border-border-hover",
+                  )}
                 >
                   <span className="hidden sm:inline">Next</span>
                   <CaretRight className="h-4 w-4" weight="bold" />
-                </Button>
+                </button>
               </div>
             </div>
           )}
