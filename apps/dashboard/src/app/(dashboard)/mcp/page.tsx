@@ -1,23 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
-  Copy,
   Check,
   Terminal,
-  FileCode,
-  AlertCircle,
   ExternalLink,
-  Plug,
-  KeyRound,
   Sparkles,
   Wand2,
+  Info,
+  AlertCircle,
 } from "lucide-react";
 import { Claude, Cursor, OpenAI } from "@lobehub/icons";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { CodeBlock } from "@/components/ui/code-block";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
 
@@ -272,86 +270,6 @@ MEMCONTEXT-API-KEY = "${apiKey}"`,
   },
 ];
 
-function CodeBlock({
-  code,
-  language,
-  filename,
-}: {
-  code: string;
-  language: string;
-  filename?: string;
-}) {
-  const [copied, setCopied] = useState(false);
-  const toast = useToast();
-
-  async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      toast.success("Copied to clipboard");
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("Failed to copy");
-    }
-  }
-
-  return (
-    <div className="rounded-xl border border-border overflow-hidden bg-surface max-w-full">
-      {filename && (
-        <div className="px-4 py-2.5 border-b border-border bg-surface-elevated flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <FileCode className="w-4 h-4 text-foreground-subtle shrink-0" />
-            <span className="text-sm font-mono text-foreground-muted truncate">
-              {filename}
-            </span>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleCopy}
-            className="h-7 px-2 text-xs gap-1.5 shrink-0"
-          >
-            {copied ? (
-              <>
-                <Check className="w-3.5 h-3.5 text-success" />
-                Copied
-              </>
-            ) : (
-              <>
-                <Copy className="w-3.5 h-3.5" />
-                Copy
-              </>
-            )}
-          </Button>
-        </div>
-      )}
-      <div className="relative">
-        <pre className="p-4 overflow-x-auto text-sm font-mono leading-relaxed max-w-full">
-          <code
-            className={`language-${language} break-all whitespace-pre-wrap`}
-          >
-            {code}
-          </code>
-        </pre>
-        {!filename && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleCopy}
-            className="absolute top-2 right-2 h-8 w-8 shrink-0"
-          >
-            {copied ? (
-              <Check className="w-4 h-4 text-success" />
-            ) : (
-              <Copy className="w-4 h-4" />
-            )}
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function ApiKeyInput({
   value,
   onChange,
@@ -360,19 +278,23 @@ function ApiKeyInput({
   onChange: (value: string) => void;
 }) {
   return (
-    <Card className="border-border">
+    <Card className="border-border shadow-none">
       <CardContent className="p-4">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-elevated">
-              <KeyRound className="h-4 w-4 text-foreground-muted" />
-            </div>
-            <div>
+          <div className="shrink-0">
+            <div className="flex items-center gap-2">
               <p className="text-sm font-medium">Your API Key</p>
-              <p className="text-xs text-foreground-muted">
-                Paste your key to generate configs
-              </p>
+              <div className="relative group">
+                <Info className="h-4 w-4 text-foreground-muted" />
+                <div className="absolute left-0 top-full mt-2 px-3 py-2 bg-surface-elevated border border-border rounded-lg text-xs text-foreground-muted w-56 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[100] shadow-lg">
+                  Your API key is used to authenticate requests to MemContext
+                  and generate personalized configurations.
+                </div>
+              </div>
             </div>
+            <p className="text-xs text-foreground-muted mt-0.5">
+              Paste your key to generate configs
+            </p>
           </div>
           <div className="flex-1">
             <Input
@@ -385,7 +307,7 @@ function ApiKeyInput({
           </div>
         </div>
         {!value && (
-          <p className="mt-3 text-xs text-foreground-subtle">
+          <p className="mt-3 text-xs text-foreground-muted">
             Don&apos;t have an API key?{" "}
             <Link href="/api-keys" className="text-accent hover:underline">
               Create one here
@@ -472,79 +394,107 @@ function AutoConfigButton({
   }
 
   return (
-    <div className="relative rounded-xl border border-accent/30 bg-accent/5 p-4 space-y-3">
-      <div className="flex items-start gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/10 shrink-0">
-          <Wand2 className="h-4.5 w-4.5 text-accent" />
+    <div className="rounded-xl border border-border bg-surface p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 shrink-0">
+            <Wand2 className="h-5 w-5 text-accent" />
+          </div>
+          <div className="space-y-1">
+            <h4 className="font-semibold">Auto-Configure with AI</h4>
+            <p className="text-sm text-foreground-muted">
+              Copy and paste this prompt in {agent.name} to automatically set up
+              MemContext.
+            </p>
+          </div>
         </div>
-        <div className="flex-1 min-w-0">
-          <h4 className="font-medium flex items-center gap-2">
-            Auto-Configure with AI
-            <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-accent/20 text-accent">
-              Quick Setup
-            </span>
-          </h4>
-          <p className="text-sm text-foreground-muted mt-1">
-            Copy this prompt and paste it in {agent.name} running in your home
-            directory. It will automatically configure MemContext for you.
-          </p>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
         <Button
           onClick={handleCopyPrompt}
-          className="gap-2"
+          className="gap-2 shrink-0 cursor-pointer hover:translate-y-0 hover:shadow-none"
           variant={copied ? "secondary" : "default"}
         >
           {copied ? (
             <>
               <Check className="h-4 w-4" />
-              Copied!
+              Copied
             </>
           ) : (
             <>
               <Sparkles className="h-4 w-4" />
-              Copy Setup Prompt
+              Copy Prompt
             </>
           )}
         </Button>
-
-        {!hasApiKey && (
-          <span className="text-xs text-foreground-muted">
-            <AlertCircle className="h-3.5 w-3.5 inline mr-1" />
-            Enter API key above for complete configuration
-          </span>
-        )}
       </div>
+      {!hasApiKey && (
+        <p className="mt-3 pt-3 border-t border-border text-xs text-foreground-muted flex items-center gap-1.5">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          Enter your API key above for a complete configuration
+        </p>
+      )}
     </div>
   );
 }
 
-function AgentTab({
-  agent,
-  isActive,
-  onClick,
+function AgentTabs({
+  agents,
+  selectedAgent,
+  onSelect,
 }: {
-  agent: AgentConfig;
-  isActive: boolean;
-  onClick: () => void;
+  agents: AgentConfig[];
+  selectedAgent: AgentId;
+  onSelect: (id: AgentId) => void;
 }) {
+  const tabsRef = useRef<Map<AgentId, HTMLButtonElement>>(new Map());
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
+
+  useEffect(() => {
+    const activeTab = tabsRef.current.get(selectedAgent);
+    if (activeTab) {
+      const container = activeTab.parentElement;
+      if (container) {
+        const containerRect = container.getBoundingClientRect();
+        const tabRect = activeTab.getBoundingClientRect();
+        setIndicatorStyle({
+          left: tabRect.left - containerRect.left,
+          width: tabRect.width,
+        });
+      }
+    }
+  }, [selectedAgent]);
+
   return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
-        isActive
-          ? "bg-accent/10 text-accent"
-          : "text-foreground-muted hover:text-foreground hover:bg-surface-elevated/50",
-      )}
-    >
-      <span className="flex items-center justify-center w-6 h-6">
-        {agent.icon}
-      </span>
-      <span className="hidden sm:inline">{agent.name}</span>
-    </button>
+    <div className="flex justify-center">
+      <div className="relative inline-flex gap-1 p-1.5 bg-background-secondary rounded-xl border border-border">
+        <div
+          className="absolute top-1.5 bottom-1.5 bg-accent rounded-lg transition-all duration-300 ease-out shadow-sm"
+          style={{
+            left: indicatorStyle.left,
+            width: indicatorStyle.width,
+          }}
+        />
+        {agents.map((agent) => (
+          <button
+            key={agent.id}
+            ref={(el) => {
+              if (el) tabsRef.current.set(agent.id, el);
+            }}
+            onClick={() => onSelect(agent.id)}
+            className={cn(
+              "relative z-10 flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 cursor-pointer",
+              selectedAgent === agent.id
+                ? "text-white [&_svg]:fill-white [&_svg]:text-white [&_svg_*]:fill-white"
+                : "text-foreground-muted hover:text-foreground [&_svg]:fill-foreground-muted [&_svg]:text-foreground-muted [&_svg_*]:fill-foreground-muted hover:[&_svg]:fill-foreground hover:[&_svg]:text-foreground hover:[&_svg_*]:fill-foreground",
+            )}
+          >
+            <span className="flex items-center justify-center w-5 h-5">
+              {agent.icon}
+            </span>
+            <span className="hidden sm:inline">{agent.name}</span>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -556,12 +506,12 @@ function AgentConfigSection({
   apiKey: string;
 }) {
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-8 animate-fade-in overflow-hidden">
       {/* Auto-Config Button (for CLI tools) */}
       <AutoConfigButton agent={agent} apiKey={apiKey} />
 
       {/* Manual Configuration Section */}
-      <div className="space-y-6">
+      <div className="space-y-8">
         {agent.supportsAutoConfig && (
           <div className="flex items-center gap-3">
             <div className="h-px flex-1 bg-border" />
@@ -573,66 +523,69 @@ function AgentConfigSection({
         )}
 
         {/* Step 1: MCP Configuration */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-accent-foreground text-sm font-bold">
+        <div className="flex gap-4">
+          <div className="flex flex-col items-center">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-foreground text-sm font-bold shrink-0">
               1
             </div>
+            <div className="w-px flex-1 border-l border-dashed border-border mt-3" />
+          </div>
+          <div className="flex-1 min-w-0 pb-2 space-y-4">
             <div>
               <h3 className="font-semibold">Add MCP Configuration</h3>
-              <p className="text-sm text-foreground-muted">
+              <p className="text-sm text-foreground-muted mt-0.5">
                 Add this to your{" "}
                 <code className="px-1.5 py-0.5 rounded bg-surface-elevated font-mono text-xs">
                   {agent.configFile}
                 </code>
               </p>
             </div>
-          </div>
 
-          <CodeBlock
-            code={agent.getConfig(apiKey)}
-            language={agent.id === "codex" ? "toml" : "json"}
-            filename={agent.configFile}
-          />
+            <CodeBlock
+              code={agent.getConfig(apiKey)}
+              language={agent.id === "codex" ? "toml" : "json"}
+              filename={agent.configFile}
+            />
 
-          {/* CLI Command for Claude Code */}
-          {agent.cliCommand && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm text-foreground-muted">
-                <Terminal className="w-4 h-4" />
-                <span>Or use the CLI command:</span>
+            {/* CLI Command for Claude Code */}
+            {agent.cliCommand && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-foreground-muted">
+                  <Terminal className="w-4 h-4" />
+                  <span>Or use the CLI command:</span>
+                </div>
+                <CodeBlock code={agent.cliCommand(apiKey)} language="bash" />
               </div>
-              <CodeBlock code={agent.cliCommand(apiKey)} language="bash" />
-            </div>
-          )}
+            )}
 
-          {/* Add to Cursor Button */}
-          {agent.hasCursorDeepLink && (
-            <div className="flex items-center gap-4 pt-2">
-              <CursorDeepLinkButton
-                apiKey={apiKey}
-                disabled={!apiKey || apiKey === "YOUR_API_KEY"}
-              />
-              <span className="text-sm text-foreground-subtle">
-                {!apiKey || apiKey === "YOUR_API_KEY"
-                  ? "Enter your API key above to enable"
-                  : "One-click install for Cursor"}
-              </span>
-            </div>
-          )}
+            {/* Add to Cursor Button */}
+            {agent.hasCursorDeepLink && (
+              <div className="flex items-center gap-4 pt-2">
+                <CursorDeepLinkButton
+                  apiKey={apiKey}
+                  disabled={!apiKey || apiKey === "YOUR_API_KEY"}
+                />
+                <span className="text-sm text-foreground-subtle">
+                  {!apiKey || apiKey === "YOUR_API_KEY"
+                    ? "Enter your API key above to enable"
+                    : "One-click install for Cursor"}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Step 2: User Preferences */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-accent-foreground text-sm font-bold">
+        <div className="flex gap-4">
+          <div className="flex flex-col items-center">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-foreground text-sm font-bold shrink-0">
               2
             </div>
+          </div>
+          <div className="flex-1 min-w-0 space-y-4">
             <div>
-              <h3 className="font-semibold">
-                Add User Preferences (Recommended)
-              </h3>
-              <p className="text-sm text-foreground-muted">
+              <h3 className="font-semibold">Add User Preferences</h3>
+              <p className="text-sm text-foreground-muted mt-0.5">
                 Add this to{" "}
                 <code className="px-1.5 py-0.5 rounded bg-surface-elevated font-mono text-xs">
                   {agent.preferencesFile}
@@ -640,18 +593,18 @@ function AgentConfigSection({
                 for best results
               </p>
             </div>
+
+            <CodeBlock
+              code={USER_PREFERENCES}
+              language="markdown"
+              filename={agent.preferencesFile}
+            />
+
+            <p className="text-sm text-foreground-subtle">
+              These instructions help your AI agent use MemContext more
+              effectively by automatically searching and saving memories.
+            </p>
           </div>
-
-          <CodeBlock
-            code={USER_PREFERENCES}
-            language="markdown"
-            filename={agent.preferencesFile}
-          />
-
-          <p className="text-sm text-foreground-subtle pl-11">
-            These instructions help your AI agent use MemContext more
-            effectively by automatically searching and saving memories.
-          </p>
         </div>
       </div>
     </div>
@@ -666,13 +619,10 @@ export default function McpPage() {
   const displayApiKey = apiKey || "YOUR_API_KEY";
 
   return (
-    <div className="min-h-[calc(100vh-48px)] flex flex-col animate-fade-in pb-8 overflow-hidden">
+    <div className="min-h-[calc(100vh-48px)] flex flex-col animate-fade-in overflow-hidden">
       {/* Header */}
       <div className="pb-6 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-elevated shrink-0">
-            <Plug className="h-5 w-5 text-foreground-muted" />
-          </div>
           <div className="min-w-0">
             <h1 className="text-2xl font-bold tracking-tight">MCP Setup</h1>
             <p className="text-sm text-foreground-muted">
@@ -683,54 +633,23 @@ export default function McpPage() {
       </div>
 
       {/* Main Content */}
-      <div className="space-y-6 min-w-0">
+      <div className="space-y-6 min-w-0 overflow-hidden">
         {/* API Key Input */}
         <ApiKeyInput value={apiKey} onChange={setApiKey} />
 
         {/* Agent Tabs */}
-        <div className="flex flex-wrap gap-2 p-1.5 bg-surface rounded-xl border border-border">
-          {agents.map((agent) => (
-            <AgentTab
-              key={agent.id}
-              agent={agent}
-              isActive={selectedAgent === agent.id}
-              onClick={() => setSelectedAgent(agent.id)}
-            />
-          ))}
-        </div>
+        <AgentTabs
+          agents={agents}
+          selectedAgent={selectedAgent}
+          onSelect={setSelectedAgent}
+        />
 
         {/* Agent Configuration */}
-        <Card className="overflow-hidden">
+        <Card className="overflow-hidden shadow-none">
           <CardContent className="p-6 overflow-hidden">
             <AgentConfigSection agent={currentAgent} apiKey={displayApiKey} />
           </CardContent>
         </Card>
-
-        {/* Info Section */}
-        {!apiKey && (
-          <Card className="border-border/50">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10 shrink-0">
-                  <AlertCircle className="h-4 w-4 text-accent" />
-                </div>
-                <div className="text-sm space-y-1">
-                  <p className="font-medium">Paste your API key above</p>
-                  <p className="text-foreground-muted">
-                    Enter your full API key in the input above to generate
-                    ready-to-use configurations. Don&apos;t have a key yet?{" "}
-                    <Link
-                      href="/api-keys"
-                      className="text-accent hover:underline"
-                    >
-                      Create one here
-                    </Link>
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
   );

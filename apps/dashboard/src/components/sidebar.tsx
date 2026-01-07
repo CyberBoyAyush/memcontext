@@ -398,10 +398,10 @@ export function Sidebar() {
               <button
                 onClick={() => setProfileOpen(!profileOpen)}
                 className={cn(
-                  "w-full flex items-center gap-3 p-2.5 rounded-xl border transition-colors",
+                  "w-full flex items-center cursor-pointer gap-3 p-2.5 rounded-xl border transition-colors",
                   profileOpen
                     ? "bg-surface-elevated border-border"
-                    : "bg-surface-elevated/50 border-border/50 hover:bg-surface-elevated hover:border-border",
+                    : "bg-surface-elevated border-border/50 hover:bg-surface-elevated hover:border-border",
                 )}
               >
                 <div className="w-8 h-8 rounded-full bg-surface-elevated border border-border overflow-hidden flex items-center justify-center shrink-0">

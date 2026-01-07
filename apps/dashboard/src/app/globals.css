@@ -360,7 +360,7 @@ body {
 /* Custom Scrollbar - matching website style */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--border-hover) var(--background);
+  scrollbar-color: var(--border-hover) transparent;
 }
 
 ::-webkit-scrollbar {
@@ -369,7 +369,7 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--background);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -382,7 +382,7 @@ body {
 }
 
 ::-webkit-scrollbar-corner {
-  background: var(--background);
+  background: transparent;
 }
 
 /* Hide scrollbar utility */
@@ -615,4 +615,17 @@ select:focus-visible {
 .bg-dots {
   background-image: radial-gradient(var(--border) 1px, transparent 1px);
   background-size: 16px 16px;
+}
+
+/* Shiki dual theme support */
+.shiki,
+.shiki span {
+  color: var(--shiki-light) !important;
+  background-color: transparent !important;
+}
+
+.dark .shiki,
+.dark .shiki span {
+  color: var(--shiki-dark) !important;
+  background-color: transparent !important;
 }
