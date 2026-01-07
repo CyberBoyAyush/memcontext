@@ -126,23 +126,23 @@ interface DashboardStats {
 function TableSkeleton() {
   return (
     <Card className="overflow-hidden flex-1 min-h-0 flex flex-col">
-      <div className="overflow-y-auto flex-1 scrollbar-hide">
-        <table className="w-full table-fixed">
+      <div className="overflow-auto flex-1 scrollbar-hide">
+        <table className="w-full min-w-[700px]">
           <thead className="sticky top-0 z-10 bg-surface-elevated border-b border-border">
             <tr>
               <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 border-r border-border">
                 #
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider border-r border-border">
+              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-64 border-r border-border">
                 Content
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden md:table-cell w-32 border-r border-border">
+              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-28 border-r border-border">
                 Category
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden lg:table-cell w-36 border-r border-border">
+              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-32 border-r border-border">
                 Project
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden sm:table-cell w-48 border-r border-border">
+              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-44 border-r border-border">
                 Created
               </th>
               <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12">
@@ -153,25 +153,25 @@ function TableSkeleton() {
           <tbody>
             {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => (
               <tr key={i} className="animate-pulse border-b border-border">
-                <td className="py-4 w-12 border-r border-border">
+                <td className="py-3 w-12 border-r border-border">
                   <div className="h-4 bg-surface-elevated rounded w-6 mx-auto" />
                 </td>
-                <td className="px-4 py-4 border-r border-border">
+                <td className="px-4 py-3 w-64 border-r border-border">
                   <div className="space-y-2">
                     <div className="h-4 bg-surface-elevated rounded w-full" />
                     <div className="h-4 bg-surface-elevated rounded w-3/4" />
                   </div>
                 </td>
-                <td className="px-4 py-4 hidden md:table-cell w-32 border-r border-border">
+                <td className="px-4 py-3 w-28 border-r border-border">
                   <div className="h-6 bg-surface-elevated rounded-full w-20" />
                 </td>
-                <td className="px-4 py-4 hidden lg:table-cell w-36 border-r border-border">
+                <td className="px-4 py-3 w-32 border-r border-border">
                   <div className="h-4 bg-surface-elevated rounded w-24" />
                 </td>
-                <td className="px-4 py-4 hidden sm:table-cell w-48 border-r border-border">
+                <td className="px-4 py-3 w-44 border-r border-border">
                   <div className="h-4 bg-surface-elevated rounded w-32" />
                 </td>
-                <td className="py-4 w-12">
+                <td className="py-3 w-12">
                   <div className="h-8 w-8 bg-surface-elevated rounded mx-auto" />
                 </td>
               </tr>
@@ -274,7 +274,7 @@ function MemoryDetailPanel({
                 variant="outline"
                 size="sm"
                 onClick={() => setIsEditing(true)}
-                className="gap-1.5"
+                className="gap-1.5 hover:translate-y-0 hover:shadow-none cursor-pointer"
               >
                 <PencilSimple className="h-3.5 w-3.5" weight="bold" />
                 Edit
@@ -285,6 +285,7 @@ function MemoryDetailPanel({
               size="icon"
               onClick={handleClose}
               disabled={updateMutation.isPending}
+              className="cursor-pointer"
             >
               <X className="h-5 w-5" />
             </Button>
@@ -414,13 +415,13 @@ function MemoryDetailPanel({
             <div className="flex items-center gap-3">
               <Button
                 variant="outline"
-                className="flex-1"
+                className="flex-1 hover:translate-y-0 hover:shadow-none cursor-pointer"
                 onClick={handleCancel}
               >
                 Cancel
               </Button>
               <Button
-                className="flex-1"
+                className="flex-1 hover:translate-y-0 hover:shadow-none cursor-pointer"
                 onClick={handleSave}
                 disabled={!hasChanges || updateMutation.isPending}
               >
@@ -440,7 +441,7 @@ function MemoryDetailPanel({
           ) : (
             <Button
               variant="outline"
-              className="w-full text-error hover:bg-error/10 hover:text-error"
+              className="w-full text-error hover:bg-error/10 hover:text-error hover:translate-y-0 hover:shadow-none cursor-pointer"
               onClick={onDelete}
             >
               <Trash className="h-4 w-4 mr-2" weight="duotone" />
@@ -454,12 +455,10 @@ function MemoryDetailPanel({
 }
 
 function DeleteConfirmDialog({
-  memory,
   onClose,
   onConfirm,
   isDeleting,
 }: {
-  memory: Memory;
   onClose: () => void;
   onConfirm: () => void;
   isDeleting: boolean;
@@ -563,7 +562,7 @@ function DeleteButton({
     <Button
       variant="ghost"
       size="icon"
-      className="h-8 w-8 text-foreground-muted hover:text-error hover:bg-error/10"
+      className="h-8 w-8 text-foreground-muted hover:text-error hover:bg-error/10 cursor-pointer"
       onClick={(e) => {
         e.stopPropagation();
         onDelete();
@@ -929,7 +928,7 @@ export default function MemoriesPage() {
             size="icon"
             onClick={handleRefresh}
             disabled={isFetching}
-            className="h-10 w-10 shrink-0"
+            className="h-10 w-10 shrink-0 cursor-pointer"
           >
             <ArrowsClockwise
               className={cn("h-4 w-4", isFetching && "animate-spin")}
@@ -1022,17 +1021,17 @@ export default function MemoriesPage() {
         <div className="flex flex-col flex-1 min-h-0 gap-4">
           {/* Table */}
           <Card className="overflow-hidden flex-1 min-h-0 flex flex-col">
-            <div className="overflow-y-auto flex-1 scrollbar-hide">
-              <table className="w-full table-fixed">
+            <div className="overflow-auto flex-1 scrollbar-hide">
+              <table className="w-full min-w-[700px]">
                 <thead className="sticky top-0 z-10 bg-surface-elevated border-b border-border">
                   <tr>
                     <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 border-r border-border">
                       #
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider border-r border-border">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-64 border-r border-border">
                       Content
                     </th>
-                    <th className="text-left px-4 py-3 hidden md:table-cell w-32 border-r border-border">
+                    <th className="text-left px-4 py-3 w-28 border-r border-border">
                       <CategoryFilter
                         value={category}
                         onChange={(val) => {
@@ -1041,7 +1040,7 @@ export default function MemoriesPage() {
                         }}
                       />
                     </th>
-                    <th className="text-left px-4 py-3 hidden lg:table-cell w-36 border-r border-border">
+                    <th className="text-left px-4 py-3 w-32 border-r border-border">
                       <ProjectFilter
                         value={project}
                         onChange={(val) => {
@@ -1052,7 +1051,7 @@ export default function MemoriesPage() {
                         isLoading={statsLoading}
                       />
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden sm:table-cell w-48 border-r border-border">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-44 border-r border-border">
                       Created
                     </th>
                     <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12">
@@ -1076,45 +1075,19 @@ export default function MemoriesPage() {
                         onClick={() => setSelectedMemory(memory)}
                       >
                         {/* Serial Number */}
-                        <td className="py-4 text-center text-sm text-foreground-muted font-medium w-12 border-r border-border">
+                        <td className="py-3 text-center text-sm text-foreground-muted font-medium w-12 border-r border-border">
                           {offset + index + 1}
                         </td>
 
                         {/* Content */}
-                        <td className="px-4 py-4 border-r border-border">
-                          <div className="space-y-2">
-                            <p className="text-sm leading-relaxed line-clamp-2">
-                              {memory.content}
-                            </p>
-                            {/* Mobile-only badges */}
-                            <div className="flex flex-wrap gap-2 md:hidden">
-                              {memory.category && config && (
-                                <span
-                                  className={cn(
-                                    "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-                                    config.lightBg,
-                                    config.lightText,
-                                  )}
-                                >
-                                  {memory.category}
-                                </span>
-                              )}
-                              {memory.project && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-surface-elevated text-foreground-muted">
-                                  {memory.project}
-                                </span>
-                              )}
-                            </div>
-                            {/* Mobile timestamp */}
-                            <div className="flex items-center gap-1 text-xs text-foreground-subtle sm:hidden">
-                              <Calendar className="h-3 w-3" />
-                              {formatDateTime(memory.createdAt).date}
-                            </div>
-                          </div>
+                        <td className="px-4 py-3 w-64 border-r border-border">
+                          <p className="text-sm leading-relaxed line-clamp-2">
+                            {memory.content}
+                          </p>
                         </td>
 
                         {/* Category */}
-                        <td className="px-4 py-4 hidden md:table-cell w-32 border-r border-border">
+                        <td className="px-4 py-3 w-28 border-r border-border">
                           {memory.category && config ? (
                             <span
                               className={cn(
@@ -1133,14 +1106,14 @@ export default function MemoriesPage() {
                         </td>
 
                         {/* Project */}
-                        <td className="px-4 py-4 hidden lg:table-cell w-36 border-r border-border">
-                          <span className="text-sm text-foreground-muted truncate">
+                        <td className="px-4 py-3 w-32 border-r border-border">
+                          <span className="text-sm text-foreground-muted truncate block">
                             {memory.project || "Global"}
                           </span>
                         </td>
 
                         {/* Created */}
-                        <td className="px-4 py-4 hidden sm:table-cell w-48 border-r border-border">
+                        <td className="px-4 py-3 w-44 border-r border-border">
                           <span className="text-sm text-foreground-muted whitespace-nowrap">
                             {formatDateTime(memory.createdAt).date},{" "}
                             {formatDateTime(memory.createdAt).time}
@@ -1148,7 +1121,7 @@ export default function MemoriesPage() {
                         </td>
 
                         {/* Actions */}
-                        <td className="py-4 w-12">
+                        <td className="py-3 w-12">
                           <div className="flex justify-center">
                             <DeleteButton
                               onDelete={() => setDeletingMemory(memory)}
@@ -1171,22 +1144,22 @@ export default function MemoriesPage() {
                         key={`empty-${index}`}
                         className="border-b border-border"
                       >
-                        <td className="py-4 w-12 border-r border-border">
+                        <td className="py-3 w-12 border-r border-border">
                           &nbsp;
                         </td>
-                        <td className="px-4 py-4 border-r border-border">
+                        <td className="px-4 py-3 w-64 border-r border-border">
                           &nbsp;
                         </td>
-                        <td className="px-4 py-4 hidden md:table-cell w-32 border-r border-border">
+                        <td className="px-4 py-3 w-28 border-r border-border">
                           &nbsp;
                         </td>
-                        <td className="px-4 py-4 hidden lg:table-cell w-36 border-r border-border">
+                        <td className="px-4 py-3 w-32 border-r border-border">
                           &nbsp;
                         </td>
-                        <td className="px-4 py-4 hidden sm:table-cell w-48 border-r border-border">
+                        <td className="px-4 py-3 w-44 border-r border-border">
                           &nbsp;
                         </td>
-                        <td className="py-4 w-12">&nbsp;</td>
+                        <td className="py-3 w-12">&nbsp;</td>
                       </tr>
                     ))}
                 </tbody>
@@ -1301,7 +1274,6 @@ export default function MemoriesPage() {
       {/* Delete Confirmation Dialog */}
       {deletingMemory && (
         <DeleteConfirmDialog
-          memory={deletingMemory}
           onClose={() => setDeletingMemory(null)}
           onConfirm={handleDelete}
           isDeleting={isDeleting}

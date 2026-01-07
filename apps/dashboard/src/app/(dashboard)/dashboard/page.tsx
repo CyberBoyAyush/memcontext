@@ -9,9 +9,7 @@ import {
   ChartLineUp,
   Sparkle,
   ArrowRight,
-  Tag,
   FolderOpen,
-  Clock,
 } from "@phosphor-icons/react";
 import { Bar, BarChart, XAxis, Cell, ResponsiveContainer } from "recharts";
 import { api } from "@/lib/api";
@@ -161,19 +159,17 @@ function CategoriesChart({
   return (
     <div className="rounded-2xl border border-border bg-surface overflow-hidden">
       <div className="p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div>
-              <h3 className="font-semibold">Categories</h3>
-              <p className="text-xs text-foreground-muted">
-                {activeData
-                  ? `${activeData.category}: ${activeData.count} memories`
-                  : `${totalCategorized} categorized`}
-              </p>
-            </div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <div>
+            <h3 className="font-semibold">Categories</h3>
+            <p className="text-xs text-foreground-muted">
+              {activeData
+                ? `${activeData.category}: ${activeData.count} memories`
+                : `${totalCategorized} categorized`}
+            </p>
           </div>
           {/* Legend */}
-          <div className="flex items-center gap-4">
+          <div className="grid grid-cols-4 sm:flex sm:items-center gap-2 sm:gap-4">
             {chartData.map((item, index) => (
               <div
                 key={item.category}
@@ -182,7 +178,7 @@ function CategoriesChart({
                 onMouseLeave={() => setActiveIndex(null)}
               >
                 <span
-                  className="w-3 h-3 rounded-sm"
+                  className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm shrink-0"
                   style={{
                     background: item.hasStripe
                       ? STRIPED_GRADIENT
@@ -197,7 +193,7 @@ function CategoriesChart({
                   }}
                 />
                 <span
-                  className="text-xs text-foreground-muted"
+                  className="text-[10px] sm:text-xs text-foreground-muted whitespace-nowrap"
                   style={{
                     opacity:
                       activeIndex === null
@@ -486,49 +482,59 @@ export default function DashboardPage() {
             </div>
 
             {hasMemories && stats?.recentMemories?.length ? (
-              <div className="border border-border rounded-lg">
-                {/* Table header */}
-                <div className="flex items-center gap-4 px-3 bg-surface-elevated py-2 text-xs text-foreground-muted border-b border-border">
-                  <span className="flex-1">Memory</span>
-                  <span className="w-28 text-center">Category</span>
-                  <span className="w-20 text-right">Created</span>
-                </div>
-
-                {/* Table rows */}
-                <div className="divide-y divide-border">
-                  {stats.recentMemories.slice(0, 5).map((memory) => {
-                    const timeAgo = getTimeAgo(memory.createdAt);
-                    return (
-                      <Link
-                        key={memory.id}
-                        href="/memories"
-                        className="group flex items-center gap-4 py-4 hover:bg-surface-elevated/50 px-3  transition-colors"
-                      >
-                        {/* Content - truncated */}
-                        <p className="flex-1 text-sm truncate min-w-0">
-                          {memory.content}
-                        </p>
-
-                        {/* Category badge */}
-                        <div className="w-28 flex justify-center shrink-0">
-                          {memory.category ? (
-                            <span className="text-xs px-2.5 py-1 rounded-full bg-accent/10 text-accent capitalize">
-                              {memory.category}
-                            </span>
-                          ) : (
-                            <span className="text-xs px-2.5 py-1 rounded-full bg-surface-elevated text-foreground-muted">
-                              Uncategorized
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Time ago */}
-                        <div className="flex items-center gap-1 text-xs text-foreground-muted shrink-0 w-20 justify-end">
-                          <span>{timeAgo}</span>
-                        </div>
-                      </Link>
-                    );
-                  })}
+              <div className="border border-border rounded-lg overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[420px]">
+                    <thead>
+                      <tr className="bg-surface-elevated border-b border-border">
+                        <th className="text-left px-3 py-2 text-xs font-normal text-foreground-muted w-48">
+                          Memory
+                        </th>
+                        <th className="text-center px-3 py-2 text-xs font-normal text-foreground-muted w-28">
+                          Category
+                        </th>
+                        <th className="text-right px-3 py-2 text-xs font-normal text-foreground-muted w-20">
+                          Created
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {stats.recentMemories.slice(0, 5).map((memory) => {
+                        const timeAgo = getTimeAgo(memory.createdAt);
+                        return (
+                          <tr
+                            key={memory.id}
+                            className="group hover:bg-surface-elevated/50 transition-colors"
+                          >
+                            <td className="px-3 py-3">
+                              <Link
+                                href="/memories"
+                                className="text-sm truncate block max-w-[180px]"
+                              >
+                                {memory.content}
+                              </Link>
+                            </td>
+                            <td className="px-3 py-3 text-center">
+                              {memory.category ? (
+                                <span className="text-xs px-2.5 py-1 rounded-full bg-accent/10 text-accent capitalize">
+                                  {memory.category}
+                                </span>
+                              ) : (
+                                <span className="text-xs px-2.5 py-1 rounded-full bg-surface-elevated text-foreground-muted">
+                                  Uncategorized
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-right">
+                              <span className="text-xs text-foreground-muted">
+                                {timeAgo}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             ) : (

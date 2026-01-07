@@ -350,10 +350,10 @@ function CursorDeepLinkButton({
       onClick={handleAddToCursor}
       disabled={disabled}
       className={cn(
-        "gap-2 font-medium border shadow-sm",
+        "gap-2 font-medium border shadow-sm hover:translate-y-0 hover:shadow-none",
         disabled
-          ? "bg-[#1a1a1a]/50 text-white/50 border-[#333]/50 cursor-not-allowed"
-          : "bg-[#1a1a1a] hover:bg-[#2a2a2a] text-white border-[#333]",
+          ? "bg-surface-hover/50 text-foreground/50 border-border/50 cursor-not-allowed"
+          : "bg-surface-hover hover:bg-border-hover text-foreground border-border cursor-pointer",
       )}
     >
       <Cursor className="w-4 h-4" />
@@ -394,9 +394,9 @@ function AutoConfigButton({
   }
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-5">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-4">
+    <div className="rounded-xl border border-border bg-surface p-4 sm:p-5">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div className="flex items-start gap-3 sm:gap-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 shrink-0">
             <Wand2 className="h-5 w-5 text-accent" />
           </div>
@@ -410,7 +410,7 @@ function AutoConfigButton({
         </div>
         <Button
           onClick={handleCopyPrompt}
-          className="gap-2 shrink-0 cursor-pointer hover:translate-y-0 hover:shadow-none"
+          className="gap-2 w-full sm:w-auto shrink-0 cursor-pointer hover:translate-y-0 hover:shadow-none"
           variant={copied ? "secondary" : "default"}
         >
           {copied ? (
