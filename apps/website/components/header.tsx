@@ -55,8 +55,7 @@ export function Header() {
             {/* Glass logo button */}
             <Link
               href="/"
-              className="flex items-center gap-2 group"
-              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center gap-2 group"        
             >
               <div className="relative">
                 {/* Border glow spots */}
