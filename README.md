@@ -1,6 +1,22 @@
+<div align="center">
+
 # MemContext
 
-Centralized memory system for AI coding agents. Save once, retrieve forever.
+### Persistent memory for AI coding agents. Save once, retrieve forever.
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9.2-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-20.9+-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16.1.1-000000?logo=next.js&logoColor=white)](https://nextjs.org/)
+[![Hono](https://img.shields.io/badge/Hono-4.7-E36002?logo=hono&logoColor=white)](https://hono.dev/)
+[![Drizzle](https://img.shields.io/badge/Drizzle-0.45-C5F74F?logo=drizzle&logoColor=black)](https://orm.drizzle.team/)
+[![Neon](https://img.shields.io/badge/Neon-Serverless_Postgres-00E599?logo=neon&logoColor=white)](https://neon.tech/)
+[![Turborepo](https://img.shields.io/badge/Turborepo-2.7-EF4444?logo=turborepo&logoColor=white)](https://turbo.build/)
+[![pnpm](https://img.shields.io/badge/pnpm-9.0-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
+</div>
+
+---
 
 ## What is MemContext
 
@@ -54,25 +70,28 @@ When you save a memory, the system automatically checks for similar existing mem
 
 ## Tech Stack
 
-| Component       | Technology                          |
-| --------------- | ----------------------------------- |
-| Runtime         | Node.js                             |
-| Package Manager | pnpm                                |
-| Build System    | Turborepo                           |
-| API Framework   | Hono                                |
-| Database        | PostgreSQL with pgvector (Neon)     |
-| ORM             | Drizzle                             |
-| Cache           | Upstash Redis                       |
-| Embeddings      | OpenRouter (text-embedding-3-large) |
-| LLM             | OpenRouter (gemini-2.5-flash)       |
+| Component       | Technology                             |
+| --------------- | -------------------------------------- |
+| Runtime         | Node.js 20.9+                          |
+| Package Manager | pnpm 9.0                               |
+| Build System    | Turborepo 2.7                          |
+| Language        | TypeScript 5.9.2                       |
+| API Framework   | Hono 4.7                               |
+| Frontend        | Next.js 16.1, React 19, Tailwind CSS 4 |
+| Database        | Neon (PostgreSQL with pgvector)        |
+| ORM             | Drizzle ORM 0.45                       |
+| Cache           | Upstash Redis                          |
+| Auth            | Better Auth                            |
+| AI/Embeddings   | OpenRouter, Vercel AI SDK              |
+| MCP             | Model Context Protocol SDK             |
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+
-- pnpm
-- PostgreSQL database with pgvector extension (Neon recommended)
+- Node.js 20.9+
+- pnpm 9.0+
+- Neon database (PostgreSQL with pgvector extension)
 - Upstash Redis account
 - OpenRouter API key
 
@@ -322,6 +341,10 @@ The MCP server exposes two tools to AI assistants:
 | hobby | 2,000        |
 | pro   | 10,000       |
 
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
 ## License
 
-Private
+This project is licensed under the GNU General Public License v3.0. See the [LICENSE](LICENSE) file for details.
