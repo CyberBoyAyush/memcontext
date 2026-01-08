@@ -20,6 +20,11 @@
   --accent-light: rgba(232, 97, 60, 0.1);
   --accent-glow: rgba(232, 97, 60, 0.2);
 
+  /* Sidebar neutral accent */
+  --sidebar-active: #525252;
+  --sidebar-active-bg: rgba(82, 82, 82, 0.1);
+  --sidebar-active-border: rgba(82, 82, 82, 0.2);
+
   /* Surfaces */
   --surface: #ffffff;
   --surface-elevated: #fafafa;
@@ -34,6 +39,12 @@
   --warning-bg: rgba(245, 158, 11, 0.1);
   --info: #3b82f6;
   --info-bg: rgba(59, 130, 246, 0.1);
+
+  /* Chart colors - coral theme variations */
+  --chart-1: #e8613c;
+  --chart-2: #f59e0b;
+  --chart-3: #22c55e;
+  --chart-4: #3b82f6;
 
   /* Radius */
   --radius: 0.75rem;
@@ -60,6 +71,11 @@
   --accent-light: rgba(232, 97, 60, 0.15);
   --accent-glow: rgba(232, 97, 60, 0.4);
 
+  /* Sidebar neutral accent */
+  --sidebar-active: #e5e5e5;
+  --sidebar-active-bg: rgba(255, 255, 255, 0.08);
+  --sidebar-active-border: rgba(255, 255, 255, 0.12);
+
   /* Surfaces */
   --surface: #111111;
   --surface-elevated: #171717;
@@ -74,6 +90,12 @@
   --warning-bg: rgba(245, 158, 11, 0.15);
   --info: #3b82f6;
   --info-bg: rgba(59, 130, 246, 0.15);
+
+  /* Chart colors - coral theme variations (same for dark) */
+  --chart-1: #e8613c;
+  --chart-2: #f59e0b;
+  --chart-3: #22c55e;
+  --chart-4: #3b82f6;
 
   color-scheme: dark;
 }
@@ -103,6 +125,13 @@
   --color-warning-bg: var(--warning-bg);
   --color-info: var(--info);
   --color-info-bg: var(--info-bg);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-active-bg: var(--sidebar-active-bg);
+  --color-sidebar-active-border: var(--sidebar-active-border);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --radius: var(--radius);
@@ -331,7 +360,7 @@ body {
 /* Custom Scrollbar - matching website style */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--border-hover) var(--background);
+  scrollbar-color: var(--border-hover) transparent;
 }
 
 ::-webkit-scrollbar {
@@ -340,7 +369,7 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--background);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -353,7 +382,7 @@ body {
 }
 
 ::-webkit-scrollbar-corner {
-  background: var(--background);
+  background: transparent;
 }
 
 /* Hide scrollbar utility */
@@ -586,4 +615,17 @@ select:focus-visible {
 .bg-dots {
   background-image: radial-gradient(var(--border) 1px, transparent 1px);
   background-size: 16px 16px;
+}
+
+/* Shiki dual theme support */
+.shiki,
+.shiki span {
+  color: var(--shiki-light) !important;
+  background-color: transparent !important;
+}
+
+.dark .shiki,
+.dark .shiki span {
+  color: var(--shiki-dark) !important;
+  background-color: transparent !important;
 }

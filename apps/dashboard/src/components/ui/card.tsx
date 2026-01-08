@@ -11,7 +11,7 @@ const Card = React.forwardRef<
     ref={ref}
     className={cn(
       "rounded-xl border border-border bg-surface text-foreground transition-all duration-200",
-      variant === "default" && "shadow-sm hover:border-border-hover",
+      variant === "default" && "shadow-sm ",
       variant === "elevated" &&
         "bg-surface-elevated shadow-[0_4px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.3)]",
       variant === "premium" &&

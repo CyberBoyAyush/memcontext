@@ -17,6 +17,7 @@ import {
   SignOut,
   ArrowSquareOut,
   ShieldCheck,
+  CaretUpDown,
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ import { useTheme } from "next-themes";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { signOut } from "@/lib/auth-client";
+import { useSidebar } from "@/providers/sidebar-provider";
 
 function useIsMounted() {
   return useSyncExternalStore(
@@ -86,89 +88,12 @@ function XIcon({ className }: { className?: string }) {
   );
 }
 
-function UserProfileDropdown({
-  user,
-  onClose,
-}: {
-  user: UserProfile["user"] | undefined;
-  onClose: () => void;
-}) {
-  const router = useRouter();
-  const [isSigningOut, setIsSigningOut] = useState(false);
-
-  const handleSignOut = async () => {
-    setIsSigningOut(true);
-    try {
-      await signOut();
-      router.push("/login");
-    } catch {
-      setIsSigningOut(false);
-    }
-  };
-
-  const handleSettings = () => {
-    router.push("/settings");
-    onClose();
-  };
-
-  return (
-    <div className="absolute bottom-full left-0 right-0 mb-2 mx-2 rounded-xl border border-border bg-surface shadow-xl animate-scale-in overflow-hidden">
-      {/* User Info */}
-      <div className="p-3 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-surface-elevated border border-border overflow-hidden flex items-center justify-center shrink-0">
-            {user?.image ? (
-              <Image
-                src={user.image}
-                alt={user.name || "User"}
-                width={40}
-                height={40}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <User
-                className="h-5 w-5 text-foreground-muted"
-                weight="duotone"
-              />
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium truncate">
-              {user?.name || "User"}
-            </p>
-            <p className="text-xs text-foreground-muted truncate">
-              {user?.email}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div className="p-1.5">
-        <button
-          onClick={handleSettings}
-          className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground-muted hover:text-foreground hover:bg-surface-elevated rounded-lg transition-colors"
-        >
-          <GearSix className="h-4 w-4" weight="duotone" />
-          Settings
-        </button>
-        <button
-          onClick={handleSignOut}
-          disabled={isSigningOut}
-          className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-error hover:bg-error/10 rounded-lg transition-colors disabled:opacity-50"
-        >
-          <SignOut className="h-4 w-4" weight="duotone" />
-          {isSigningOut ? "Signing out..." : "Sign Out"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const { collapsed, setCollapsed, hoverPeek, setHoverPeek } = useSidebar();
   const { resolvedTheme, setTheme } = useTheme();
   const mounted = useIsMounted();
   const profileRef = useRef<HTMLDivElement>(null);
@@ -196,24 +121,22 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile menu button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="fixed top-4 left-4 z-50 md:hidden"
-        onClick={() => setMobileOpen(!mobileOpen)}
-      >
-        {mobileOpen ? (
-          <X className="h-5 w-5" weight="bold" />
-        ) : (
+      {/* Mobile menu button - only show when sidebar is closed */}
+      {!mobileOpen && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="fixed top-4 left-4 z-50 md:hidden cursor-pointer"
+          onClick={() => setMobileOpen(true)}
+        >
           <List className="h-5 w-5" weight="bold" />
-        )}
-      </Button>
+        </Button>
+      )}
 
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden animate-backdrop-fade-in"
+          className="fixed inset-0 z-40 bg-background/20 backdrop-blur-md md:hidden animate-backdrop-fade-in"
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -221,21 +144,41 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-40 h-screen w-64 border-r border-border bg-background/95 backdrop-blur-sm transition-transform duration-300 md:translate-x-0",
-          mobileOpen ? "translate-x-0" : "-translate-x-full",
+          "fixed left-0 top-0 z-40 h-screen bg-background/95 backdrop-blur-sm transition-all duration-300 overflow-visible",
+          mobileOpen ? "translate-x-0 w-64" : "-translate-x-full",
+          "md:translate-x-0",
+          collapsed ? "md:w-16" : hoverPeek ? "md:w-60" : "md:w-64",
         )}
       >
+        {/* Desktop collapse button - vertical bar on the right edge */}
+        {/* Wide transparent hover area prevents wobble when sidebar shrinks */}
+        <button
+          className={cn(
+            "hidden md:flex absolute top-1/2 -translate-y-1/2 z-50 items-center justify-end cursor-pointer py-4 group transition-all duration-200",
+            hoverPeek ? "-right-8 pr-6 pl-2" : "-right-4 pr-2 pl-2",
+          )}
+          onClick={() => setCollapsed(!collapsed)}
+          onMouseEnter={() => !collapsed && setHoverPeek(true)}
+          onMouseLeave={() => setHoverPeek(false)}
+        >
+          <div className="w-1 h-8 rounded-full bg-border-hover transition-all duration-200 group-hover:h-12 group-hover:bg-foreground-muted" />
+        </button>
+
         <div className="flex h-full flex-col">
           {/* Logo */}
-          <div className="flex h-16 items-center border-b border-border px-6">
+          <div
+            className={cn(
+              "flex h-16 items-center justify-between shrink-0 transition-all duration-300 px-6",
+              collapsed && "md:px-3 md:justify-center",
+            )}
+          >
             <Link
               href="/dashboard"
               className="flex items-center gap-2.5 font-semibold text-lg group"
               onClick={() => setMobileOpen(false)}
             >
-              {/* Glass logo container matching website header */}
-              <div className="relative">
-                {/* Border glow spots */}
+              {/* Glass logo container */}
+              <div className="relative shrink-0">
                 <div
                   className="absolute -top-[0.5px] -left-[0.5px] w-6 h-6 rounded-lg blur-[0.5px]"
                   style={{
@@ -243,9 +186,13 @@ export function Sidebar() {
                       "radial-gradient(ellipse at top left, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.3) 30%, transparent 60%)",
                   }}
                 />
-                {/* Glass container */}
-                <div className="relative w-8 h-8 rounded-lg bg-surface/80 backdrop-blur-sm border border-white/10 flex items-center justify-center overflow-hidden group-hover:opacity-80 transition-all">
-                  {/* Inner glow */}
+                <div
+                  className="relative w-8 h-8 rounded-lg backdrop-blur-sm flex items-center justify-center overflow-hidden group-hover:opacity-80 transition-all"
+                  style={{
+                    backgroundColor: "#111111",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                  }}
+                >
                   <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent" />
                   <Image
                     src="/sign.png"
@@ -256,14 +203,33 @@ export function Sidebar() {
                   />
                 </div>
               </div>
-              <span className="group-hover:opacity-80 transition-opacity">
+              <span
+                className={cn(
+                  "group-hover:opacity-80 transition-opacity whitespace-nowrap",
+                  collapsed && "md:hidden",
+                )}
+              >
                 MemContext
               </span>
             </Link>
+            {/* Mobile close button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden h-8 w-8 cursor-pointer"
+              onClick={() => setMobileOpen(false)}
+            >
+              <X className="h-5 w-5" weight="bold" />
+            </Button>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 space-y-1 p-4">
+          <nav
+            className={cn(
+              "flex-1 space-y-1 transition-all duration-300 p-4",
+              collapsed && "md:p-2",
+            )}
+          >
             {navItems.map((item) => {
               const isActive =
                 pathname === item.href || pathname.startsWith(item.href + "/");
@@ -272,34 +238,43 @@ export function Sidebar() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
+                  title={collapsed ? item.label : undefined}
                   className={cn(
-                    "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200",
+                    "flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-200 px-4 py-3",
+                    collapsed && "md:p-3 md:justify-center",
                     isActive
-                      ? "bg-accent/10 text-accent border border-accent/20"
+                      ? "bg-border text-sidebar-active border border-border"
                       : "text-foreground-muted hover:bg-surface-elevated hover:text-foreground border border-transparent",
                   )}
                 >
                   <item.icon
+                    size={20}
                     className={cn(
-                      "h-5 w-5 transition-colors",
-                      isActive ? "text-accent" : "text-foreground-muted",
+                      "transition-colors shrink-0",
+                      isActive
+                        ? "text-sidebar-active"
+                        : "text-foreground-muted",
                     )}
                     weight={isActive ? "fill" : "duotone"}
                   />
-                  {item.label}
+                  <span className={cn(collapsed && "md:hidden")}>
+                    {item.label}
+                  </span>
                 </Link>
               );
             })}
 
-            {/* Admin Link - Only visible to admins */}
+            {/* Admin Link */}
             {user?.role === "admin" && (
               <>
                 <div className="my-2 border-t border-border/50" />
                 <Link
                   href={adminNavItem.href}
                   onClick={() => setMobileOpen(false)}
+                  title={collapsed ? adminNavItem.label : undefined}
                   className={cn(
-                    "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200",
+                    "flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-200 px-4 py-3",
+                    collapsed && "md:p-3 md:justify-center",
                     pathname.startsWith("/legend")
                       ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
                       : "text-foreground-muted hover:bg-surface-elevated hover:text-foreground border border-transparent",
@@ -307,47 +282,35 @@ export function Sidebar() {
                 >
                   <adminNavItem.icon
                     className={cn(
-                      "h-5 w-5 transition-colors",
+                      "h-5 w-5 transition-colors shrink-0",
                       pathname.startsWith("/legend")
                         ? "text-amber-500"
                         : "text-foreground-muted",
                     )}
                     weight={pathname.startsWith("/legend") ? "fill" : "duotone"}
                   />
-                  {adminNavItem.label}
+                  <span className={cn(collapsed && "md:hidden")}>
+                    {adminNavItem.label}
+                  </span>
                 </Link>
               </>
             )}
           </nav>
 
           {/* Footer */}
-          <div className="border-t border-border p-4 space-y-3">
-            {/* Theme Toggle */}
-            {mounted && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start gap-2 text-foreground-muted hover:text-foreground"
-                onClick={() =>
-                  setTheme(resolvedTheme === "dark" ? "light" : "dark")
-                }
-              >
-                {resolvedTheme === "dark" ? (
-                  <>
-                    <Sun className="h-4 w-4" weight="duotone" />
-                    Light Mode
-                  </>
-                ) : (
-                  <>
-                    <Moon className="h-4 w-4" weight="duotone" />
-                    Dark Mode
-                  </>
-                )}
-              </Button>
+          <div
+            className={cn(
+              "border-t border-border space-y-3 transition-all duration-300 overflow-visible p-4",
+              collapsed && "md:p-2",
             )}
-
-            {/* Beta Testing Info */}
-            <div className="p-3 rounded-xl bg-surface-elevated/50 border border-border space-y-2">
+          >
+            {/* Beta Testing Info - hide when collapsed on desktop */}
+            <div
+              className={cn(
+                "p-3 rounded-xl bg-surface-elevated/50 border border-border space-y-2",
+                collapsed && "md:hidden",
+              )}
+            >
               <p className="text-xs text-foreground-muted leading-relaxed">
                 Thanks for beta testing! Report issues to{" "}
                 <a
@@ -357,7 +320,6 @@ export function Sidebar() {
                   hi@aysh.me
                 </a>
               </p>
-              {/* Chat on X Badge */}
               <a
                 href="https://aysh.me/X"
                 target="_blank"
@@ -376,19 +338,97 @@ export function Sidebar() {
 
             {/* User Profile */}
             <div className="relative" ref={profileRef}>
-              {profileOpen && (
-                <UserProfileDropdown
-                  user={user}
-                  onClose={() => setProfileOpen(false)}
-                />
+              {profileOpen && mounted && (
+                <div
+                  className={cn(
+                    "absolute z-[100] rounded-xl border border-border bg-surface shadow-xl animate-scale-in overflow-hidden bottom-full left-0 right-0 mb-2",
+                    collapsed &&
+                      "md:bottom-0 md:left-full md:right-auto md:ml-2 md:mb-0 md:w-56",
+                  )}
+                >
+                  {/* User Info */}
+                  <div className="p-3 border-b border-border">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-surface-elevated border border-border overflow-hidden flex items-center justify-center shrink-0">
+                        {user?.image ? (
+                          <Image
+                            src={user.image}
+                            alt={user.name || "User"}
+                            width={40}
+                            height={40}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <User
+                            className="h-5 w-5 text-foreground-muted"
+                            weight="duotone"
+                          />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">
+                          {user?.name || "User"}
+                        </p>
+                        <p className="text-xs text-foreground-muted truncate">
+                          {user?.email}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="p-1.5">
+                    <button
+                      onClick={() => {
+                        router.push("/settings");
+                        setProfileOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground-muted hover:text-foreground hover:bg-surface-elevated rounded-lg transition-colors"
+                    >
+                      <GearSix className="h-4 w-4" weight="duotone" />
+                      Settings
+                    </button>
+                    <button
+                      onClick={() =>
+                        setTheme(resolvedTheme === "dark" ? "light" : "dark")
+                      }
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground-muted hover:text-foreground hover:bg-surface-elevated rounded-lg transition-colors"
+                    >
+                      {resolvedTheme === "dark" ? (
+                        <>
+                          <Sun className="h-4 w-4" weight="duotone" />
+                          Light Mode
+                        </>
+                      ) : (
+                        <>
+                          <Moon className="h-4 w-4" weight="duotone" />
+                          Dark Mode
+                        </>
+                      )}
+                    </button>
+                    <div className="my-1 border-t border-border" />
+                    <button
+                      onClick={async () => {
+                        await signOut();
+                        router.push("/login");
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-error hover:bg-error/10 rounded-lg transition-colors"
+                    >
+                      <SignOut className="h-4 w-4" weight="duotone" />
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
               )}
               <button
                 onClick={() => setProfileOpen(!profileOpen)}
+                title={collapsed ? user?.name || "User" : undefined}
                 className={cn(
-                  "w-full flex items-center gap-3 p-2 rounded-xl transition-colors",
+                  "w-full flex items-center cursor-pointer rounded-xl border transition-colors gap-3 p-2.5",
+                  collapsed && "md:p-2 md:justify-center",
                   profileOpen
-                    ? "bg-surface-elevated"
-                    : "hover:bg-surface-elevated",
+                    ? "bg-surface-elevated border-border"
+                    : "bg-surface border-border/50 hover:bg-surface-elevated hover:border-border",
                 )}
               >
                 <div className="w-8 h-8 rounded-full bg-surface-elevated border border-border overflow-hidden flex items-center justify-center shrink-0">
@@ -407,7 +447,12 @@ export function Sidebar() {
                     />
                   )}
                 </div>
-                <div className="flex-1 min-w-0 text-left">
+                <div
+                  className={cn(
+                    "flex-1 min-w-0 text-left",
+                    collapsed && "md:hidden",
+                  )}
+                >
                   <p className="text-sm font-medium truncate">
                     {user?.name || "User"}
                   </p>
@@ -415,6 +460,13 @@ export function Sidebar() {
                     {user?.email || "Loading..."}
                   </p>
                 </div>
+                <CaretUpDown
+                  className={cn(
+                    "h-4 w-4 text-foreground-muted shrink-0",
+                    collapsed && "md:hidden",
+                  )}
+                  weight="bold"
+                />
               </button>
             </div>
           </div>
