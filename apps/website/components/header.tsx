@@ -39,24 +39,24 @@ export function Header() {
   return (
     <>
       <header
-        className={`fixed top-0 mx-2 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? "py-3 sm:py-4" : "py-2 sm:py-3"
-          }`}
+        className={`fixed top-0 mx-2 left-0 right-0 z-50 transition-all duration-500 ${
+          scrolled ? "py-3 sm:py-4" : "py-2 sm:py-3"
+        }`}
       >
         <nav
-          className={`mx-auto max-w-5xl px-4 sm:px-6 transition-all duration-500 border rounded-xl ${scrolled
+          className={`mx-auto max-w-5xl px-4 sm:px-6 transition-all duration-500 border rounded-xl ${
+            scrolled
               ? "bg-surface/90 backdrop-blur-md border-border shadow-lg mx-4 sm:mx-6 lg:mx-auto"
               : "border-transparent bg-transparent"
-            }`}
+          }`}
         >
           <div
-            className={`flex items-center justify-between transition-all duration-500 ${scrolled ? "h-12 sm:h-14 px-2 sm:px-4" : "h-14 sm:h-16"
-              }`}
+            className={`flex items-center justify-between transition-all duration-500 ${
+              scrolled ? "h-12 sm:h-14 px-2 sm:px-4" : "h-14 sm:h-16"
+            }`}
           >
             {/* Glass logo button */}
-            <Link
-              href="/"
-              className="flex items-center gap-2 group"        
-            >
+            <Link href="/" className="flex items-center gap-2 group">
               <div className="relative">
                 {/* Border glow spots */}
                 <div
@@ -80,10 +80,9 @@ export function Header() {
                   />
                 </div>
               </div>
-              <span className="text-lg sm:text-xl group-hover:opacity-80 transition-opacity">
+              <span className="font-semibold text-lg group-hover:opacity-80 transition-opacity">
                 MemContext
               </span>
-
             </Link>
             <div className="hidden md:flex items-center gap-8 lg:gap-10">
               {navigation.map((item) => (
@@ -117,7 +116,6 @@ export function Header() {
                 className="px-4 flex items-center gap-2 lg:px-5 py-1.5 lg:py-2 text-sm lg:text-base font-medium bg-accent text-foreground cursor-pointer rounded-lg transition-all"
               >
                 Join Waitlist
-
               </button>
             </div>
 
