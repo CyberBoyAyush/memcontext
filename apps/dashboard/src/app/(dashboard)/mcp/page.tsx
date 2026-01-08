@@ -203,7 +203,7 @@ const agents: AgentConfig[] = [
     name: "Cursor",
     icon: <Cursor className="w-6 h-6" />,
     configFile: "~/.cursor/mcp.json",
-    preferencesFile: "Cursor Settings > Rules",
+    preferencesFile: "Cursor Settings > Rules and commands > User Rules",
     getConfig: (apiKey: string) =>
       JSON.stringify(
         {
