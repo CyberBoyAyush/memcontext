@@ -19,5 +19,5 @@
   "devDependencies": {
     "typescript": "^5.9.2"
   },
-  "license": "ISC"
+  "license": "GPL-3.0"
 }
