@@ -86,7 +86,7 @@ export function AuthHeader() {
                 </div>
               </div>
               <span
-                className="text-lg sm:text-xl group-hover:opacity-80 transition-opacity"
+                className="font-semibold text-lg group-hover:opacity-80 transition-opacity"
                 style={{ color: "#fafafa" }}
               >
                 MemContext

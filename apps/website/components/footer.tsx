@@ -51,7 +51,7 @@ export function Footer() {
                     />
                   </div>
                 </div>
-                <span className="text-lg sm:text-xl group-hover:opacity-80 transition-opacity">
+                <span className="font-semibold text-lg group-hover:opacity-80 transition-opacity">
                   MemContext
                 </span>
               </Link>
