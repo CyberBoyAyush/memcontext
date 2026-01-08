@@ -45,5 +45,6 @@
     "eslint-config-next": "16.1.1",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "license": "GPL-3.0"
 }
