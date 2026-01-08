@@ -41,9 +41,13 @@ export function AuthHeader() {
         <nav
           className={`mx-auto max-w-5xl px-4 sm:px-6 transition-all duration-500 border rounded-xl ${
             scrolled
-              ? "bg-surface/90 backdrop-blur-md border-border shadow-lg mx-4 sm:mx-6 lg:mx-auto"
+              ? "backdrop-blur-md shadow-lg mx-4 sm:mx-6 lg:mx-auto"
               : "border-transparent bg-transparent"
           }`}
+          style={{
+            backgroundColor: scrolled ? "rgba(17, 17, 17, 0.9)" : "transparent",
+            borderColor: scrolled ? "#1f1f1f" : "transparent",
+          }}
         >
           <div
             className={`flex items-center justify-between transition-all duration-500 ${
@@ -66,7 +70,10 @@ export function AuthHeader() {
                 />
 
                 {/* Glass container */}
-                <div className="relative w-8 h-8 sm:w-8 sm:h-8 rounded-lg bg-surface/80 backdrop-blur-sm border border-white/10 flex items-center justify-center overflow-hidden group-hover:opacity-80 transition-all">
+                <div
+                  className="relative w-8 h-8 sm:w-8 sm:h-8 rounded-lg backdrop-blur-sm border border-white/10 flex items-center justify-center overflow-hidden group-hover:opacity-80 transition-all"
+                  style={{ backgroundColor: "rgba(17, 17, 17, 0.8)" }}
+                >
                   {/* Inner glow */}
                   <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent" />
                   <Image
@@ -78,7 +85,10 @@ export function AuthHeader() {
                   />
                 </div>
               </div>
-              <span className="text-lg sm:text-xl group-hover:opacity-80 transition-opacity">
+              <span
+                className="text-lg sm:text-xl group-hover:opacity-80 transition-opacity"
+                style={{ color: "#fafafa" }}
+              >
                 MemContext
               </span>
             </Link>
@@ -89,7 +99,14 @@ export function AuthHeader() {
                   href={item.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm lg:text-base text-foreground-muted hover:text-foreground transition-colors link-underline"
+                  className="text-sm lg:text-base transition-colors link-underline hover:opacity-100"
+                  style={{ color: "#a1a1a1" }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = "#fafafa")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.color = "#a1a1a1")
+                  }
                 >
                   {item.name}
                 </a>
@@ -101,19 +118,32 @@ export function AuthHeader() {
                 href="https://aysh.me/X"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-foreground-muted hover:text-foreground transition-colors hover:scale-110 duration-200"
+                className="transition-colors hover:scale-110 duration-200"
+                style={{ color: "#a1a1a1" }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#fafafa")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "#a1a1a1")}
               >
                 <XIcon className="w-5 h-5 lg:w-6 lg:h-6" />
               </a>
               <button
                 onClick={() => setShowGithubModal(true)}
-                className="text-foreground-muted hover:text-foreground transition-colors hover:scale-110 duration-200"
+                className="transition-colors hover:scale-110 duration-200"
+                style={{ color: "#a1a1a1" }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#fafafa")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "#a1a1a1")}
               >
                 <BsGithub className="w-5 h-5 lg:w-6 lg:h-6" />
               </button>
               <a
                 href="https://memcontext.in"
-                className="px-4 flex items-center gap-2 lg:px-5 py-1.5 lg:py-2 text-sm lg:text-base font-medium bg-accent text-white cursor-pointer rounded-lg transition-all hover:bg-accent-hover"
+                className="px-4 flex items-center gap-2 lg:px-5 py-1.5 lg:py-2 text-sm lg:text-base font-medium cursor-pointer rounded-lg transition-all"
+                style={{ backgroundColor: "#e8613c", color: "#ffffff" }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.backgroundColor = "#d95530")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.backgroundColor = "#e8613c")
+                }
               >
                 Home
               </a>
@@ -121,7 +151,8 @@ export function AuthHeader() {
 
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 text-foreground-muted hover:text-foreground transition-colors"
+              className="md:hidden p-2 transition-colors"
+              style={{ color: "#a1a1a1" }}
             >
               <div className="relative w-6 h-6">
                 <Menu
@@ -148,16 +179,22 @@ export function AuthHeader() {
               isMobileMenuOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
             }`}
           >
-            <div className="py-4 space-y-1 mt-2 rounded-xl bg-surface/95 backdrop-blur-md border border-border/50 px-2">
-              {navigation.map((item, index) => (
+            <div
+              className="py-4 space-y-1 mt-2 rounded-xl backdrop-blur-md px-2"
+              style={{
+                backgroundColor: "rgba(17, 17, 17, 0.95)",
+                border: "1px solid rgba(31, 31, 31, 0.5)",
+              }}
+            >
+              {navigation.map((item) => (
                 <a
                   key={item.name}
                   href={item.href}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="block py-3 text-base text-foreground-muted hover:text-foreground hover:bg-surface-elevated rounded-lg px-3 transition-all"
-                  style={{ animationDelay: `${index * 50}ms` }}
+                  className="block py-3 text-base rounded-lg px-3 transition-all"
+                  style={{ color: "#a1a1a1" }}
                 >
                   {item.name}
                 </a>
@@ -167,14 +204,16 @@ export function AuthHeader() {
                   setShowGithubModal(true);
                   setIsMobileMenuOpen(false);
                 }}
-                className="flex items-center gap-2 py-3 text-base text-foreground-muted hover:text-foreground hover:bg-surface-elevated rounded-lg px-3 transition-all w-full"
+                className="flex items-center gap-2 py-3 text-base rounded-lg px-3 transition-all w-full"
+                style={{ color: "#a1a1a1" }}
               >
                 <BsGithub className="w-5 h-5" />
                 GitHub
               </button>
               <a
                 href="https://memcontext.in"
-                className="block w-full mt-3 px-5 py-3 text-center text-base font-medium bg-accent text-white rounded-xl"
+                className="block w-full mt-3 px-5 py-3 text-center text-base font-medium rounded-xl"
+                style={{ backgroundColor: "#e8613c", color: "#ffffff" }}
               >
                 Home
               </a>
@@ -186,28 +225,48 @@ export function AuthHeader() {
       {/* GitHub Coming Soon Modal */}
       {showGithubModal && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-fade-in"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in"
+          style={{ backgroundColor: "rgba(10, 10, 10, 0.8)" }}
           onClick={() => setShowGithubModal(false)}
         >
           <div
-            className="relative bg-background border border-border rounded-2xl p-6 sm:p-10 max-w-md w-full shadow-xl animate-fade-in-up"
+            className="relative rounded-2xl p-6 sm:p-10 max-w-md w-full shadow-xl animate-fade-in-up"
+            style={{
+              backgroundColor: "#0a0a0a",
+              border: "1px solid #1f1f1f",
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => setShowGithubModal(false)}
-              className="absolute top-4 right-4 sm:top-5 sm:right-5 text-foreground-subtle hover:text-foreground transition-colors hover:rotate-90 duration-200"
+              className="absolute top-4 right-4 sm:top-5 sm:right-5 transition-colors hover:rotate-90 duration-200"
+              style={{ color: "#6b6b6b" }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "#fafafa")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "#6b6b6b")}
             >
               <X className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
 
             <div className="text-center">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-4 sm:mb-5 rounded-full bg-surface-elevated flex items-center justify-center">
-                <BsGithub className="w-7 h-7 sm:w-8 sm:h-8" />
+              <div
+                className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-4 sm:mb-5 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: "#171717" }}
+              >
+                <BsGithub
+                  className="w-7 h-7 sm:w-8 sm:h-8"
+                  style={{ color: "#fafafa" }}
+                />
               </div>
-              <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">
+              <h3
+                className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3"
+                style={{ color: "#fafafa" }}
+              >
                 Coming Soon
               </h3>
-              <p className="text-foreground-muted text-sm sm:text-base mb-6 sm:mb-8">
+              <p
+                className="text-sm sm:text-base mb-6 sm:mb-8"
+                style={{ color: "#a1a1a1" }}
+              >
                 MemContext will be open source soon. Star the repo to get
                 notified when we go public.
               </p>
@@ -215,12 +274,16 @@ export function AuthHeader() {
                 href="https://github.com/cyberboyayush"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-medium bg-accent text-white rounded-xl btn-hover-lift transition-all"
+                className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-medium rounded-xl btn-hover-lift transition-all"
+                style={{ backgroundColor: "#e8613c", color: "#ffffff" }}
               >
                 <BsGithub className="w-4 h-4 sm:w-5 sm:h-5" />
                 Follow on GitHub
               </a>
-              <p className="mt-4 sm:mt-5 text-xs sm:text-sm text-foreground-subtle font-mono">
+              <p
+                className="mt-4 sm:mt-5 text-xs sm:text-sm font-mono"
+                style={{ color: "#6b6b6b" }}
+              >
                 github.com/cyberboyayush
               </p>
             </div>

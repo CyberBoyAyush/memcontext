@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Github, X } from "lucide-react";
+import { X } from "lucide-react";
 import { BsGithub } from "react-icons/bs";
 
 const XIcon = ({ className }: { className?: string }) => (
@@ -26,23 +26,40 @@ export function Footer() {
           <div className="flex flex-col sm:flex-row justify-between items-start gap-8 sm:gap-12 pb-16 sm:pb-20">
             {/* Left side - Logo, description, and links */}
             <div className="flex-1 max-w-md">
-              {/* Logo */}
-              <Link href="/" className="inline-flex items-center group">
-                <Image
-                  src="/logo.png"
-                  alt="MemContext Logo"
-                  width={120}
-                  height={32}
-                  className="h-6 sm:h-7 w-auto group-hover:opacity-80 transition-opacity"
-                />
+              {/* Logo - matching header style */}
+              <Link href="/" className="inline-flex items-center gap-2 group">
+                <div className="relative">
+                  {/* Border glow spots */}
+                  <div
+                    className="absolute -top-[0.5px] -left-[0.5px] w-6 h-6 rounded-lg blur-[0.5px]"
+                    style={{
+                      background:
+                        "radial-gradient(ellipse at top left, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.4) 30%, transparent 60%)",
+                    }}
+                  />
+
+                  {/* Glass container */}
+                  <div className="relative w-8 h-8 rounded-lg bg-surface/80 backdrop-blur-sm border border-white/10 flex items-center justify-center overflow-hidden group-hover:opacity-80 transition-all">
+                    {/* Inner glow */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent" />
+                    <Image
+                      src="/sign.png"
+                      alt="MemContext Logo"
+                      width={20}
+                      height={20}
+                      className="w-5 h-5 relative z-10"
+                    />
+                  </div>
+                </div>
+                <span className="text-lg sm:text-xl group-hover:opacity-80 transition-opacity">
+                  MemContext
+                </span>
               </Link>
 
               <p className="mt-4 text-sm text-foreground-muted leading-relaxed">
                 Persistent memory for AI coding assistants. Connect once, chat
                 normally, memory happens automatically.
               </p>
-
-            
 
               {/* Copyright and credit */}
               <div className="mt-4 flex flex-col gap-1">
@@ -186,7 +203,7 @@ export function Footer() {
 
             <div className="text-center">
               <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-4 sm:mb-5 rounded-full bg-surface-elevated flex items-center justify-center">
-                <Github className="w-7 h-7 sm:w-8 sm:h-8" />
+                <BsGithub className="w-7 h-7 sm:w-8 sm:h-8" />
               </div>
               <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">
                 Coming Soon
@@ -201,7 +218,7 @@ export function Footer() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-medium bg-accent text-background rounded-xl btn-hover-lift transition-all"
               >
-                <Github className="w-4 h-4 sm:w-5 sm:h-5" />
+                <BsGithub className="w-4 h-4 sm:w-5 sm:h-5" />
                 Follow on GitHub
               </a>
               <p className="mt-4 sm:mt-5 text-xs sm:text-sm text-foreground-subtle font-mono">
