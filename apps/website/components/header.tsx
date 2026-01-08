@@ -39,35 +39,52 @@ export function Header() {
   return (
     <>
       <header
-        className={`fixed top-0 mx-2 left-0 right-0 z-50 transition-all duration-500 ${
-          scrolled ? "py-3 sm:py-4" : "py-2 sm:py-3"
-        }`}
+        className={`fixed top-0 mx-2 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? "py-3 sm:py-4" : "py-2 sm:py-3"
+          }`}
       >
         <nav
-          className={`mx-auto max-w-5xl px-4 sm:px-6 transition-all duration-500 border rounded-xl ${
-            scrolled
+          className={`mx-auto max-w-5xl px-4 sm:px-6 transition-all duration-500 border rounded-xl ${scrolled
               ? "bg-surface/90 backdrop-blur-md border-border shadow-lg mx-4 sm:mx-6 lg:mx-auto"
               : "border-transparent bg-transparent"
-          }`}
+            }`}
         >
           <div
-            className={`flex items-center justify-between transition-all duration-500 ${
-              scrolled ? "h-12 sm:h-14 px-2 sm:px-4" : "h-14 sm:h-16"
-            }`}
+            className={`flex items-center justify-between transition-all duration-500 ${scrolled ? "h-12 sm:h-14 px-2 sm:px-4" : "h-14 sm:h-16"
+              }`}
           >
+            {/* Glass logo button */}
             <Link
               href="/"
-              className="flex items-center gap-2 font-medium font-mono group"
+              className="flex items-center gap-2 group"        
             >
-              <Image
-                src="/logo.png"
-                alt="MemContext Logo"
-                width={120}
-                height={32}
-                className="h-6 sm:h-7 w-auto group-hover:opacity-80 transition-opacity"
-              />
-            </Link>
+              <div className="relative">
+                {/* Border glow spots */}
+                <div
+                  className="absolute -top-[0.5px] -left-[0.5px] w-6 h-6 rounded-lg blur-[0.5px]"
+                  style={{
+                    background:
+                      "radial-gradient(ellipse at top left, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.4) 30%, transparent 60%)",
+                  }}
+                />
 
+                {/* Glass container */}
+                <div className="relative w-8 h-8 sm:w-8 sm:h-8 rounded-lg bg-surface/80 backdrop-blur-sm border border-white/10 flex items-center justify-center overflow-hidden group-hover:opacity-80 transition-all">
+                  {/* Inner glow */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent" />
+                  <Image
+                    src="/sign.png"
+                    alt="MemContext Logo"
+                    width={20}
+                    height={20}
+                    className="w-5 h-5 sm:w-5 sm:h-5 relative z-10"
+                  />
+                </div>
+              </div>
+              <span className="text-lg sm:text-xl group-hover:opacity-80 transition-opacity">
+                MemContext
+              </span>
+
+            </Link>
             <div className="hidden md:flex items-center gap-8 lg:gap-10">
               {navigation.map((item) => (
                 <Link
@@ -100,7 +117,7 @@ export function Header() {
                 className="px-4 flex items-center gap-2 lg:px-5 py-1.5 lg:py-2 text-sm lg:text-base font-medium bg-accent text-foreground cursor-pointer rounded-lg transition-all"
               >
                 Join Waitlist
-            
+
               </button>
             </div>
 

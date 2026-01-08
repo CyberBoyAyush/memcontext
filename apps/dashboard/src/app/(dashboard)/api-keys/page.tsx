@@ -12,8 +12,6 @@ import {
   Eye,
   EyeSlash,
   X,
-  ShieldCheck,
-  Warning,
   ArrowsClockwise,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
@@ -32,51 +30,51 @@ import { useToast } from "@/providers/toast-provider";
 
 function TableSkeleton() {
   return (
-    <Card className="overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-surface-elevated/95 dark:bg-surface-elevated">
-            <tr className="border-b border-border">
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12">
+    <Card className="overflow-hidden shadow-none">
+      <div className="overflow-auto">
+        <table className="w-full min-w-[640px]">
+          <thead className="sticky top-0 z-10 bg-surface-elevated border-b border-border">
+            <tr>
+              <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 border-r border-border">
                 #
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-44">
+              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-40 border-r border-border">
                 Name
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden sm:table-cell w-32">
+              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-32 border-r border-border">
                 Key
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden md:table-cell w-44">
+              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-44 border-r border-border">
                 Created
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden lg:table-cell w-44">
+              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-44 border-r border-border">
                 Last Used
               </th>
-              <th className="text-right px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-14">
+              <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12">
                 <span className="sr-only">Actions</span>
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody>
             {Array.from({ length: 3 }).map((_, i) => (
-              <tr key={i} className="animate-pulse">
-                <td className="px-4 py-3 w-12">
-                  <div className="h-4 bg-surface-elevated rounded w-5" />
+              <tr key={i} className="animate-pulse border-b border-border">
+                <td className="py-3 w-12 border-r border-border">
+                  <div className="h-4 bg-surface-elevated rounded w-5 mx-auto" />
                 </td>
-                <td className="px-4 py-3 w-44">
-                  <div className="h-5 bg-surface-elevated rounded w-28" />
+                <td className="px-4 py-3 w-40 border-r border-border">
+                  <div className="h-4 bg-surface-elevated rounded w-24" />
                 </td>
-                <td className="px-4 py-3 hidden sm:table-cell w-32">
-                  <div className="h-5 bg-surface-elevated rounded w-20" />
+                <td className="px-4 py-3 w-32 border-r border-border">
+                  <div className="h-4 bg-surface-elevated rounded w-20" />
                 </td>
-                <td className="px-4 py-3 hidden md:table-cell w-44">
+                <td className="px-4 py-3 w-44 border-r border-border">
                   <div className="h-4 bg-surface-elevated rounded w-32" />
                 </td>
-                <td className="px-4 py-3 hidden lg:table-cell w-44">
+                <td className="px-4 py-3 w-44 border-r border-border">
                   <div className="h-4 bg-surface-elevated rounded w-32" />
                 </td>
-                <td className="px-4 py-3 text-right w-14">
-                  <div className="h-8 w-8 bg-surface-elevated rounded ml-auto" />
+                <td className="py-3 w-12">
+                  <div className="h-6 w-6 bg-surface-elevated rounded mx-auto" />
                 </td>
               </tr>
             ))}
@@ -136,22 +134,18 @@ function CreateKeyModal({
         )}
       >
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-elevated">
-              <Key className="h-5 w-5 text-foreground-muted" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold">Create API Key</h2>
-              <p className="text-sm text-foreground-muted">
-                Name your key to identify it later
-              </p>
-            </div>
+          <div>
+            <h2 className="text-lg font-semibold">Create API Key</h2>
+            <p className="text-sm text-foreground-muted">
+              Name your key to identify it later
+            </p>
           </div>
           <Button
             variant="ghost"
             size="icon"
             onClick={handleClose}
             disabled={createMutation.isPending}
+            className="cursor-pointer"
           >
             <X className="h-5 w-5" />
           </Button>
@@ -165,6 +159,7 @@ function CreateKeyModal({
                 id="keyName"
                 placeholder="e.g., Claude Desktop, Cursor, VS Code"
                 value={keyName}
+                className="mt-2"
                 onChange={(e) => setKeyName(e.target.value)}
                 disabled={createMutation.isPending}
                 autoFocus
@@ -179,7 +174,7 @@ function CreateKeyModal({
             <Button
               type="button"
               variant="outline"
-              className="flex-1"
+              className="flex-1 hover:translate-y-0 hover:shadow-none cursor-pointer"
               onClick={handleClose}
               disabled={createMutation.isPending}
             >
@@ -187,7 +182,7 @@ function CreateKeyModal({
             </Button>
             <Button
               type="submit"
-              className="flex-1"
+              className="flex-1 hover:translate-y-0 hover:shadow-none cursor-pointer"
               disabled={createMutation.isPending || !keyName.trim()}
             >
               {createMutation.isPending ? (
@@ -269,7 +264,7 @@ function NewKeyModal({
               </span>{" "}
               has been created.
               <br />
-              <span className="text-warning">
+              <span className="text-accent">
                 Copy it now — you won&apos;t be able to see it again.
               </span>
             </p>
@@ -278,13 +273,13 @@ function NewKeyModal({
           <div className="space-y-3">
             <div className="flex items-center gap-2 p-3 rounded-xl bg-surface border border-border">
               <code className="flex-1 font-mono text-sm break-all">
-                {showKey ? keyData.key : "mc_" + "•".repeat(40)}
+                {showKey ? keyData.key : "mc_" + "•".repeat(32)}
               </code>
-              <div className="flex items-center gap-1 flex-shrink-0">
+              <div className="flex items-center flex-shrink-0">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className="h-8 w-8 cursor-pointer"
                   onClick={() => setShowKey(!showKey)}
                 >
                   {showKey ? (
@@ -296,7 +291,7 @@ function NewKeyModal({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className="h-8 w-8 cursor-pointer"
                   onClick={copyKey}
                 >
                   {copied ? (
@@ -310,13 +305,16 @@ function NewKeyModal({
 
             <div className="flex items-center gap-3">
               <Button
-                variant="outline"
-                className="flex-1"
+                variant="secondary"
+                className="flex-1 hover:translate-y-0 hover:shadow-none cursor-pointer"
                 onClick={handleClose}
               >
                 Done
               </Button>
-              <Button className="flex-1" onClick={copyKey}>
+              <Button
+                className="flex-1 hover:translate-y-0 hover:shadow-none cursor-pointer"
+                onClick={copyKey}
+              >
                 {copied ? (
                   <>
                     <Check className="h-4 w-4 mr-2" />
@@ -348,6 +346,8 @@ function DeleteConfirmDialog({
   onConfirm: () => void;
   isDeleting: boolean;
 }) {
+  const [confirmed, setConfirmed] = useState(false);
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div
@@ -355,49 +355,67 @@ function DeleteConfirmDialog({
         onClick={isDeleting ? undefined : onClose}
       />
 
-      <div className="relative w-full max-w-md bg-background border border-border rounded-2xl shadow-2xl animate-scale-in">
-        <div className="p-6 space-y-4">
-          <div className="flex items-center justify-center w-12 h-12 mx-auto rounded-full bg-error/10">
-            <Warning className="h-6 w-6 text-error" weight="duotone" />
-          </div>
-
-          <div className="text-center space-y-2">
-            <h3 className="text-lg font-semibold">Revoke API Key</h3>
-            <p className="text-sm text-foreground-muted">
-              Are you sure you want to revoke this API key? Any applications
-              using this key will immediately lose access.
-            </p>
-          </div>
-
-          <div className="p-3 rounded-lg bg-surface border border-border">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-elevated">
-                <Key className="h-4 w-4 text-foreground-muted" />
-              </div>
-              <div>
-                <p className="font-medium text-sm">{apiKey.name}</p>
-                <p className="text-xs text-foreground-muted font-mono">
-                  {apiKey.keyPrefix}...
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 p-4 border-t border-border bg-surface/50 rounded-b-2xl">
-          <Button
-            variant="outline"
-            className="flex-1"
+      <div className="relative w-full max-w-md bg-background border border-border rounded-xl shadow-2xl animate-scale-in">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 pb-0">
+          <h3 className="text-lg font-semibold">Revoke API Key</h3>
+          <button
             onClick={onClose}
             disabled={isDeleting}
+            className="p-1 rounded-md text-foreground-muted hover:text-foreground hover:bg-surface transition-colors cursor-pointer disabled:opacity-50"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-4 space-y-4">
+          <p className="text-sm text-foreground-muted">
+            Are you sure you want to revoke{" "}
+            <span className="font-medium text-foreground">{apiKey.name}</span>?
+          </p>
+
+          <p className="text-sm font-medium">This action is irreversible.</p>
+
+          {/* Checkbox confirmation */}
+          <label className="flex items-center gap-3 cursor-pointer">
+            <div className="relative">
+              <input
+                type="checkbox"
+                checked={confirmed}
+                onChange={(e) => setConfirmed(e.target.checked)}
+                className="peer sr-only"
+              />
+              <div className="w-5 h-5 rounded-sm border-2 border-foreground-muted peer-checked:bg-foreground peer-checked:border-foreground transition-colors flex items-center justify-center">
+                {confirmed && (
+                  <Check
+                    className="h-3.5 w-3.5 text-background"
+                    weight="bold"
+                  />
+                )}
+              </div>
+            </div>
+            <span className="text-sm text-foreground-muted">
+              I understand and confirm
+            </span>
+          </label>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 p-4 pt-0">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            disabled={isDeleting}
+            className="hover:translate-y-0 hover:shadow-none cursor-pointer"
           >
             Cancel
           </Button>
           <Button
             variant="destructive"
-            className="flex-1"
             onClick={onConfirm}
-            disabled={isDeleting}
+            disabled={isDeleting || !confirmed}
+            className="hover:translate-y-0 hover:shadow-none cursor-pointer"
           >
             {isDeleting ? (
               <>
@@ -408,10 +426,7 @@ function DeleteConfirmDialog({
                 Revoking...
               </>
             ) : (
-              <>
-                <Trash className="h-4 w-4 mr-2" weight="duotone" />
-                Revoke Key
-              </>
+              "Revoke Key"
             )}
           </Button>
         </div>
@@ -431,7 +446,7 @@ function DeleteButton({
     <Button
       variant="ghost"
       size="icon"
-      className="h-8 w-8 text-foreground-muted hover:text-error hover:bg-error/10"
+      className="h-8 w-8 text-foreground-muted hover:text-error hover:bg-error/10 cursor-pointer"
       onClick={(e) => {
         e.stopPropagation();
         onDelete();
@@ -490,23 +505,19 @@ export default function ApiKeysPage() {
   const keyCount = data?.keys.length ?? 0;
 
   return (
-    <div className="h-[calc(100vh-48px)] flex flex-col animate-fade-in">
+    <div className="h-full flex flex-col animate-fade-in overflow-hidden">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-6 flex-shrink-0">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-6 shrink-0">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-elevated">
-              <ShieldCheck
-                className="h-5 w-5 text-foreground-muted"
-                weight="duotone"
-              />
-            </div>
-            <div>
+            <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold tracking-tight">API Keys</h1>
-              <p className="text-sm text-foreground-muted">
+              <p className="text-sm -mb-2 text-foreground-muted">
+                (
                 {keyCount > 0
                   ? `${keyCount} active key${keyCount !== 1 ? "s" : ""}`
                   : "Manage your API keys for MCP integration"}
+                )
               </p>
             </div>
           </div>
@@ -518,14 +529,17 @@ export default function ApiKeysPage() {
             size="icon"
             onClick={handleRefresh}
             disabled={isFetching}
-            className="h-10 w-10"
+            className="h-10 w-10 cursor-pointer"
           >
             <ArrowsClockwise
               className={cn("h-4 w-4", isFetching && "animate-spin")}
               weight="bold"
             />
           </Button>
-          <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            className="gap-2 hover:translate-y-0 hover:shadow-none cursor-pointer"
+          >
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">Create Key</span>
           </Button>
@@ -553,76 +567,76 @@ export default function ApiKeysPage() {
               Create an API key to start using MemContext with Claude Desktop,
               Cursor, or other AI assistants
             </p>
-            <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+            <Button
+              onClick={() => setShowCreateModal(true)}
+              className="gap-2 hover:translate-y-0 hover:shadow-none cursor-pointer"
+            >
               <Plus className="h-4 w-4" />
               Create your first key
             </Button>
           </CardContent>
         </Card>
       ) : (
-        <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-surface-elevated/95 dark:bg-surface-elevated">
-                <tr className="border-b border-border">
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12">
+        <Card className="overflow-hidden shadow-none">
+          <div className="overflow-auto">
+            <table className="w-full min-w-[640px]">
+              <thead className="sticky top-0 z-10 bg-surface-elevated border-b border-border">
+                <tr>
+                  <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 border-r border-border">
                     #
                   </th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-44">
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-40 border-r border-border">
                     Name
                   </th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden sm:table-cell w-32">
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-32 border-r border-border">
                     Key
                   </th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden md:table-cell w-44">
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-44 border-r border-border">
                     Created
                   </th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden lg:table-cell w-44">
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-44 border-r border-border">
                     Last Used
                   </th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-14">
+                  <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12">
                     <span className="sr-only">Actions</span>
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody>
                 {data?.keys.map((key, index) => (
                   <tr
                     key={key.id}
-                    className="hover:bg-surface/50 transition-colors"
+                    className="hover:bg-surface/50 transition-colors border-b border-border"
                   >
                     {/* Serial Number */}
-                    <td className="px-4 py-3 text-sm text-foreground-muted font-medium w-12">
+                    <td className="py-3 text-center text-sm text-foreground-muted font-medium w-12 border-r border-border">
                       {index + 1}
                     </td>
 
                     {/* Name */}
-                    <td className="px-4 py-3 w-44">
-                      <p className="font-medium truncate">{key.name}</p>
-                      <p className="text-xs text-foreground-muted font-mono sm:hidden">
-                        {key.keyPrefix}...
-                      </p>
+                    <td className="px-4 py-3 w-40 border-r border-border">
+                      <p className="text-sm font-medium truncate">{key.name}</p>
                     </td>
 
                     {/* Key Prefix */}
-                    <td className="px-4 py-3 hidden sm:table-cell w-32">
-                      <code className="px-2 py-1 rounded-md bg-surface-elevated text-xs font-mono text-foreground-muted">
+                    <td className="px-4 py-3 w-32 border-r border-border">
+                      <code className="text-sm font-mono text-foreground-muted">
                         {key.keyPrefix}...
                       </code>
                     </td>
 
                     {/* Created */}
-                    <td className="px-4 py-3 hidden md:table-cell w-44">
-                      <span className="text-sm text-foreground">
+                    <td className="px-4 py-3 w-44 border-r border-border">
+                      <span className="text-sm text-foreground-muted whitespace-nowrap">
                         {formatDateTime(key.createdAt).date},{" "}
                         {formatDateTime(key.createdAt).time}
                       </span>
                     </td>
 
                     {/* Last Used */}
-                    <td className="px-4 py-3 hidden lg:table-cell w-44">
+                    <td className="px-4 py-3 w-44 border-r border-border">
                       {key.lastUsedAt ? (
-                        <span className="text-sm text-foreground">
+                        <span className="text-sm text-foreground-muted whitespace-nowrap">
                           {formatDateTime(key.lastUsedAt).date},{" "}
                           {formatDateTime(key.lastUsedAt).time}
                         </span>
@@ -634,11 +648,13 @@ export default function ApiKeysPage() {
                     </td>
 
                     {/* Actions */}
-                    <td className="px-4 py-3 text-right w-14">
-                      <DeleteButton
-                        onDelete={() => setDeletingKey(key)}
-                        isDeleting={isDeleting && deletingKey?.id === key.id}
-                      />
+                    <td className="py-3 w-12">
+                      <div className="flex justify-center">
+                        <DeleteButton
+                          onDelete={() => setDeletingKey(key)}
+                          isDeleting={isDeleting && deletingKey?.id === key.id}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}
