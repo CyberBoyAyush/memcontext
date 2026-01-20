@@ -10,6 +10,7 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
+    "@dodopayments/better-auth": "^1.4.2",
     "@lobehub/icons": "^4.0.2",
     "@memcontext/types": "workspace:*",
     "@phosphor-icons/react": "^2.1.10",

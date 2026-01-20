@@ -12,12 +12,18 @@ export interface User {
 
 export type PlanType = "free" | "hobby" | "pro";
 
+export type SubscriptionStatus = "active" | "on_hold" | "cancelled" | "expired";
+
 export interface Subscription {
   id: string;
   userId: string;
   plan: PlanType;
   memoryCount: number;
   memoryLimit: number;
+  // Dodo Payments fields (only populated for paid users)
+  dodoCustomerId: string | null;
+  dodoSubscriptionId: string | null;
+  status: SubscriptionStatus;
   createdAt: Date;
   updatedAt: Date;
 }

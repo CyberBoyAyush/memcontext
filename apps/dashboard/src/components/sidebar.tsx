@@ -18,6 +18,7 @@ import {
   ArrowSquareOut,
   ShieldCheck,
   CaretUpDown,
+  CreditCard,
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,11 @@ const navItems = [
     label: "MCP Setup",
     href: "/mcp",
     icon: Plugs,
+  },
+  {
+    label: "Subscription",
+    href: "/subscription",
+    icon: CreditCard,
   },
   {
     label: "Settings",

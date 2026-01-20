@@ -21,6 +21,7 @@ import apiKeysRoutes from "./routes/api-keys.js";
 import userRoutes from "./routes/user.js";
 import waitlistRoutes from "./routes/waitlist.js";
 import adminRoutes from "./routes/admin.js";
+import subscriptionRoutes from "./routes/subscription.js";
 import type { HealthResponse } from "@memcontext/types";
 
 const app = new Hono();
@@ -94,6 +95,7 @@ app.route("/api/api-keys", apiKeysRoutes);
 app.route("/api/user", userRoutes);
 app.route("/api/waitlist", waitlistRoutes);
 app.route("/api/admin", adminRoutes);
+app.route("/api/subscription", subscriptionRoutes);
 
 app.onError((err, c) => {
   const requestId = getRequestId(c);
