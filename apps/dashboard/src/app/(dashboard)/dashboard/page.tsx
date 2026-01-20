@@ -513,7 +513,7 @@ export default function DashboardPage() {
         </Link>
 
         {/* Current Plan Card */}
-        <Link href="/settings" className="group">
+        <Link href="/subscription" className="group">
           <div className="h-full rounded-xl sm:rounded-2xl border border-border bg-surface group-hover:border-border-hover transition-colors p-3 sm:p-4 flex items-center justify-between gap-2 sm:gap-4">
             <div className="min-w-0">
               <p className="text-xs sm:text-sm text-foreground-muted">

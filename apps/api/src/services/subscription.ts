@@ -1,5 +1,5 @@
 import { db, subscriptions, PLAN_LIMITS } from "../db/index.js";
-import type { PlanType } from "../db/schema.js";
+import type { PlanType, SubscriptionStatus } from "../db/schema.js";
 import { eq, sql } from "drizzle-orm";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -9,6 +9,15 @@ export interface MemoryLimitCheck {
   current: number;
   limit: number;
   plan: PlanType;
+}
+
+export interface SubscriptionData {
+  plan: PlanType;
+  memoryCount: number;
+  memoryLimit: number;
+  status: SubscriptionStatus;
+  dodoCustomerId: string | null;
+  dodoSubscriptionId: string | null;
 }
 
 export async function getOrCreateSubscription(
@@ -94,11 +103,26 @@ export async function updatePlan(
     .where(eq(subscriptions.userId, userId));
 }
 
-export async function getSubscriptionData(userId: string) {
+export async function getSubscriptionData(
+  userId: string,
+): Promise<SubscriptionData> {
   const sub = await getOrCreateSubscription(userId);
   return {
-    plan: sub.plan,
+    plan: sub.plan as PlanType,
     memoryCount: sub.memoryCount,
     memoryLimit: sub.memoryLimit,
+    status: sub.status as SubscriptionStatus,
+    dodoCustomerId: sub.dodoCustomerId,
+    dodoSubscriptionId: sub.dodoSubscriptionId,
   };
+}
+
+/**
+ * Check if user has an active paid subscription
+ */
+export async function hasActivePaidSubscription(
+  userId: string,
+): Promise<boolean> {
+  const sub = await getOrCreateSubscription(userId);
+  return sub.plan !== "free" && sub.status === "active";
 }
