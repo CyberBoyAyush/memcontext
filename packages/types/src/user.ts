@@ -12,7 +12,12 @@ export interface User {
 
 export type PlanType = "free" | "hobby" | "pro";
 
-export type SubscriptionStatus = "active" | "on_hold" | "cancelled" | "expired";
+export type SubscriptionStatus =
+  | "active"
+  | "on_hold"
+  | "cancelled"
+  | "expired"
+  | "failed";
 
 export interface Subscription {
   id: string;

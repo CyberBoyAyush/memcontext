@@ -28,7 +28,13 @@ const changePlanSchema = z.object({
 app.post("/change-plan", async (c) => {
   const { userId } = c.get("session");
 
-  const body = await c.req.json();
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body", code: "INVALID_JSON" }, 400);
+  }
+
   const parsed = changePlanSchema.safeParse(body);
 
   if (!parsed.success) {
