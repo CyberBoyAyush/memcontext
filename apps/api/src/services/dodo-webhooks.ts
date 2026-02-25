@@ -128,7 +128,9 @@ export async function handleSubscriptionActive(
       },
       "Could not find user for subscription.active webhook",
     );
-    return;
+    throw new Error(
+      `Could not reconcile subscription.active webhook for subscription ${subscriptionId}`,
+    );
   }
 
   const plan = mapProductToPlan(productId);

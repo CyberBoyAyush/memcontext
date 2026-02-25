@@ -124,5 +124,8 @@ export async function hasActivePaidSubscription(
   userId: string,
 ): Promise<boolean> {
   const sub = await getOrCreateSubscription(userId);
-  return sub.plan !== "free" && sub.status === "active";
+  return (
+    sub.plan !== "free" &&
+    (sub.status === "active" || sub.status === "cancelled")
+  );
 }
