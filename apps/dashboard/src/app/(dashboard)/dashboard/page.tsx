@@ -94,6 +94,7 @@ const CustomTooltip = memo(function CustomTooltip({
 
   const data = payload[0].payload;
   const isDotted = data.pattern === "dotted";
+  const isSolid = data.pattern === "solid";
 
   return (
     <div className="rounded-lg border border-border bg-background px-3 py-2 shadow-lg">
@@ -102,8 +103,10 @@ const CustomTooltip = memo(function CustomTooltip({
         <span
           className="w-3 h-3 rounded-sm shrink-0"
           style={{
-            backgroundImage: PATTERN_GRADIENTS[data.pattern],
-            backgroundColor: isDotted ? ACCENT_COLOR : undefined,
+            backgroundImage: isSolid
+              ? undefined
+              : PATTERN_GRADIENTS[data.pattern],
+            backgroundColor: isSolid || isDotted ? ACCENT_COLOR : undefined,
             backgroundSize: isDotted ? "5px 5px" : undefined,
             backgroundRepeat: isDotted ? "repeat" : undefined,
           }}
@@ -264,6 +267,7 @@ const CategoriesChart = memo(function CategoriesChart({
           <div className="grid grid-cols-4 sm:flex sm:items-center gap-2 sm:gap-4">
             {chartData.map((item, index) => {
               const isDotted = item.pattern === "dotted";
+              const isSolid = item.pattern === "solid";
               const isActive = activeIndex === null || activeIndex === index;
               return (
                 <div
@@ -275,8 +279,11 @@ const CategoriesChart = memo(function CategoriesChart({
                   <span
                     className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm shrink-0"
                     style={{
-                      backgroundImage: PATTERN_GRADIENTS[item.pattern],
-                      backgroundColor: isDotted ? ACCENT_COLOR : undefined,
+                      backgroundImage: isSolid
+                        ? undefined
+                        : PATTERN_GRADIENTS[item.pattern],
+                      backgroundColor:
+                        isSolid || isDotted ? ACCENT_COLOR : undefined,
                       backgroundSize: isDotted ? "6px 6px" : undefined,
                       backgroundRepeat: isDotted ? "repeat" : undefined,
                       opacity: isActive ? 1 : 0.3,
