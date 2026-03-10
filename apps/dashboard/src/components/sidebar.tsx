@@ -318,7 +318,7 @@ export function Sidebar() {
               )}
             >
               <p className="text-xs text-foreground-muted leading-relaxed">
-                Thanks for beta testing! Report issues to{" "}
+                Report issues to{" "}
                 <a
                   href="mailto:hi@aysh.me"
                   className="text-accent hover:underline"
