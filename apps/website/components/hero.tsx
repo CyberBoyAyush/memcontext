@@ -1,51 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import {
-  Loader2,
-  Check,
-  ArrowRight,
-  ArrowUpRight,
-  Sparkles,
-} from "lucide-react";
-import { useReferrer } from "@/lib/use-referrer";
-import { joinWaitlist } from "@/lib/waitlist";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { HeroCards } from "./hero-cards";
 import { TrustBlock } from "./trust-block";
 
 export function Hero() {
-  const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<
-    "idle" | "loading" | "success" | "exists" | "error"
-  >("idle");
-  const [errorMessage, setErrorMessage] = useState("");
-  const { referrer, clearReferrer } = useReferrer();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-
-    setStatus("loading");
-    setErrorMessage("");
-
-    const result = await joinWaitlist({
-      email,
-      source: "hero",
-      referrer,
-    });
-
-    if (result.success) {
-      setStatus(result.alreadyExists ? "exists" : "success");
-      setEmail("");
-      clearReferrer();
-      setTimeout(() => setStatus("idle"), 4000);
-    } else {
-      setStatus("error");
-      setErrorMessage(result.error);
-      setTimeout(() => setStatus("idle"), 4000);
-    }
-  };
-
   // Generate dots with varying opacities for the glow effect
   const generateDots = (count: number, seed: number) => {
     const dots = [];
@@ -169,59 +128,17 @@ export function Hero() {
             Context is saved and retrieved automatically.
           </p>
 
-          {/* Email Signup Form */}
-          <div className="animate-fade-in opacity-0 animation-delay-300 mt-6 sm:mt-8 max-w-lg mx-auto px-2">
-            <form
-              onSubmit={handleSubmit}
-              className="flex flex-row gap-1.5 md:gap-3"
+          {/* Sign Up CTA */}
+          <div className="animate-fade-in opacity-0 animation-delay-300 mt-6 sm:mt-8 flex justify-center">
+            <a
+              href="https://app.memcontext.in/login"
+              className="group px-6 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base font-medium bg-accent cursor-pointer text-background rounded-xl transition-all flex items-center justify-center gap-2"
             >
-              <div className="flex-1 relative">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@email.com"
-                  required
-                  disabled={status === "loading" || status === "success"}
-                  className="w-full px-4 sm:px-5 py-2.5 sm:py-3 text-sm sm:text-base font-mono bg-neutral-950/70 border border-neutral-700/60 rounded-xl input-focus-glow focus:outline-none focus:border-foreground transition-all placeholder:text-foreground-subtle "
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={
-                  status === "loading" ||
-                  status === "success" ||
-                  status === "exists"
-                }
-                className="px-3 sm:px-6 py-1 sm:py-3 text-xs sm:text-base font-medium bg-accent cursor-pointer text-background rounded-xl  transition-all disabled:opacity-50 flex items-center justify-center gap-2 group"
-              >
-                {status === "loading" ? (
-                  <>
-                    <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
-                    <span>Joining...</span>
-                  </>
-                ) : status === "success" ? (
-                  <>
-                    <Check className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span>You&apos;re in!</span>
-                  </>
-                ) : status === "exists" ? (
-                  <>
-                    <Check className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span>Already on the list!</span>
-                  </>
-                ) : status === "error" ? (
-                  <span className="text-sm">{errorMessage}</span>
-                ) : (
-                  <>
-                    <span className="text-foreground font-display font-semibold">
-                      Get Early Access
-                    </span>
-                    <ArrowRight className="w-3 h-3 sm:w-5 sm:h-5 transition-transform text-foreground group-hover:translate-x-1" />
-                  </>
-                )}
-              </button>
-            </form>
+              <span className="text-foreground font-display font-semibold">
+                Sign Up
+              </span>
+              <ArrowRight className="w-3 h-3 sm:w-5 sm:h-5 transition-transform text-foreground group-hover:translate-x-1" />
+            </a>
           </div>
         </div>
       </div>

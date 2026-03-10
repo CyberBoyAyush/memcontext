@@ -15,6 +15,7 @@ const XIcon = ({ className }: { className?: string }) => (
 const navigation = [
   { name: "Features", href: "#features" },
   { name: "How it Works", href: "#how-it-works" },
+  { name: "Pricing", href: "/pricing" },
   { name: "FAQ", href: "#faq" },
 ];
 
@@ -30,11 +31,6 @@ export function Header() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    setIsMobileMenuOpen(false);
-  };
 
   return (
     <>
@@ -111,12 +107,12 @@ export function Header() {
               >
                 <BsGithub className="w-5 h-5 lg:w-6 lg:h-6" />
               </button>
-              <button
-                onClick={scrollToTop}
+              <a
+                href="https://app.memcontext.in/login"
                 className="px-4 flex items-center gap-2 lg:px-5 py-1.5 lg:py-2 text-sm lg:text-base font-medium bg-accent text-foreground cursor-pointer rounded-lg transition-all"
               >
-                Join Waitlist
-              </button>
+                Sign Up
+              </a>
             </div>
 
             <button
@@ -162,12 +158,12 @@ export function Header() {
                 <BsGithub className="w-5 h-5" />
                 GitHub
               </button>
-              <button
-                onClick={scrollToTop}
-                className="block w-full mt-3 px-5 py-3 text-center text-base font-medium bg-accent text-background rounded-xl "
+              <a
+                href="https://app.memcontext.in/login"
+                className="block w-full mt-3 px-5 py-3 text-center text-base font-medium bg-accent text-background rounded-xl"
               >
-                Join Waitlist
-              </button>
+                Sign Up
+              </a>
             </div>
           </div>
         </nav>

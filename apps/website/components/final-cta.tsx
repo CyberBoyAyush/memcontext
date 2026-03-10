@@ -1,45 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, Loader2, Check, Github, X } from "lucide-react";
-import { useReferrer } from "@/lib/use-referrer";
-import { joinWaitlist } from "@/lib/waitlist";
+import { ArrowRight, X } from "lucide-react";
 import Image from "next/image";
 import { BsGithub } from "react-icons/bs";
 
 export function FinalCTA() {
-  const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<
-    "idle" | "loading" | "success" | "exists" | "error"
-  >("idle");
-  const [errorMessage, setErrorMessage] = useState("");
   const [showGithubModal, setShowGithubModal] = useState(false);
-  const { referrer, clearReferrer } = useReferrer();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-
-    setStatus("loading");
-    setErrorMessage("");
-
-    const result = await joinWaitlist({
-      email,
-      source: "final-cta",
-      referrer,
-    });
-
-    if (result.success) {
-      setStatus(result.alreadyExists ? "exists" : "success");
-      setEmail("");
-      clearReferrer();
-      setTimeout(() => setStatus("idle"), 4000);
-    } else {
-      setStatus("error");
-      setErrorMessage(result.error);
-      setTimeout(() => setStatus("idle"), 4000);
-    }
-  };
 
   return (
     <>
@@ -114,31 +81,11 @@ export function FinalCTA() {
                     Connect once. Chat normally. Memory happens automatically.
                   </p>
 
-                  {/* Form */}
-                  <form
-                    onSubmit={handleSubmit}
-                    className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto lg:mx-0"
-                  >
-                    <div className="relative flex-1">
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="you@email.com"
-                        required
-                        disabled={status === "loading" || status === "success"}
-                        className="w-full px-4 py-3 text-sm font-mono bg-surface/60 backdrop-blur-sm border border-white/[0.1] rounded-xl focus:outline-none focus:border-white/30 transition-all placeholder:text-foreground-subtle disabled:opacity-50"
-                      />
-                    </div>
-                    {/* Shining Get Early Access Button */}
-                    <button
-                      type="submit"
-                      disabled={
-                        status === "loading" ||
-                        status === "success" ||
-                        status === "exists"
-                      }
-                      className="relative group disabled:opacity-50"
+                  {/* Sign Up CTA */}
+                  <div className="max-w-md mx-auto lg:mx-0">
+                    <a
+                      href="https://app.memcontext.in/login"
+                      className="relative group inline-block"
                     >
                       {/* Border glow spot - top left */}
                       <div
@@ -148,21 +95,12 @@ export function FinalCTA() {
                             "radial-gradient(ellipse at top left, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.25) 40%, transparent 70%)",
                         }}
                       />
-                      {/* Border glow spot - bottom right */}
-                      <div
-                        className="absolute -bottom-px -right-px w-8 h-5 rounded-xl blur-[0.5px] opacity-60 group-hover:opacity-80 transition-opacity"
-                        style={{
-                          background:
-                            "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 40%, transparent 70%)",
-                        }}
-                      />
                       {/* Main button */}
                       <div
-                        className="relative px-5 py-3 rounded-xl flex items-center justify-center gap-2 overflow-hidden transition-all group-hover:scale-[1.02] whitespace-nowrap"
+                        className="relative px-6 py-3 rounded-xl flex items-center justify-center gap-2 overflow-hidden transition-all group-hover:scale-[1.02] whitespace-nowrap"
                         style={{
                           background:
                             "linear-gradient(135deg, rgba(232, 97, 60, 0.9) 0%, rgba(201, 78, 46, 0.8) 100%)",
-                          
                         }}
                       >
                         {/* Glass shine overlay */}
@@ -181,50 +119,13 @@ export function FinalCTA() {
                               "linear-gradient(90deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 50%, transparent 100%)",
                           }}
                         />
-                        {/* Left edge highlight */}
-                        <div
-                          className="absolute top-0 left-0 bottom-0 w-px"
-                          style={{
-                            background:
-                              "linear-gradient(180deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.15) 60%, transparent 100%)",
-                          }}
-                        />
-                        {status === "loading" ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin text-white relative z-10" />
-                            <span className="text-sm font-medium text-white relative z-10">
-                              Joining...
-                            </span>
-                          </>
-                        ) : status === "success" ? (
-                          <>
-                            <Check className="w-4 h-4 text-white relative z-10" />
-                            <span className="text-sm font-medium text-white relative z-10">
-                              You&apos;re in!
-                            </span>
-                          </>
-                        ) : status === "exists" ? (
-                          <>
-                            <Check className="w-4 h-4 text-white relative z-10" />
-                            <span className="text-sm font-medium text-white relative z-10">
-                              Already on list!
-                            </span>
-                          </>
-                        ) : status === "error" ? (
-                          <span className="text-xs text-white relative z-10">
-                            {errorMessage}
-                          </span>
-                        ) : (
-                          <>
-                            <span className="font-display font-semibold text-sm text-white relative z-10">
-                              Get Early Access
-                            </span>
-                            <ArrowRight className="w-4 h-4 text-white relative z-10 transition-transform group-hover:translate-x-1" />
-                          </>
-                        )}
+                        <span className="font-display font-semibold text-sm text-white relative z-10">
+                          Sign Up
+                        </span>
+                        <ArrowRight className="w-4 h-4 text-white relative z-10 transition-transform group-hover:translate-x-1" />
                       </div>
-                    </button>
-                  </form>
+                    </a>
+                  </div>
 
                   {/* Glossy GitHub CTA Button - Pill style like "How It helps" badge */}
                   <button
@@ -401,7 +302,7 @@ export function FinalCTA() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-medium bg-accent text-background rounded-xl btn-hover-lift transition-all"
               >
-                <Github className="w-4 h-4 sm:w-5 sm:h-5" />
+                <BsGithub className="w-4 h-4 sm:w-5 sm:h-5" />
                 Follow on GitHub
               </a>
               <p className="mt-4 sm:mt-5 text-xs sm:text-sm text-foreground-subtle font-mono">
