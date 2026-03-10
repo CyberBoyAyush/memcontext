@@ -46,6 +46,17 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().min(1, "GOOGLE_CLIENT_SECRET is required"),
   GITHUB_CLIENT_ID: z.string().min(1, "GITHUB_CLIENT_ID is required"),
   GITHUB_CLIENT_SECRET: z.string().min(1, "GITHUB_CLIENT_SECRET is required"),
+
+  // Dodo Payments
+  DODO_PAYMENTS_API_KEY: z.string().min(1, "DODO_PAYMENTS_API_KEY is required"),
+  DODO_PAYMENTS_WEBHOOK_SECRET: z
+    .string()
+    .min(1, "DODO_PAYMENTS_WEBHOOK_SECRET is required"),
+  DODO_PAYMENTS_ENVIRONMENT: z
+    .enum(["test_mode", "live_mode"])
+    .default("test_mode"),
+  DODO_PRODUCT_HOBBY: z.string().min(1, "DODO_PRODUCT_HOBBY is required"),
+  DODO_PRODUCT_PRO: z.string().min(1, "DODO_PRODUCT_PRO is required"),
 });
 
 const parsed = envSchema.safeParse(process.env);

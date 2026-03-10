@@ -18,6 +18,14 @@ export const PLAN_LIMITS = {
 
 export type PlanType = keyof typeof PLAN_LIMITS;
 
+// Subscription status for paid users
+export type SubscriptionStatus =
+  | "active"
+  | "on_hold"
+  | "cancelled"
+  | "expired"
+  | "failed";
+
 // Note: Foreign keys to user table are managed via SQL migration
 // to avoid cross-file import issues with drizzle-kit
 export const subscriptions = pgTable("subscriptions", {
@@ -26,6 +34,10 @@ export const subscriptions = pgTable("subscriptions", {
   plan: text("plan").notNull().default("free"),
   memoryCount: integer("memory_count").notNull().default(0),
   memoryLimit: integer("memory_limit").notNull().default(300),
+  // Dodo Payments fields (only populated for paid users)
+  dodoCustomerId: text("dodo_customer_id"),
+  dodoSubscriptionId: text("dodo_subscription_id"),
+  status: text("status").notNull().default("active"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

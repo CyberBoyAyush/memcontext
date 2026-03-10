@@ -17,6 +17,7 @@
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
+    "@dodopayments/better-auth": "^1.4.2",
     "@hono/node-server": "^1.14.1",
     "@hono/zod-validator": "^0.7.0",
     "@logtail/node": "^0.5.6",
@@ -27,6 +28,7 @@
     "@upstash/redis": "^1.36.0",
     "ai": "^5.0.0",
     "better-auth": "^1.4.9",
+    "dodopayments": "^2.15.0",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.1",
     "hono": "^4.7.10",
