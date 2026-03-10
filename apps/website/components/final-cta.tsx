@@ -1,13 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowRight, X } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Image from "next/image";
 import { BsGithub } from "react-icons/bs";
 
 export function FinalCTA() {
-  const [showGithubModal, setShowGithubModal] = useState(false);
-
   return (
     <>
       <section className="py-20 sm:pt-16 md:pb-28">
@@ -84,8 +81,10 @@ export function FinalCTA() {
                   {/* CTA Buttons - side by side */}
                   <div className="flex flex-col sm:flex-row items-center lg:items-start gap-3">
                     {/* Star on GitHub */}
-                    <button
-                      onClick={() => setShowGithubModal(true)}
+                    <a
+                      href="https://github.com/cyberboyAyush/memcontext"
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="group relative"
                     >
                       <div className="absolute -inset-0.5 rounded-xl border border-white/8" />
@@ -96,7 +95,7 @@ export function FinalCTA() {
                           Star on GitHub
                         </span>
                       </div>
-                    </button>
+                    </a>
 
                     {/* Sign Up */}
                     <a
@@ -235,51 +234,6 @@ export function FinalCTA() {
           </div>
         </div>
       </section>
-
-      {/* GitHub Coming Soon Modal */}
-      {showGithubModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-fade-in"
-          onClick={() => setShowGithubModal(false)}
-        >
-          <div
-            className="relative bg-background border border-border rounded-2xl p-6 sm:p-10 max-w-md w-full shadow-xl animate-fade-in-up"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setShowGithubModal(false)}
-              className="absolute top-4 right-4 sm:top-5 sm:right-5 text-foreground-subtle hover:text-foreground transition-colors hover:rotate-90 duration-200"
-            >
-              <X className="w-5 h-5 sm:w-6 sm:h-6" />
-            </button>
-
-            <div className="text-center">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-4 sm:mb-5 rounded-full bg-surface-elevated flex items-center justify-center">
-                <BsGithub className="w-7 h-7 sm:w-8 sm:h-8" />
-              </div>
-              <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">
-                Coming Soon
-              </h3>
-              <p className="text-foreground-muted text-sm sm:text-base mb-6 sm:mb-8">
-                MemContext will be open source soon. Star the repo to get
-                notified when we go public.
-              </p>
-              <a
-                href="https://github.com/cyberboyayush"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-medium bg-accent text-background rounded-xl btn-hover-lift transition-all"
-              >
-                <BsGithub className="w-4 h-4 sm:w-5 sm:h-5" />
-                Follow on GitHub
-              </a>
-              <p className="mt-4 sm:mt-5 text-xs sm:text-sm text-foreground-subtle font-mono">
-                github.com/cyberboyayush
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
