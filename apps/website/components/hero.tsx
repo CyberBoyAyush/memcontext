@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowRight, Sparkles } from "lucide-react";
+import Link from "next/link";
 import { HeroCards } from "./hero-cards";
 import { TrustBlock } from "./trust-block";
 
@@ -128,11 +129,23 @@ export function Hero() {
             Context is saved and retrieved automatically.
           </p>
 
-          {/* Sign Up CTA */}
-          <div className="animate-fade-in opacity-0 animation-delay-300 mt-6 sm:mt-8 flex justify-center">
+          {/* CTA Buttons */}
+          <div className="animate-fade-in opacity-0 animation-delay-300 mt-6 sm:mt-8 flex justify-center gap-3">
+            {/* Pricing Button - glass pill */}
+            <Link href="/pricing" className="group relative">
+              <div className="absolute -inset-0.5 rounded-xl border border-white/8" />
+              <div className="relative flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl bg-surface/60 backdrop-blur-sm border border-white/[0.08] transition-all group-hover:border-white/15 group-hover:bg-surface/80">
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/[0.04] via-transparent to-transparent" />
+                <span className="text-sm sm:text-base text-foreground font-display font-semibold relative z-10">
+                  Pricing
+                </span>
+              </div>
+            </Link>
+
+            {/* Sign Up Button */}
             <a
               href="https://app.memcontext.in/login"
-              className="group px-6 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base font-medium bg-accent cursor-pointer text-background rounded-xl transition-all flex items-center justify-center gap-2"
+              className="group px-5 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base font-medium bg-accent cursor-pointer text-background rounded-xl transition-all flex items-center justify-center gap-2"
             >
               <span className="text-foreground font-display font-semibold">
                 Sign Up

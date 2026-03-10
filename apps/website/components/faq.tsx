@@ -101,7 +101,7 @@ export function FAQ() {
             {/* CTA Button - Glass style */}
             <a
               href="https://app.memcontext.in/login"
-              className="group relative mb-8 w-full sm:w-auto block"
+              className="group relative mb-8 inline-block"
             >
               {/* Border glow spots */}
               <div

@@ -81,13 +81,28 @@ export function FinalCTA() {
                     Connect once. Chat normally. Memory happens automatically.
                   </p>
 
-                  {/* Sign Up CTA */}
-                  <div className="max-w-md mx-auto lg:mx-0">
+                  {/* CTA Buttons - side by side */}
+                  <div className="flex flex-col sm:flex-row items-center lg:items-start gap-3">
+                    {/* Star on GitHub */}
+                    <button
+                      onClick={() => setShowGithubModal(true)}
+                      className="group relative"
+                    >
+                      <div className="absolute -inset-0.5 rounded-xl border border-white/8" />
+                      <div className="relative flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-surface/60 backdrop-blur-sm border border-white/[0.08] transition-all group-hover:border-white/15 group-hover:bg-surface/80 cursor-pointer">
+                        <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/[0.04] via-transparent to-transparent" />
+                        <BsGithub className="relative z-10 w-4 h-4 text-foreground-muted group-hover:text-foreground transition-colors" />
+                        <span className="relative z-10 text-sm font-display font-semibold text-foreground">
+                          Star on GitHub
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* Sign Up */}
                     <a
                       href="https://app.memcontext.in/login"
                       className="relative group inline-block"
                     >
-                      {/* Border glow spot - top left */}
                       <div
                         className="absolute -top-px -left-px w-12 h-6 rounded-xl blur-[0.5px] opacity-80 group-hover:opacity-100 transition-opacity"
                         style={{
@@ -95,7 +110,6 @@ export function FinalCTA() {
                             "radial-gradient(ellipse at top left, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.25) 40%, transparent 70%)",
                         }}
                       />
-                      {/* Main button */}
                       <div
                         className="relative px-6 py-3 rounded-xl flex items-center justify-center gap-2 overflow-hidden transition-all group-hover:scale-[1.02] whitespace-nowrap"
                         style={{
@@ -103,7 +117,6 @@ export function FinalCTA() {
                             "linear-gradient(135deg, rgba(232, 97, 60, 0.9) 0%, rgba(201, 78, 46, 0.8) 100%)",
                         }}
                       >
-                        {/* Glass shine overlay */}
                         <div
                           className="absolute inset-0 opacity-60"
                           style={{
@@ -111,7 +124,6 @@ export function FinalCTA() {
                               "radial-gradient(ellipse at top left, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.08) 40%, transparent 70%)",
                           }}
                         />
-                        {/* Top edge highlight */}
                         <div
                           className="absolute top-0 left-0 right-0 h-px"
                           style={{
@@ -126,50 +138,6 @@ export function FinalCTA() {
                       </div>
                     </a>
                   </div>
-
-                  {/* Glossy GitHub CTA Button - Pill style like "How It helps" badge */}
-                  <button
-                    onClick={() => setShowGithubModal(true)}
-                    className="mt-5 inline-flex justify-center lg:justify-start"
-                  >
-                    <div className="group relative">
-                      {/* Border glow spot - top left */}
-                      <div
-                        className="absolute -top-px -left-px w-20 h-11 rounded-full blur-[1px]"
-                        style={{
-                          background:
-                            "radial-gradient(ellipse at top left, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.3) 30%, transparent 70%)",
-                        }}
-                      />
-                      {/* Border glow spot - bottom right */}
-                      <div
-                        className="absolute -bottom-px -right-px w-20 h-11 rounded-full blur-[1px]"
-                        style={{
-                          background:
-                            "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 30%, transparent 70%)",
-                        }}
-                      />
-
-                      {/* Subtle border all around */}
-                      <div className="absolute -inset-0.5 rounded-full border border-white/10" />
-
-                      {/* Main container */}
-                      <div className="relative inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-surface/95 backdrop-blur-sm transition-all duration-300 cursor-pointer overflow-hidden group-hover:bg-surface/80">
-                        {/* Inner glow - top left */}
-                        <div className="absolute top-0 left-0 w-20 h-12 bg-white/8 rounded-full blur-xl -translate-x-1/3 -translate-y-1/2" />
-                        {/* Inner glow - bottom right */}
-                        <div className="absolute bottom-0 right-0 w-20 h-12 bg-white/8 rounded-full blur-xl translate-x-1/3 translate-y-1/2" />
-
-                        {/* GitHub icon */}
-                        <BsGithub className="relative z-10 w-4 h-4 text-foreground-muted group-hover:text-foreground transition-colors" />
-
-                        {/* Text */}
-                        <span className="relative z-10 text-sm text-foreground font-medium">
-                          Star on GitHub
-                        </span>
-                      </div>
-                    </div>
-                  </button>
                 </div>
 
                 {/* Right side - Large rotated logo in glass container */}
