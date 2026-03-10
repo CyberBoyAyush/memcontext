@@ -66,8 +66,8 @@ const searchMemorySchema = z.object({
 const listMemorySchema = z.object({
   limit: z.coerce.number().min(1).max(100).optional().default(20),
   offset: z.coerce.number().min(0).optional().default(0),
-  category: z.enum(["preference", "fact", "decision", "context"]).optional(),
-  project: z.string().max(100, "Project name too long").optional(),
+  category: z.string().max(200).optional(),
+  project: z.string().max(500).optional(),
   search: z.string().max(200, "Search query too long").optional(),
 });
 
@@ -177,12 +177,46 @@ app.get(
     const { userId } = c.get("session");
     const query = c.req.valid("query");
 
+    const validCategories = new Set([
+      "preference",
+      "fact",
+      "decision",
+      "context",
+    ]);
+    const rawCategories = query.category
+      ? query.category
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+
+    const invalidCategories = rawCategories.filter(
+      (category) => !validCategories.has(category),
+    );
+
+    if (invalidCategories.length > 0) {
+      throw new HTTPException(400, {
+        message: `Invalid category filter: ${invalidCategories.join(", ")}`,
+      });
+    }
+
+    const categories = rawCategories.length
+      ? (rawCategories as MemoryCategory[])
+      : undefined;
+
+    const projects = query.project
+      ? query.project
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : undefined;
+
     const result = await listMemories({
       userId,
       limit: query.limit,
       offset: query.offset,
-      category: query.category as MemoryCategory | undefined,
-      project: query.project,
+      categories: categories?.length ? categories : undefined,
+      projects: projects?.length ? projects : undefined,
       search: query.search,
     });
 

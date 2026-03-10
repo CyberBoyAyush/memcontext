@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   CaretUpDown,
   CreditCard,
+  Envelope,
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -47,36 +48,44 @@ interface UserProfile {
   };
 }
 
-const navItems = [
+interface SubscriptionData {
+  plan: string;
+  memoryCount: number;
+  memoryLimit: number;
+}
+
+interface NavItem {
+  label: string;
+  href: string;
+  icon: typeof SquaresFour;
+}
+
+interface NavGroup {
+  title: string;
+  items: NavItem[];
+}
+
+const navGroups: NavGroup[] = [
   {
-    label: "Dashboard",
-    href: "/dashboard",
-    icon: SquaresFour,
+    title: "Core",
+    items: [
+      { label: "Dashboard", href: "/dashboard", icon: SquaresFour },
+      { label: "Memories", href: "/memories", icon: Brain },
+    ],
   },
   {
-    label: "Memories",
-    href: "/memories",
-    icon: Brain,
+    title: "Developer",
+    items: [
+      { label: "API Keys", href: "/api-keys", icon: Key },
+      { label: "MCP Setup", href: "/mcp", icon: Plugs },
+    ],
   },
   {
-    label: "API Keys",
-    href: "/api-keys",
-    icon: Key,
-  },
-  {
-    label: "MCP Setup",
-    href: "/mcp",
-    icon: Plugs,
-  },
-  {
-    label: "Subscription",
-    href: "/subscription",
-    icon: CreditCard,
-  },
-  {
-    label: "Settings",
-    href: "/settings",
-    icon: GearSix,
+    title: "Account",
+    items: [
+      { label: "Subscription", href: "/subscription", icon: CreditCard },
+      { label: "Settings", href: "/settings", icon: GearSix },
+    ],
   },
 ];
 
@@ -108,6 +117,16 @@ export function Sidebar() {
     queryKey: ["profile"],
     queryFn: () => api.get<UserProfile>("/api/user/profile"),
   });
+
+  const { data: subscription } = useQuery({
+    queryKey: ["subscription"],
+    queryFn: () => api.get<SubscriptionData>("/api/user/subscription"),
+  });
+
+  const usagePercentage = Math.min(
+    ((subscription?.memoryCount ?? 0) / (subscription?.memoryLimit ?? 1)) * 100,
+    100,
+  );
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -232,48 +251,86 @@ export function Sidebar() {
           {/* Navigation */}
           <nav
             className={cn(
-              "flex-1 space-y-1 transition-all duration-300 p-4",
+              "flex-1 transition-all duration-300 p-4",
               collapsed && "md:p-2",
             )}
+            aria-label="Main navigation"
           >
-            {navItems.map((item) => {
-              const isActive =
-                pathname === item.href || pathname.startsWith(item.href + "/");
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileOpen(false)}
-                  title={collapsed ? item.label : undefined}
+            {navGroups.map((group, groupIndex) => (
+              <div
+                key={group.title}
+                className={cn(groupIndex > 0 && "mt-4")}
+                role="group"
+                aria-label={group.title}
+              >
+                {/* Section label — hidden when collapsed on desktop */}
+                <div
                   className={cn(
-                    "flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-200 px-4 py-3",
-                    collapsed && "md:p-3 md:justify-center",
-                    isActive
-                      ? "bg-border text-sidebar-active border border-border"
-                      : "text-foreground-muted hover:bg-surface-elevated hover:text-foreground border border-transparent",
+                    "px-4 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-foreground-subtle select-none transition-opacity duration-200",
+                    collapsed &&
+                      "md:opacity-0 md:h-0 md:pb-0 md:overflow-hidden",
+                    groupIndex === 0 ? "pt-0" : "pt-1",
                   )}
                 >
-                  <item.icon
-                    size={20}
-                    className={cn(
-                      "transition-colors shrink-0",
-                      isActive
-                        ? "text-sidebar-active"
-                        : "text-foreground-muted",
-                    )}
-                    weight={isActive ? "fill" : "duotone"}
-                  />
-                  <span className={cn(collapsed && "md:hidden")}>
-                    {item.label}
-                  </span>
-                </Link>
-              );
-            })}
+                  {group.title}
+                </div>
+                <div className="space-y-1">
+                  {group.items.map((item) => {
+                    const isActive =
+                      pathname === item.href ||
+                      pathname.startsWith(item.href + "/");
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setMobileOpen(false)}
+                        title={collapsed ? item.label : undefined}
+                        className={cn(
+                          "flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-200 px-4 py-3",
+                          collapsed && "md:p-3 md:justify-center",
+                          isActive
+                            ? "bg-border text-sidebar-active border border-border"
+                            : "text-foreground-muted hover:bg-surface-elevated hover:text-foreground border border-transparent",
+                        )}
+                      >
+                        <item.icon
+                          size={20}
+                          className={cn(
+                            "transition-colors shrink-0",
+                            isActive
+                              ? "text-sidebar-active"
+                              : "text-foreground-muted",
+                          )}
+                          weight={isActive ? "fill" : "duotone"}
+                        />
+                        <span className={cn(collapsed && "md:hidden")}>
+                          {item.label}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
 
-            {/* Admin Link */}
+            {/* Admin section — kept separate with its own divider */}
             {user?.role === "admin" && (
-              <>
-                <div className="my-2 border-t border-border/50" />
+              <div className="mt-4" role="group" aria-label="Admin">
+                <div
+                  className={cn(
+                    "mb-1.5 border-t border-border/50",
+                    collapsed && "md:border-t-0",
+                  )}
+                />
+                <div
+                  className={cn(
+                    "px-4 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-widest text-amber-500/70 select-none transition-opacity duration-200",
+                    collapsed &&
+                      "md:opacity-0 md:h-0 md:pb-0 md:pt-0 md:overflow-hidden",
+                  )}
+                >
+                  Admin
+                </div>
                 <Link
                   href={adminNavItem.href}
                   onClick={() => setMobileOpen(false)}
@@ -299,7 +356,7 @@ export function Sidebar() {
                     {adminNavItem.label}
                   </span>
                 </Link>
-              </>
+              </div>
             )}
           </nav>
 
@@ -310,36 +367,64 @@ export function Sidebar() {
               collapsed && "md:p-2",
             )}
           >
-            {/* Beta Testing Info - hide when collapsed on desktop */}
+            {/* Usage / Plan Card */}
             <div
               className={cn(
-                "p-3 rounded-xl bg-surface-elevated/50 border border-border space-y-2",
+                "rounded-xl bg-surface-elevated/50 border border-border overflow-hidden",
                 collapsed && "md:hidden",
               )}
             >
-              <p className="text-xs text-foreground-muted leading-relaxed">
-                Report issues to{" "}
-                <a
-                  href="mailto:hi@aysh.me"
-                  className="text-accent hover:underline"
-                >
-                  hi@aysh.me
-                </a>
-              </p>
-              <a
-                href="https://aysh.me/X"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-foreground/5 hover:bg-foreground/10 transition-colors w-fit"
+              <div className="p-3 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-foreground-muted">
+                    {subscription?.plan ?? "Free"} plan
+                  </span>
+                  {/* <Brain
+                    className="h-3.5 w-3.5 text-foreground-subtle"
+                    weight="duotone"
+                  /> */}
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-sm font-semibold tabular-nums">
+                      {subscription?.memoryCount ?? 0}
+                      <span className="text-foreground-muted font-normal">
+                        {" "}
+                        / {subscription?.memoryLimit ?? 0}
+                      </span>
+                    </span>
+                    <span className="text-[10px] text-foreground-subtle">
+                      memories
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-border overflow-hidden">
+                    <div
+                      className={cn(
+                        "h-full rounded-full transition-all duration-700 ease-out",
+                        usagePercentage >= 90
+                          ? "bg-error"
+                          : usagePercentage >= 70
+                            ? "bg-warning"
+                            : "bg-accent",
+                      )}
+                      style={{ width: `${usagePercentage}%` }}
+                    />
+                  </div>
+                </div>
+                <p className="text-[10px] text-foreground-subtle leading-snug">
+                  {usagePercentage >= 90
+                    ? "Running low — consider upgrading"
+                    : `${Math.round(100 - usagePercentage)}% of your memory quota available`}
+                </p>
+              </div>
+              <Link
+                href="/subscription"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-semibold text-accent hover:bg-accent/5 border-t border-border transition-colors"
               >
-                <XIcon className="h-3.5 w-3.5" />
-                <span className="text-xs font-medium">Chat on X</span>
-                <span className="text-xs text-foreground-muted">@theayush</span>
-                <ArrowSquareOut
-                  className="h-3 w-3 text-foreground-subtle"
-                  weight="bold"
-                />
-              </a>
+                <CreditCard size={13} weight="bold" />
+                {subscription?.plan === "free" ? "Select plan" : "Manage plan"}
+              </Link>
             </div>
 
             {/* User Profile */}
@@ -375,8 +460,8 @@ export function Sidebar() {
                         <p className="text-sm font-medium truncate">
                           {user?.name || "User"}
                         </p>
-                        <p className="text-xs text-foreground-muted truncate">
-                          {user?.email}
+                        <p className="text-xs text-foreground-muted truncate capitalize">
+                          {(subscription?.plan ?? "free").toLowerCase()} plan
                         </p>
                       </div>
                     </div>
@@ -412,6 +497,27 @@ export function Sidebar() {
                         </>
                       )}
                     </button>
+                    <div className="my-1 border-t border-border" />
+                    <a
+                      href="mailto:hi@aysh.me"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground-muted hover:text-foreground hover:bg-surface-elevated rounded-lg transition-colors"
+                    >
+                      <Envelope className="h-4 w-4" weight="duotone" />
+                      Report Issue
+                    </a>
+                    <a
+                      href="https://aysh.me/X"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground-muted hover:text-foreground hover:bg-surface-elevated rounded-lg transition-colors"
+                    >
+                      <XIcon className="h-4 w-4" />
+                      Chat on X
+                      <ArrowSquareOut
+                        className="h-3 w-3 text-foreground-subtle ml-auto"
+                        weight="bold"
+                      />
+                    </a>
                     <div className="my-1 border-t border-border" />
                     <button
                       onClick={async () => {

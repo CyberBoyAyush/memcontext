@@ -24,7 +24,9 @@ interface ListMemoriesParams {
   limit?: number;
   offset?: number;
   category?: string;
+  categories?: string[];
   project?: string;
+  projects?: string[];
   search?: string;
 }
 
@@ -35,8 +37,19 @@ export const memoriesQueryOptions = (params?: ListMemoriesParams) =>
       const searchParams = new URLSearchParams();
       if (params?.limit) searchParams.set("limit", String(params.limit));
       if (params?.offset) searchParams.set("offset", String(params.offset));
-      if (params?.category) searchParams.set("category", params.category);
-      if (params?.project) searchParams.set("project", params.project);
+
+      if (params?.categories && params.categories.length > 0) {
+        searchParams.set("category", params.categories.join(","));
+      } else if (params?.category) {
+        searchParams.set("category", params.category);
+      }
+
+      if (params?.projects && params.projects.length > 0) {
+        searchParams.set("project", params.projects.join(","));
+      } else if (params?.project) {
+        searchParams.set("project", params.project);
+      }
+
       if (params?.search) searchParams.set("search", params.search);
 
       const query = searchParams.toString();
