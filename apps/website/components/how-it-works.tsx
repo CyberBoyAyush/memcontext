@@ -22,7 +22,7 @@ interface ToolConfig {
   config: string;
 }
 
-const HIDDEN_URL = "https://we-will-launch-this-soon";
+const MCP_SERVER_URL = "https://mcp.memcontext.in/mcp";
 
 const tools: ToolConfig[] = [
   {
@@ -33,7 +33,7 @@ const tools: ToolConfig[] = [
     config: `{
   "mcpServers": {
     "memcontext": {
-      "url": "{{BLURRED_URL}}",
+      "url": "${MCP_SERVER_URL}",
       "headers": {
         "x-api-key": "YOUR_MEMCONTEXT_API_KEY"
       }
@@ -49,7 +49,7 @@ const tools: ToolConfig[] = [
     config: `{
   "mcpServers": {
     "memcontext": {
-      "url": "{{BLURRED_URL}}",
+      "url": "${MCP_SERVER_URL}",
       "headers": {
         "x-api-key": "YOUR_MEMCONTEXT_API_KEY"
       }
@@ -63,7 +63,7 @@ const tools: ToolConfig[] = [
     fileName: "~/.codex/config.toml",
     icon: <OpenAI size={18} />,
     config: `[mcp_servers.memcontext]
-url = "{{BLURRED_URL}}"
+url = "${MCP_SERVER_URL}"
 
 [mcp_servers.memcontext.http_headers]
 x-api-key = "YOUR_MEMCONTEXT_API_KEY"`,
@@ -387,25 +387,7 @@ export function HowItWorks() {
                 <div className="overflow-x-auto max-w-[85vw] sm:max-w-none">
                   <pre className="p-5 text-sm font-mono min-h-[180px]">
                     <code className="text-foreground/90 whitespace-pre">
-                      {currentTool.config
-                        .split("{{BLURRED_URL}}")
-                        .map((part, i, arr) => (
-                          <span key={i}>
-                            {part}
-                            {i < arr.length - 1 && (
-                              <span className="relative inline-block group/url cursor-default">
-                                <span className="blur-[4px] select-none text-foreground-muted">
-                                  {HIDDEN_URL}
-                                </span>
-                                <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/url:opacity-100 transition-opacity duration-200 pointer-events-none">
-                                  <span className="bg-accent text-white text-xs px-2 py-0.5 rounded-md whitespace-nowrap font-sans">
-                                    Coming Soon
-                                  </span>
-                                </span>
-                              </span>
-                            )}
-                          </span>
-                        ))}
+                      {currentTool.config}
                     </code>
                   </pre>
                 </div>
