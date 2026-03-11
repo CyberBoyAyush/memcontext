@@ -7,7 +7,6 @@ import {
   Brain,
   Check,
   SpinnerGap,
-  Sparkle,
   CreditCard,
   ArrowRight,
   CheckCircle,
@@ -216,19 +215,19 @@ function PlanCard({
   loadingPlan: string | null;
   onUpgrade: (slug: string) => void;
 }) {
+  const isHighlighted = isCurrent;
+
   return (
     <div
       className={cn(
-        "group relative h-full rounded-2xl transition-all duration-300 flex flex-col",
-        plan.popular
-          ? ""
-          : "p-[1px] bg-gradient-to-b from-[var(--border-hover)] to-[var(--border)]",
+        "group relative flex h-full flex-col rounded-2xl p-px transition-all duration-300",
+        "bg-linear-to-b from-border-hover to-border",
         isCurrent &&
           "ring-2 ring-accent/30 ring-offset-2 ring-offset-background",
       )}
     >
       {/* Outer aura glow — visible around the card edge */}
-      {plan.popular && (
+      {isHighlighted && (
         <div
           className="pointer-events-none absolute -inset-3 rounded-3xl opacity-60 blur-xl transition-opacity duration-500 group-hover:opacity-80"
           style={{
@@ -243,13 +242,13 @@ function PlanCard({
         <div
           className={cn(
             "relative m-4 rounded-lg p-6 pb-6",
-            plan.popular
-              ? "bg-gradient-to-br from-[#c04020] via-[var(--accent)] to-[#e87850] text-white"
+            isHighlighted
+              ? "bg-linear-to-br from-[#c04020] via-accent to-[#e87850] text-white"
               : "bg-surface-elevated/60",
           )}
         >
-          {/* Noise texture overlay for popular */}
-          {plan.popular && (
+          {/* Noise texture overlay for highlighted plan */}
+          {isHighlighted && (
             <div
               className="pointer-events-none absolute inset-0 opacity-[0.04] mix-blend-overlay"
               style={{
@@ -260,8 +259,8 @@ function PlanCard({
           )}
 
           {/* Decorative shimmer line */}
-          {plan.popular && (
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+          {isHighlighted && (
+            <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/30 to-transparent" />
           )}
 
           {/* Plan name + badges */}
@@ -280,7 +279,7 @@ function PlanCard({
               <h3
                 className={cn(
                   "text-lg font-semibold",
-                  plan.popular && "text-white",
+                  isHighlighted && "text-white",
                 )}
               >
                 {plan.name}
@@ -289,18 +288,20 @@ function PlanCard({
 
             <div className="flex items-center gap-2">
               {plan.popular && (
-                <span className="px-2.5 py-1 rounded-lg bg-white/20 text-white text-[11px] font-semibold uppercase tracking-wide backdrop-blur-sm border border-white/10">
+                <span
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-[11px] font-semibold uppercase tracking-wide border",
+                    isHighlighted
+                      ? "bg-white/20 text-white border-white/10 backdrop-blur-sm"
+                      : "bg-accent/10 border-accent/20 text-accent",
+                  )}
+                >
                   Popular
                 </span>
               )}
               {isCurrent && !plan.popular && (
                 <span
-                  className={cn(
-                    "px-2.5 py-1 rounded-lg text-[11px] font-semibold uppercase tracking-wide",
-                    plan.popular
-                      ? "bg-white/20 text-white border border-white/10 backdrop-blur-sm"
-                      : "bg-accent/10 border border-accent/20 text-accent",
-                  )}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold uppercase tracking-wide bg-white/20 text-white border border-white/10 backdrop-blur-sm"
                 >
                   Current
                 </span>
@@ -313,7 +314,7 @@ function PlanCard({
             <span
               className={cn(
                 "text-5xl font-extrabold tracking-tighter",
-                plan.popular ? "text-white" : "text-foreground",
+                isHighlighted ? "text-white" : "text-foreground",
               )}
             >
               ${plan.price}
@@ -321,7 +322,7 @@ function PlanCard({
             <span
               className={cn(
                 "text-sm font-medium",
-                plan.popular ? "text-white/60" : "text-foreground-muted",
+                isHighlighted ? "text-white/60" : "text-foreground-muted",
               )}
             >
               /month
@@ -330,7 +331,7 @@ function PlanCard({
           <p
             className={cn(
               "text-xs mt-2",
-              plan.popular ? "text-white/50" : "text-foreground-subtle",
+              isHighlighted ? "text-white/50" : "text-foreground-subtle",
             )}
           >
             {plan.memories.toLocaleString()} memories included
@@ -343,12 +344,11 @@ function PlanCard({
                 variant="outline"
                 className={cn(
                   "w-full cursor-default",
-                  plan.popular &&
+                  isHighlighted &&
                     "border-border/60 bg-background/90 text-foreground hover:bg-background/90 hover:text-foreground",
                 )}
                 disabled
               >
-                <Sparkle className="h-4 w-4 mr-2" weight="fill" />
                 Current Plan
               </Button>
             ) : plan.slug ? (
@@ -357,7 +357,7 @@ function PlanCard({
                   variant="outline"
                   className={cn(
                     "w-full cursor-default",
-                    plan.popular &&
+                    isHighlighted &&
                       "border-border/60 bg-background/90 text-foreground hover:bg-background/90 hover:text-foreground",
                   )}
                   disabled
@@ -368,7 +368,7 @@ function PlanCard({
               ) : (
                 <Button
                   variant={
-                    plan.popular
+                    isHighlighted
                       ? "secondary"
                       : isUpgrade
                         ? "default"
@@ -376,9 +376,9 @@ function PlanCard({
                   }
                   className={cn(
                     "w-full cursor-pointer hover:translate-y-0 active:translate-y-0",
-                    plan.popular &&
+                    isHighlighted &&
                       "bg-background text-foreground border border-border/70 font-semibold shadow-[0_4px_24px_rgba(0,0,0,0.2)] hover:bg-background-secondary hover:text-foreground hover:shadow-[0_6px_28px_rgba(0,0,0,0.3)]",
-                    !plan.popular &&
+                    !isHighlighted &&
                       isUpgrade &&
                       "shadow-[0_2px_12px_var(--accent-glow)]",
                   )}
@@ -421,7 +421,7 @@ function PlanCard({
                 <div
                   className={cn(
                     "w-5 h-5 rounded-md flex items-center justify-center shrink-0",
-                    plan.popular
+                    isHighlighted
                       ? "bg-accent/15 text-accent"
                       : "bg-surface-elevated border border-border text-foreground-muted",
                   )}
