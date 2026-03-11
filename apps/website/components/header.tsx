@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Github, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { BsGithub } from "react-icons/bs";
 
 const XIcon = ({ className }: { className?: string }) => (
@@ -13,14 +13,14 @@ const XIcon = ({ className }: { className?: string }) => (
 );
 
 const navigation = [
-  { name: "Features", href: "#features" },
-  { name: "How it Works", href: "#how-it-works" },
-  { name: "FAQ", href: "#faq" },
+  { name: "Features", href: "/#features" },
+  { name: "How it Works", href: "/#how-it-works" },
+  { name: "Pricing", href: "/pricing" },
+  { name: "FAQ", href: "/#faq" },
 ];
 
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [showGithubModal, setShowGithubModal] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -30,11 +30,6 @@ export function Header() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    setIsMobileMenuOpen(false);
-  };
 
   return (
     <>
@@ -105,18 +100,51 @@ export function Header() {
               >
                 <XIcon className="w-5 h-5 lg:w-6 lg:h-6" />
               </a>
-              <button
-                onClick={() => setShowGithubModal(true)}
+              <a
+                href="https://github.com/cyberboyAyush/memcontext"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-foreground-muted hover:text-foreground transition-colors hover:scale-110 duration-200"
               >
                 <BsGithub className="w-5 h-5 lg:w-6 lg:h-6" />
-              </button>
-              <button
-                onClick={scrollToTop}
-                className="px-4 flex items-center gap-2 lg:px-5 py-1.5 lg:py-2 text-sm lg:text-base font-medium bg-accent text-foreground cursor-pointer rounded-lg transition-all"
+              </a>
+              <a
+                href="https://app.memcontext.in/login"
+                className="relative group inline-block"
               >
-                Join Waitlist
-              </button>
+                <div
+                  className="absolute -top-px -left-px w-10 h-5 rounded-lg blur-[0.5px] opacity-80 group-hover:opacity-100 transition-opacity"
+                  style={{
+                    background:
+                      "radial-gradient(ellipse at top left, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.25) 40%, transparent 70%)",
+                  }}
+                />
+                <div
+                  className="relative px-4 lg:px-5 py-1.5 lg:py-2 rounded-lg flex items-center justify-center gap-1.5 overflow-hidden transition-all group-hover:scale-[1.02] whitespace-nowrap"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, rgba(232, 97, 60, 0.9) 0%, rgba(201, 78, 46, 0.8) 100%)",
+                  }}
+                >
+                  <div
+                    className="absolute inset-0 opacity-60"
+                    style={{
+                      background:
+                        "radial-gradient(ellipse at top left, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.08) 40%, transparent 70%)",
+                    }}
+                  />
+                  <div
+                    className="absolute top-0 left-0 right-0 h-px"
+                    style={{
+                      background:
+                        "linear-gradient(90deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 50%, transparent 100%)",
+                    }}
+                  />
+                  <span className="font-display font-semibold text-sm lg:text-base text-white relative z-10">
+                    Sign Up
+                  </span>
+                </div>
+              </a>
             </div>
 
             <button
@@ -152,71 +180,50 @@ export function Header() {
                   {item.name}
                 </Link>
               ))}
-              <button
-                onClick={() => {
-                  setShowGithubModal(true);
-                  setIsMobileMenuOpen(false);
-                }}
+              <a
+                href="https://github.com/cyberboyAyush/memcontext"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setIsMobileMenuOpen(false)}
                 className="flex items-center gap-2 py-3 text-base text-foreground-muted hover:text-foreground hover:bg-surface-elevated rounded-lg px-3 transition-all w-full"
               >
                 <BsGithub className="w-5 h-5" />
                 GitHub
-              </button>
-              <button
-                onClick={scrollToTop}
-                className="block w-full mt-3 px-5 py-3 text-center text-base font-medium bg-accent text-background rounded-xl "
+              </a>
+              <a
+                href="https://app.memcontext.in/login"
+                className="relative group block mt-3"
               >
-                Join Waitlist
-              </button>
+                <div
+                  className="relative w-full px-5 py-3 rounded-xl flex items-center justify-center gap-2 overflow-hidden"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, rgba(232, 97, 60, 0.9) 0%, rgba(201, 78, 46, 0.8) 100%)",
+                  }}
+                >
+                  <div
+                    className="absolute inset-0 opacity-60"
+                    style={{
+                      background:
+                        "radial-gradient(ellipse at top left, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.08) 40%, transparent 70%)",
+                    }}
+                  />
+                  <div
+                    className="absolute top-0 left-0 right-0 h-px"
+                    style={{
+                      background:
+                        "linear-gradient(90deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 50%, transparent 100%)",
+                    }}
+                  />
+                  <span className="font-display font-semibold text-base text-white relative z-10">
+                    Sign Up
+                  </span>
+                </div>
+              </a>
             </div>
           </div>
         </nav>
       </header>
-
-      {/* GitHub Coming Soon Modal */}
-      {showGithubModal && (
-        <div
-          className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-fade-in"
-          onClick={() => setShowGithubModal(false)}
-        >
-          <div
-            className="relative bg-background border border-border rounded-2xl p-6 sm:p-10 max-w-md w-full shadow-xl animate-fade-in-up"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setShowGithubModal(false)}
-              className="absolute top-4 right-4 sm:top-5 sm:right-5 text-foreground-subtle hover:text-foreground transition-colors hover:rotate-90 duration-200"
-            >
-              <X className="w-5 h-5 sm:w-6 sm:h-6" />
-            </button>
-
-            <div className="text-center">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-4 sm:mb-5 rounded-full bg-surface-elevated flex items-center justify-center">
-                <BsGithub className="w-7 h-7 sm:w-8 sm:h-8" />
-              </div>
-              <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">
-                Coming Soon
-              </h3>
-              <p className="text-foreground-muted text-sm sm:text-base mb-6 sm:mb-8">
-                MemContext will be open source soon. Star the repo to get
-                notified when we go public.
-              </p>
-              <a
-                href="https://github.com/cyberboyayush"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-medium bg-accent text-background rounded-xl btn-hover-lift transition-all"
-              >
-                <BsGithub className="w-4 h-4 sm:w-5 sm:h-5" />
-                Follow on GitHub
-              </a>
-              <p className="mt-4 sm:mt-5 text-xs sm:text-sm text-foreground-subtle font-mono">
-                github.com/cyberboyayush
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

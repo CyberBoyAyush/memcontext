@@ -1,46 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowRight, Loader2, Check, Github, X } from "lucide-react";
-import { useReferrer } from "@/lib/use-referrer";
-import { joinWaitlist } from "@/lib/waitlist";
+import { ArrowRight } from "lucide-react";
 import Image from "next/image";
 import { BsGithub } from "react-icons/bs";
 
 export function FinalCTA() {
-  const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<
-    "idle" | "loading" | "success" | "exists" | "error"
-  >("idle");
-  const [errorMessage, setErrorMessage] = useState("");
-  const [showGithubModal, setShowGithubModal] = useState(false);
-  const { referrer, clearReferrer } = useReferrer();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-
-    setStatus("loading");
-    setErrorMessage("");
-
-    const result = await joinWaitlist({
-      email,
-      source: "final-cta",
-      referrer,
-    });
-
-    if (result.success) {
-      setStatus(result.alreadyExists ? "exists" : "success");
-      setEmail("");
-      clearReferrer();
-      setTimeout(() => setStatus("idle"), 4000);
-    } else {
-      setStatus("error");
-      setErrorMessage(result.error);
-      setTimeout(() => setStatus("idle"), 4000);
-    }
-  };
-
   return (
     <>
       <section className="py-20 sm:pt-16 md:pb-28">
@@ -114,33 +78,30 @@ export function FinalCTA() {
                     Connect once. Chat normally. Memory happens automatically.
                   </p>
 
-                  {/* Form */}
-                  <form
-                    onSubmit={handleSubmit}
-                    className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto lg:mx-0"
-                  >
-                    <div className="relative flex-1">
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="you@email.com"
-                        required
-                        disabled={status === "loading" || status === "success"}
-                        className="w-full px-4 py-3 text-sm font-mono bg-surface/60 backdrop-blur-sm border border-white/[0.1] rounded-xl focus:outline-none focus:border-white/30 transition-all placeholder:text-foreground-subtle disabled:opacity-50"
-                      />
-                    </div>
-                    {/* Shining Get Early Access Button */}
-                    <button
-                      type="submit"
-                      disabled={
-                        status === "loading" ||
-                        status === "success" ||
-                        status === "exists"
-                      }
-                      className="relative group disabled:opacity-50"
+                  {/* CTA Buttons - side by side */}
+                  <div className="flex flex-col sm:flex-row items-center lg:items-start gap-3">
+                    {/* Star on GitHub */}
+                    <a
+                      href="https://github.com/cyberboyAyush/memcontext"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group relative"
                     >
-                      {/* Border glow spot - top left */}
+                      <div className="absolute -inset-0.5 rounded-xl border border-white/8" />
+                      <div className="relative flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-surface/60 backdrop-blur-sm border border-white/[0.08] transition-all group-hover:border-white/15 group-hover:bg-surface/80 cursor-pointer">
+                        <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/[0.04] via-transparent to-transparent" />
+                        <BsGithub className="relative z-10 w-4 h-4 text-foreground-muted group-hover:text-foreground transition-colors" />
+                        <span className="relative z-10 text-sm font-display font-semibold text-foreground">
+                          Star on GitHub
+                        </span>
+                      </div>
+                    </a>
+
+                    {/* Sign Up */}
+                    <a
+                      href="https://app.memcontext.in/login"
+                      className="relative group inline-block"
+                    >
                       <div
                         className="absolute -top-px -left-px w-12 h-6 rounded-xl blur-[0.5px] opacity-80 group-hover:opacity-100 transition-opacity"
                         style={{
@@ -148,24 +109,13 @@ export function FinalCTA() {
                             "radial-gradient(ellipse at top left, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.25) 40%, transparent 70%)",
                         }}
                       />
-                      {/* Border glow spot - bottom right */}
                       <div
-                        className="absolute -bottom-px -right-px w-8 h-5 rounded-xl blur-[0.5px] opacity-60 group-hover:opacity-80 transition-opacity"
-                        style={{
-                          background:
-                            "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 40%, transparent 70%)",
-                        }}
-                      />
-                      {/* Main button */}
-                      <div
-                        className="relative px-5 py-3 rounded-xl flex items-center justify-center gap-2 overflow-hidden transition-all group-hover:scale-[1.02] whitespace-nowrap"
+                        className="relative px-6 py-3 rounded-xl flex items-center justify-center gap-2 overflow-hidden transition-all group-hover:scale-[1.02] whitespace-nowrap"
                         style={{
                           background:
                             "linear-gradient(135deg, rgba(232, 97, 60, 0.9) 0%, rgba(201, 78, 46, 0.8) 100%)",
-                          
                         }}
                       >
-                        {/* Glass shine overlay */}
                         <div
                           className="absolute inset-0 opacity-60"
                           style={{
@@ -173,7 +123,6 @@ export function FinalCTA() {
                               "radial-gradient(ellipse at top left, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.08) 40%, transparent 70%)",
                           }}
                         />
-                        {/* Top edge highlight */}
                         <div
                           className="absolute top-0 left-0 right-0 h-px"
                           style={{
@@ -181,94 +130,13 @@ export function FinalCTA() {
                               "linear-gradient(90deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 50%, transparent 100%)",
                           }}
                         />
-                        {/* Left edge highlight */}
-                        <div
-                          className="absolute top-0 left-0 bottom-0 w-px"
-                          style={{
-                            background:
-                              "linear-gradient(180deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.15) 60%, transparent 100%)",
-                          }}
-                        />
-                        {status === "loading" ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin text-white relative z-10" />
-                            <span className="text-sm font-medium text-white relative z-10">
-                              Joining...
-                            </span>
-                          </>
-                        ) : status === "success" ? (
-                          <>
-                            <Check className="w-4 h-4 text-white relative z-10" />
-                            <span className="text-sm font-medium text-white relative z-10">
-                              You&apos;re in!
-                            </span>
-                          </>
-                        ) : status === "exists" ? (
-                          <>
-                            <Check className="w-4 h-4 text-white relative z-10" />
-                            <span className="text-sm font-medium text-white relative z-10">
-                              Already on list!
-                            </span>
-                          </>
-                        ) : status === "error" ? (
-                          <span className="text-xs text-white relative z-10">
-                            {errorMessage}
-                          </span>
-                        ) : (
-                          <>
-                            <span className="font-display font-semibold text-sm text-white relative z-10">
-                              Get Early Access
-                            </span>
-                            <ArrowRight className="w-4 h-4 text-white relative z-10 transition-transform group-hover:translate-x-1" />
-                          </>
-                        )}
-                      </div>
-                    </button>
-                  </form>
-
-                  {/* Glossy GitHub CTA Button - Pill style like "How It helps" badge */}
-                  <button
-                    onClick={() => setShowGithubModal(true)}
-                    className="mt-5 inline-flex justify-center lg:justify-start"
-                  >
-                    <div className="group relative">
-                      {/* Border glow spot - top left */}
-                      <div
-                        className="absolute -top-px -left-px w-20 h-11 rounded-full blur-[1px]"
-                        style={{
-                          background:
-                            "radial-gradient(ellipse at top left, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.3) 30%, transparent 70%)",
-                        }}
-                      />
-                      {/* Border glow spot - bottom right */}
-                      <div
-                        className="absolute -bottom-px -right-px w-20 h-11 rounded-full blur-[1px]"
-                        style={{
-                          background:
-                            "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 30%, transparent 70%)",
-                        }}
-                      />
-
-                      {/* Subtle border all around */}
-                      <div className="absolute -inset-0.5 rounded-full border border-white/10" />
-
-                      {/* Main container */}
-                      <div className="relative inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-surface/95 backdrop-blur-sm transition-all duration-300 cursor-pointer overflow-hidden group-hover:bg-surface/80">
-                        {/* Inner glow - top left */}
-                        <div className="absolute top-0 left-0 w-20 h-12 bg-white/8 rounded-full blur-xl -translate-x-1/3 -translate-y-1/2" />
-                        {/* Inner glow - bottom right */}
-                        <div className="absolute bottom-0 right-0 w-20 h-12 bg-white/8 rounded-full blur-xl translate-x-1/3 translate-y-1/2" />
-
-                        {/* GitHub icon */}
-                        <BsGithub className="relative z-10 w-4 h-4 text-foreground-muted group-hover:text-foreground transition-colors" />
-
-                        {/* Text */}
-                        <span className="relative z-10 text-sm text-foreground font-medium">
-                          Star on GitHub
+                        <span className="font-display font-semibold text-sm text-white relative z-10">
+                          Sign Up
                         </span>
+                        <ArrowRight className="w-4 h-4 text-white relative z-10 transition-transform group-hover:translate-x-1" />
                       </div>
-                    </div>
-                  </button>
+                    </a>
+                  </div>
                 </div>
 
                 {/* Right side - Large rotated logo in glass container */}
@@ -366,51 +234,6 @@ export function FinalCTA() {
           </div>
         </div>
       </section>
-
-      {/* GitHub Coming Soon Modal */}
-      {showGithubModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-fade-in"
-          onClick={() => setShowGithubModal(false)}
-        >
-          <div
-            className="relative bg-background border border-border rounded-2xl p-6 sm:p-10 max-w-md w-full shadow-xl animate-fade-in-up"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setShowGithubModal(false)}
-              className="absolute top-4 right-4 sm:top-5 sm:right-5 text-foreground-subtle hover:text-foreground transition-colors hover:rotate-90 duration-200"
-            >
-              <X className="w-5 h-5 sm:w-6 sm:h-6" />
-            </button>
-
-            <div className="text-center">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-4 sm:mb-5 rounded-full bg-surface-elevated flex items-center justify-center">
-                <BsGithub className="w-7 h-7 sm:w-8 sm:h-8" />
-              </div>
-              <h3 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">
-                Coming Soon
-              </h3>
-              <p className="text-foreground-muted text-sm sm:text-base mb-6 sm:mb-8">
-                MemContext will be open source soon. Star the repo to get
-                notified when we go public.
-              </p>
-              <a
-                href="https://github.com/cyberboyayush"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-medium bg-accent text-background rounded-xl btn-hover-lift transition-all"
-              >
-                <Github className="w-4 h-4 sm:w-5 sm:h-5" />
-                Follow on GitHub
-              </a>
-              <p className="mt-4 sm:mt-5 text-xs sm:text-sm text-foreground-subtle font-mono">
-                github.com/cyberboyayush
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

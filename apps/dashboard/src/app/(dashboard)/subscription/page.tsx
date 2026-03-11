@@ -13,12 +13,18 @@ import {
   CheckCircle,
   XCircle,
   Warning,
+  Lightning,
+  RocketLaunch,
+  Star,
+  CaretDown,
+  Question,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { api, ApiError } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
 import { useToast } from "@/providers/toast-provider";
+import { cn } from "@/lib/utils";
 
 interface SubscriptionData {
   plan: string;
@@ -44,8 +50,10 @@ const PLANS = [
     name: "Free",
     price: 0,
     memories: 300,
+    icon: Star,
     features: [
       "300 memories",
+      "Limited memory retrieval",
       "Unlimited projects",
       "MCP integration",
       "Community support",
@@ -57,8 +65,10 @@ const PLANS = [
     price: 5,
     memories: 2000,
     slug: "hobby",
+    icon: Lightning,
     features: [
       "2,000 memories",
+      "Unlimited memory retrieval",
       "Unlimited projects",
       "MCP integration",
       "Priority support",
@@ -71,8 +81,10 @@ const PLANS = [
     price: 15,
     memories: 10000,
     slug: "pro",
+    icon: RocketLaunch,
     features: [
       "10,000 memories",
+      "Unlimited memory retrieval",
       "Unlimited projects",
       "MCP integration",
       "Priority support",
@@ -178,11 +190,329 @@ function StatusBanner({
         {dismissable && (
           <button
             onClick={onDismiss}
-            className="text-foreground-muted hover:text-foreground transition-colors"
+            className="text-foreground-muted hover:text-foreground transition-colors cursor-pointer"
           >
             <XCircle className="h-5 w-5" />
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+
+function PlanCard({
+  plan,
+  isCurrent,
+  isUpgrade,
+  isOnHold,
+  loadingPlan,
+  onUpgrade,
+}: {
+  plan: (typeof PLANS)[number];
+  isCurrent: boolean;
+  isUpgrade: boolean;
+  isDowngrade: boolean;
+  isOnHold: boolean;
+  loadingPlan: string | null;
+  onUpgrade: (slug: string) => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "group relative h-full rounded-2xl transition-all duration-300 flex flex-col",
+        plan.popular
+          ? ""
+          : "p-[1px] bg-gradient-to-b from-[var(--border-hover)] to-[var(--border)]",
+        isCurrent &&
+          "ring-2 ring-accent/30 ring-offset-2 ring-offset-background",
+      )}
+    >
+      {/* Outer aura glow — visible around the card edge */}
+      {plan.popular && (
+        <div
+          className="pointer-events-none absolute -inset-3 rounded-3xl opacity-60 blur-xl transition-opacity duration-500 group-hover:opacity-80"
+          style={{
+            background:
+              "radial-gradient(ellipse at 50% 0%, var(--accent-glow) 0%, transparent 70%)",
+          }}
+        />
+      )}
+
+      <div className="relative flex flex-col flex-1 rounded-[14px] bg-surface overflow-hidden">
+        {/* ── Hero Pricing Panel ── */}
+        <div
+          className={cn(
+            "relative m-4 rounded-lg p-6 pb-6",
+            plan.popular
+              ? "bg-gradient-to-br from-[#c04020] via-[var(--accent)] to-[#e87850] text-white"
+              : "bg-surface-elevated/60",
+          )}
+        >
+          {/* Noise texture overlay for popular */}
+          {plan.popular && (
+            <div
+              className="pointer-events-none absolute inset-0 opacity-[0.04] mix-blend-overlay"
+              style={{
+                backgroundImage:
+                  "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+              }}
+            />
+          )}
+
+          {/* Decorative shimmer line */}
+          {plan.popular && (
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+          )}
+
+          {/* Plan name + badges */}
+          <div className="relative flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2.5">
+              {/* <div
+                className={cn(
+                  "w-9 h-9 rounded-xl flex items-center justify-center",
+                  plan.popular
+                    ? "bg-white/15 text-white"
+                    : "bg-surface-elevated border border-border text-foreground-muted",
+                )}
+              >
+                <PlanIcon size={18} weight="duotone" />
+              </div> */}
+              <h3
+                className={cn(
+                  "text-lg font-semibold",
+                  plan.popular && "text-white",
+                )}
+              >
+                {plan.name}
+              </h3>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {plan.popular && (
+                <span className="px-2.5 py-1 rounded-lg bg-white/20 text-white text-[11px] font-semibold uppercase tracking-wide backdrop-blur-sm border border-white/10">
+                  Popular
+                </span>
+              )}
+              {isCurrent && !plan.popular && (
+                <span
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-[11px] font-semibold uppercase tracking-wide",
+                    plan.popular
+                      ? "bg-white/20 text-white border border-white/10 backdrop-blur-sm"
+                      : "bg-accent/10 border border-accent/20 text-accent",
+                  )}
+                >
+                  Current
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Price — big and bold */}
+          <div className="relative flex items-baseline gap-1.5">
+            <span
+              className={cn(
+                "text-5xl font-extrabold tracking-tighter",
+                plan.popular ? "text-white" : "text-foreground",
+              )}
+            >
+              ${plan.price}
+            </span>
+            <span
+              className={cn(
+                "text-sm font-medium",
+                plan.popular ? "text-white/60" : "text-foreground-muted",
+              )}
+            >
+              /month
+            </span>
+          </div>
+          <p
+            className={cn(
+              "text-xs mt-2",
+              plan.popular ? "text-white/50" : "text-foreground-subtle",
+            )}
+          >
+            {plan.memories.toLocaleString()} memories included
+          </p>
+
+          {/* ── CTA inside hero ── */}
+          <div className="relative mt-5">
+            {isCurrent ? (
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full cursor-default",
+                  plan.popular &&
+                    "border-border/60 bg-background/90 text-foreground hover:bg-background/90 hover:text-foreground",
+                )}
+                disabled
+              >
+                <Sparkle className="h-4 w-4 mr-2" weight="fill" />
+                Current Plan
+              </Button>
+            ) : plan.slug ? (
+              isOnHold ? (
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full cursor-default",
+                    plan.popular &&
+                      "border-border/60 bg-background/90 text-foreground hover:bg-background/90 hover:text-foreground",
+                  )}
+                  disabled
+                >
+                  <Warning className="h-4 w-4 mr-2" />
+                  Fix payment first
+                </Button>
+              ) : (
+                <Button
+                  variant={
+                    plan.popular
+                      ? "secondary"
+                      : isUpgrade
+                        ? "default"
+                        : "outline"
+                  }
+                  className={cn(
+                    "w-full cursor-pointer hover:translate-y-0 active:translate-y-0",
+                    plan.popular &&
+                      "bg-background text-foreground border border-border/70 font-semibold shadow-[0_4px_24px_rgba(0,0,0,0.2)] hover:bg-background-secondary hover:text-foreground hover:shadow-[0_6px_28px_rgba(0,0,0,0.3)]",
+                    !plan.popular &&
+                      isUpgrade &&
+                      "shadow-[0_2px_12px_var(--accent-glow)]",
+                  )}
+                  onClick={() => plan.slug && onUpgrade(plan.slug)}
+                  disabled={loadingPlan !== null}
+                >
+                  {loadingPlan === plan.slug ? (
+                    <>
+                      <SpinnerGap
+                        className="h-4 w-4 animate-spin mr-2"
+                        weight="bold"
+                      />
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      {isUpgrade ? "Upgrade" : "Switch"} to {plan.name}
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </>
+                  )}
+                </Button>
+              )
+            ) : (
+              <Button
+                variant="outline"
+                className="w-full cursor-default"
+                disabled
+              >
+                Free Forever
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* ── Feature Checklist (below hero) ── */}
+        <div className="p-6 pt-5 flex flex-col flex-1">
+          <ul className="space-y-3">
+            {plan.features.map((feature) => (
+              <li key={feature} className="flex items-center gap-3">
+                <div
+                  className={cn(
+                    "w-5 h-5 rounded-md flex items-center justify-center shrink-0",
+                    plan.popular
+                      ? "bg-accent/15 text-accent"
+                      : "bg-surface-elevated border border-border text-foreground-muted",
+                  )}
+                >
+                  <Check size={12} weight="bold" />
+                </div>
+                <span className="text-sm text-foreground/80">{feature}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const FAQ_ITEMS = [
+  {
+    question: "What happens when I upgrade?",
+    answer:
+      "Your new plan takes effect immediately. You'll be charged the prorated amount for the remainder of your billing cycle.",
+  },
+  {
+    question: "Can I cancel anytime?",
+    answer:
+      "Yes! You can cancel your subscription at any time. You'll keep access to your current plan until the end of your billing period.",
+  },
+  {
+    question: "What happens to my memories if I downgrade?",
+    answer:
+      "Your existing memories are preserved. However, you won't be able to add new memories if you exceed your new plan's limit.",
+  },
+];
+
+function FaqItem({
+  item,
+  index,
+  isOpen,
+  onToggle,
+}: {
+  item: (typeof FAQ_ITEMS)[number];
+  index: number;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "group rounded-xl border transition-all duration-200",
+        isOpen
+          ? "border-border-hover bg-surface-elevated/50"
+          : "border-border bg-transparent hover:border-border-hover/60",
+      )}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-3 px-5 py-4 text-left cursor-pointer"
+      >
+        <span
+          className={cn(
+            "flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs font-semibold transition-colors duration-200",
+            isOpen
+              ? "bg-accent/15 text-accent"
+              : "bg-surface-elevated text-foreground-subtle",
+          )}
+        >
+          {index + 1}
+        </span>
+        <span className="flex-1 text-sm font-medium text-foreground">
+          {item.question}
+        </span>
+        <CaretDown
+          className={cn(
+            "h-4 w-4 shrink-0 text-foreground-subtle transition-transform duration-200",
+            isOpen && "rotate-180 text-foreground-muted",
+          )}
+          weight="bold"
+        />
+      </button>
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows] duration-200 ease-out",
+          isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+        )}
+      >
+        <div className="overflow-hidden">
+          <p className="px-5 pb-4 pl-14 text-sm leading-relaxed text-foreground-muted">
+            {item.answer}
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -199,6 +529,7 @@ export default function SubscriptionPage() {
   const [showBanner, setShowBanner] = useState<
     "success" | "cancelled" | "on_hold" | "failed" | null
   >(null);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const { data: subscription, isLoading: subLoading } = useQuery({
     queryKey: ["subscription"],
@@ -210,7 +541,6 @@ export default function SubscriptionPage() {
     queryFn: () => api.get<UserProfile>("/api/user/profile"),
   });
 
-  // Handle query params for success/error states
   useEffect(() => {
     if (hasShownToast.current) return;
 
@@ -218,14 +548,11 @@ export default function SubscriptionPage() {
     if (success === "true") {
       hasShownToast.current = true;
       setShowBanner("success");
-      // Refresh subscription data
       queryClient.invalidateQueries({ queryKey: ["subscription"] });
-      // Clean up URL
       window.history.replaceState({}, "", "/subscription");
     }
   }, [searchParams, queryClient]);
 
-  // Show banner for cancelled, on_hold, or failed status
   useEffect(() => {
     if (subscription?.status === "cancelled") {
       setShowBanner("cancelled");
@@ -244,12 +571,10 @@ export default function SubscriptionPage() {
 
     setLoadingPlan(slug);
     try {
-      // Check if user has an ACTIVE Dodo subscription (not cancelled/expired)
       if (
         subscription?.dodoSubscriptionId &&
         subscription?.status === "active"
       ) {
-        // Use change-plan API for existing subscribers
         const response = await api.post<{ success: boolean; message: string }>(
           "/api/subscription/change-plan",
           { plan: slug },
@@ -257,7 +582,6 @@ export default function SubscriptionPage() {
 
         if (response.success) {
           toast.success("Plan change initiated! Updating your subscription...");
-          // Poll for subscription update (webhook may take a moment)
           const originalPlan = subscription?.plan;
           let attempts = 0;
           const maxAttempts = 10;
@@ -282,7 +606,6 @@ export default function SubscriptionPage() {
           setTimeout(pollForUpdate, 1500);
         }
       } else {
-        // Use checkout flow for new subscribers
         const { data, error } = await authClient.dodopayments.checkoutSession({
           slug,
           customer: {
@@ -344,13 +667,38 @@ export default function SubscriptionPage() {
   );
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-8 animate-fade-in">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Subscription</h1>
-        <p className="text-sm text-foreground-muted">
-          Manage your plan and billing
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Subscription</h1>
+          <p className="text-sm text-foreground-muted mt-1">
+            Manage your plan and billing
+          </p>
+        </div>
+        {subscription?.dodoCustomerId && (
+          <Button
+            variant="outline"
+            onClick={handleManageBilling}
+            disabled={portalLoading}
+            className="cursor-pointer sm:w-auto w-full"
+          >
+            {portalLoading ? (
+              <>
+                <SpinnerGap
+                  className="h-4 w-4 animate-spin mr-2"
+                  weight="bold"
+                />
+                Loading...
+              </>
+            ) : (
+              <>
+                <CreditCard className="h-4 w-4 mr-2" />
+                Manage Billing
+              </>
+            )}
+          </Button>
+        )}
       </div>
 
       {/* Status Banner */}
@@ -363,9 +711,9 @@ export default function SubscriptionPage() {
         />
       )}
 
-      {/* Current Plan Overview */}
+      {/* Current Usage Card */}
       <Card className="shadow-none">
-        <CardContent className="p-5">
+        <CardContent className="p-6">
           {subLoading ? (
             <div className="flex items-center justify-center py-8">
               <SpinnerGap
@@ -374,75 +722,115 @@ export default function SubscriptionPage() {
               />
             </div>
           ) : (
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="space-y-3">
+            <div className="space-y-5">
+              {/* Top row: Plan info + Status badge */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="px-3 py-1 rounded-full bg-accent/10 border border-accent/20">
-                    <span className="text-sm font-medium text-accent capitalize">
-                      {currentPlan} Plan
-                    </span>
-                  </div>
-                  {subscription?.status && subscription.status !== "active" && (
-                    <div
-                      className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        subscription.status === "cancelled"
-                          ? "bg-warning/10 text-warning"
-                          : "bg-error/10 text-error"
-                      }`}
-                    >
-                      {subscription.status === "cancelled"
-                        ? "Cancelling"
-                        : subscription.status === "failed"
-                          ? "Setup Failed"
-                          : "On Hold"}
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Brain className="h-4 w-4 text-foreground-muted" />
-                    <span className="text-sm">
-                      <span className="font-semibold">
-                        {subscription?.memoryCount ?? 0}
-                      </span>
-                      <span className="text-foreground-muted">
-                        {" "}
-                        / {subscription?.memoryLimit ?? 100} memories
-                      </span>
-                    </span>
-                  </div>
-                  <div className="w-24 h-1.5 rounded-full bg-border overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-accent transition-all duration-500"
-                      style={{ width: `${usagePercentage}%` }}
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/10">
+                    <Brain
+                      className="h-[18px] w-[18px] text-accent"
+                      weight="duotone"
                     />
                   </div>
+                  <div>
+                    <h3 className="text-sm font-semibold leading-tight">
+                      {PLANS.find((p) => p.id === currentPlan)?.name ?? "Free"}{" "}
+                      Plan
+                    </h3>
+                    <p className="text-xs text-foreground-subtle mt-0.5">
+                      {(subscription?.memoryLimit ?? 100).toLocaleString()}{" "}
+                      memories included
+                    </p>
+                  </div>
+                </div>
+                <div
+                  className={cn(
+                    "inline-flex items-center gap-1.5 self-start sm:self-auto px-2.5 py-1 rounded-lg text-xs font-medium",
+                    usagePercentage >= 90
+                      ? "bg-error/10 text-error"
+                      : usagePercentage >= 70
+                        ? "bg-warning/10 text-warning"
+                        : "bg-success/10 text-success",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "h-1.5 w-1.5 rounded-full",
+                      usagePercentage >= 90
+                        ? "bg-error"
+                        : usagePercentage >= 70
+                          ? "bg-warning"
+                          : "bg-success",
+                    )}
+                  />
+                  {usagePercentage >= 90
+                    ? "Near limit"
+                    : usagePercentage >= 70
+                      ? "Moderate"
+                      : "Healthy"}
                 </div>
               </div>
 
-              {/* Manage Billing Button - Only show for paid users */}
-              {subscription?.dodoCustomerId && (
-                <Button
-                  variant="outline"
-                  onClick={handleManageBilling}
-                  disabled={portalLoading}
-                  className="cursor-pointer"
-                >
-                  {portalLoading ? (
-                    <>
-                      <SpinnerGap
-                        className="h-4 w-4 animate-spin mr-2"
-                        weight="bold"
-                      />
-                      Loading...
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Manage Billing
-                    </>
-                  )}
-                </Button>
+              {/* Divider */}
+              {/* <div className="h-px bg-border" /> */}
+
+              {/* Usage stats + progress */}
+              <div className="space-y-3">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-sm text-foreground-muted">
+                    Memory usage
+                  </span>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-lg font-bold tabular-nums tracking-tight">
+                      {subscription?.memoryCount ?? 0}
+                    </span>
+                    <span className="text-sm text-foreground-subtle">/</span>
+                    <span className="text-sm text-foreground-muted tabular-nums">
+                      {(subscription?.memoryLimit ?? 100).toLocaleString()}
+                    </span>
+                    <span className="ml-1.5 text-xs text-foreground-subtle tabular-nums">
+                      ({Math.round(usagePercentage)}%)
+                    </span>
+                  </div>
+                </div>
+                <div className="h-2 rounded-full bg-border overflow-hidden">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all duration-700 ease-out",
+                      usagePercentage >= 90
+                        ? "bg-error"
+                        : usagePercentage >= 70
+                          ? "bg-warning"
+                          : "bg-accent",
+                    )}
+                    style={{ width: `${usagePercentage}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Subscription status (non-active only) */}
+              {subscription?.status && subscription.status !== "active" && (
+                <div className="flex items-center gap-2 pt-0.5">
+                  <div
+                    className={cn(
+                      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium",
+                      subscription.status === "cancelled"
+                        ? "bg-warning/10 text-warning"
+                        : "bg-error/10 text-error",
+                    )}
+                  >
+                    {subscription.status === "cancelled" ? (
+                      <Warning className="h-3 w-3" weight="fill" />
+                    ) : (
+                      <XCircle className="h-3 w-3" weight="fill" />
+                    )}
+                    {subscription.status === "cancelled"
+                      ? "Cancelling at period end"
+                      : subscription.status === "failed"
+                        ? "Setup Failed"
+                        : "On Hold — payment required"}
+                  </div>
+                </div>
               )}
             </div>
           )}
@@ -451,9 +839,9 @@ export default function SubscriptionPage() {
 
       {/* Plans Grid */}
       <div>
-        <h2 className="text-lg font-semibold mb-4">Available Plans</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {PLANS.map((plan) => {
+        <h2 className="text-lg font-semibold mb-5">Choose your plan</h2>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {PLANS.map((plan, index) => {
             const isCurrent = currentPlan === plan.id;
             const isUpgrade =
               !isCurrent &&
@@ -465,153 +853,49 @@ export default function SubscriptionPage() {
                 PLANS.findIndex((p) => p.id === currentPlan);
 
             return (
-              <Card
+              <div
                 key={plan.id}
-                className={`shadow-none relative overflow-hidden ${
-                  plan.popular ? "border-accent" : ""
-                } ${isCurrent ? "ring-2 ring-accent ring-offset-2 ring-offset-background" : ""}`}
+                className="h-full animate-fade-in-up"
+                style={{
+                  animationDelay: `${index * 80}ms`,
+                  animationFillMode: "backwards",
+                }}
               >
-                {plan.popular && (
-                  <div className="absolute top-0 right-0 px-3 py-1 bg-accent text-accent-foreground text-xs font-medium rounded-bl-lg">
-                    Popular
-                  </div>
-                )}
-                <CardContent className="p-5">
-                  <div className="space-y-4">
-                    {/* Plan Header */}
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-semibold">{plan.name}</h3>
-                        {isCurrent && (
-                          <span className="px-2 py-0.5 rounded-full bg-accent/10 text-accent text-xs font-medium">
-                            Current
-                          </span>
-                        )}
-                      </div>
-                      <div className="mt-2">
-                        <span className="text-3xl font-bold">
-                          ${plan.price}
-                        </span>
-                        <span className="text-foreground-muted">/month</span>
-                      </div>
-                    </div>
-
-                    {/* Features */}
-                    <ul className="space-y-2">
-                      {plan.features.map((feature) => (
-                        <li
-                          key={feature}
-                          className="flex items-center gap-2 text-sm"
-                        >
-                          <Check
-                            className="h-4 w-4 text-accent shrink-0"
-                            weight="bold"
-                          />
-                          <span>{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    {/* Action Button */}
-                    <div className="pt-2">
-                      {isCurrent ? (
-                        <Button
-                          variant="outline"
-                          className="w-full cursor-default"
-                          disabled
-                        >
-                          <Sparkle className="h-4 w-4 mr-2" weight="fill" />
-                          Current Plan
-                        </Button>
-                      ) : plan.slug ? (
-                        isOnHold ? (
-                          <Button
-                            variant="outline"
-                            className="w-full cursor-default"
-                            disabled
-                          >
-                            <Warning className="h-4 w-4 mr-2" />
-                            Fix payment first
-                          </Button>
-                        ) : (
-                          <Button
-                            variant={isUpgrade ? "default" : "outline"}
-                            className="w-full cursor-pointer"
-                            onClick={() => handleUpgrade(plan.slug!)}
-                            disabled={loadingPlan !== null}
-                          >
-                            {loadingPlan === plan.slug ? (
-                              <>
-                                <SpinnerGap
-                                  className="h-4 w-4 animate-spin mr-2"
-                                  weight="bold"
-                                />
-                                Loading...
-                              </>
-                            ) : (
-                              <>
-                                {isUpgrade ? "Upgrade" : "Switch"} to{" "}
-                                {plan.name}
-                                <ArrowRight className="h-4 w-4 ml-2" />
-                              </>
-                            )}
-                          </Button>
-                        )
-                      ) : (
-                        <Button
-                          variant="outline"
-                          className="w-full cursor-default"
-                          disabled
-                        >
-                          {isDowngrade
-                            ? "Cancel subscription to downgrade"
-                            : "Free Forever"}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                <PlanCard
+                  plan={plan}
+                  isCurrent={isCurrent}
+                  isUpgrade={isUpgrade}
+                  isDowngrade={isDowngrade}
+                  isOnHold={isOnHold}
+                  loadingPlan={loadingPlan}
+                  onUpgrade={handleUpgrade}
+                />
+              </div>
             );
           })}
         </div>
       </div>
 
       {/* FAQ Section */}
-      <Card className="shadow-none">
-        <CardContent className="p-5">
-          <h2 className="text-lg font-semibold mb-4">
-            Frequently Asked Questions
-          </h2>
-          <div className="space-y-4">
-            <div>
-              <h3 className="font-medium">What happens when I upgrade?</h3>
-              <p className="text-sm text-foreground-muted mt-1">
-                Your new plan takes effect immediately. You&apos;ll be charged
-                the prorated amount for the remainder of your billing cycle.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-medium">Can I cancel anytime?</h3>
-              <p className="text-sm text-foreground-muted mt-1">
-                Yes! You can cancel your subscription at any time. You&apos;ll
-                keep access to your current plan until the end of your billing
-                period.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-medium">
-                What happens to my memories if I downgrade?
-              </h3>
-              <p className="text-sm text-foreground-muted mt-1">
-                Your existing memories are preserved. However, you won&apos;t be
-                able to add new memories if you exceed your new plan&apos;s
-                limit.
-              </p>
-            </div>
+      <div>
+        <div className="flex items-center gap-2.5 mb-5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10">
+            <Question className="h-4 w-4 text-accent" weight="duotone" />
           </div>
-        </CardContent>
-      </Card>
+          <h2 className="text-lg font-semibold">Frequently Asked Questions</h2>
+        </div>
+        <div className="space-y-2">
+          {FAQ_ITEMS.map((item, index) => (
+            <FaqItem
+              key={index}
+              item={item}
+              index={index}
+              isOpen={openFaq === index}
+              onToggle={() => setOpenFaq(openFaq === index ? null : index)}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

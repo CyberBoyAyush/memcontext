@@ -1,51 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import {
-  Loader2,
-  Check,
-  ArrowRight,
-  ArrowUpRight,
-  Sparkles,
-} from "lucide-react";
-import { useReferrer } from "@/lib/use-referrer";
-import { joinWaitlist } from "@/lib/waitlist";
+import { ArrowRight, Sparkles } from "lucide-react";
+import Link from "next/link";
 import { HeroCards } from "./hero-cards";
 import { TrustBlock } from "./trust-block";
 
 export function Hero() {
-  const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<
-    "idle" | "loading" | "success" | "exists" | "error"
-  >("idle");
-  const [errorMessage, setErrorMessage] = useState("");
-  const { referrer, clearReferrer } = useReferrer();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-
-    setStatus("loading");
-    setErrorMessage("");
-
-    const result = await joinWaitlist({
-      email,
-      source: "hero",
-      referrer,
-    });
-
-    if (result.success) {
-      setStatus(result.alreadyExists ? "exists" : "success");
-      setEmail("");
-      clearReferrer();
-      setTimeout(() => setStatus("idle"), 4000);
-    } else {
-      setStatus("error");
-      setErrorMessage(result.error);
-      setTimeout(() => setStatus("idle"), 4000);
-    }
-  };
-
   // Generate dots with varying opacities for the glow effect
   const generateDots = (count: number, seed: number) => {
     const dots = [];
@@ -169,59 +129,58 @@ export function Hero() {
             Context is saved and retrieved automatically.
           </p>
 
-          {/* Email Signup Form */}
-          <div className="animate-fade-in opacity-0 animation-delay-300 mt-6 sm:mt-8 max-w-lg mx-auto px-2">
-            <form
-              onSubmit={handleSubmit}
-              className="flex flex-row gap-1.5 md:gap-3"
-            >
-              <div className="flex-1 relative">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@email.com"
-                  required
-                  disabled={status === "loading" || status === "success"}
-                  className="w-full px-4 sm:px-5 py-2.5 sm:py-3 text-sm sm:text-base font-mono bg-neutral-950/70 border border-neutral-700/60 rounded-xl input-focus-glow focus:outline-none focus:border-foreground transition-all placeholder:text-foreground-subtle "
-                />
+          {/* CTA Buttons */}
+          <div className="animate-fade-in opacity-0 animation-delay-300 mt-6 sm:mt-8 flex justify-center gap-3">
+            {/* Pricing Button - glass pill */}
+            <Link href="/pricing" className="group relative">
+              <div className="absolute -inset-0.5 rounded-xl border border-white/8" />
+              <div className="relative flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl bg-surface/60 backdrop-blur-sm border border-white/[0.08] transition-all group-hover:border-white/15 group-hover:bg-surface/80">
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/[0.04] via-transparent to-transparent" />
+                <span className="text-sm sm:text-base text-foreground font-display font-semibold relative z-10">
+                  Pricing
+                </span>
               </div>
-              <button
-                type="submit"
-                disabled={
-                  status === "loading" ||
-                  status === "success" ||
-                  status === "exists"
-                }
-                className="px-3 sm:px-6 py-1 sm:py-3 text-xs sm:text-base font-medium bg-accent cursor-pointer text-background rounded-xl  transition-all disabled:opacity-50 flex items-center justify-center gap-2 group"
+            </Link>
+
+            {/* Sign Up Button */}
+            <a
+              href="https://app.memcontext.in/login"
+              className="relative group inline-block"
+            >
+              <div
+                className="absolute -top-px -left-px w-12 h-6 rounded-xl blur-[0.5px] opacity-80 group-hover:opacity-100 transition-opacity"
+                style={{
+                  background:
+                    "radial-gradient(ellipse at top left, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.25) 40%, transparent 70%)",
+                }}
+              />
+              <div
+                className="relative px-6 py-2.5 sm:py-3 rounded-xl flex items-center justify-center gap-2 overflow-hidden transition-all group-hover:scale-[1.02] whitespace-nowrap"
+                style={{
+                  background:
+                    "linear-gradient(135deg, rgba(232, 97, 60, 0.9) 0%, rgba(201, 78, 46, 0.8) 100%)",
+                }}
               >
-                {status === "loading" ? (
-                  <>
-                    <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
-                    <span>Joining...</span>
-                  </>
-                ) : status === "success" ? (
-                  <>
-                    <Check className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span>You&apos;re in!</span>
-                  </>
-                ) : status === "exists" ? (
-                  <>
-                    <Check className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span>Already on the list!</span>
-                  </>
-                ) : status === "error" ? (
-                  <span className="text-sm">{errorMessage}</span>
-                ) : (
-                  <>
-                    <span className="text-foreground font-display font-semibold">
-                      Get Early Access
-                    </span>
-                    <ArrowRight className="w-3 h-3 sm:w-5 sm:h-5 transition-transform text-foreground group-hover:translate-x-1" />
-                  </>
-                )}
-              </button>
-            </form>
+                <div
+                  className="absolute inset-0 opacity-60"
+                  style={{
+                    background:
+                      "radial-gradient(ellipse at top left, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.08) 40%, transparent 70%)",
+                  }}
+                />
+                <div
+                  className="absolute top-0 left-0 right-0 h-px"
+                  style={{
+                    background:
+                      "linear-gradient(90deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 50%, transparent 100%)",
+                  }}
+                />
+                <span className="font-display font-semibold text-sm sm:text-base text-white relative z-10">
+                  Sign Up
+                </span>
+                <ArrowRight className="w-4 h-4 text-white relative z-10 transition-transform group-hover:translate-x-1" />
+              </div>
+            </a>
           </div>
         </div>
       </div>

@@ -759,7 +759,9 @@ interface ListMemoriesParams {
   limit?: number;
   offset?: number;
   category?: MemoryCategory;
+  categories?: MemoryCategory[];
   project?: string;
+  projects?: string[];
   search?: string;
 }
 
@@ -779,7 +781,15 @@ interface ListMemoriesResult {
 export async function listMemories(
   params: ListMemoriesParams,
 ): Promise<ListMemoriesResult> {
-  const { userId, limit = 20, offset = 0, category, search } = params;
+  const {
+    userId,
+    limit = 20,
+    offset = 0,
+    category,
+    categories,
+    projects,
+    search,
+  } = params;
   const project = normalizeProjectName(params.project);
   const start = performance.now();
 
@@ -789,22 +799,62 @@ export async function listMemories(
     isNull(memories.deletedAt),
   ];
 
-  if (category) {
-    conditions.push(eq(memories.category, category));
+  // Multi-value category filter
+  const effectiveCategories = categories ?? (category ? [category] : undefined);
+  if (effectiveCategories && effectiveCategories.length > 0) {
+    if (effectiveCategories.length === 1) {
+      conditions.push(eq(memories.category, effectiveCategories[0]));
+    } else {
+      conditions.push(
+        sql`${memories.category} IN (${sql.join(
+          effectiveCategories.map((c) => sql`${c}`),
+          sql`, `,
+        )})`,
+      );
+    }
   }
-  if (project === "__null__") {
-    // Special filter for memories with no project (Global)
+
+  // Multi-value project filter (supports __null__ for Global)
+  if (projects && projects.length > 0) {
+    const hasGlobal = projects.includes("__null__");
+    const namedProjects = projects
+      .filter((p) => p !== "__null__")
+      .map((p) => normalizeProjectName(p))
+      .filter((p): p is string => p !== undefined);
+
+    if (hasGlobal && namedProjects.length === 0) {
+      conditions.push(isNull(memories.project));
+    } else if (!hasGlobal && namedProjects.length > 0) {
+      if (namedProjects.length === 1) {
+        conditions.push(eq(memories.project, namedProjects[0]));
+      } else {
+        conditions.push(
+          sql`${memories.project} IN (${sql.join(
+            namedProjects.map((p) => sql`${p}`),
+            sql`, `,
+          )})`,
+        );
+      }
+    } else if (hasGlobal && namedProjects.length > 0) {
+      // Global OR specific projects
+      conditions.push(
+        sql`(${memories.project} IS NULL OR ${memories.project} IN (${sql.join(
+          namedProjects.map((p) => sql`${p}`),
+          sql`, `,
+        )}))`,
+      );
+    }
+  } else if (project === "__null__") {
     conditions.push(isNull(memories.project));
   } else if (project) {
-    // Escape SQL LIKE special chars: backslash first, then wildcards
     const escapedProject = project
       .replace(/\\/g, "\\\\")
       .replace(/%/g, "\\%")
       .replace(/_/g, "\\_");
     conditions.push(like(memories.project, `%${escapedProject}%`));
   }
+
   if (search) {
-    // Escape SQL LIKE special chars: backslash first, then wildcards
     const escapedSearch = search
       .replace(/\\/g, "\\\\")
       .replace(/%/g, "\\%")
@@ -842,7 +892,8 @@ export async function listMemories(
       userId,
       limit,
       offset,
-      category,
+      categories: effectiveCategories,
+      projects,
       project,
       searchLength: search?.length,
       found: results.length,

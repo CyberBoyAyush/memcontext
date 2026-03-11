@@ -43,20 +43,14 @@ interface Memory {
   createdAt: string;
 }
 
-const categories = [
-  { value: "", label: "All" },
-  { value: "preference", label: "Preference" },
-  { value: "fact", label: "Fact" },
-  { value: "decision", label: "Decision" },
-  { value: "context", label: "Context" },
-];
-
 const editCategories = [
   { value: "preference", label: "Preference" },
   { value: "fact", label: "Fact" },
   { value: "decision", label: "Decision" },
   { value: "context", label: "Context" },
 ];
+
+const CATEGORY_VALUES = ["preference", "fact", "decision", "context"] as const;
 
 const categoryConfig: Record<
   string,
@@ -125,64 +119,75 @@ interface DashboardStats {
 
 function TableSkeleton() {
   return (
-    <Card className="overflow-hidden flex-1 min-h-0 flex flex-col">
-      <div className="overflow-auto flex-1 scrollbar-hide flex flex-col">
-        <table className="w-full min-w-[700px] flex-1 flex flex-col">
-          <thead className="sticky top-0 z-10 border-b border-border shrink-0">
-            <tr className="flex bg-surface-elevated w-full">
-              <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 shrink-0 border-r border-border flex items-center justify-center">
-                #
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-48 md:flex-1 md:w-auto border-r border-border flex items-center">
-                Content
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-28 shrink-0 border-r border-border flex items-center">
-                Category
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-32 shrink-0 border-r border-border flex items-center">
-                Project
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-48 shrink-0 border-r border-border flex items-center">
-                Created
-              </th>
-              <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 shrink-0 flex items-center justify-center">
-                <span className="sr-only">Actions</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="flex-1 flex flex-col">
-            {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => (
-              <tr
-                key={i}
-                className="animate-pulse border-b border-border last:border-b-0 flex flex-1 w-full"
-              >
-                <td className="py-3 w-12 shrink-0 border-r border-border flex items-center justify-center">
-                  <div className="h-4 bg-surface-elevated rounded w-6" />
-                </td>
-                <td className="px-4 py-3 w-48 md:flex-1 md:w-auto border-r border-border flex items-center">
-                  <div className="space-y-2 w-full">
-                    <div className="h-4 bg-surface-elevated rounded w-full" />
-                    <div className="h-4 bg-surface-elevated rounded w-3/4" />
-                  </div>
-                </td>
-                <td className="px-4 py-3 w-28 shrink-0 border-r border-border flex items-center">
-                  <div className="h-6 bg-surface-elevated rounded-full w-20" />
-                </td>
-                <td className="px-4 py-3 w-32 shrink-0 border-r border-border flex items-center">
-                  <div className="h-4 bg-surface-elevated rounded w-24" />
-                </td>
-                <td className="px-4 py-3 w-48 shrink-0 border-r border-border flex items-center">
-                  <div className="h-4 bg-surface-elevated rounded w-32" />
-                </td>
-                <td className="py-3 w-12 shrink-0 flex items-center justify-center">
-                  <div className="h-8 w-8 bg-surface-elevated rounded" />
-                </td>
+    <div className="flex flex-col flex-1 min-h-0 gap-4">
+      <Card className="overflow-hidden flex-1 min-h-0 flex flex-col">
+        <div className="overflow-auto flex-1 scrollbar-hide flex flex-col">
+          <table className="w-full min-w-[780px] flex-1 flex flex-col">
+            <thead className="sticky top-0 z-10 border-b border-border shrink-0">
+              <tr className="flex bg-surface-elevated w-full">
+                <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 shrink-0 border-r border-border flex items-center justify-center">
+                  #
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-48 md:flex-1 md:w-auto border-r border-border flex items-center">
+                  Content
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-40 shrink-0 border-r border-border flex items-center">
+                  Category
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-44 shrink-0 border-r border-border flex items-center">
+                  Project
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-48 shrink-0 border-r border-border flex items-center">
+                  Created
+                </th>
+                <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 shrink-0 flex items-center justify-center">
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="flex-1 flex flex-col">
+              {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => (
+                <tr
+                  key={i}
+                  className="animate-pulse border-b border-border last:border-b-0 flex flex-1 w-full"
+                >
+                  <td className="py-3 w-12 shrink-0 border-r border-border flex items-center justify-center">
+                    <div className="h-4 bg-surface-elevated rounded w-6" />
+                  </td>
+                  <td className="px-4 py-3 w-48 md:flex-1 md:w-auto border-r border-border flex items-center">
+                    <div className="space-y-2 w-full">
+                      <div className="h-4 bg-surface-elevated rounded w-full" />
+                      <div className="h-4 bg-surface-elevated rounded w-3/4" />
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 w-40 shrink-0 border-r border-border flex items-center">
+                    <div className="h-6 bg-surface-elevated rounded-full w-20" />
+                  </td>
+                  <td className="px-4 py-3 w-44 shrink-0 border-r border-border flex items-center">
+                    <div className="h-4 bg-surface-elevated rounded w-24" />
+                  </td>
+                  <td className="px-4 py-3 w-48 shrink-0 border-r border-border flex items-center">
+                    <div className="h-4 bg-surface-elevated rounded w-32" />
+                  </td>
+                  <td className="py-3 w-12 shrink-0 flex items-center justify-center">
+                    <div className="h-8 w-8 bg-surface-elevated rounded" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <div className="flex items-center justify-between px-1 animate-pulse shrink-0">
+        <div className="h-4 w-44 rounded bg-surface-elevated" />
+        <div className="flex items-center gap-1.5">
+          <div className="h-9 w-24 rounded-lg border border-border bg-surface-elevated" />
+          <div className="h-9 w-36 rounded-lg border border-border bg-surface-elevated" />
+          <div className="h-9 w-20 rounded-lg border border-border bg-surface-elevated" />
+        </div>
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -678,26 +683,44 @@ function CategorySelect({
 }
 
 function CategoryFilter({
-  value,
+  values,
   onChange,
 }: {
-  value: string;
-  onChange: (value: string) => void;
+  values: string[];
+  onChange: (values: string[]) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const filteredCategories = CATEGORY_VALUES.filter((cat) =>
+    cat.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  function toggleCategory(cat: string) {
+    if (values.includes(cat)) {
+      onChange(values.filter((value) => value !== cat));
+      return;
+    }
+    onChange([...values, cat]);
+  }
 
   return (
     <div className="relative">
       <button
-        onClick={() => setOpen(!open)}
+        onClick={() => setOpen((value) => !value)}
         className={cn(
-          "inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer",
-          value
+          "inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-colors cursor-pointer",
+          values.length > 0
             ? "text-foreground"
             : "text-foreground-muted hover:text-foreground",
         )}
       >
         Category
+        {values.length > 0 && (
+          <span className="inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-sm bg-accent text-white text-[10px] font-semibold">
+            {values.length}
+          </span>
+        )}
         <CaretDown
           className={cn("h-3 w-3 transition-transform", open && "rotate-180")}
           weight="bold"
@@ -707,32 +730,73 @@ function CategoryFilter({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full mt-2 z-50 min-w-[140px] bg-surface-elevated border border-border rounded-lg overflow-hidden animate-scale-in">
-            {categories.map((cat) => (
-              <button
-                key={cat.value}
-                className={cn(
-                  "w-full px-3 py-2.5 text-sm text-left transition-colors cursor-pointer flex items-center gap-2",
-                  value === cat.value
-                    ? "bg-surface-hover text-foreground"
-                    : "text-foreground-muted hover:bg-surface hover:text-foreground",
-                )}
-                onClick={() => {
-                  onChange(cat.value);
-                  setOpen(false);
-                }}
-              >
-                {cat.value && categoryConfig[cat.value] && (
-                  <span
+          <div className="absolute left-0 top-full mt-2 z-50 w-56 bg-surface-elevated border border-border rounded-lg overflow-hidden animate-scale-in">
+            <div className="p-2 border-b border-border">
+              <div className="relative">
+                <MagnifyingGlass
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-foreground-subtle"
+                  weight="bold"
+                />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search categories..."
+                  className="w-full h-9 pl-8 pr-2 rounded-md text-sm text-foreground placeholder:text-foreground-subtle focus:outline-none focus:border-foreground-subtle"
+                />
+              </div>
+            </div>
+
+            <div className="max-h-56 overflow-y-auto scrollbar-hide p-1">
+              {filteredCategories.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => toggleCategory(cat)}
+                  className="w-full px-2.5 py-2 text-sm text-left flex items-center gap-2.5 hover:bg-surface rounded-md transition-colors cursor-pointer"
+                >
+                  <div
                     className={cn(
-                      "w-2 h-2 rounded-full shrink-0",
-                      categoryConfig[cat.value].dot,
+                      "w-4 h-4 rounded-[4px] border-2 flex items-center justify-center shrink-0",
+                      values.includes(cat)
+                        ? "bg-accent border-accent"
+                        : "border-foreground-subtle/40",
                     )}
-                  />
-                )}
-                {cat.label}
-              </button>
-            ))}
+                  >
+                    {values.includes(cat) && (
+                      <Check className="h-3 w-3 text-white" weight="bold" />
+                    )}
+                  </div>
+                  {/* <span
+                    className={cn(
+                      "w-2 h-2 rounded-full",
+                      categoryConfig[cat]?.dot,
+                    )}
+                  /> */}
+                  <span className="text-foreground-muted capitalize">
+                    {cat}
+                  </span>
+                </button>
+              ))}
+
+              {filteredCategories.length === 0 && (
+                <div className="px-2.5 py-6 text-xs text-foreground-subtle text-center">
+                  No matching categories
+                </div>
+              )}
+            </div>
+
+            {values.length > 0 && (
+              <div className="border-t border-border p-1.5">
+                <button
+                  type="button"
+                  onClick={() => onChange([])}
+                  className="w-full h-7 rounded-md text-xs font-medium text-foreground-muted hover:text-foreground hover:bg-surface transition-colors cursor-pointer"
+                >
+                  Clear category filters
+                </button>
+              </div>
+            )}
           </div>
         </>
       )}
@@ -741,42 +805,60 @@ function CategoryFilter({
 }
 
 function ProjectFilter({
-  value,
+  values,
   onChange,
   projects,
   isLoading,
 }: {
-  value: string;
-  onChange: (value: string) => void;
+  values: string[];
+  onChange: (values: string[]) => void;
   projects: Array<{ name: string; count: number }>;
   isLoading: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
 
-  const globalProject = projects.find((p) => p.name === "Global");
-  const otherProjects = projects.filter((p) => p.name !== "Global");
-
-  // Build project options list
+  const globalProject = projects.find((project) => project.name === "Global");
+  const otherProjects = projects.filter((project) => project.name !== "Global");
   const projectOptions = [
-    { value: "", label: "All" },
-    ...(globalProject ? [{ value: "__global__", label: "Global" }] : []),
-    ...otherProjects.map((p) => ({ value: p.name, label: p.name })),
+    ...(globalProject ? [{ value: "__null__", label: "Global" }] : []),
+    ...otherProjects.map((project) => ({
+      value: project.name,
+      label: project.name,
+    })),
   ];
+
+  const filteredProjects = projectOptions.filter((project) =>
+    project.label.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  function toggleProject(projectValue: string) {
+    if (values.includes(projectValue)) {
+      onChange(values.filter((value) => value !== projectValue));
+      return;
+    }
+    onChange([...values, projectValue]);
+  }
 
   return (
     <div className="relative">
       <button
-        onClick={() => setOpen(!open)}
+        onClick={() => setOpen((value) => !value)}
         disabled={isLoading}
         className={cn(
-          "inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer",
-          value
+          "inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-colors cursor-pointer",
+          values.length > 0
             ? "text-foreground"
             : "text-foreground-muted hover:text-foreground",
           isLoading && "opacity-50 !cursor-not-allowed",
         )}
       >
         Project
+        {values.length > 0 && (
+          <span className="inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-sm bg-accent text-white text-[10px] font-semibold">
+            {values.length}
+          </span>
+        )}
         <CaretDown
           className={cn("h-3 w-3 transition-transform", open && "rotate-180")}
           weight="bold"
@@ -786,29 +868,70 @@ function ProjectFilter({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full mt-2 z-50 min-w-[140px] bg-surface-elevated border border-border rounded-lg overflow-hidden animate-scale-in max-h-64 overflow-y-auto">
-            {projectOptions.map((proj) => (
-              <button
-                key={proj.value}
-                className={cn(
-                  "w-full px-3 py-2.5 text-sm text-left transition-colors cursor-pointer truncate",
-                  value === proj.value
-                    ? "bg-surface-hover text-foreground"
-                    : "text-foreground-muted hover:bg-surface hover:text-foreground",
-                )}
-                onClick={() => {
-                  onChange(proj.value);
-                  setOpen(false);
-                }}
-              >
-                {proj.label}
-              </button>
-            ))}
+          <div className="absolute left-0 top-full mt-2 z-50 w-64 bg-surface-elevated border border-border rounded-lg overflow-hidden animate-scale-in">
+            <div className="p-2 border-b border-border">
+              <div className="relative">
+                <MagnifyingGlass
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-foreground-subtle"
+                  weight="bold"
+                />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search projects..."
+                  className="w-full h-8 pl-8 pr-2 rounded-md text-sm text-foreground placeholder:text-foreground-subtle focus:outline-none focus:border-foreground-subtle"
+                />
+              </div>
+            </div>
 
-            {/* Empty state */}
-            {!isLoading && projectOptions.length === 1 && (
-              <div className="px-3 py-4 text-sm text-foreground-muted text-center">
-                No projects yet
+            <div className="max-h-56 overflow-y-auto scrollbar-hide p-1">
+              {filteredProjects.map((project) => (
+                <button
+                  key={project.value}
+                  type="button"
+                  onClick={() => toggleProject(project.value)}
+                  className="w-full px-2.5 py-2 text-sm text-left flex items-center gap-2.5 hover:bg-surface rounded-md transition-colors cursor-pointer"
+                >
+                  <div
+                    className={cn(
+                      "w-4 h-4 rounded-[4px] border-2 flex items-center justify-center shrink-0",
+                      values.includes(project.value)
+                        ? "bg-accent border-accent"
+                        : "border-foreground-subtle/40",
+                    )}
+                  >
+                    {values.includes(project.value) && (
+                      <Check className="h-3 w-3 text-white" weight="bold" />
+                    )}
+                  </div>
+                  {/* {project.value === "__null__" ? (
+                    <Globe className="h-3.5 w-3.5 text-foreground-subtle shrink-0" />
+                  ) : (
+                    <FolderOpen className="h-3.5 w-3.5 text-foreground-subtle shrink-0" />
+                  )} */}
+                  <span className="truncate text-foreground-muted">
+                    {project.label}
+                  </span>
+                </button>
+              ))}
+
+              {!isLoading && filteredProjects.length === 0 && (
+                <div className="px-2.5 py-6 text-xs text-foreground-subtle text-center">
+                  No matching projects
+                </div>
+              )}
+            </div>
+
+            {values.length > 0 && (
+              <div className="border-t border-border p-1.5">
+                <button
+                  type="button"
+                  onClick={() => onChange([])}
+                  className="w-full h-7 rounded-md text-xs font-medium text-foreground-muted hover:text-foreground hover:bg-surface transition-colors cursor-pointer"
+                >
+                  Clear project filters
+                </button>
               </div>
             )}
           </div>
@@ -819,8 +942,8 @@ function ProjectFilter({
 }
 
 export default function MemoriesPage() {
-  const [category, setCategory] = useState("");
-  const [project, setProject] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -847,18 +970,18 @@ export default function MemoriesPage() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // Convert project filter value for API
-  // "__global__" means filter for memories with no project (null)
-  const projectFilter = project === "__global__" ? "" : project || undefined;
-  // For global filter, we pass empty string which will match null projects
-  const isGlobalFilter = project === "__global__";
+  // Build API params for multi-value filters
+  const apiCategories =
+    selectedCategories.length > 0 ? selectedCategories : undefined;
+  const apiProjects =
+    selectedProjects.length > 0 ? selectedProjects : undefined;
 
   const { data, isLoading, error, isFetching } = useQuery(
     memoriesQueryOptions({
       limit: ITEMS_PER_PAGE,
       offset,
-      category: category || undefined,
-      project: isGlobalFilter ? "__null__" : projectFilter,
+      categories: apiCategories,
+      projects: apiProjects,
       search: search || undefined,
     }),
   );
@@ -885,6 +1008,17 @@ export default function MemoriesPage() {
   const totalPages = data ? Math.ceil(data.total / ITEMS_PER_PAGE) : 0;
   const showingFrom = data && data.total > 0 ? offset + 1 : 0;
   const showingTo = data ? Math.min(offset + ITEMS_PER_PAGE, data.total) : 0;
+  const totalMemoriesCount = dashboardStats
+    ? Object.values(dashboardStats.categories).reduce(
+        (total, count) => total + count,
+        0,
+      )
+    : 0;
+  const hasActiveFilters =
+    selectedCategories.length > 0 ||
+    selectedProjects.length > 0 ||
+    search.trim().length > 0;
+  const shouldShowResetFilters = hasActiveFilters && totalMemoriesCount > 0;
 
   function handleRefresh() {
     queryClient.invalidateQueries({ queryKey: ["memories"] });
@@ -941,62 +1075,6 @@ export default function MemoriesPage() {
         </div>
       </div>
 
-      {/* Active filters indicator */}
-      {(category || search || project) && (
-        <div className="flex items-center gap-2 pb-4 shrink-0 flex-wrap">
-          <span className="text-sm text-foreground-muted">Filtered by:</span>
-          {search && (
-            <button
-              onClick={() => {
-                setSearchInput("");
-                setSearch("");
-                setPage(0);
-              }}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors bg-surface-elevated text-foreground hover:opacity-80 cursor-pointer"
-            >
-              <MagnifyingGlass className="h-3 w-3" weight="bold" />
-              &quot;{search}&quot;
-              <X className="h-3 w-3 ml-0.5" />
-            </button>
-          )}
-          {project && (
-            <button
-              onClick={() => {
-                setProject("");
-                setPage(0);
-              }}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors bg-surface-elevated text-foreground-muted hover:opacity-80 cursor-pointer"
-            >
-              {project === "__global__" ? (
-                <Globe className="h-3 w-3" />
-              ) : (
-                <FolderOpen className="h-3 w-3" />
-              )}
-              {project === "__global__" ? "Global" : project}
-              <X className="h-3 w-3 ml-0.5" />
-            </button>
-          )}
-          {category && (
-            <button
-              onClick={() => {
-                setCategory("");
-                setPage(0);
-              }}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer",
-                categoryConfig[category]?.lightBg,
-                categoryConfig[category]?.lightText,
-                "hover:opacity-80",
-              )}
-            >
-              <Tag className="h-3 w-3" />
-              {category}
-              <X className="h-3 w-3 ml-0.5" />
-            </button>
-          )}
-        </div>
-      )}
-
       {/* Content */}
       {isLoading ? (
         <TableSkeleton />
@@ -1013,11 +1091,38 @@ export default function MemoriesPage() {
         <Card className="flex-1">
           <CardContent className="p-16 text-center">
             <Brain className="h-16 w-16 mx-auto text-foreground-subtle mb-4 opacity-50" />
-            <h3 className="text-xl font-semibold mb-2">No memories yet</h3>
-            <p className="text-foreground-muted max-w-sm mx-auto">
-              Start saving memories through your AI assistant and they&apos;ll
-              appear here
-            </p>
+            {shouldShowResetFilters ? (
+              <>
+                <h3 className="text-xl font-semibold mb-2">
+                  No memories match these filters
+                </h3>
+                <p className="text-foreground-muted max-w-sm mx-auto mb-5">
+                  Try clearing your current search and filters to see all saved
+                  memories.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedCategories([]);
+                    setSelectedProjects([]);
+                    setSearchInput("");
+                    setSearch("");
+                    setPage(0);
+                  }}
+                  className="hover:translate-y-0 hover:shadow-none cursor-pointer"
+                >
+                  Reset all filters
+                </Button>
+              </>
+            ) : (
+              <>
+                <h3 className="text-xl font-semibold mb-2">No memories yet</h3>
+                <p className="text-foreground-muted max-w-sm mx-auto">
+                  Start saving memories through your AI assistant and
+                  they&apos;ll appear here
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -1025,7 +1130,7 @@ export default function MemoriesPage() {
           {/* Table */}
           <Card className="overflow-hidden flex-1 min-h-0 flex flex-col">
             <div className="overflow-auto flex-1 scrollbar-hide flex flex-col">
-              <table className="w-full min-w-[700px] flex-1 flex flex-col">
+              <table className="w-full min-w-[780px] flex-1 flex flex-col">
                 <thead className="sticky top-0 z-10 border-b border-border shrink-0">
                   <tr className="flex bg-surface-elevated w-full">
                     <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 shrink-0 border-r border-border flex items-center justify-center">
@@ -1034,20 +1139,20 @@ export default function MemoriesPage() {
                     <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-48 md:flex-1 md:w-auto border-r border-border flex items-center">
                       Content
                     </th>
-                    <th className="text-left px-4 py-3 w-28 shrink-0 border-r border-border flex items-center">
+                    <th className="text-left px-4 py-3 w-40 shrink-0 border-r border-border flex items-center">
                       <CategoryFilter
-                        value={category}
-                        onChange={(val) => {
-                          setCategory(val);
+                        values={selectedCategories}
+                        onChange={(values) => {
+                          setSelectedCategories(values);
                           setPage(0);
                         }}
                       />
                     </th>
-                    <th className="text-left px-4 py-3 w-32 shrink-0 border-r border-border flex items-center">
+                    <th className="text-left px-4 py-3 w-44 shrink-0 border-r border-border flex items-center">
                       <ProjectFilter
-                        value={project}
-                        onChange={(val) => {
-                          setProject(val);
+                        values={selectedProjects}
+                        onChange={(values) => {
+                          setSelectedProjects(values);
                           setPage(0);
                         }}
                         projects={dashboardStats?.projects ?? []}
@@ -1090,7 +1195,7 @@ export default function MemoriesPage() {
                         </td>
 
                         {/* Category */}
-                        <td className="px-4 py-3 w-28 shrink-0 border-r border-border flex items-center">
+                        <td className="px-4 py-3 w-40 shrink-0 border-r border-border flex items-center">
                           {memory.category && config ? (
                             <span
                               className={cn(
@@ -1109,7 +1214,7 @@ export default function MemoriesPage() {
                         </td>
 
                         {/* Project */}
-                        <td className="px-4 py-3 w-32 shrink-0 border-r border-border flex items-center">
+                        <td className="px-4 py-3 w-44 shrink-0 border-r border-border flex items-center">
                           <span className="text-sm text-foreground-muted truncate block">
                             {memory.project || "Global"}
                           </span>
@@ -1151,10 +1256,10 @@ export default function MemoriesPage() {
                         <td className="px-4 py-3 w-48 md:flex-1 md:w-auto border-r border-border">
                           &nbsp;
                         </td>
-                        <td className="px-4 py-3 w-28 shrink-0 border-r border-border">
+                        <td className="px-4 py-3 w-40 shrink-0 border-r border-border">
                           &nbsp;
                         </td>
-                        <td className="px-4 py-3 w-32 shrink-0 border-r border-border">
+                        <td className="px-4 py-3 w-44 shrink-0 border-r border-border">
                           &nbsp;
                         </td>
                         <td className="px-4 py-3 w-48 shrink-0 border-r border-border">
