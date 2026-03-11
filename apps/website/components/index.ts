@@ -1,6 +1,7 @@
 export { Header } from "./header";
 export { Hero } from "./hero";
 export { TrustBlock } from "./trust-block";
+export { LaunchVideo } from "./launch-video";
 export { Features } from "./features";
 export { HowItWorks } from "./how-it-works";
 export { Pricing } from "./pricing";

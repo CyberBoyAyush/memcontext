@@ -11,7 +11,15 @@ import {
   ArrowRight,
   FolderOpen,
 } from "@phosphor-icons/react";
-import { Bar, BarChart, XAxis, Cell, ResponsiveContainer } from "recharts";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { api } from "@/lib/api";
 import Link from "next/link";
 import { useToast } from "@/providers/toast-provider";
@@ -311,12 +319,19 @@ const CategoriesChart = memo(function CategoriesChart({
               <BarChart
                 data={chartData}
                 onMouseLeave={handleMouseLeave}
-                margin={{ top: 10, right: 10, left: 10, bottom: 5 }}
+                margin={{ top: 10, right: 10, left: 4, bottom: 5 }}
                 barCategoryGap="15%"
               >
                 <defs>
                   <ChartPatterns />
                 </defs>
+                <CartesianGrid
+                  vertical
+                  horizontal
+                  stroke="var(--border-hover)"
+                  strokeWidth={1.25}
+                  strokeDasharray="3 3"
+                />
                 <rect
                   x="0"
                   y="0"
@@ -326,9 +341,17 @@ const CategoriesChart = memo(function CategoriesChart({
                 />
                 <XAxis
                   dataKey="category"
-                  tickLine={false}
+                  tickLine={{ stroke: "var(--foreground-muted)", strokeWidth: 1.25 }}
                   tickMargin={12}
-                  axisLine={false}
+                  axisLine={{ stroke: "var(--foreground-muted)", strokeWidth: 1.25 }}
+                  tick={{ fontSize: 12, fill: "var(--foreground-muted)" }}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  tickLine={{ stroke: "var(--foreground-muted)", strokeWidth: 1.25 }}
+                  axisLine={{ stroke: "var(--foreground-muted)", strokeWidth: 1.25 }}
+                  tickMargin={8}
+                  width={28}
                   tick={{ fontSize: 12, fill: "var(--foreground-muted)" }}
                 />
                 <ChartTooltip cursor={false} content={<CustomTooltip />} />
