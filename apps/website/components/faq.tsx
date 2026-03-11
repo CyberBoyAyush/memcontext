@@ -98,31 +98,43 @@ export function FAQ() {
               our team.
             </p>
 
-            {/* CTA Button - Glass style */}
+            {/* CTA Button - Glossy style */}
             <a
               href="https://app.memcontext.in/login"
-              className="group relative mb-8 inline-block"
+              className="relative group inline-block mb-8"
             >
-              {/* Border glow spots */}
               <div
-                className="absolute -top-px -left-px w-20 h-12 rounded-xl blur-[1px]"
+                className="absolute -top-px -left-px w-12 h-6 rounded-xl blur-[0.5px] opacity-80 group-hover:opacity-100 transition-opacity"
                 style={{
                   background:
-                    "radial-gradient(ellipse at top left, rgba(232,97,60,0.4) 0%, rgba(232,97,60,0.15) 40%, transparent 70%)",
+                    "radial-gradient(ellipse at top left, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.25) 40%, transparent 70%)",
                 }}
               />
               <div
-                className="absolute -bottom-px -right-px w-20 h-12 rounded-xl blur-[1px]"
+                className="relative px-6 py-3 rounded-xl flex items-center justify-center gap-2 overflow-hidden transition-all group-hover:scale-[1.02] whitespace-nowrap"
                 style={{
                   background:
-                    "radial-gradient(ellipse at bottom right, rgba(232,97,60,0.3) 0%, rgba(232,97,60,0.1) 40%, transparent 70%)",
+                    "linear-gradient(135deg, rgba(232, 97, 60, 0.9) 0%, rgba(201, 78, 46, 0.8) 100%)",
                 }}
-              />
-
-              {/* Button */}
-              <div className="relative flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-accent text-foreground font-medium transition-all group-hover:bg-accent/90">
-                <span className="font-display font-semibold">Sign Up</span>
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+              >
+                <div
+                  className="absolute inset-0 opacity-60"
+                  style={{
+                    background:
+                      "radial-gradient(ellipse at top left, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.08) 40%, transparent 70%)",
+                  }}
+                />
+                <div
+                  className="absolute top-0 left-0 right-0 h-px"
+                  style={{
+                    background:
+                      "linear-gradient(90deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 50%, transparent 100%)",
+                  }}
+                />
+                <span className="font-display font-semibold text-sm text-white relative z-10">
+                  Sign Up
+                </span>
+                <ArrowRight className="w-4 h-4 text-white relative z-10 transition-transform group-hover:translate-x-1" />
               </div>
             </a>
 

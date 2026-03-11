@@ -145,12 +145,41 @@ export function Hero() {
             {/* Sign Up Button */}
             <a
               href="https://app.memcontext.in/login"
-              className="group px-5 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base font-medium bg-accent cursor-pointer text-background rounded-xl transition-all flex items-center justify-center gap-2"
+              className="relative group inline-block"
             >
-              <span className="text-foreground font-display font-semibold">
-                Sign Up
-              </span>
-              <ArrowRight className="w-3 h-3 sm:w-5 sm:h-5 transition-transform text-foreground group-hover:translate-x-1" />
+              <div
+                className="absolute -top-px -left-px w-12 h-6 rounded-xl blur-[0.5px] opacity-80 group-hover:opacity-100 transition-opacity"
+                style={{
+                  background:
+                    "radial-gradient(ellipse at top left, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.25) 40%, transparent 70%)",
+                }}
+              />
+              <div
+                className="relative px-6 py-2.5 sm:py-3 rounded-xl flex items-center justify-center gap-2 overflow-hidden transition-all group-hover:scale-[1.02] whitespace-nowrap"
+                style={{
+                  background:
+                    "linear-gradient(135deg, rgba(232, 97, 60, 0.9) 0%, rgba(201, 78, 46, 0.8) 100%)",
+                }}
+              >
+                <div
+                  className="absolute inset-0 opacity-60"
+                  style={{
+                    background:
+                      "radial-gradient(ellipse at top left, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.08) 40%, transparent 70%)",
+                  }}
+                />
+                <div
+                  className="absolute top-0 left-0 right-0 h-px"
+                  style={{
+                    background:
+                      "linear-gradient(90deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 50%, transparent 100%)",
+                  }}
+                />
+                <span className="font-display font-semibold text-sm sm:text-base text-white relative z-10">
+                  Sign Up
+                </span>
+                <ArrowRight className="w-4 h-4 text-white relative z-10 transition-transform group-hover:translate-x-1" />
+              </div>
             </a>
           </div>
         </div>

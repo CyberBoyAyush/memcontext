@@ -110,9 +110,40 @@ export function Header() {
               </a>
               <a
                 href="https://app.memcontext.in/login"
-                className="px-4 flex items-center gap-2 lg:px-5 py-1.5 lg:py-2 text-sm lg:text-base font-medium bg-accent text-foreground cursor-pointer rounded-lg transition-all"
+                className="relative group inline-block"
               >
-                Sign Up
+                <div
+                  className="absolute -top-px -left-px w-10 h-5 rounded-lg blur-[0.5px] opacity-80 group-hover:opacity-100 transition-opacity"
+                  style={{
+                    background:
+                      "radial-gradient(ellipse at top left, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.25) 40%, transparent 70%)",
+                  }}
+                />
+                <div
+                  className="relative px-4 lg:px-5 py-1.5 lg:py-2 rounded-lg flex items-center justify-center gap-1.5 overflow-hidden transition-all group-hover:scale-[1.02] whitespace-nowrap"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, rgba(232, 97, 60, 0.9) 0%, rgba(201, 78, 46, 0.8) 100%)",
+                  }}
+                >
+                  <div
+                    className="absolute inset-0 opacity-60"
+                    style={{
+                      background:
+                        "radial-gradient(ellipse at top left, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.08) 40%, transparent 70%)",
+                    }}
+                  />
+                  <div
+                    className="absolute top-0 left-0 right-0 h-px"
+                    style={{
+                      background:
+                        "linear-gradient(90deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 50%, transparent 100%)",
+                    }}
+                  />
+                  <span className="font-display font-semibold text-sm lg:text-base text-white relative z-10">
+                    Sign Up
+                  </span>
+                </div>
               </a>
             </div>
 
@@ -161,9 +192,33 @@ export function Header() {
               </a>
               <a
                 href="https://app.memcontext.in/login"
-                className="block w-full mt-3 px-5 py-3 text-center text-base font-medium bg-accent text-background rounded-xl"
+                className="relative group block mt-3"
               >
-                Sign Up
+                <div
+                  className="relative w-full px-5 py-3 rounded-xl flex items-center justify-center gap-2 overflow-hidden"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, rgba(232, 97, 60, 0.9) 0%, rgba(201, 78, 46, 0.8) 100%)",
+                  }}
+                >
+                  <div
+                    className="absolute inset-0 opacity-60"
+                    style={{
+                      background:
+                        "radial-gradient(ellipse at top left, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.08) 40%, transparent 70%)",
+                    }}
+                  />
+                  <div
+                    className="absolute top-0 left-0 right-0 h-px"
+                    style={{
+                      background:
+                        "linear-gradient(90deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 50%, transparent 100%)",
+                    }}
+                  />
+                  <span className="font-display font-semibold text-base text-white relative z-10">
+                    Sign Up
+                  </span>
+                </div>
               </a>
             </div>
           </div>

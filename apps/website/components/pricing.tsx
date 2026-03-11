@@ -69,17 +69,6 @@ function PricingCard({ plan, index }: { plan: Plan; index: number }) {
       }}
     >
       <div className="relative group h-full flex flex-col">
-        {/* Outer glow for popular plan */}
-        {isPopular && (
-          <div
-            className="pointer-events-none absolute -inset-3 rounded-3xl opacity-40 blur-xl transition-opacity duration-500 group-hover:opacity-60"
-            style={{
-              background:
-                "radial-gradient(ellipse at 50% 0%, rgba(232,97,60,0.4) 0%, transparent 70%)",
-            }}
-          />
-        )}
-
         {/* ── Top: Coral Folder Shape (plan name, price, CTA) ── */}
         <div className="relative">
           {/* Mobile: shorter folder */}
