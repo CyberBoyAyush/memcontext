@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ArrowRight, Mail, MessageCircle, XIcon, X } from "lucide-react";
+import {
+  ChevronDown,
+  ArrowRight,
+  Mail,
+  MessageCircle,
+  XIcon,
+  X,
+} from "lucide-react";
 import { FaXTwitter } from "react-icons/fa6";
 import { BsGithub } from "react-icons/bs";
 
@@ -34,10 +41,6 @@ const faqs = [
 
 export function FAQ() {
   const [open, setOpen] = useState<number | null>(0);
-
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
 
   return (
     <section id="faq" className="py-20 sm:py-28">
@@ -91,39 +94,49 @@ export function FAQ() {
             </h2>
 
             <p className="text-sm sm:text-base text-foreground-muted mb-8 max-w-sm">
-             Can&apos;t find the
-              answer you&apos;re looking for? Reach out to our team.
+              Can&apos;t find the answer you&apos;re looking for? Reach out to
+              our team.
             </p>
 
-            {/* CTA Button - Glass style */}
-            <button
-              onClick={scrollToTop}
-              className="group relative mb-8 w-full sm:w-auto"
+            {/* CTA Button - Glossy style */}
+            <a
+              href="https://app.memcontext.in/login"
+              className="relative group inline-block mb-8"
             >
-              {/* Border glow spots */}
               <div
-                className="absolute -top-px -left-px w-20 h-12 rounded-xl blur-[1px]"
+                className="absolute -top-px -left-px w-12 h-6 rounded-xl blur-[0.5px] opacity-80 group-hover:opacity-100 transition-opacity"
                 style={{
                   background:
-                    "radial-gradient(ellipse at top left, rgba(232,97,60,0.4) 0%, rgba(232,97,60,0.15) 40%, transparent 70%)",
+                    "radial-gradient(ellipse at top left, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.25) 40%, transparent 70%)",
                 }}
               />
               <div
-                className="absolute -bottom-px -right-px w-20 h-12 rounded-xl blur-[1px]"
+                className="relative px-6 py-3 rounded-xl flex items-center justify-center gap-2 overflow-hidden transition-all group-hover:scale-[1.02] whitespace-nowrap"
                 style={{
                   background:
-                    "radial-gradient(ellipse at bottom right, rgba(232,97,60,0.3) 0%, rgba(232,97,60,0.1) 40%, transparent 70%)",
+                    "linear-gradient(135deg, rgba(232, 97, 60, 0.9) 0%, rgba(201, 78, 46, 0.8) 100%)",
                 }}
-              />
-
-              {/* Button */}
-              <div className="relative flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-accent text-foreground font-medium transition-all group-hover:bg-accent/90">
-                <span className="font-display font-semibold">
-                  Join the Waitlist
+              >
+                <div
+                  className="absolute inset-0 opacity-60"
+                  style={{
+                    background:
+                      "radial-gradient(ellipse at top left, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.08) 40%, transparent 70%)",
+                  }}
+                />
+                <div
+                  className="absolute top-0 left-0 right-0 h-px"
+                  style={{
+                    background:
+                      "linear-gradient(90deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 50%, transparent 100%)",
+                  }}
+                />
+                <span className="font-display font-semibold text-sm text-white relative z-10">
+                  Sign Up
                 </span>
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="w-4 h-4 text-white relative z-10 transition-transform group-hover:translate-x-1" />
               </div>
-            </button>
+            </a>
 
             {/* Support Links */}
             <div className="space-y-3">
@@ -173,7 +186,7 @@ export function FAQ() {
                     </div>
                     <div className="relative z-10">
                       <p className="text-sm font-medium text-foreground group-hover:text-white transition-colors">
-                        Website 
+                        Website
                       </p>
                       <p className="text-[11px] text-foreground-subtle">
                         https://aysh.me
@@ -235,9 +248,7 @@ export function FAQ() {
                 </a>
               </div>
             </div>
-
           </div>
-
 
           {/* Right Side - FAQ Accordion */}
           <div className="lg:col-span-8">
@@ -245,15 +256,17 @@ export function FAQ() {
               {faqs.map((faq, i) => (
                 <div
                   key={i}
-                  className={`group rounded-2xl border transition-all duration-300 overflow-hidden ${open === i
+                  className={`group rounded-2xl border transition-all duration-300 overflow-hidden ${
+                    open === i
                       ? "bg-surface/80 border-white/10 shadow-lg shadow-black/20"
                       : "bg-surface/30 border-white/5 hover:border-white/10 hover:bg-surface/50"
-                    }`}
+                  }`}
                 >
                   <button
                     onClick={() => setOpen(open === i ? null : i)}
-                    className={`w-full flex cursor-pointer items-center justify-between  text-left ${open === i ? "p-5 sm:p-6 pb-2 md:pb-2" : "p-5 sm:p-6"
-                      }`}
+                    className={`w-full flex cursor-pointer items-center justify-between  text-left ${
+                      open === i ? "p-5 sm:p-6 pb-2 md:pb-2" : "p-5 sm:p-6"
+                    }`}
                   >
                     <div className="flex items-center gap-4">
                       {/* Number indicator with glass border corner */}
@@ -269,10 +282,11 @@ export function FAQ() {
                           }}
                         />
                         <div
-                          className={`relative w-8 h-8 rounded-lg flex items-center justify-center text-sm font-mono transition-all duration-300 backdrop-blur-sm border ${open === i
+                          className={`relative w-8 h-8 rounded-lg flex items-center justify-center text-sm font-mono transition-all duration-300 backdrop-blur-sm border ${
+                            open === i
                               ? "bg-accent/15 text-accent border-white/10"
                               : "bg-white/5 text-foreground-subtle border-white/10"
-                            }`}
+                          }`}
                           style={{
                             boxShadow: "inset 0 1px 1px rgba(255,255,255,0.05)",
                           }}
@@ -285,35 +299,35 @@ export function FAQ() {
                         </div>
                       </div>
                       <span
-                        className={`text-sm sm:text-base font-medium transition-colors ${open === i
+                        className={`text-sm sm:text-base font-medium transition-colors ${
+                          open === i
                             ? "text-foreground"
                             : "text-foreground-muted group-hover:text-foreground"
-                          }`}
+                        }`}
                       >
                         {faq.q}
                       </span>
                     </div>
                     <div className="relative">
-                      
                       <div
-                        className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300   ${open === i
-                            ? " rotate-180"
-                            : ""
-                          }`}
-                        
+                        className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300   ${
+                          open === i ? " rotate-180" : ""
+                        }`}
                       >
                         <ChevronDown
-                          className={`w-4 h-4 transition-colors ${open === i
+                          className={`w-4 h-4 transition-colors ${
+                            open === i
                               ? "text-accent"
                               : "text-foreground-subtle"
-                            }`}
+                          }`}
                         />
                       </div>
                     </div>
                   </button>
                   <div
-                    className={`grid transition-all duration-300 ease-in-out ${open === i ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-                      }`}
+                    className={`grid transition-all duration-300 ease-in-out ${
+                      open === i ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                    }`}
                   >
                     <div className="overflow-hidden">
                       <div className="px-5 sm:px-6 pb-5 sm:pb-6 pl-[4.5rem] sm:pl-[4.5rem]">
@@ -346,10 +360,7 @@ export function FAQ() {
             </div> */}
           </div>
         </div>
-
-
       </div>
-
     </section>
   );
 }
