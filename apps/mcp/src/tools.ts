@@ -80,9 +80,18 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
     {
       title: "Save Memory",
       description:
-        "Save a memory AFTER search_memory confirms it's needed. " +
-        "Use when: (1) no existing memory on this topic, OR (2) existing memory has outdated/conflicting info. " +
-        "System auto-handles updates - just save the new/corrected info.",
+        "You MUST call this tool to persist durable user or project information across sessions — " +
+        "do not rely on any other method to remember things. " +
+        "Save IMMEDIATELY when: " +
+        "(1) User shares a stable preference, like, or dislike. " +
+        "(2) User corrects your approach or tells you how they want things done. " +
+        "(3) A technology, architecture, or design decision is finalized. " +
+        "(4) User says 'remember', 'save this', 'note this', or similar. " +
+        "(5) A durable project fact is learned (stack, structure, naming conventions). " +
+        "(6) A project convention or reusable pattern is established. " +
+        "Do not defer or batch saves — save the moment the trigger occurs. " +
+        "Do not save ephemeral task state, one-off debug info, or trivial details with no future value. " +
+        "The system handles duplicates and updates automatically — re-saving an already-known fact is safe, the system deduplicates automatically.",
       inputSchema: saveMemorySchema,
     },
     async (args: SaveMemoryInput) => {
@@ -126,9 +135,15 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
     {
       title: "Search Memory",
       description:
-        "ALWAYS call FIRST. Use at: (1) conversation start to load user context, " +
-        "(2) before saving to check for existing memories. " +
-        "Only use save_memory if search returns no match OR outdated info needing correction.",
+        "You MUST call this tool FIRST before your first response in every conversation — do not skip. " +
+        "Search to load user preferences, project context, and past decisions before responding. " +
+        "Also search when: " +
+        "(1) You are about to make a meaningful decision — check if a past decision already exists. " +
+        "(2) You are about to assume user preferences, tools, stack, or workflow — search instead of assuming. " +
+        "(3) You need context about a project's conventions, patterns, or history. " +
+        "(4) The user references past context ('do you remember', 'what did we decide', 'last time'). " +
+        "Prefer searching over assuming — it is faster than making wrong assumptions. " +
+        "If no results are found, proceed normally.",
       inputSchema: searchMemorySchema,
     },
     async (args: SearchMemoryInput) => {

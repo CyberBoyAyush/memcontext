@@ -37,10 +37,15 @@ interface AgentConfig {
 const MCP_SERVER_URL = "https://mcp.memcontext.in/mcp";
 
 const USER_PREFERENCES = `# MemContext
-At conversation start, search memory for user preferences and project context before responding.
-When user says "remember" or shares preferences, save to memory.
-After important decisions or completed work, save key context for future sessions.
-Before assuming or asking repetitive questions, search memory first.
+At conversation start, ALWAYS call search_memory to load user context — do not skip.
+Before making decisions or assumptions, search_memory to check for past context.
+SAVE immediately (do not defer) when any of these happen:
+- User shares a preference → save_memory(category: "preference")
+- A technology or architecture decision is made → save_memory(category: "decision")
+- User corrects you or says "remember" → save_memory(category: "fact")
+- Important project fact learned → save_memory(category: "fact", project: "<name>")
+- Significant work completed → save_memory(category: "context")
+Duplicates are handled automatically — when in doubt, save.
 Memory persists across all sessions - use project param for project-specific context only.`;
 
 function OpenCodeIcon() {
