@@ -91,7 +91,7 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
         "(6) A project convention or reusable pattern is established. " +
         "Do not defer or batch saves — save the moment the trigger occurs. " +
         "Do not save ephemeral task state, one-off debug info, or trivial details with no future value. " +
-        "The system handles duplicates and updates automatically — re-saving an already-known fact is safe and will not create duplicates.",
+        "The system handles duplicates and updates automatically — re-saving an already-known fact is safe, the system deduplicates automatically.",
       inputSchema: saveMemorySchema,
     },
     async (args: SaveMemoryInput) => {
@@ -142,7 +142,7 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
         "(2) You are about to assume user preferences, tools, stack, or workflow — search instead of assuming. " +
         "(3) You need context about a project's conventions, patterns, or history. " +
         "(4) The user references past context ('do you remember', 'what did we decide', 'last time'). " +
-        "Searching is lightweight and fast — prefer searching over assuming. " +
+        "Prefer searching over assuming — it is faster than making wrong assumptions. " +
         "If no results are found, proceed normally.",
       inputSchema: searchMemorySchema,
     },
