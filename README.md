@@ -4,6 +4,12 @@
 
 <h3>Persistent memory for AI coding agents. Save once, retrieve forever.</h3>
 
+<p>
+  <a href="https://memcontext.in">Website</a> &middot;
+  <a href="https://app.memcontext.in">Dashboard</a> &middot;
+  <a href="https://app.memcontext.in/mcp">Setup Guide</a>
+</p>
+
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9.2-3178C6?logo=typescript&logoColor=white&style=for-the-badge)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-20.9+-339933?logo=node.js&logoColor=white&style=for-the-badge)](https://nodejs.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-16.1.1-000000?logo=next.js&logoColor=white&style=for-the-badge)](https://nextjs.org/)
@@ -18,133 +24,26 @@
 
 ---
 
-## What is MemContext
+## What is MemContext?
 
 AI assistants like Claude Desktop, Cursor, and Cline forget everything between sessions. You end up repeating the same preferences, project context, and decisions over and over.
 
-MemContext solves this by providing a persistent memory layer that AI agents can access via the Model Context Protocol (MCP). Your preferences, facts, and decisions are stored as searchable memories that any connected AI assistant can retrieve automatically through semantic search.
+MemContext solves this by providing a persistent memory layer that AI agents can access via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/). Your preferences, facts, and decisions are stored as searchable memories that any connected AI assistant can retrieve automatically through semantic search.
 
-## How It Works
+## Quick Start
 
-1. You tell your AI assistant something worth remembering
-2. The assistant saves it to MemContext via MCP
-3. Next session, when relevant context is needed, the assistant searches MemContext
-4. Your stored memories are retrieved and used automatically
+Get up and running in under 2 minutes:
 
-The system uses vector embeddings and semantic search, so memories are found by meaning rather than exact keyword matching.
+1. **Sign up** at [app.memcontext.in](https://app.memcontext.in) (Google or GitHub OAuth)
+2. **Create an API key** from the [dashboard](https://app.memcontext.in/api-keys) (starts with `mc_`)
+3. **Connect your AI assistant** using the config below
+4. **Add the agent instructions** so your assistant knows when to save and search
 
-## Project Structure
-
-This is a Turborepo monorepo with the following structure:
-
-| Package          | Description                                                                    |
-| ---------------- | ------------------------------------------------------------------------------ |
-| `apps/api`       | Hono backend containing all business logic, database access, and AI processing |
-| `apps/mcp`       | MCP server that connects AI assistants to the API                              |
-| `apps/dashboard` | Next.js dashboard for users to manage memories, API keys, and settings         |
-| `apps/website`   | Marketing landing page                                                         |
-| `packages/types` | Shared TypeScript type definitions                                             |
-
-All business logic lives in the API. The MCP server is a thin wrapper that translates MCP protocol calls into API requests.
-
-## Memory Categories
-
-Memories can be organized into four categories:
-
-| Category   | Purpose                                             |
-| ---------- | --------------------------------------------------- |
-| preference | User preferences (coding style, tools, conventions) |
-| fact       | Factual information about projects or users         |
-| decision   | Technical or project decisions made                 |
-| context    | General contextual information                      |
-
-## Memory Relations
-
-When you save a memory, the system automatically checks for similar existing memories and classifies the relationship:
-
-| Relation | Meaning                                                 |
-| -------- | ------------------------------------------------------- |
-| saved    | New memory, no similar memories found                   |
-| updated  | Replaces an existing memory (contradicting information) |
-| extended | Adds detail to an existing memory                       |
-
-## Tech Stack
-
-| Component       | Technology                             |
-| --------------- | -------------------------------------- |
-| Runtime         | Node.js 20.9+                          |
-| Package Manager | pnpm 9.0                               |
-| Build System    | Turborepo 2.7                          |
-| Language        | TypeScript 5.9.2                       |
-| API Framework   | Hono 4.7                               |
-| Frontend        | Next.js 16.1, React 19, Tailwind CSS 4 |
-| Database        | Neon (PostgreSQL with pgvector)        |
-| ORM             | Drizzle ORM 0.45                       |
-| Cache           | Upstash Redis                          |
-| Auth            | Better Auth                            |
-| AI/Embeddings   | OpenRouter, Vercel AI SDK              |
-| MCP             | Model Context Protocol SDK             |
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 20.9+
-- pnpm 9.0+
-- Neon database (PostgreSQL with pgvector extension)
-- Upstash Redis account
-- OpenRouter API key
-
-### Installation
-
-Install dependencies:
-
-```
-pnpm install
-```
-
-### Environment Setup
-
-Create `.env` files in both `apps/api` and `apps/mcp` based on their respective `.env.example` files.
-
-The API requires:
-
-- DATABASE_URL (PostgreSQL with pgvector)
-- OPENROUTER_API_KEY
-- UPSTASH_REDIS_REST_URL
-- UPSTASH_REDIS_REST_TOKEN
-
-The MCP server requires:
-
-- MEMCONTEXT_API_KEY (your API key from the API)
-- MEMCONTEXT_API_URL (defaults to http://localhost:3000)
-
-### Development
-
-Run all apps:
-
-```
-pnpm dev
-```
-
-Run a specific app:
-
-```
-pnpm dev --filter=@memcontext/api
-pnpm dev --filter=@memcontext/mcp
-```
-
-### Build
-
-Build all packages:
-
-```
-pnpm build
-```
+That's it. Your assistant now has persistent memory across sessions.
 
 ## Connecting AI Assistants
 
-Add MemContext to your favorite AI coding assistant. Replace `<your-api-key>` with your actual API key (starts with `mc_`).
+Replace `<your-api-key>` with your actual API key from the dashboard.
 
 <details>
 <summary><strong>Claude Code (CLI)</strong></summary>
@@ -311,39 +210,236 @@ For clients that only support stdio transport, use the `mcp-remote` bridge:
 
 </details>
 
-## API Endpoints
+## Agent Instructions
 
-| Method | Path                 | Description       |
-| ------ | -------------------- | ----------------- |
-| POST   | /api/memories        | Save a memory     |
-| GET    | /api/memories/search | Search memories   |
-| POST   | /api/api-keys        | Create an API key |
-| GET    | /api/api-keys        | List API keys     |
-| DELETE | /api/api-keys/:id    | Revoke an API key |
-| GET    | /health              | Health check      |
+After connecting MCP, add these instructions to your AI assistant so it knows when to save and search memories. The [dashboard setup page](https://app.memcontext.in/mcp) has copy-paste configs for each agent.
 
-All memory endpoints require authentication via `X-API-Key` header.
+| Agent       | Instructions File                          |
+| ----------- | ------------------------------------------ |
+| Claude Code | `~/.claude/CLAUDE.md`                      |
+| Cursor      | Settings > Rules and Commands > User Rules |
+| OpenCode    | `~/.config/opencode/AGENTS.md`             |
+| Codex CLI   | `~/.codex/instructions.md`                 |
+
+Add this to the relevant file:
+
+```markdown
+# MemContext
+
+At conversation start, ALWAYS call search_memory to load user context - do not skip.
+Before making decisions or assumptions, search_memory to check for past context.
+SAVE immediately (do not defer) when any of these happen:
+
+- User shares a preference -> save_memory(category: "preference")
+- A technology or architecture decision is made -> save_memory(category: "decision")
+- User corrects you or says "remember" -> save_memory(category: "fact")
+- Important project fact learned -> save_memory(category: "fact", project: "<name>")
+- Significant work completed -> save_memory(category: "context")
+
+Duplicates are handled automatically - when in doubt, save.
+Memory persists across all sessions - use project param for project-specific context only.
+```
+
+## How It Works
+
+1. You tell your AI assistant something worth remembering
+2. The assistant saves it to MemContext via MCP
+3. Next session, when relevant context is needed, the assistant searches MemContext
+4. Your stored memories are retrieved and used automatically
+
+The system uses vector embeddings (1536-dim) and semantic search, so memories are found by meaning rather than exact keyword matching. When saving, the system automatically detects similar existing memories and classifies the relationship as `saved`, `updated`, or `extended`.
 
 ## MCP Tools
 
 The MCP server exposes two tools to AI assistants:
 
-| Tool          | Description                                        |
-| ------------- | -------------------------------------------------- |
-| save_memory   | Save a memory with optional category and project   |
-| search_memory | Search for relevant memories with optional filters |
+### `save_memory`
 
-## Plan Limits
+Save a memory with optional category and project scope.
 
-| Plan  | Memory Limit |
-| ----- | ------------ |
-| free  | 300          |
-| hobby | 2,000        |
-| pro   | 10,000       |
+| Parameter  | Type   | Required | Description                                                    |
+| ---------- | ------ | -------- | -------------------------------------------------------------- |
+| `content`  | string | Yes      | Clear, atomic memory to save (1-10,000 chars)                  |
+| `category` | enum   | No       | `preference`, `fact`, `decision`, or `context`                 |
+| `project`  | string | No       | Project scope (lowercase, no spaces). Omit for global memories |
+
+### `search_memory`
+
+Search for relevant memories using natural language.
+
+| Parameter  | Type   | Required | Description                                              |
+| ---------- | ------ | -------- | -------------------------------------------------------- |
+| `query`    | string | Yes      | Natural language search query (use complete sentences)   |
+| `limit`    | number | No       | Results to return, 1-10 (default: 5)                     |
+| `category` | enum   | No       | Filter by `preference`, `fact`, `decision`, or `context` |
+| `project`  | string | No       | Filter to a specific project. Omit to search all         |
+
+## Memory Categories
+
+| Category     | Purpose                                | Example                              |
+| ------------ | -------------------------------------- | ------------------------------------ |
+| `preference` | User likes, dislikes, style choices    | "Prefers TypeScript over JavaScript" |
+| `fact`       | Objective info about projects or users | "Uses MacOS with Homebrew"           |
+| `decision`   | Technical or project decisions         | "Chose PostgreSQL for the database"  |
+| `context`    | General background information         | "Working on an e-commerce app"       |
+
+## Memory Relations
+
+When you save a memory, the system automatically checks for similar existing memories:
+
+| Relation   | Meaning                                                 |
+| ---------- | ------------------------------------------------------- |
+| `saved`    | New memory, no similar memories found                   |
+| `updated`  | Replaces an existing memory (contradicting information) |
+| `extended` | Adds detail to an existing memory                       |
+
+## Pricing
+
+Start free, scale as your AI memory grows. See [memcontext.in/pricing](https://memcontext.in/pricing) for full details.
+
+|                      | Free      | Hobby     | Pro       |
+| -------------------- | --------- | --------- | --------- |
+| **Price**            | $0/month  | $5/month  | $15/month |
+| **Memories**         | 300       | 2,000     | 10,000    |
+| **Memory retrieval** | Limited   | Unlimited | Unlimited |
+| **Projects**         | Unlimited | Unlimited | Unlimited |
+| **MCP integration**  | Yes       | Yes       | Yes       |
+| **Support**          | Community | Priority  | Priority  |
+| **Early access**     | -         | -         | Yes       |
+
+## Rate Limits
+
+| Operation          | Limit            |
+| ------------------ | ---------------- |
+| Save memory        | 30 requests/min  |
+| Search memory      | 60 requests/min  |
+| Global (dashboard) | 100 requests/min |
+
+---
+
+## Self-Hosting
+
+MemContext is open source and can be self-hosted. The project is a Turborepo monorepo with the following structure:
+
+| Package          | Description                                                           |
+| ---------------- | --------------------------------------------------------------------- |
+| `apps/api`       | Hono backend - all business logic, database access, and AI processing |
+| `apps/mcp`       | MCP server - thin wrapper that translates MCP calls into API requests |
+| `apps/dashboard` | Next.js dashboard - manage memories, API keys, subscriptions          |
+| `apps/website`   | Marketing landing page                                                |
+| `packages/types` | Shared TypeScript type definitions                                    |
+
+### Tech Stack
+
+| Component       | Technology                             |
+| --------------- | -------------------------------------- |
+| Runtime         | Node.js 20.9+                          |
+| Package Manager | pnpm 9.0                               |
+| Build System    | Turborepo 2.7                          |
+| Language        | TypeScript 5.9.2                       |
+| API Framework   | Hono 4.7                               |
+| Frontend        | Next.js 16.1, React 19, Tailwind CSS 4 |
+| Database        | Neon (PostgreSQL with pgvector)        |
+| ORM             | Drizzle ORM 0.45                       |
+| Cache           | Upstash Redis                          |
+| Auth            | Better Auth (Google + GitHub OAuth)    |
+| Payments        | Dodo Payments                          |
+| AI/Embeddings   | OpenRouter, Vercel AI SDK              |
+| MCP             | Model Context Protocol SDK             |
+
+### Prerequisites
+
+- Node.js 20.9+
+- pnpm 9.0+
+- PostgreSQL database with pgvector extension (e.g. [Neon](https://neon.tech/))
+- [Upstash Redis](https://upstash.com/) account
+- [OpenRouter](https://openrouter.ai/) API key
+- Google and/or GitHub OAuth credentials
+
+### Installation
+
+```bash
+pnpm install
+```
+
+### Environment Setup
+
+Create `.env` files in `apps/api`, `apps/mcp`, `apps/dashboard`, and `apps/website` based on their respective `.env.example` files.
+
+**API (`apps/api/.env`):**
+
+| Variable                                    | Description                                  |
+| ------------------------------------------- | -------------------------------------------- |
+| `DATABASE_URL`                              | PostgreSQL connection string (with pgvector) |
+| `OPENROUTER_API_KEY`                        | For embeddings and LLM classification        |
+| `UPSTASH_REDIS_REST_URL`                    | Redis for rate limiting and caching          |
+| `UPSTASH_REDIS_REST_TOKEN`                  | Redis auth token                             |
+| `BETTER_AUTH_SECRET`                        | Auth secret (min 32 chars)                   |
+| `BETTER_AUTH_URL`                           | API URL (e.g. `http://localhost:3000`)       |
+| `DASHBOARD_URL`                             | Dashboard URL (e.g. `http://localhost:3020`) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth credentials                     |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub OAuth credentials                     |
+
+**MCP (`apps/mcp/.env`):**
+
+| Variable             | Description                                   |
+| -------------------- | --------------------------------------------- |
+| `MEMCONTEXT_API_KEY` | Your API key from the dashboard               |
+| `MEMCONTEXT_API_URL` | API URL (defaults to `http://localhost:3000`) |
+
+### Development
+
+```bash
+pnpm dev                              # Run all apps
+pnpm dev --filter=@memcontext/api     # API only
+pnpm dev --filter=@memcontext/mcp     # MCP only
+```
+
+### Build
+
+```bash
+pnpm build
+```
+
+## API Reference
+
+### Public Endpoints (API Key auth via `X-API-Key` header)
+
+| Method | Path                   | Description     |
+| ------ | ---------------------- | --------------- |
+| POST   | `/api/memories`        | Save a memory   |
+| GET    | `/api/memories/search` | Search memories |
+| GET    | `/health`              | Health check    |
+
+### Dashboard Endpoints (Session auth)
+
+| Method | Path                            | Description                  |
+| ------ | ------------------------------- | ---------------------------- |
+| GET    | `/api/memories`                 | List memories (with filters) |
+| PATCH  | `/api/memories/:id`             | Update a memory              |
+| DELETE | `/api/memories/:id`             | Delete a memory              |
+| POST   | `/api/api-keys`                 | Create an API key            |
+| GET    | `/api/api-keys`                 | List API keys                |
+| DELETE | `/api/api-keys/:id`             | Revoke an API key            |
+| GET    | `/api/user/profile`             | Get user profile             |
+| GET    | `/api/user/subscription`        | Get subscription info        |
+| GET    | `/api/user/dashboard-stats`     | Get dashboard statistics     |
+| POST   | `/api/subscription/change-plan` | Change subscription plan     |
+| GET    | `/api/subscription/current`     | Get current subscription     |
+
+## Acknowledgments
+
+MemContext stands on the shoulders of two incredible open-source projects in the AI memory space:
+
+- **[Mem0](https://github.com/mem0ai/mem0)** (50k+ stars) - The pioneering universal memory layer for AI agents. Mem0's work on intelligent memory extraction, user profiling, and their published [research on scalable long-term memory](https://arxiv.org/abs/2504.19413) laid the groundwork for how AI memory systems should work. Apache 2.0 licensed.
+
+- **[Supermemory](https://github.com/supermemoryai/supermemory)** (17k+ stars) - A blazing-fast memory engine ranking #1 on LongMemEval, LoCoMo, and ConvoMem benchmarks. Their open-source plugins for Claude Code, OpenCode, and OpenClaw, along with their MCP-first approach, have been a huge inspiration. MIT licensed.
+
+Both projects proved that persistent AI memory is not just possible but essential. We built MemContext to bring a focused, MCP-native memory layer that's simple to set up and works across every major AI coding assistant.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome. Please feel free to submit a Pull Request.
 
 ## License
 
