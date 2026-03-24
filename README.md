@@ -235,8 +235,9 @@ SAVE immediately (do not defer) when any of these happen:
 - User corrects you or says "remember" -> save_memory(category: "fact")
 - Important project fact learned -> save_memory(category: "fact", project: "<name>")
 - Significant work completed -> save_memory(category: "context")
-  Duplicates are handled automatically - when in doubt, save.
-  Memory persists across all sessions - use project param for project-specific context only.
+
+Duplicates are handled automatically - when in doubt, save.
+Memory persists across all sessions - use project param for project-specific context only.
 ```
 
 ## How It Works
@@ -246,7 +247,7 @@ SAVE immediately (do not defer) when any of these happen:
 3. Next session, when relevant context is needed, the assistant searches MemContext
 4. Your stored memories are retrieved and used automatically
 
-The system uses vector embeddings (1536-dim) and semantic search, so memories are found by meaning rather than exact keyword matching. When saving, the system automatically detects similar existing memories and classifies the relationship as new, updated, or extended.
+The system uses vector embeddings (1536-dim) and semantic search, so memories are found by meaning rather than exact keyword matching. When saving, the system automatically detects similar existing memories and classifies the relationship as `saved`, `updated`, or `extended`.
 
 ## MCP Tools
 
