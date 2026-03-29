@@ -1,6 +1,6 @@
 export type MemoryCategory = "preference" | "fact" | "decision" | "context";
 
-export type MemorySource = "mcp" | "web" | "api";
+export type MemorySource = "mcp" | "web" | "api" | "openclaw";
 
 export type RelationType = "extends" | "similar";
 

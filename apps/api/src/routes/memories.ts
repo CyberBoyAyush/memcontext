@@ -49,7 +49,7 @@ const saveMemorySchema = z.object({
     .max(10000, "Content too long (max 10000 chars)"),
   category: z.enum(["preference", "fact", "decision", "context"]).optional(),
   project: z.string().max(100, "Project name too long").optional(),
-  source: z.enum(["mcp", "web", "api"]).optional().default("api"),
+  source: z.enum(["mcp", "web", "api", "openclaw"]).optional().default("api"),
 });
 
 const searchMemorySchema = z.object({
