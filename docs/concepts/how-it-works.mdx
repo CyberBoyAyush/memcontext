@@ -7,13 +7,14 @@ description: "How MemContext saves, classifies, and retrieves memory."
 
 When a memory is saved via `POST /api/memories` or `save_memory`, MemContext runs a multi-step pipeline:
 
-1. **Expand** — the content is rewritten into a more searchable sentence using an LLM
-2. **Embed** — an embedding is generated from the expanded content
-3. **Find similar** — existing current memories are searched for semantic overlap
-4. **Classify** — if similar memories exist, an LLM classifies the relationship
-5. **Act** — based on the classification, the system saves, updates, extends, or deduplicates
+1. **Expand + classify** — the content is rewritten for searchability AND classified as permanent, short-term, medium-term, or long-term
+2. **Auto-TTL** — if no `validUntil` was explicitly provided, the system auto-sets expiry based on the temporal classification (short-term = 7 days, medium-term = 30 days, long-term = 90 days, permanent = no expiry)
+3. **Embed** — an embedding is generated from the expanded content
+4. **Find similar** — existing current memories are searched for semantic overlap
+5. **Classify** — if similar memories exist, an LLM classifies the relationship
+6. **Act** — based on the classification, the system saves, updates, extends, or deduplicates
 
-This means you do not need to manually manage deduplication or version chains. Save freely — the system handles it.
+This means you do not need to manually manage deduplication, version chains, or expiry. Save freely — the system handles it. If you explicitly pass `validUntil`, the auto-TTL is skipped and your value is used.
 
 ## Relationship classification
 
@@ -28,24 +29,40 @@ When similar memories are found, the LLM classifies the relationship as one of:
 
 ## Search flow
 
-Search via `GET /api/memories/search` or `search_memory` uses hybrid retrieval:
+Search via `GET /api/memories/search` or `search_memory` uses hybrid retrieval with feedback-based ranking:
 
 1. **Generate query variants** — the original query is expanded into alternative phrasings
 2. **Embed** — embeddings are created for the original query and all variants
 3. **Vector search** — runs against all query embeddings to find semantically similar memories
-4. **Full-text search** — PostgreSQL `tsvector` search runs in parallel on the original query
+4. **Full-text search** — PostgreSQL `tsvector` search runs in parallel on the original query **and all generated query variants**
 5. **Merge** — results are combined using Reciprocal Rank Fusion (RRF) for a single ranked list
+6. **Feedback scoring** — results are re-ranked based on explicit user feedback:
+   - Memories marked "wrong" are heavily penalized (0.3x score)
+   - Memories marked "outdated" are moderately penalized (0.5x score)
+   - Memories with more "not helpful" than "helpful" are mildly penalized (0.7x)
+   - Memories with only "helpful" feedback get a small boost (1.1x)
 
-This approach surfaces both semantic matches ("What database does the team use?") and exact matches ("PostgreSQL", "carq", "PNPM") reliably.
+This approach surfaces both semantic matches and exact matches reliably, while improving wording-sensitive recall. For example, a query like "What caching system do we use?" can match a memory that says "Upstash Redis is used for API key caching" even if the raw query never says "Redis".
 
-## Temporal filtering
+## Temporal awareness
 
-Memories can include a `validUntil` timestamp. Expired memories are automatically excluded from search and list results. This is useful for:
+Memories can include a `validUntil` timestamp. This can be:
 
-- Time-sensitive strategy decisions
-- Temporary experiments
-- Seasonal preferences
-- Active project states that change
+- **Explicitly set** by the user or AI agent via the `validUntil` parameter
+- **Auto-detected** by the system during save based on content analysis
+
+The system classifies memories into temporal categories:
+
+| Category    | Examples                                          | Auto-TTL  |
+| ----------- | ------------------------------------------------- | --------- |
+| Permanent   | "User prefers TypeScript", "Company is CarQ"      | No expiry |
+| Short-term  | "Meeting tomorrow at 3pm", "Sprint ends Friday"   | 7 days    |
+| Medium-term | "LinkedIn algorithm favors short posts right now" | 30 days   |
+| Long-term   | "Q2 goal is to reach 10K users"                   | 90 days   |
+
+If you explicitly pass `validUntil`, auto-detection is skipped. When in doubt, the system defaults to permanent — it is always better to keep a memory too long than to lose it too early.
+
+Expired memories are automatically excluded from search results but not deleted. They remain visible in the dashboard with an "Expired" badge and can be restored.
 
 ## Memory limits
 

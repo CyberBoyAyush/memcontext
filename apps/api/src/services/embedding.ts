@@ -3,9 +3,12 @@ import {
   expandMemory as openrouterExpandMemory,
   generateQueryVariants as openrouterGenerateQueryVariants,
 } from "../lib/openrouter.js";
+import type { ExpandMemoryResult } from "../lib/openrouter.js";
 import { logger } from "../lib/logger.js";
 import type { TimingContext } from "../utils/timing.js";
 import { withTiming } from "../utils/timing.js";
+
+export type { ExpandMemoryResult };
 
 export async function generateEmbedding(
   text: string,
@@ -28,9 +31,13 @@ export async function generateEmbedding(
 export async function expandMemory(
   content: string,
   timing?: TimingContext,
-): Promise<string> {
+): Promise<ExpandMemoryResult> {
   if (!content || content.trim().length === 0) {
-    return content;
+    return {
+      expandedContent: content,
+      temporalCategory: "permanent",
+      suggestedTtlDays: null,
+    };
   }
 
   if (timing) {

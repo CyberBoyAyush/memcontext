@@ -1,6 +1,6 @@
 import { OpenRouter } from "@openrouter/sdk";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { generateObject, generateText } from "ai";
+import { generateObject } from "ai";
 import { z } from "zod";
 import type { RelationshipClassification } from "@memcontext/types";
 import { escapeForPrompt } from "../utils/app-error.js";
@@ -206,7 +206,38 @@ Classify this relationship:`,
   }
 }
 
-export async function expandMemory(content: string): Promise<string> {
+export type TemporalCategory =
+  | "permanent"
+  | "short_term"
+  | "medium_term"
+  | "long_term";
+
+const TEMPORAL_TTL_DAYS: Record<TemporalCategory, number | null> = {
+  permanent: null,
+  short_term: 7,
+  medium_term: 30,
+  long_term: 90,
+};
+
+export interface ExpandMemoryResult {
+  expandedContent: string;
+  temporalCategory: TemporalCategory;
+  suggestedTtlDays: number | null;
+}
+
+const expandMemorySchema = z.object({
+  expandedContent: z.string(),
+  temporalCategory: z.enum([
+    "permanent",
+    "short_term",
+    "medium_term",
+    "long_term",
+  ]),
+});
+
+export async function expandMemory(
+  content: string,
+): Promise<ExpandMemoryResult> {
   const start = performance.now();
 
   try {
@@ -216,30 +247,51 @@ export async function expandMemory(content: string): Promise<string> {
     const escapedContent = escapeForPrompt(content);
 
     try {
-      const { text } = await generateText({
+      const { object } = await generateObject({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         model: getOpenRouterAiSdk().chat(LLM_MODEL) as any,
         abortSignal: controller.signal,
-        prompt: `Rewrite this user memory into a clear, searchable statement. Include relevant keywords and context that an AI agent might search for. Be specific about what type of preference, fact, or decision this represents. Keep it concise (1-2 sentences).
+        schema: expandMemorySchema,
+        prompt: `You are a memory processor. Given a user memory, do two things:
 
-Memory: "${escapedContent}"
+1. Rewrite it into a clear, searchable statement with relevant keywords (1-2 sentences).
+2. Classify its temporal nature.
 
-Expanded version:`,
+Temporal categories:
+- "permanent": Stable facts, preferences, decisions, identity. Things that won't change unless explicitly updated.
+  Examples: "User prefers TypeScript", "Company is called CarQ", "Chose PostgreSQL for database", "Prefers dark mode"
+- "short_term": Events or facts valid for only a few days. Will become irrelevant very soon.
+  Examples: "Meeting tomorrow at 3pm", "Sprint ends Friday", "Exam next week", "Deploy scheduled for tonight"
+- "medium_term": Current observations, strategies, or trends that change periodically (weeks to a month).
+  Examples: "LinkedIn algorithm favors long posts right now", "Currently testing carousel format", "This month focusing on mobile", "New pricing strategy being tested"
+- "long_term": Plans, goals, or contexts valid for months but not permanent.
+  Examples: "Q2 goal is to reach 10K users", "This year focusing on enterprise", "Migration planned for summer"
+
+IMPORTANT: When in doubt, ALWAYS return "permanent". It is much better to keep a memory too long than to lose it too early. Only classify as temporal when the content clearly contains time-sensitive language.
+
+Memory: "${escapedContent}"`,
       });
 
       const duration = Math.round(performance.now() - start);
+      const category = object.temporalCategory ?? "permanent";
+
       logger.debug(
         {
           model: LLM_MODEL,
           operation: "expand_memory",
           inputLength: content.length,
-          outputLength: text.length,
+          outputLength: object.expandedContent.length,
+          temporalCategory: category,
           duration,
         },
-        "memory expanded",
+        "memory expanded with temporal classification",
       );
 
-      return text.trim() || content;
+      return {
+        expandedContent: object.expandedContent.trim() || content,
+        temporalCategory: category,
+        suggestedTtlDays: TEMPORAL_TTL_DAYS[category],
+      };
     } finally {
       clearTimeout(timeout);
     }
@@ -253,9 +305,13 @@ Expanded version:`,
         duration,
         errorMessage: error instanceof Error ? error.message : String(error),
       },
-      "memory expansion failed",
+      "memory expansion failed, defaulting to permanent",
     );
-    return content;
+    return {
+      expandedContent: content,
+      temporalCategory: "permanent",
+      suggestedTtlDays: null,
+    };
   }
 }
 
