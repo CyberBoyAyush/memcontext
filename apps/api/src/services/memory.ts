@@ -1,4 +1,4 @@
-import { db, memories, memoryRelations } from "../db/index.js";
+import { db, memories, memoryFeedback, memoryRelations } from "../db/index.js";
 import {
   generateEmbedding,
   expandMemory,
@@ -29,7 +29,12 @@ import {
 } from "drizzle-orm";
 import { cosineDistance } from "drizzle-orm";
 import type {
+  FeedbackType,
+  Memory,
   MemoryCategory,
+  MemoryFeedbackResponse,
+  MemoryHistoryResponse,
+  MemoryProfile,
   MemorySource,
   SaveMemoryResponse,
   MemoryWithRelevance,
@@ -49,6 +54,7 @@ interface SaveMemoryParams {
   project?: string;
   source: MemorySource;
   timing?: TimingContext;
+  validUntil?: string;
 }
 
 interface SearchMemoriesParams {
@@ -58,13 +64,15 @@ interface SearchMemoriesParams {
   category?: MemoryCategory;
   project?: string;
   timing?: TimingContext;
+  threshold?: number;
 }
 
 export async function saveMemory(
   params: SaveMemoryParams,
 ): Promise<SaveMemoryResponse> {
-  const { userId, content, category, source, timing } = params;
+  const { userId, content, category, source, timing, validUntil } = params;
   const project = normalizeProjectName(params.project);
+  const validUntilDate = validUntil ? new Date(validUntil) : undefined;
 
   const expandedContent = await expandMemory(content, timing);
   const embedding = await generateEmbedding(expandedContent, timing);
@@ -96,6 +104,8 @@ export async function saveMemory(
                 category,
                 project,
                 source,
+                validFrom: new Date(),
+                validUntil: validUntilDate,
               })
               .returning({ id: memories.id });
             await incrementMemoryCount(userId, tx);
@@ -120,6 +130,8 @@ export async function saveMemory(
               category,
               project,
               source,
+              validFrom: new Date(),
+              validUntil: validUntilDate,
             })
             .returning({ id: memories.id });
           await incrementMemoryCount(userId, tx);
@@ -214,6 +226,8 @@ export async function saveMemory(
                 supersedesId: targetMemory.id,
                 rootId: targetMemory.rootId ?? targetMemory.id,
                 version: targetMemory.version + 1,
+                validFrom: new Date(),
+                validUntil: validUntilDate,
               })
               .returning({ id: memories.id });
             await tx
@@ -236,6 +250,8 @@ export async function saveMemory(
               supersedesId: targetMemory.id,
               rootId: targetMemory.rootId ?? targetMemory.id,
               version: targetMemory.version + 1,
+              validFrom: new Date(),
+              validUntil: validUntilDate,
             })
             .returning({ id: memories.id });
           await tx
@@ -290,6 +306,8 @@ export async function saveMemory(
               category,
               project,
               source,
+              validFrom: new Date(),
+              validUntil: validUntilDate,
             })
             .returning({ id: memories.id });
           await tx.insert(memoryRelations).values({
@@ -320,6 +338,8 @@ export async function saveMemory(
             category,
             project,
             source,
+            validFrom: new Date(),
+            validUntil: validUntilDate,
           })
           .returning({ id: memories.id });
         await tx.insert(memoryRelations).values({
@@ -387,6 +407,7 @@ export async function findSimilarMemories(
     eq(memories.userId, userId),
     eq(memories.isCurrent, true),
     isNull(memories.deletedAt),
+    sql`(${memories.validUntil} IS NULL OR ${memories.validUntil} > NOW())`,
     lt(distance, SIMILARITY_THRESHOLD),
   ];
 
@@ -434,6 +455,8 @@ export async function searchMemories(
 ): Promise<SearchMemoryResponse> {
   const { userId, query, limit = 5, category, timing } = params;
   const project = normalizeProjectName(params.project);
+  const threshold = params.threshold ?? SEARCH_THRESHOLD;
+  const activeMemoryCondition = sql`(${memories.validUntil} IS NULL OR ${memories.validUntil} > NOW())`;
 
   // Step 1: Generate query variants and original embedding in parallel
   const [queryVariants, originalEmbedding] = await Promise.all([
@@ -441,15 +464,15 @@ export async function searchMemories(
     generateEmbedding(query, timing),
   ]);
 
-  // Step 2: Generate variant embeddings + run original search in parallel
-  // This saves ~200-300ms by not waiting for variant embeddings before searching
-  const runSearch = async (embedding: number[]) => {
+  // Step 2: Generate variant embeddings + run vector/FTS search in parallel
+  const runVectorSearch = async (embedding: number[]) => {
     const distance = cosineDistance(memories.embedding, embedding);
     const conditions = [
       eq(memories.userId, userId),
       eq(memories.isCurrent, true),
       isNull(memories.deletedAt),
-      lt(distance, SEARCH_THRESHOLD),
+      activeMemoryCondition,
+      lt(distance, threshold),
     ];
     if (category) conditions.push(eq(memories.category, category));
     if (project) conditions.push(eq(memories.project, project));
@@ -461,12 +484,39 @@ export async function searchMemories(
         category: memories.category,
         project: memories.project,
         createdAt: memories.createdAt,
-        distance,
       })
       .from(memories)
       .where(and(...conditions))
       .orderBy(asc(distance))
-      .limit(limit);
+      .limit(Math.max(limit * 2, 10));
+  };
+
+  const runFtsSearch = async () => {
+    const conditions = [
+      eq(memories.userId, userId),
+      eq(memories.isCurrent, true),
+      isNull(memories.deletedAt),
+      activeMemoryCondition,
+      sql`content_tsv @@ plainto_tsquery('english', ${query})`,
+    ];
+    if (category) conditions.push(eq(memories.category, category));
+    if (project) conditions.push(eq(memories.project, project));
+
+    const tsRank = sql<number>`ts_rank(content_tsv, plainto_tsquery('english', ${query}))`;
+
+    return db
+      .select({
+        id: memories.id,
+        content: memories.content,
+        category: memories.category,
+        project: memories.project,
+        createdAt: memories.createdAt,
+        rank: tsRank,
+      })
+      .from(memories)
+      .where(and(...conditions))
+      .orderBy(desc(tsRank))
+      .limit(Math.max(limit * 2, 10));
   };
 
   const searchStart = performance.now();
@@ -474,9 +524,10 @@ export async function searchMemories(
   // Filter out empty/whitespace-only variants to prevent embedding failures
   const validVariants = queryVariants.filter((v) => v && v.trim().length > 0);
 
-  // Run original query search AND generate variant embeddings in parallel
-  const [originalResults, variantEmbeddings] = await Promise.all([
-    runSearch(originalEmbedding),
+  // Run original vector search, FTS search, and generate variant embeddings in parallel
+  const [originalResults, ftsResults, variantEmbeddings] = await Promise.all([
+    runVectorSearch(originalEmbedding),
+    runFtsSearch(),
     Promise.all(
       validVariants.map((variant) => generateEmbedding(variant, timing)),
     ),
@@ -485,53 +536,61 @@ export async function searchMemories(
   // Step 3: Search with variant embeddings in parallel
   const variantResults = await (timing
     ? withTiming(timing, "db_search_variants", () =>
-        Promise.all(variantEmbeddings.map((emb) => runSearch(emb))),
+        Promise.all(variantEmbeddings.map((emb) => runVectorSearch(emb))),
       )
-    : Promise.all(variantEmbeddings.map((emb) => runSearch(emb))));
+    : Promise.all(variantEmbeddings.map((emb) => runVectorSearch(emb))));
 
-  // Combine all results
-  const allResults = [originalResults, ...variantResults];
-
-  // Merge and dedupe results, keeping highest relevance (lowest distance) per memory
-  const mergedMap = new Map<
+  // Combine all results via Reciprocal Rank Fusion (RRF)
+  const allResults = [originalResults, ...variantResults, ftsResults];
+  const fusedScores = new Map<
     string,
-    (typeof allResults)[0][0] & { distance: number }
-  >();
-  for (const resultSet of allResults) {
-    for (const row of resultSet) {
-      const existing = mergedMap.get(row.id);
-      if (
-        !existing ||
-        (row.distance as number) < (existing.distance as number)
-      ) {
-        mergedMap.set(
-          row.id,
-          row as (typeof allResults)[0][0] & { distance: number },
-        );
-      }
+    {
+      score: number;
+      row: {
+        id: string;
+        content: string;
+        category: string | null;
+        project: string | null;
+        createdAt: Date;
+      };
     }
+  >();
+  const rrfK = 60;
+
+  for (const resultSet of allResults) {
+    resultSet.forEach((row, index) => {
+      const rrfScore = 1 / (rrfK + index + 1);
+      const existing = fusedScores.get(row.id);
+      fusedScores.set(row.id, {
+        score: (existing?.score ?? 0) + rrfScore,
+        row: existing?.row ?? {
+          id: row.id,
+          content: row.content,
+          category: row.category,
+          project: row.project,
+          createdAt: row.createdAt,
+        },
+      });
+    });
   }
 
-  // Sort by distance and limit
-  const merged = Array.from(mergedMap.values())
-    .sort((a, b) => (a.distance as number) - (b.distance as number))
+  const merged = Array.from(fusedScores.values())
+    .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 
   const searchDuration = Math.round(performance.now() - searchStart);
+  const topScore = merged.length > 0 ? merged[0].score : 0;
 
-  const memoriesWithRelevance: MemoryWithRelevance[] = merged.map((row) => ({
-    id: row.id,
-    content: row.content,
-    category: row.category as MemoryCategory | undefined,
-    project: row.project ?? undefined,
-    relevance: Math.round((1 - (row.distance as number)) * 100) / 100,
-    createdAt: row.createdAt,
-  }));
-
-  const topScore =
-    memoriesWithRelevance.length > 0
-      ? memoriesWithRelevance[0].relevance
-      : undefined;
+  const memoriesWithRelevance: MemoryWithRelevance[] = merged.map(
+    ({ row, score }) => ({
+      id: row.id,
+      content: row.content,
+      category: row.category as MemoryCategory | undefined,
+      project: row.project ?? undefined,
+      relevance: topScore > 0 ? Math.round((score / topScore) * 100) / 100 : 0,
+      createdAt: row.createdAt,
+    }),
+  );
 
   logger.info(
     {
@@ -541,8 +600,10 @@ export async function searchMemories(
       totalQueries: validVariants.length + 1,
       project,
       category,
+      threshold,
+      ftsResultsCount: ftsResults.length,
       resultsCount: memoriesWithRelevance.length,
-      topScore,
+      topScore: topScore > 0 ? Math.round(topScore * 1000) / 1000 : undefined,
       searchDuration,
     },
     "memory search completed",
@@ -907,6 +968,163 @@ export async function listMemories(
     memories: results,
     total,
     hasMore: offset + results.length < total,
+  };
+}
+
+export async function getMemory(
+  userId: string,
+  memoryId: string,
+): Promise<Memory | null> {
+  const [memory] = await db
+    .select()
+    .from(memories)
+    .where(
+      and(
+        eq(memories.id, memoryId),
+        eq(memories.userId, userId),
+        isNull(memories.deletedAt),
+      ),
+    );
+
+  if (!memory) {
+    return null;
+  }
+
+  return {
+    id: memory.id,
+    userId: memory.userId,
+    content: memory.content,
+    category: (memory.category as MemoryCategory | null) ?? undefined,
+    project: memory.project ?? undefined,
+    source: memory.source as MemorySource,
+    isCurrent: memory.isCurrent,
+    supersedesId: memory.supersedesId ?? undefined,
+    rootId: memory.rootId ?? undefined,
+    version: memory.version,
+    deletedAt: memory.deletedAt ?? undefined,
+    validFrom: memory.validFrom ?? undefined,
+    validUntil: memory.validUntil ?? undefined,
+    createdAt: memory.createdAt,
+  };
+}
+
+export async function submitFeedback(
+  userId: string,
+  memoryId: string,
+  type: FeedbackType,
+  context?: string,
+): Promise<MemoryFeedbackResponse> {
+  const memory = await getMemory(userId, memoryId);
+  if (!memory) {
+    throw new Error("Memory not found");
+  }
+
+  await db.insert(memoryFeedback).values({
+    memoryId,
+    userId,
+    type,
+    context,
+  });
+
+  return { success: true };
+}
+
+export async function getMemoryProfile(
+  userId: string,
+  project?: string,
+): Promise<MemoryProfile> {
+  const normalizedProject = normalizeProjectName(project);
+
+  const staticConditions = [
+    eq(memories.userId, userId),
+    eq(memories.isCurrent, true),
+    isNull(memories.deletedAt),
+    sql`${memories.category} IN ('preference', 'fact')`,
+    sql`${memories.createdAt} < NOW() - INTERVAL '7 days'`,
+    sql`(${memories.validUntil} IS NULL OR ${memories.validUntil} > NOW())`,
+  ];
+
+  if (normalizedProject) {
+    staticConditions.push(eq(memories.project, normalizedProject));
+  }
+
+  const dynamicConditions = [
+    eq(memories.userId, userId),
+    eq(memories.isCurrent, true),
+    isNull(memories.deletedAt),
+    sql`${memories.createdAt} > NOW() - INTERVAL '14 days'`,
+    sql`(${memories.validUntil} IS NULL OR ${memories.validUntil} > NOW())`,
+  ];
+
+  if (normalizedProject) {
+    dynamicConditions.push(eq(memories.project, normalizedProject));
+  }
+
+  const [staticMemories, dynamicMemories] = await Promise.all([
+    db
+      .select({ content: memories.content })
+      .from(memories)
+      .where(and(...staticConditions))
+      .orderBy(asc(memories.createdAt))
+      .limit(15),
+    db
+      .select({ content: memories.content })
+      .from(memories)
+      .where(and(...dynamicConditions))
+      .orderBy(desc(memories.createdAt))
+      .limit(10),
+  ]);
+
+  return {
+    static: staticMemories.map((memory) => memory.content),
+    dynamic: dynamicMemories.map((memory) => memory.content),
+  };
+}
+
+export async function getMemoryHistory(
+  userId: string,
+  memoryId: string,
+): Promise<MemoryHistoryResponse | null> {
+  const memory = await getMemory(userId, memoryId);
+  if (!memory) {
+    return null;
+  }
+
+  const rootId = memory.rootId ?? memory.id;
+  const rows = await db
+    .select()
+    .from(memories)
+    .where(
+      and(
+        eq(memories.userId, userId),
+        isNull(memories.deletedAt),
+        sql`(${memories.rootId} = ${rootId} OR ${memories.id} = ${rootId})`,
+      ),
+    )
+    .orderBy(desc(memories.version), desc(memories.createdAt));
+
+  const allVersions: Memory[] = rows.map((row) => ({
+    id: row.id,
+    userId: row.userId,
+    content: row.content,
+    category: (row.category as MemoryCategory | null) ?? undefined,
+    project: row.project ?? undefined,
+    source: row.source as MemorySource,
+    isCurrent: row.isCurrent,
+    supersedesId: row.supersedesId ?? undefined,
+    rootId: row.rootId ?? undefined,
+    version: row.version,
+    deletedAt: row.deletedAt ?? undefined,
+    validFrom: row.validFrom ?? undefined,
+    validUntil: row.validUntil ?? undefined,
+    createdAt: row.createdAt,
+  }));
+
+  const current = allVersions.find((row) => row.isCurrent) ?? allVersions[0];
+
+  return {
+    current,
+    history: allVersions.filter((row) => row.id !== current.id),
   };
 }
 

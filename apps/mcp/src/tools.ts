@@ -31,6 +31,13 @@ const saveMemorySchema = {
         "OMIT for general preferences (e.g., 'prefers Bun', 'likes dark mode'). " +
         "Format: lowercase, no spaces. Example: 'memcontext', 'capychat'.",
     ),
+  validUntil: z
+    .string()
+    .optional()
+    .describe(
+      "ISO 8601 datetime when this memory expires. Use for time-sensitive information. " +
+        "Example: '2026-05-01T00:00:00Z'. Omit for most memories.",
+    ),
 };
 
 const searchMemorySchema = {
@@ -60,6 +67,15 @@ const searchMemorySchema = {
     .describe(
       "OMIT to search ALL memories (recommended for most searches). " +
         "ONLY set to filter to a specific project's memories.",
+    ),
+  threshold: z
+    .number()
+    .min(0)
+    .max(1)
+    .optional()
+    .describe(
+      "Maximum vector distance from 0 to 1. Higher = broader search and more results. " +
+        "Use 0.2-0.4 for strict search, 0.6 by default, and 0.7-0.8 for broader recall.",
     ),
 };
 
@@ -103,6 +119,7 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
             category: args.category,
             project: normalizeProject(args.project),
             source: "mcp",
+            validUntil: args.validUntil,
           },
         );
 
@@ -155,6 +172,7 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
             limit: args.limit,
             category: args.category,
             project: normalizeProject(args.project),
+            threshold: args.threshold,
           },
         );
 
@@ -174,7 +192,7 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
             (m, i) =>
               `${i + 1}. [${(m.relevance * 100).toFixed(0)}% match] ${m.content}${
                 m.category ? ` (${m.category})` : ""
-              }${m.project ? ` [${m.project}]` : ""}`,
+              }${m.project ? ` [${m.project}]` : ""} [id: ${m.id}]`,
           )
           .join("\n\n");
 
@@ -194,6 +212,103 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
             {
               type: "text" as const,
               text: `Error searching memories: ${message}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "memory_feedback",
+    {
+      title: "Memory Feedback",
+      description:
+        "Rate a memory as helpful or not helpful to improve future retrieval quality. " +
+        "Use after search results when a memory was particularly useful, irrelevant, outdated, or wrong.",
+      inputSchema: {
+        memoryId: z
+          .string()
+          .describe(
+            "The memory ID to rate. Use the ID returned by search_memory.",
+          ),
+        type: z
+          .enum(["helpful", "not_helpful", "outdated", "wrong"])
+          .describe("Type of feedback for the memory."),
+        context: z
+          .string()
+          .optional()
+          .describe(
+            "Optional context explaining why this feedback is being submitted.",
+          ),
+      },
+    },
+    async (args) => {
+      try {
+        await apiClient.post(`/api/memories/${args.memoryId}/feedback`, {
+          type: args.type,
+          context: args.context,
+        });
+
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: "Feedback recorded successfully.",
+            },
+          ],
+        };
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unknown error";
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Error submitting feedback: ${message}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "delete_memory",
+    {
+      title: "Delete Memory",
+      description:
+        "Delete a specific memory by ID. Use when a memory was saved incorrectly or the user explicitly asks to remove it.",
+      inputSchema: {
+        memoryId: z
+          .string()
+          .describe(
+            "The memory ID to delete. Use the ID returned by search_memory.",
+          ),
+      },
+    },
+    async (args) => {
+      try {
+        await apiClient.delete(`/api/memories/${args.memoryId}`);
+
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: "Memory deleted successfully.",
+            },
+          ],
+        };
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unknown error";
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Error deleting memory: ${message}`,
             },
           ],
           isError: true,

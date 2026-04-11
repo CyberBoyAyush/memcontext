@@ -70,3 +70,11 @@ When creating new files:
 1. Run `pnpm build` - ensure no type errors
 2. Run `pnpm lint` - fix any issues
 3. Test the specific app you changed
+
+<!-- Added: 2026-04-11 -->
+## Documentation
+Use Mintlify for MemContext public documentation. The docs site lives in `docs/` with `docs/docs.json` as the Mintlify config and `docs/openapi.yaml` as the API reference source.
+
+<!-- Added: 2026-04-11 -->
+## Documentation Structure
+Use `docs/` only for public Mintlify documentation. Store internal planning, architecture notes, and implementation references in `internal-docs/`.

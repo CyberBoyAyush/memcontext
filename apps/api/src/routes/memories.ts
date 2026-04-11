@@ -7,14 +7,15 @@ import {
   type EitherAuthContext,
 } from "../middleware/either-auth.js";
 import {
-  sessionAuthMiddleware,
-  type SessionContext,
-} from "../middleware/session-auth.js";
-import {
+  rateLimitFeedback,
   rateLimitSaveMemory,
   rateLimitSearchMemory,
 } from "../middleware/rate-limit.js";
 import {
+  getMemory,
+  getMemoryHistory,
+  getMemoryProfile,
+  submitFeedback,
   saveMemory,
   searchMemories,
   deleteMemory,
@@ -25,16 +26,24 @@ import {
   checkMemoryLimit,
   getSubscriptionData,
 } from "../services/subscription.js";
-import { updateCachedMemoryCount } from "../services/cache.js";
+import {
+  cacheProfile,
+  getCachedProfile,
+  invalidateCachedProfile,
+  updateCachedMemoryCount,
+} from "../services/cache.js";
 import { getTimingContext } from "../middleware/request-logger.js";
 import { logger } from "../lib/logger.js";
-import type { MemoryCategory, MemorySource } from "@memcontext/types";
+import type {
+  FeedbackType,
+  MemoryCategory,
+  MemorySource,
+} from "@memcontext/types";
 import type { TimingContext } from "../utils/timing.js";
 
 const app = new Hono<{
   Variables: {
     auth: EitherAuthContext;
-    session: SessionContext;
     timing: TimingContext;
   };
 }>();
@@ -50,6 +59,7 @@ const saveMemorySchema = z.object({
   category: z.enum(["preference", "fact", "decision", "context"]).optional(),
   project: z.string().max(100, "Project name too long").optional(),
   source: z.enum(["mcp", "web", "api", "openclaw"]).optional().default("api"),
+  validUntil: z.string().datetime().optional(),
 });
 
 const searchMemorySchema = z.object({
@@ -61,6 +71,7 @@ const searchMemorySchema = z.object({
   limit: z.coerce.number().min(1).max(10).optional().default(5),
   category: z.enum(["preference", "fact", "decision", "context"]).optional(),
   project: z.string().max(100, "Project name too long").optional(),
+  threshold: z.coerce.number().min(0).max(1).optional(),
 });
 
 const listMemorySchema = z.object({
@@ -79,6 +90,11 @@ const updateMemorySchema = z.object({
 
 const memoryIdParamSchema = z.object({
   id: z.string().uuid("Invalid memory ID format"),
+});
+
+const feedbackSchema = z.object({
+  type: z.enum(["helpful", "not_helpful", "outdated", "wrong"]),
+  context: z.string().max(1000, "Feedback context too long").optional(),
 });
 
 // === Shared Routes (API Key OR Session) ===
@@ -109,6 +125,7 @@ app.post(
       project: body.project,
       source: body.source as MemorySource,
       timing,
+      validUntil: body.validUntil,
     });
 
     // Transaction-level check handles race condition edge case (e.g., 299/300 + concurrent requests)
@@ -138,6 +155,14 @@ app.post(
       }
     }
 
+    if (
+      result.status === "saved" ||
+      result.status === "updated" ||
+      result.status === "extended"
+    ) {
+      await invalidateCachedProfile(auth.userId, body.project).catch(() => {});
+    }
+
     return c.json(result, 201);
   },
 );
@@ -160,21 +185,35 @@ app.get(
       category: query.category as MemoryCategory | undefined,
       project: query.project,
       timing,
+      threshold: query.threshold,
     });
 
     return c.json(result);
   },
 );
 
-// === Dashboard-only Routes (Session Auth) ===
+// GET /profile - Pre-aggregated user context
+app.get("/profile", eitherAuthMiddleware, async (c) => {
+  const auth = c.get("auth");
+  const project = c.req.query("project") || undefined;
 
-// GET / - List memories (Dashboard only)
+  const cached = await getCachedProfile(auth.userId, project);
+  if (cached) {
+    return c.json(cached);
+  }
+
+  const profile = await getMemoryProfile(auth.userId, project);
+  await cacheProfile(auth.userId, project, profile);
+  return c.json(profile);
+});
+
+// GET / - List memories
 app.get(
   "/",
-  sessionAuthMiddleware,
+  eitherAuthMiddleware,
   zValidator("query", listMemorySchema),
   async (c) => {
-    const { userId } = c.get("session");
+    const auth = c.get("auth");
     const query = c.req.valid("query");
 
     const validCategories = new Set([
@@ -212,7 +251,7 @@ app.get(
       : undefined;
 
     const result = await listMemories({
-      userId,
+      userId: auth.userId,
       limit: query.limit,
       offset: query.offset,
       categories: categories?.length ? categories : undefined,
@@ -224,20 +263,126 @@ app.get(
   },
 );
 
-// PATCH /:id - Update memory (Dashboard only)
+// GET /:id/history - Get memory version history
+app.get(
+  "/:id/history",
+  eitherAuthMiddleware,
+  zValidator("param", memoryIdParamSchema),
+  async (c) => {
+    const auth = c.get("auth");
+    const { id: memoryId } = c.req.valid("param");
+
+    const result = await getMemoryHistory(auth.userId, memoryId);
+    if (!result) {
+      throw new HTTPException(404, { message: "Memory not found" });
+    }
+
+    return c.json(result);
+  },
+);
+
+// POST /:id/feedback - Submit feedback for a memory
+app.post(
+  "/:id/feedback",
+  rateLimitFeedback,
+  eitherAuthMiddleware,
+  zValidator("param", memoryIdParamSchema),
+  zValidator("json", feedbackSchema),
+  async (c) => {
+    const auth = c.get("auth");
+    const { id: memoryId } = c.req.valid("param");
+    const body = c.req.valid("json");
+
+    try {
+      const result = await submitFeedback(
+        auth.userId,
+        memoryId,
+        body.type as FeedbackType,
+        body.context,
+      );
+      return c.json(result);
+    } catch (error) {
+      if (error instanceof Error && error.message === "Memory not found") {
+        throw new HTTPException(404, { message: error.message });
+      }
+      throw error;
+    }
+  },
+);
+
+// POST /:id/forget - Soft-delete a memory
+app.post(
+  "/:id/forget",
+  eitherAuthMiddleware,
+  zValidator("param", memoryIdParamSchema),
+  async (c) => {
+    const auth = c.get("auth");
+    const { id: memoryId } = c.req.valid("param");
+    const existing = await getMemory(auth.userId, memoryId);
+
+    const deleted = await deleteMemory(auth.userId, memoryId);
+
+    if (!deleted) {
+      throw new HTTPException(404, { message: "Memory not found" });
+    }
+
+    await Promise.all([
+      invalidateCachedProfile(auth.userId),
+      invalidateCachedProfile(auth.userId, existing?.project),
+    ]).catch(() => {});
+
+    if (auth.authType === "api_key" && auth.keyHash) {
+      try {
+        const sub = await getSubscriptionData(auth.userId);
+        await updateCachedMemoryCount(auth.keyHash, sub.memoryCount);
+      } catch (err) {
+        logger.error(
+          {
+            userId: auth.userId,
+            errorMessage: err instanceof Error ? err.message : String(err),
+          },
+          "failed to update cached memory count after forget",
+        );
+      }
+    }
+
+    return c.json({ success: true, message: "Memory forgotten" });
+  },
+);
+
+// GET /:id - Get a single memory
+app.get(
+  "/:id",
+  eitherAuthMiddleware,
+  zValidator("param", memoryIdParamSchema),
+  async (c) => {
+    const auth = c.get("auth");
+    const { id: memoryId } = c.req.valid("param");
+
+    const memory = await getMemory(auth.userId, memoryId);
+    if (!memory) {
+      throw new HTTPException(404, { message: "Memory not found" });
+    }
+
+    return c.json(memory);
+  },
+);
+
+// PATCH /:id - Update memory
 app.patch(
   "/:id",
-  sessionAuthMiddleware,
+  eitherAuthMiddleware,
   zValidator("param", memoryIdParamSchema),
   zValidator("json", updateMemorySchema),
   async (c) => {
-    const { userId } = c.get("session");
+    const auth = c.get("auth");
     const { id: memoryId } = c.req.valid("param");
     const body = c.req.valid("json");
     const timing = getTimingContext(c);
+    const existing = await getMemory(auth.userId, memoryId);
 
     const result = await updateMemory({
-      userId,
+      userId: auth.userId,
       memoryId,
       content: body.content,
       category: body.category as MemoryCategory | undefined,
@@ -251,23 +396,50 @@ app.patch(
       });
     }
 
+    await Promise.all([
+      invalidateCachedProfile(auth.userId),
+      invalidateCachedProfile(auth.userId, existing?.project),
+      invalidateCachedProfile(auth.userId, body.project),
+    ]).catch(() => {});
+
     return c.json(result);
   },
 );
 
-// DELETE /:id - Delete memory (Dashboard only)
+// DELETE /:id - Delete memory
 app.delete(
   "/:id",
-  sessionAuthMiddleware,
+  eitherAuthMiddleware,
   zValidator("param", memoryIdParamSchema),
   async (c) => {
-    const { userId } = c.get("session");
+    const auth = c.get("auth");
     const { id: memoryId } = c.req.valid("param");
+    const existing = await getMemory(auth.userId, memoryId);
 
-    const deleted = await deleteMemory(userId, memoryId);
+    const deleted = await deleteMemory(auth.userId, memoryId);
 
     if (!deleted) {
       throw new HTTPException(404, { message: "Memory not found" });
+    }
+
+    await Promise.all([
+      invalidateCachedProfile(auth.userId),
+      invalidateCachedProfile(auth.userId, existing?.project),
+    ]).catch(() => {});
+
+    if (auth.authType === "api_key" && auth.keyHash) {
+      try {
+        const sub = await getSubscriptionData(auth.userId);
+        await updateCachedMemoryCount(auth.keyHash, sub.memoryCount);
+      } catch (err) {
+        logger.error(
+          {
+            userId: auth.userId,
+            errorMessage: err instanceof Error ? err.message : String(err),
+          },
+          "failed to update cached memory count after delete",
+        );
+      }
     }
 
     return c.json({ success: true });

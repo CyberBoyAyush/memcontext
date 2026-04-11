@@ -4,6 +4,8 @@ export type MemorySource = "mcp" | "web" | "api" | "openclaw";
 
 export type RelationType = "extends" | "similar";
 
+export type FeedbackType = "helpful" | "not_helpful" | "outdated" | "wrong";
+
 export type RelationshipClassification =
   | "update"
   | "extend"
@@ -22,6 +24,8 @@ export interface Memory {
   rootId?: string;
   version: number;
   deletedAt?: Date;
+  validFrom?: Date;
+  validUntil?: Date;
   createdAt: Date;
 }
 
@@ -39,6 +43,7 @@ export interface SaveMemoryRequest {
   category?: MemoryCategory;
   project?: string;
   source?: MemorySource;
+  validUntil?: string;
 }
 
 export interface SaveMemoryResponse {
@@ -55,6 +60,7 @@ export interface SearchMemoryRequest {
   limit?: number;
   category?: MemoryCategory;
   project?: string;
+  threshold?: number;
 }
 
 export interface MemoryWithRelevance {
@@ -64,6 +70,25 @@ export interface MemoryWithRelevance {
   project?: string;
   relevance: number;
   createdAt: Date;
+}
+
+export interface MemoryProfile {
+  static: string[];
+  dynamic: string[];
+}
+
+export interface MemoryHistoryResponse {
+  current: Memory;
+  history: Memory[];
+}
+
+export interface MemoryFeedbackRequest {
+  type: FeedbackType;
+  context?: string;
+}
+
+export interface MemoryFeedbackResponse {
+  success: boolean;
 }
 
 export interface SearchMemoryResponse {
