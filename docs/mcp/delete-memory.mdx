@@ -1,0 +1,14 @@
+---
+title: "delete_memory"
+description: "Remove a memory by ID when it should no longer exist."
+---
+
+## Purpose
+
+Use `delete_memory` when a memory was saved incorrectly or must be explicitly removed.
+
+## Guidance
+
+- prefer normal version updates when truth has changed
+- use delete only when removal is actually desired
+- use the memory ID returned by `search_memory`

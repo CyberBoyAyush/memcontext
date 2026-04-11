@@ -1,0 +1,23 @@
+---
+title: "search_memory"
+description: "Retrieve relevant memories through MCP before making assumptions."
+---
+
+## Purpose
+
+Use `search_memory` before responding when context may already exist.
+
+## Parameters
+
+- `query`
+- `limit`
+- `category`
+- `project`
+- `threshold`
+
+## Guidance
+
+- use full natural-language queries
+- use `project` only when you need scoped context
+- raise `threshold` for broader recall
+- lower `threshold` for stricter matching

@@ -1,0 +1,366 @@
+openapi: 3.1.0
+info:
+  title: MemContext API
+  version: 1.1.0
+  description: REST API for persistent, evolving memory and MCP-backed integrations.
+servers:
+  - url: https://api.memcontext.in
+security:
+  - ApiKeyAuth: []
+tags:
+  - name: Memories
+  - name: Profiles
+paths:
+  /api/memories:
+    post:
+      tags: [Memories]
+      summary: Save a memory
+      operationId: saveMemory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveMemoryRequest'
+      responses:
+        '201':
+          description: Memory saved or updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaveMemoryResponse'
+    get:
+      tags: [Memories]
+      summary: List memories
+      operationId: listMemories
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - in: query
+          name: offset
+          schema: { type: integer, minimum: 0, default: 0 }
+        - in: query
+          name: category
+          schema: { type: string }
+        - in: query
+          name: project
+          schema: { type: string }
+        - in: query
+          name: search
+          schema: { type: string }
+      responses:
+        '200':
+          description: Paginated memory list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMemoriesResponse'
+  /api/memories/search:
+    get:
+      tags: [Memories]
+      summary: Search memories
+      operationId: searchMemories
+      parameters:
+        - in: query
+          name: query
+          required: true
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 10, default: 5 }
+        - in: query
+          name: category
+          schema:
+            $ref: '#/components/schemas/MemoryCategory'
+        - in: query
+          name: project
+          schema: { type: string }
+        - in: query
+          name: threshold
+          schema: { type: number, minimum: 0, maximum: 1 }
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchMemoryResponse'
+  /api/memories/profile:
+    get:
+      tags: [Profiles]
+      summary: Get pre-aggregated profile context
+      operationId: getMemoryProfile
+      parameters:
+        - in: query
+          name: project
+          schema: { type: string }
+      responses:
+        '200':
+          description: Profile context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryProfile'
+  /api/memories/{id}:
+    get:
+      tags: [Memories]
+      summary: Get a memory
+      operationId: getMemory
+      parameters:
+        - $ref: '#/components/parameters/MemoryId'
+      responses:
+        '200':
+          description: Memory record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Memory'
+    patch:
+      tags: [Memories]
+      summary: Update a memory
+      operationId: updateMemory
+      parameters:
+        - $ref: '#/components/parameters/MemoryId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMemoryRequest'
+      responses:
+        '200':
+          description: Updated memory result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateMemoryResponse'
+    delete:
+      tags: [Memories]
+      summary: Delete a memory
+      operationId: deleteMemory
+      parameters:
+        - $ref: '#/components/parameters/MemoryId'
+      responses:
+        '200':
+          description: Memory deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /api/memories/{id}/history:
+    get:
+      tags: [Memories]
+      summary: Get memory version history
+      operationId: getMemoryHistory
+      parameters:
+        - $ref: '#/components/parameters/MemoryId'
+      responses:
+        '200':
+          description: Memory current version and history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryHistoryResponse'
+  /api/memories/{id}/forget:
+    post:
+      tags: [Memories]
+      summary: Forget a memory (soft delete)
+      operationId: forgetMemory
+      parameters:
+        - $ref: '#/components/parameters/MemoryId'
+      responses:
+        '200':
+          description: Memory forgotten
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      message:
+                        type: string
+  /api/memories/{id}/feedback:
+    post:
+      tags: [Memories]
+      summary: Submit feedback for a memory
+      operationId: submitFeedback
+      parameters:
+        - $ref: '#/components/parameters/MemoryId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemoryFeedbackRequest'
+      responses:
+        '200':
+          description: Feedback recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryFeedbackResponse'
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  parameters:
+    MemoryId:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    MemoryCategory:
+      type: string
+      enum: [preference, fact, decision, context]
+    Memory:
+      type: object
+      required: [id, userId, content, source, isCurrent, version, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string }
+        content: { type: string }
+        category:
+          $ref: '#/components/schemas/MemoryCategory'
+        project: { type: string, nullable: true }
+        source:
+          type: string
+          enum: [mcp, web, api, openclaw]
+        isCurrent: { type: boolean }
+        supersedesId: { type: string, format: uuid, nullable: true }
+        rootId: { type: string, format: uuid, nullable: true }
+        version: { type: integer }
+        validFrom: { type: string, format: date-time, nullable: true }
+        validUntil: { type: string, format: date-time, nullable: true }
+        deletedAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+    SaveMemoryRequest:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string, maxLength: 10000 }
+        category:
+          $ref: '#/components/schemas/MemoryCategory'
+        project: { type: string }
+        source:
+          type: string
+          enum: [mcp, web, api, openclaw]
+        validUntil: { type: string, format: date-time }
+    SaveMemoryResponse:
+      type: object
+      required: [id, status]
+      properties:
+        id: { type: string }
+        status:
+          type: string
+          enum: [saved, updated, extended, duplicate, limit_exceeded]
+        superseded: { type: string }
+        existingId: { type: string }
+        current: { type: integer }
+        limit: { type: integer }
+    SearchMemoryResult:
+      type: object
+      required: [id, content, relevance, createdAt]
+      properties:
+        id: { type: string }
+        content: { type: string }
+        category:
+          $ref: '#/components/schemas/MemoryCategory'
+        project: { type: string, nullable: true }
+        relevance: { type: number }
+        createdAt: { type: string, format: date-time }
+    SearchMemoryResponse:
+      type: object
+      required: [found, memories]
+      properties:
+        found: { type: integer }
+        memories:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchMemoryResult'
+    ListMemoryItem:
+      type: object
+      required: [id, content, source, createdAt]
+      properties:
+        id: { type: string }
+        content: { type: string }
+        category: { type: string, nullable: true }
+        project: { type: string, nullable: true }
+        source: { type: string }
+        createdAt: { type: string, format: date-time }
+    ListMemoriesResponse:
+      type: object
+      required: [memories, total, hasMore]
+      properties:
+        memories:
+          type: array
+          items:
+            $ref: '#/components/schemas/ListMemoryItem'
+        total: { type: integer }
+        hasMore: { type: boolean }
+    UpdateMemoryRequest:
+      type: object
+      properties:
+        content: { type: string, maxLength: 10000 }
+        category:
+          $ref: '#/components/schemas/MemoryCategory'
+        project: { type: string }
+    UpdateMemoryResponse:
+      type: object
+      required: [success]
+      properties:
+        success: { type: boolean }
+        memory:
+          type: object
+          properties:
+            id: { type: string }
+            content: { type: string }
+            category: { type: string, nullable: true }
+            project: { type: string, nullable: true }
+        superseded: { type: string }
+        relatedTo: { type: string }
+        error: { type: string }
+    SuccessResponse:
+      type: object
+      required: [success]
+      properties:
+        success: { type: boolean }
+    MemoryFeedbackRequest:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [helpful, not_helpful, outdated, wrong]
+        context: { type: string }
+    MemoryFeedbackResponse:
+      type: object
+      required: [success]
+      properties:
+        success: { type: boolean }
+    MemoryProfile:
+      type: object
+      required: [static, dynamic]
+      properties:
+        static:
+          type: array
+          items: { type: string }
+        dynamic:
+          type: array
+          items: { type: string }
+    MemoryHistoryResponse:
+      type: object
+      required: [current, history]
+      properties:
+        current:
+          $ref: '#/components/schemas/Memory'
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/Memory'

@@ -1,0 +1,36 @@
+---
+title: "MCP Setup"
+description: "How to use MemContext through Model Context Protocol clients."
+---
+
+## Supported tools
+
+The MCP server exposes:
+
+- `save_memory`
+- `search_memory`
+- `memory_feedback`
+- `delete_memory`
+
+## Claude Desktop example
+
+```json
+{
+  "mcpServers": {
+    "memcontext": {
+      "command": "npx",
+      "args": ["@memcontext/mcp"],
+      "env": {
+        "MEMCONTEXT_API_KEY": "mc_your_key"
+      }
+    }
+  }
+}
+```
+
+## Usage guidance
+
+- search before assuming
+- save only durable, reusable knowledge
+- use `project` for project-scoped memory
+- use `memory_feedback` after retrieval when a result was useful or stale
