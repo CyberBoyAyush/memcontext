@@ -2,11 +2,12 @@
 
 <h1>MemContext</h1>
 
-<h3>Persistent memory for AI coding agents. Save once, retrieve forever.</h3>
+<h3>Persistent, evolving memory for AI agents and applications. Save once, retrieve forever.</h3>
 
 <p>
   <a href="https://memcontext.in">Website</a> &middot;
   <a href="https://app.memcontext.in">Dashboard</a> &middot;
+  <a href="https://docs.memcontext.in">Docs</a> &middot;
   <a href="https://app.memcontext.in/mcp">Setup Guide</a>
 </p>
 
@@ -28,7 +29,7 @@
 
 AI assistants like Claude Desktop, Cursor, and Cline forget everything between sessions. You end up repeating the same preferences, project context, and decisions over and over.
 
-MemContext solves this by providing a persistent memory layer that AI agents can access via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/). Your preferences, facts, and decisions are stored as searchable memories that any connected AI assistant can retrieve automatically through semantic search.
+MemContext solves this by providing a persistent memory layer that AI agents can access via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/). Your preferences, facts, and decisions are stored as searchable memories that any connected AI assistant can retrieve automatically through hybrid search (vector similarity + full-text keyword search). Memories can evolve over time with versioning, temporal expiry, and feedback loops.
 
 ## Quick Start
 
@@ -247,32 +248,52 @@ Memory persists across all sessions - use project param for project-specific con
 3. Next session, when relevant context is needed, the assistant searches MemContext
 4. Your stored memories are retrieved and used automatically
 
-The system uses vector embeddings (1536-dim) and semantic search, so memories are found by meaning rather than exact keyword matching. When saving, the system automatically detects similar existing memories and classifies the relationship as `saved`, `updated`, or `extended`.
+The system uses hybrid search — vector embeddings (1536-dim) for semantic similarity combined with PostgreSQL full-text search for exact keyword matching, merged via Reciprocal Rank Fusion. When saving, the system automatically detects similar existing memories and classifies the relationship as `saved`, `updated`, or `extended`. Memories support temporal validity (`validUntil`) so time-sensitive information is automatically excluded from search results when expired.
 
 ## MCP Tools
 
-The MCP server exposes two tools to AI assistants:
+The MCP server exposes four tools to AI assistants:
 
 ### `save_memory`
 
-Save a memory with optional category and project scope.
+Save a memory with optional category, project scope, and temporal expiry.
 
-| Parameter  | Type   | Required | Description                                                    |
-| ---------- | ------ | -------- | -------------------------------------------------------------- |
-| `content`  | string | Yes      | Clear, atomic memory to save (1-10,000 chars)                  |
-| `category` | enum   | No       | `preference`, `fact`, `decision`, or `context`                 |
-| `project`  | string | No       | Project scope (lowercase, no spaces). Omit for global memories |
+| Parameter    | Type   | Required | Description                                                    |
+| ------------ | ------ | -------- | -------------------------------------------------------------- |
+| `content`    | string | Yes      | Clear, atomic memory to save (1-10,000 chars)                  |
+| `category`   | enum   | No       | `preference`, `fact`, `decision`, or `context`                 |
+| `project`    | string | No       | Project scope (lowercase, no spaces). Omit for global memories |
+| `validUntil` | string | No       | ISO 8601 datetime when this memory expires                     |
 
 ### `search_memory`
 
-Search for relevant memories using natural language.
+Search for relevant memories using hybrid search (vector + keyword).
 
-| Parameter  | Type   | Required | Description                                              |
-| ---------- | ------ | -------- | -------------------------------------------------------- |
-| `query`    | string | Yes      | Natural language search query (use complete sentences)   |
-| `limit`    | number | No       | Results to return, 1-10 (default: 5)                     |
-| `category` | enum   | No       | Filter by `preference`, `fact`, `decision`, or `context` |
-| `project`  | string | No       | Filter to a specific project. Omit to search all         |
+| Parameter   | Type   | Required | Description                                              |
+| ----------- | ------ | -------- | -------------------------------------------------------- |
+| `query`     | string | Yes      | Natural language search query (use complete sentences)   |
+| `limit`     | number | No       | Results to return, 1-10 (default: 5)                     |
+| `category`  | enum   | No       | Filter by `preference`, `fact`, `decision`, or `context` |
+| `project`   | string | No       | Filter to a specific project. Omit to search all         |
+| `threshold` | number | No       | Similarity threshold 0-1. Higher = broader. Default 0.6  |
+
+### `memory_feedback`
+
+Rate a retrieved memory to improve future retrieval quality.
+
+| Parameter  | Type   | Required | Description                                      |
+| ---------- | ------ | -------- | ------------------------------------------------ |
+| `memoryId` | string | Yes      | The memory ID (from search results)              |
+| `type`     | enum   | Yes      | `helpful`, `not_helpful`, `outdated`, or `wrong` |
+| `context`  | string | No       | Why this feedback                                |
+
+### `delete_memory`
+
+Delete a memory by ID.
+
+| Parameter  | Type   | Required | Description                         |
+| ---------- | ------ | -------- | ----------------------------------- |
+| `memoryId` | string | Yes      | The memory ID (from search results) |
 
 ## Memory Categories
 
@@ -313,6 +334,7 @@ Start free, scale as your AI memory grows. See [memcontext.in/pricing](https://m
 | ------------------ | ---------------- |
 | Save memory        | 30 requests/min  |
 | Search memory      | 60 requests/min  |
+| Feedback           | 30 requests/min  |
 | Global (dashboard) | 100 requests/min |
 
 ---
@@ -328,6 +350,7 @@ MemContext is open source and can be self-hosted. The project is a Turborepo mon
 | `apps/dashboard` | Next.js dashboard - manage memories, API keys, subscriptions          |
 | `apps/website`   | Marketing landing page                                                |
 | `packages/types` | Shared TypeScript type definitions                                    |
+| `docs/`          | Public Mintlify documentation (docs.memcontext.in)                    |
 
 ### Tech Stack
 
@@ -403,29 +426,36 @@ pnpm build
 
 ## API Reference
 
-### Public Endpoints (API Key auth via `X-API-Key` header)
+Full API docs: [docs.memcontext.in](https://docs.memcontext.in)
 
-| Method | Path                   | Description     |
-| ------ | ---------------------- | --------------- |
-| POST   | `/api/memories`        | Save a memory   |
-| GET    | `/api/memories/search` | Search memories |
-| GET    | `/health`              | Health check    |
+### Memory Endpoints (API Key or Session auth)
 
-### Dashboard Endpoints (Session auth)
+| Method | Path                         | Description                   |
+| ------ | ---------------------------- | ----------------------------- |
+| POST   | `/api/memories`              | Save a memory                 |
+| GET    | `/api/memories/search`       | Hybrid search memories        |
+| GET    | `/api/memories/profile`      | Pre-aggregated user context   |
+| GET    | `/api/memories`              | List memories (with filters)  |
+| GET    | `/api/memories/:id`          | Get a single memory           |
+| GET    | `/api/memories/:id/history`  | Get memory version history    |
+| PATCH  | `/api/memories/:id`          | Update a memory               |
+| DELETE | `/api/memories/:id`          | Delete a memory               |
+| POST   | `/api/memories/:id/forget`   | Soft-delete (forget) a memory |
+| POST   | `/api/memories/:id/feedback` | Submit feedback on a memory   |
 
-| Method | Path                            | Description                  |
-| ------ | ------------------------------- | ---------------------------- |
-| GET    | `/api/memories`                 | List memories (with filters) |
-| PATCH  | `/api/memories/:id`             | Update a memory              |
-| DELETE | `/api/memories/:id`             | Delete a memory              |
-| POST   | `/api/api-keys`                 | Create an API key            |
-| GET    | `/api/api-keys`                 | List API keys                |
-| DELETE | `/api/api-keys/:id`             | Revoke an API key            |
-| GET    | `/api/user/profile`             | Get user profile             |
-| GET    | `/api/user/subscription`        | Get subscription info        |
-| GET    | `/api/user/dashboard-stats`     | Get dashboard statistics     |
-| POST   | `/api/subscription/change-plan` | Change subscription plan     |
-| GET    | `/api/subscription/current`     | Get current subscription     |
+### Other Endpoints
+
+| Method | Path                            | Auth         | Description              |
+| ------ | ------------------------------- | ------------ | ------------------------ |
+| GET    | `/health`                       | None         | Health check             |
+| POST   | `/api/api-keys`                 | Session only | Create an API key        |
+| GET    | `/api/api-keys`                 | Session only | List API keys            |
+| DELETE | `/api/api-keys/:id`             | Session only | Revoke an API key        |
+| GET    | `/api/user/profile`             | Session only | Get user profile         |
+| GET    | `/api/user/subscription`        | Session only | Get subscription info    |
+| GET    | `/api/user/dashboard-stats`     | Session only | Get dashboard statistics |
+| POST   | `/api/subscription/change-plan` | Session only | Change subscription plan |
+| GET    | `/api/subscription/current`     | Session only | Get current subscription |
 
 ## Acknowledgments
 

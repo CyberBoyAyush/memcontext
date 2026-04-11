@@ -16,6 +16,7 @@ packages/types/
 ## Usage
 
 Import in other packages:
+
 ```typescript
 import type { Memory, SaveMemoryRequest } from "@memcontext/types";
 ```
@@ -23,6 +24,7 @@ import type { Memory, SaveMemoryRequest } from "@memcontext/types";
 ## Patterns
 
 ### Type Definitions
+
 ```typescript
 // src/memory.ts
 export interface Memory {
@@ -32,6 +34,9 @@ export interface Memory {
   category?: "preference" | "fact" | "decision" | "context";
   project?: string;
   isCurrent: boolean;
+  validFrom?: Date;
+  validUntil?: Date;
+  version: number;
   createdAt: Date;
 }
 
@@ -39,6 +44,15 @@ export interface SaveMemoryRequest {
   content: string;
   category?: Memory["category"];
   project?: string;
+  validUntil?: string;
+}
+
+export interface SearchMemoryRequest {
+  query: string;
+  limit?: number;
+  category?: MemoryCategory;
+  project?: string;
+  threshold?: number;
 }
 
 export interface SaveMemoryResponse {
@@ -46,9 +60,22 @@ export interface SaveMemoryResponse {
   status: "saved" | "updated" | "extended";
   superseded?: string;
 }
+
+export type FeedbackType = "helpful" | "not_helpful" | "outdated" | "wrong";
+
+export interface MemoryProfile {
+  static: string[];
+  dynamic: string[];
+}
+
+export interface MemoryHistoryResponse {
+  current: Memory;
+  history: Memory[];
+}
 ```
 
 ### Re-exports
+
 ```typescript
 // src/index.ts
 export * from "./memory";
