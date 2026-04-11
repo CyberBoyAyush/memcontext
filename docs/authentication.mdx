@@ -1,41 +1,100 @@
 ---
 title: "Authentication"
-description: "How to authenticate to the MemContext API and MCP server."
+description: "How to authenticate with the MemContext API and MCP server."
 ---
 
-## API authentication
+## API key authentication
 
-MemContext uses API keys for public API access.
-
-Send your key in the `X-API-Key` header:
+All public API requests require an API key sent in the `X-API-Key` header:
 
 ```bash
--H "X-API-Key: mc_your_key"
+curl https://api.memcontext.in/api/memories/search?query=... \
+  -H "X-API-Key: mc_your_key"
 ```
 
-## Session authentication
+Create API keys from the [MemContext dashboard](https://app.memcontext.in) under **Settings > API Keys**. Keys are prefixed with `mc_` and shown only once at creation — store them securely.
 
-The dashboard uses session auth internally. Public integrations should use API keys.
+## MCP server authentication
+
+The hosted MCP server at `https://mcp.memcontext.in/mcp` accepts the API key via HTTP headers. Both `MEMCONTEXT-API-KEY` and `X-API-Key` are supported:
+
+```json
+{
+  "mcpServers": {
+    "memcontext": {
+      "url": "https://mcp.memcontext.in/mcp",
+      "headers": {
+        "MEMCONTEXT-API-KEY": "mc_your_key"
+      }
+    }
+  }
+}
+```
+
+See [MCP Setup](/guides/mcp-setup) for configs specific to Claude Code, Cursor, OpenCode, and Codex CLI.
 
 ## Rate limits
 
-MemContext rate-limits requests per endpoint.
+MemContext rate-limits requests per endpoint using a sliding window:
 
-Current defaults:
+| Endpoint                                            | Limit        | Window   |
+| --------------------------------------------------- | ------------ | -------- |
+| Save memory (`POST /api/memories`)                  | 30 requests  | 1 minute |
+| Search memories (`GET /api/memories/search`)        | 60 requests  | 1 minute |
+| Submit feedback (`POST /api/memories/:id/feedback`) | 30 requests  | 1 minute |
+| Global (all `/api/*` endpoints)                     | 100 requests | 1 minute |
 
-- save memory: 30 requests / minute
-- search memory: 60 requests / minute
-- feedback: 30 requests / minute
+Rate-limited responses include headers to help you manage request timing:
 
-Responses include:
+| Header                  | Description                                    |
+| ----------------------- | ---------------------------------------------- |
+| `X-RateLimit-Limit`     | Maximum requests allowed in the current window |
+| `X-RateLimit-Remaining` | Remaining requests in the current window       |
+| `X-RateLimit-Reset`     | Unix timestamp when the window resets          |
 
-- `X-RateLimit-Limit`
-- `X-RateLimit-Remaining`
-- `X-RateLimit-Reset`
+When the limit is exceeded, the API returns `429 Too Many Requests`.
+
+## Error responses
+
+All errors follow a consistent JSON format:
+
+```json
+{
+  "error": "Human-readable error message",
+  "code": "HTTP_429",
+  "requestId": "abc123xyz456"
+}
+```
+
+| Field       | Description                                                                       |
+| ----------- | --------------------------------------------------------------------------------- |
+| `error`     | What went wrong                                                                   |
+| `code`      | Machine-readable error code (e.g. `HTTP_401`, `HTTP_404`, `INTERNAL_ERROR`)       |
+| `requestId` | Unique request ID, also returned in the `X-Request-Id` response header            |
+| `errorId`   | Unique error reference for support (only on server errors, format `ERR_XXXXXXXX`) |
+
+Common error codes:
+
+| Code             | Status | Meaning                                |
+| ---------------- | ------ | -------------------------------------- |
+| `HTTP_401`       | 401    | Missing or invalid API key             |
+| `HTTP_403`       | 403    | Memory limit exceeded for current plan |
+| `HTTP_404`       | 404    | Memory not found                       |
+| `HTTP_429`       | 429    | Rate limit exceeded                    |
+| `INTERNAL_ERROR` | 500    | Unexpected server error                |
+
+## Request limits
+
+| Constraint                  | Value             |
+| --------------------------- | ----------------- |
+| Max request body size       | 50 KB             |
+| Max memory content length   | 10,000 characters |
+| Max search query length     | 1,000 characters  |
+| Max feedback context length | 1,000 characters  |
 
 ## Best practices
 
-- create a separate API key per integration
-- keep API keys server-side where possible
-- rotate keys if you suspect exposure
-- scope your requests with `project` when using project-specific memory
+- Create a separate API key per integration or environment
+- Keep API keys server-side — never expose them in client-side code
+- Rotate keys immediately if you suspect exposure
+- Use the `project` parameter to scope memories when working across multiple projects

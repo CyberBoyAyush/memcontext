@@ -7,6 +7,21 @@
     "light": "#818cf8",
     "dark": "#4f46e5"
   },
+  "topbar": {
+    "links": [
+      {
+        "name": "Dashboard",
+        "url": "https://app.memcontext.in"
+      }
+    ]
+  },
+  "footer": {
+    "links": {
+      "website": "https://memcontext.in",
+      "x": "https://x.com/memcontext",
+      "github": "https://github.com/CyberBoyAyush/memcontext"
+    }
+  },
   "navigation": {
     "groups": [
       {

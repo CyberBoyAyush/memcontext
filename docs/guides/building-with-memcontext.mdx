@@ -1,49 +1,102 @@
 ---
 title: "Building With MemContext"
-description: "How to use MemContext as a reusable memory backend for other applications."
+description: "How to integrate MemContext as a memory backend for your application."
 ---
 
 ## Mental model
 
-MemContext should be treated as infrastructure, not as an app-specific feature.
+MemContext is infrastructure, not an application feature. Treat it the same way you treat a database or auth provider — a service your application depends on for a specific capability.
 
-Your application can use it as:
-
-- a memory backend
-- a personalization layer
-- an evolving strategy store
-- a context service for agents
-
-## Good fit use cases
-
-- coding assistants
-- content generation
-- support bots
-- CRM memory
-- onboarding and education systems
+Your application calls the MemContext API (or connects via MCP) to save and retrieve knowledge. It does not need to know about embeddings, classification, or version chains.
 
 ## Integration pattern
 
-1. save durable user or project context
-2. search before generation or decision-making
-3. optionally fetch the profile endpoint for broad context
-4. record feedback when memory quality can be judged
+A typical integration follows four steps:
 
-## Design recommendation
+1. **Save** durable user or project context via `POST /api/memories`
+2. **Search** before generation or decision-making via `GET /api/memories/search`
+3. **Profile** (optional) — fetch broad context in one call via `GET /api/memories/profile`
+4. **Feedback** — record retrieval quality via `POST /api/memories/:id/feedback`
 
-Keep your app logic outside MemContext.
+## Example: Support bot
 
-MemContext should own:
+```
+User: "I'm having trouble with my subscription"
 
-- storage
-- retrieval
-- versioning
-- temporal filtering
-- MCP access
+Bot workflow:
+1. search_memory({ query: "user subscription plan and billing" })
+   → finds: "User is on the Pro plan, subscribed via Stripe"
+   → finds: "User had a billing issue resolved on March 15"
 
-Your app should own:
+2. Generate response with memory context injected into prompt
 
-- business-specific prompts
-- UI
-- workflow orchestration
-- downstream actions
+3. memory_feedback({ memoryId: "...", type: "helpful" })
+```
+
+## Good fit use cases
+
+| Use case           | Memory role                                                 |
+| ------------------ | ----------------------------------------------------------- |
+| Coding assistants  | Stable preferences, project decisions, architecture context |
+| Content generation | Brand rules, evolving strategy, audience insights           |
+| Support bots       | Customer history, past issues, plan details                 |
+| CRM memory         | Relationship context, interaction history                   |
+| Onboarding         | User progress, preferences learned during setup             |
+| Personalization    | Style preferences, feature usage patterns                   |
+
+## Ownership boundary
+
+Keep your application logic outside MemContext.
+
+**MemContext owns:**
+
+- Storage and retrieval
+- Deduplication and classification
+- Version chains and history
+- Temporal filtering
+- Hybrid search
+- MCP tool access
+
+**Your application owns:**
+
+- Business-specific prompts and logic
+- UI and user experience
+- Workflow orchestration
+- Downstream actions and integrations
+
+## API integration example
+
+```typescript
+const MEMCONTEXT_API = "https://api.memcontext.in";
+
+async function searchMemory(query: string, project?: string) {
+  const params = new URLSearchParams({ query });
+  if (project) params.set("project", project);
+
+  const res = await fetch(`${MEMCONTEXT_API}/api/memories/search?${params}`, {
+    headers: { "X-API-Key": process.env.MEMCONTEXT_API_KEY },
+  });
+
+  return res.json();
+}
+
+async function saveMemory(content: string, category: string, project?: string) {
+  const res = await fetch(`${MEMCONTEXT_API}/api/memories`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-Key": process.env.MEMCONTEXT_API_KEY,
+    },
+    body: JSON.stringify({ content, category, project }),
+  });
+
+  return res.json();
+}
+```
+
+## Tips
+
+- **Search before saving** — avoid duplicates by checking if the knowledge already exists
+- **Use projects** to scope memories so different applications or contexts do not interfere
+- **Category matters** — `preference` and `fact` go into profile `static` context; everything goes into `dynamic`
+- **Do not save noise** — only persist information with long-term value

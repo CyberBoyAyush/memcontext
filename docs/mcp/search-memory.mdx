@@ -1,23 +1,67 @@
 ---
 title: "search_memory"
-description: "Retrieve relevant memories through MCP before making assumptions."
+description: "Retrieve relevant memories using hybrid search."
 ---
 
-## Purpose
+## Description
 
-Use `search_memory` before responding when context may already exist.
+`search_memory` finds relevant memories using hybrid retrieval — combining vector similarity and PostgreSQL full-text search, merged with Reciprocal Rank Fusion (RRF). Both semantic queries and exact-match lookups work well.
 
 ## Parameters
 
-- `query`
-- `limit`
-- `category`
-- `project`
-- `threshold`
+| Parameter   | Type   | Required | Default | Description                                                                                |
+| ----------- | ------ | -------- | ------- | ------------------------------------------------------------------------------------------ |
+| `query`     | string | Yes      | —       | Natural language description of what to find. Full sentences produce the best results.     |
+| `limit`     | number | No       | 5       | Number of results to return (1-10). Use higher values for broad topics.                    |
+| `category`  | string | No       | all     | Filter to a single category: `preference`, `fact`, `decision`, or `context`.               |
+| `project`   | string | No       | all     | Filter to a specific project. Omit to search all memories (recommended for most searches). |
+| `threshold` | number | No       | 0.6     | Maximum vector distance (0-1). Higher values return more results (broader search).         |
 
-## Guidance
+### Threshold guide
 
-- use full natural-language queries
-- use `project` only when you need scoped context
-- raise `threshold` for broader recall
-- lower `threshold` for stricter matching
+| Value         | Use case                                                            |
+| ------------- | ------------------------------------------------------------------- |
+| `0.2` - `0.4` | Strict, high-precision matching                                     |
+| `0.6`         | Default — good balance of precision and recall                      |
+| `0.7` - `0.8` | Broad recall — returns more results, including loosely related ones |
+
+## How search works
+
+1. Query variants are generated automatically to improve coverage
+2. Embeddings are created for the original query and all variants
+3. Vector search runs against all query forms
+4. PostgreSQL full-text search runs in parallel
+5. Results are merged with Reciprocal Rank Fusion (RRF)
+
+## Response
+
+```json
+{
+  "found": 2,
+  "memories": [
+    {
+      "id": "a1b2c3d4-...",
+      "content": "User prefers TypeScript over JavaScript",
+      "category": "preference",
+      "project": null,
+      "relevance": 0.92,
+      "createdAt": "2026-04-11T12:00:00.000Z"
+    }
+  ]
+}
+```
+
+Each result includes a `relevance` score from 0 (least relevant) to 1 (most relevant).
+
+## Example
+
+```
+search_memory({
+  query: "What package manager does the user prefer?"
+})
+```
+
+### Query guidelines
+
+- **Good:** `"What package manager does the user prefer?"` (full sentence, clear intent)
+- **Bad:** `"package manager"` (keywords alone reduce match quality)

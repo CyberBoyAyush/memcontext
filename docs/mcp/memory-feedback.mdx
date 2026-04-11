@@ -1,17 +1,39 @@
 ---
 title: "memory_feedback"
-description: "Record whether a retrieved memory was useful, stale, or wrong."
+description: "Rate a retrieved memory to improve future retrieval quality."
 ---
 
-## Purpose
+## Description
 
-Use `memory_feedback` when you can judge the quality of a retrieved memory.
+`memory_feedback` records whether a retrieved memory was useful, irrelevant, outdated, or wrong. This signal helps surface quality issues and can be used to improve retrieval over time.
 
-## Feedback types
+## Parameters
 
-- `helpful`
-- `not_helpful`
-- `outdated`
-- `wrong`
+| Parameter  | Type   | Required | Description                                                                         |
+| ---------- | ------ | -------- | ----------------------------------------------------------------------------------- |
+| `memoryId` | string | Yes      | The memory ID to rate. Use the `id` returned by `search_memory`.                    |
+| `type`     | string | Yes      | Feedback type. One of the values below.                                             |
+| `context`  | string | No       | Optional explanation of why this feedback is being submitted. Max 1,000 characters. |
 
-This creates a signal the system can build on later for better retrieval and quality analysis.
+### Feedback types
+
+| Type          | When to use                                                  |
+| ------------- | ------------------------------------------------------------ |
+| `helpful`     | The memory was relevant and useful in the current context    |
+| `not_helpful` | The memory was irrelevant to the current query               |
+| `outdated`    | The memory contains stale information that is no longer true |
+| `wrong`       | The memory contains incorrect information                    |
+
+## Example
+
+```
+memory_feedback({
+  memoryId: "a1b2c3d4-...",
+  type: "outdated",
+  context: "User switched from Redux to Zustand last week"
+})
+```
+
+## Response
+
+Returns `{ success: true }` on success, or a `404` error if the memory was not found.

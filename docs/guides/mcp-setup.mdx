@@ -1,36 +1,170 @@
 ---
 title: "MCP Setup"
-description: "How to use MemContext through Model Context Protocol clients."
+description: "Connect MemContext to your AI coding assistant in minutes."
 ---
 
-## Supported tools
+MemContext provides a hosted MCP server — no local installation required. Add the connection URL and your API key to your client, then add the recommended agent instructions for the best experience.
 
-The MCP server exposes:
+## Prerequisites
 
-- `save_memory`
-- `search_memory`
-- `memory_feedback`
-- `delete_memory`
+- A MemContext account at [app.memcontext.in](https://app.memcontext.in)
+- An API key (create one under **Settings > API Keys**)
 
-## Claude Desktop example
+<Tip>
+  The [MCP page](https://app.memcontext.in/mcp) in your dashboard generates
+  ready-to-paste configs with your API key pre-filled.
+</Tip>
+
+## Claude Code
+
+**Step 1 — Add the MCP server via CLI:**
+
+```bash
+claude mcp add memcontext --scope user --transport http https://mcp.memcontext.in/mcp \
+  --header "MEMCONTEXT-API-KEY:mc_your_key"
+```
+
+Or add this to `~/.claude.json`:
 
 ```json
 {
   "mcpServers": {
     "memcontext": {
-      "command": "npx",
-      "args": ["@memcontext/mcp"],
-      "env": {
-        "MEMCONTEXT_API_KEY": "mc_your_key"
+      "url": "https://mcp.memcontext.in/mcp",
+      "headers": {
+        "MEMCONTEXT-API-KEY": "mc_your_key"
       }
     }
   }
 }
 ```
 
-## Usage guidance
+**Step 2 — Add agent instructions to `~/.claude/CLAUDE.md`:**
 
-- search before assuming
-- save only durable, reusable knowledge
-- use `project` for project-scoped memory
-- use `memory_feedback` after retrieval when a result was useful or stale
+```markdown
+# MemContext
+
+At conversation start, ALWAYS call search_memory to load user context — do not skip.
+Before making decisions or assumptions, search_memory to check for past context.
+SAVE immediately (do not defer) when any of these happen:
+
+- User shares a preference → save_memory(category: "preference")
+- A technology or architecture decision is made → save_memory(category: "decision")
+- User corrects you or says "remember" → save_memory(category: "fact")
+- Important project fact learned → save_memory(category: "fact", project: "<name>")
+- Significant work completed → save_memory(category: "context")
+  For time-sensitive info, use validUntil: save_memory(content: "...", validUntil: "2026-05-01T00:00:00Z")
+  After using search results, call memory_feedback to rate memories as helpful/not_helpful/outdated.
+  Use delete_memory only when a memory was saved incorrectly and should be removed entirely.
+  Duplicates are handled automatically — when in doubt, save.
+  Memory persists across all sessions - use project param for project-specific context only.
+```
+
+## Cursor
+
+**Step 1 — Add this to `~/.cursor/mcp.json`:**
+
+```json
+{
+  "mcpServers": {
+    "memcontext": {
+      "url": "https://mcp.memcontext.in/mcp",
+      "headers": {
+        "x-api-key": "mc_your_key"
+      }
+    }
+  }
+}
+```
+
+**Step 2 — Add the [agent instructions](#agent-instructions) to Cursor Settings > Rules and commands > User Rules.**
+
+## OpenCode
+
+**Step 1 — Add the MCP server to `~/.config/opencode/opencode.json`:**
+
+```json
+{
+  "mcp": {
+    "memcontext": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "mcp-remote",
+        "https://mcp.memcontext.in/mcp",
+        "--header",
+        "MEMCONTEXT-API-KEY:mc_your_key"
+      ],
+      "enabled": true
+    }
+  }
+}
+```
+
+**Step 2 — Add the [agent instructions](#agent-instructions) to `~/.config/opencode/AGENTS.md`.**
+
+## Codex CLI
+
+**Step 1 — Add the MCP server to `~/.codex/config.toml`:**
+
+```toml
+[mcp_servers.memcontext]
+url = "https://mcp.memcontext.in/mcp"
+
+[mcp_servers.memcontext.http_headers]
+MEMCONTEXT-API-KEY = "mc_your_key"
+```
+
+**Step 2 — Add the [agent instructions](#agent-instructions) to `~/.codex/instructions.md`.**
+
+## Agent instructions
+
+These instructions tell your AI assistant how and when to use MemContext. Add them to the preferences file for your client (listed above):
+
+```markdown
+# MemContext
+
+At conversation start, ALWAYS call search_memory to load user context — do not skip.
+Before making decisions or assumptions, search_memory to check for past context.
+SAVE immediately (do not defer) when any of these happen:
+
+- User shares a preference → save_memory(category: "preference")
+- A technology or architecture decision is made → save_memory(category: "decision")
+- User corrects you or says "remember" → save_memory(category: "fact")
+- Important project fact learned → save_memory(category: "fact", project: "<name>")
+- Significant work completed → save_memory(category: "context")
+  For time-sensitive info, use validUntil: save_memory(content: "...", validUntil: "2026-05-01T00:00:00Z")
+  After using search results, call memory_feedback to rate memories as helpful/not_helpful/outdated.
+  Use delete_memory only when a memory was saved incorrectly and should be removed entirely.
+  Duplicates are handled automatically — when in doubt, save.
+  Memory persists across all sessions - use project param for project-specific context only.
+```
+
+| Client      | Preferences file                                  |
+| ----------- | ------------------------------------------------- |
+| Claude Code | `~/.claude/CLAUDE.md`                             |
+| Cursor      | Cursor Settings > Rules and commands > User Rules |
+| OpenCode    | `~/.config/opencode/AGENTS.md`                    |
+| Codex CLI   | `~/.codex/instructions.md`                        |
+
+## Available tools
+
+Once connected, your assistant has access to four tools:
+
+| Tool              | Purpose                                            |
+| ----------------- | -------------------------------------------------- |
+| `save_memory`     | Persist preferences, facts, decisions, and context |
+| `search_memory`   | Find relevant memories before responding           |
+| `memory_feedback` | Rate memory quality after retrieval                |
+| `delete_memory`   | Remove a memory by ID                              |
+
+See the [MCP Tools](/mcp/overview) section for parameter documentation.
+
+## Verifying the connection
+
+After setup, ask your assistant:
+
+> "Search your memory for any information about me."
+
+If the connection is working, it will call `search_memory` and return results (or an empty set if no memories exist yet).
