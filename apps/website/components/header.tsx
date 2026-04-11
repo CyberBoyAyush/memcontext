@@ -16,6 +16,7 @@ const navigation = [
   { name: "Features", href: "/#features" },
   { name: "How it Works", href: "/#how-it-works" },
   { name: "Pricing", href: "/pricing" },
+  { name: "Docs", href: "https://docs.memcontext.in", external: true },
   { name: "FAQ", href: "/#faq" },
 ];
 
@@ -80,15 +81,27 @@ export function Header() {
               </span>
             </Link>
             <div className="hidden md:flex items-center gap-8 lg:gap-10">
-              {navigation.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className="text-sm lg:text-base text-foreground-muted hover:text-foreground transition-colors link-underline"
-                >
-                  {item.name}
-                </Link>
-              ))}
+              {navigation.map((item) =>
+                "external" in item && item.external ? (
+                  <a
+                    key={item.name}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm lg:text-base text-foreground-muted hover:text-foreground transition-colors link-underline"
+                  >
+                    {item.name}
+                  </a>
+                ) : (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className="text-sm lg:text-base text-foreground-muted hover:text-foreground transition-colors link-underline"
+                  >
+                    {item.name}
+                  </Link>
+                ),
+              )}
             </div>
 
             <div className="hidden md:flex items-center gap-4 lg:gap-5">
@@ -169,17 +182,31 @@ export function Header() {
             <div
               className={`py-4 space-y-1 mt-2 rounded-xl bg-surface/95 backdrop-blur-md border border-border/50 px-2`}
             >
-              {navigation.map((item, index) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="block py-3 text-base text-foreground-muted hover:text-foreground hover:bg-surface-elevated rounded-lg px-3 transition-all"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  {item.name}
-                </Link>
-              ))}
+              {navigation.map((item, index) =>
+                "external" in item && item.external ? (
+                  <a
+                    key={item.name}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block py-3 text-base text-foreground-muted hover:text-foreground hover:bg-surface-elevated rounded-lg px-3 transition-all"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    {item.name}
+                  </a>
+                ) : (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block py-3 text-base text-foreground-muted hover:text-foreground hover:bg-surface-elevated rounded-lg px-3 transition-all"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    {item.name}
+                  </Link>
+                ),
+              )}
               <a
                 href="https://github.com/cyberboyAyush/memcontext"
                 target="_blank"

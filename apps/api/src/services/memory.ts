@@ -931,6 +931,9 @@ export async function listMemories(
         category: memories.category,
         project: memories.project,
         source: memories.source,
+        validFrom: memories.validFrom,
+        validUntil: memories.validUntil,
+        version: memories.version,
         createdAt: memories.createdAt,
       })
       .from(memories)

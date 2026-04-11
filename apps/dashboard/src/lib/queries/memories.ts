@@ -11,7 +11,15 @@ interface Memory {
   category: string | null;
   project: string | null;
   source: string;
+  validFrom?: string | null;
+  validUntil?: string | null;
+  version?: number;
   createdAt: string;
+}
+
+interface MemoryHistoryResponse {
+  current: Memory;
+  history: Memory[];
 }
 
 interface ListMemoriesResponse {
@@ -85,6 +93,50 @@ export function useDeleteMemory() {
   return useMutation({
     mutationFn: async (id: string) => {
       return api.delete<{ success: boolean }>(`/api/memories/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["memories"] });
+    },
+  });
+}
+
+export const memoryHistoryQueryOptions = (id: string) =>
+  queryOptions({
+    queryKey: ["memory-history", id] as const,
+    queryFn: async () => {
+      return api.get<MemoryHistoryResponse>(`/api/memories/${id}/history`);
+    },
+    enabled: !!id,
+  });
+
+export function useSubmitFeedback() {
+  return useMutation({
+    mutationFn: async ({
+      id,
+      type,
+      context,
+    }: {
+      id: string;
+      type: "helpful" | "not_helpful" | "outdated" | "wrong";
+      context?: string;
+    }) => {
+      return api.post<{ success: boolean }>(`/api/memories/${id}/feedback`, {
+        type,
+        context,
+      });
+    },
+  });
+}
+
+export function useForgetMemory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      return api.post<{ success: boolean; message: string }>(
+        `/api/memories/${id}/forget`,
+        {},
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["memories"] });

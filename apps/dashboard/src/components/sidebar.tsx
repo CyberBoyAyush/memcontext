@@ -20,6 +20,7 @@ import {
   CaretUpDown,
   CreditCard,
   Envelope,
+  BookOpen,
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -78,6 +79,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: "API Keys", href: "/api-keys", icon: Key },
       { label: "MCP Setup", href: "/mcp", icon: Plugs },
+      { label: "Docs", href: "https://docs.memcontext.in", icon: BookOpen },
     ],
   },
   {
@@ -276,15 +278,26 @@ export function Sidebar() {
                 </div>
                 <div className="space-y-1">
                   {group.items.map((item) => {
+                    const isExternal = item.href.startsWith("http");
                     const isActive =
-                      pathname === item.href ||
-                      pathname.startsWith(item.href + "/");
+                      !isExternal &&
+                      (pathname === item.href ||
+                        pathname.startsWith(item.href + "/"));
+
+                    const linkProps = isExternal
+                      ? {
+                          target: "_blank" as const,
+                          rel: "noopener noreferrer",
+                        }
+                      : {};
+
                     return (
                       <Link
                         key={item.href}
                         href={item.href}
                         onClick={() => setMobileOpen(false)}
                         title={collapsed ? item.label : undefined}
+                        {...linkProps}
                         className={cn(
                           "flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-200 px-4 py-3",
                           collapsed && "md:p-3 md:justify-center",
@@ -306,6 +319,13 @@ export function Sidebar() {
                         <span className={cn(collapsed && "md:hidden")}>
                           {item.label}
                         </span>
+                        {isExternal && !collapsed && (
+                          <ArrowSquareOut
+                            size={14}
+                            className="text-foreground-subtle ml-auto md:block hidden"
+                            weight="bold"
+                          />
+                        )}
                       </Link>
                     );
                   })}
