@@ -22,13 +22,21 @@ Single source of truth for all business logic. Both MCP and web call this API.
 
 ## Routes
 
-| Method | Path                 | Auth              | Description           |
-| ------ | -------------------- | ----------------- | --------------------- |
-| POST   | /api/memories        | API Key / Session | Save memory           |
-| GET    | /api/memories/search | API Key / Session | Semantic search       |
-| GET    | /api/auth/\*         | Public            | Better Auth endpoints |
-| POST   | /api/api-keys        | Session only      | Create API key        |
-| DELETE | /api/api-keys/:id    | Session only      | Revoke API key        |
+| Method | Path                       | Auth              | Description            |
+| ------ | -------------------------- | ----------------- | ---------------------- |
+| POST   | /api/memories              | API Key / Session | Save memory            |
+| GET    | /api/memories/search       | API Key / Session | Hybrid search          |
+| GET    | /api/memories/profile      | API Key / Session | Pre-aggregated context |
+| GET    | /api/memories              | API Key / Session | List memories          |
+| GET    | /api/memories/:id          | API Key / Session | Get single memory      |
+| GET    | /api/memories/:id/history  | API Key / Session | Version history        |
+| PATCH  | /api/memories/:id          | API Key / Session | Update memory          |
+| DELETE | /api/memories/:id          | API Key / Session | Delete memory          |
+| POST   | /api/memories/:id/forget   | API Key / Session | Soft-delete memory     |
+| POST   | /api/memories/:id/feedback | API Key / Session | Submit feedback        |
+| GET    | /api/auth/\*               | Public            | Better Auth endpoints  |
+| POST   | /api/api-keys              | Session only      | Create API key         |
+| DELETE | /api/api-keys/:id          | Session only      | Revoke API key         |
 
 ## Database Tables
 
@@ -45,6 +53,9 @@ is_current      BOOLEAN (default true)
 supersedes_id   UUID FK (nullable)
 root_id         UUID FK (nullable)
 version         INTEGER (default 1)
+valid_from      TIMESTAMP (nullable)
+valid_until     TIMESTAMP (nullable)
+content_tsv     TSVECTOR (generated, for FTS)
 deleted_at      TIMESTAMP (nullable)
 created_at      TIMESTAMP
 ```
@@ -57,6 +68,17 @@ source_id       UUID FK -> memories
 target_id       UUID FK -> memories
 relation_type   TEXT (extends/similar)
 strength        FLOAT (0-1)
+created_at      TIMESTAMP
+```
+
+### memory_feedback
+
+```
+id              UUID PRIMARY KEY
+memory_id       UUID FK -> memories
+user_id         TEXT
+type            ENUM (helpful/not_helpful/outdated/wrong)
+context         TEXT (nullable)
 created_at      TIMESTAMP
 ```
 

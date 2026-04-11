@@ -10,32 +10,52 @@ The MCP server contains no business logic. All memory processing, storage, and s
 
 ## Tools
 
-The server exposes two tools to AI assistants:
+The server exposes four tools to AI assistants:
 
 ### save_memory
 
 Saves a memory that should be remembered across sessions.
 
-| Parameter | Type   | Required | Description                                 |
-| --------- | ------ | -------- | ------------------------------------------- |
-| content   | string | Yes      | The memory to save                          |
-| category  | string | No       | One of: preference, fact, decision, context |
-| project   | string | No       | Project name for filtering                  |
+| Parameter  | Type   | Required | Description                                 |
+| ---------- | ------ | -------- | ------------------------------------------- |
+| content    | string | Yes      | The memory to save                          |
+| category   | string | No       | One of: preference, fact, decision, context |
+| project    | string | No       | Project name for filtering                  |
+| validUntil | string | No       | ISO 8601 datetime when this memory expires  |
 
 Returns the memory ID and status (saved, updated, or extended).
 
 ### search_memory
 
-Searches for relevant memories using semantic search.
+Searches for relevant memories using hybrid search (vector + keyword).
 
-| Parameter | Type   | Required | Description                   |
-| --------- | ------ | -------- | ----------------------------- |
-| query     | string | Yes      | What to search for            |
-| limit     | number | No       | Max results (1-10, default 5) |
-| category  | string | No       | Filter by category            |
-| project   | string | No       | Filter by project             |
+| Parameter | Type   | Required | Description                                      |
+| --------- | ------ | -------- | ------------------------------------------------ |
+| query     | string | Yes      | What to search for                               |
+| limit     | number | No       | Max results (1-10, default 5)                    |
+| category  | string | No       | Filter by category                               |
+| project   | string | No       | Filter by project                                |
+| threshold | number | No       | Similarity threshold 0-1. Higher = broader (0.6) |
 
-Returns matching memories with relevance scores.
+Returns matching memories with relevance scores and memory IDs.
+
+### memory_feedback
+
+Rates a retrieved memory to improve future retrieval quality.
+
+| Parameter | Type   | Required | Description                              |
+| --------- | ------ | -------- | ---------------------------------------- |
+| memoryId  | string | Yes      | The memory ID (from search results)      |
+| type      | string | Yes      | helpful, not_helpful, outdated, or wrong |
+| context   | string | No       | Why this feedback                        |
+
+### delete_memory
+
+Deletes a specific memory by ID.
+
+| Parameter | Type   | Required | Description                         |
+| --------- | ------ | -------- | ----------------------------------- |
+| memoryId  | string | Yes      | The memory ID (from search results) |
 
 ## Transport Modes
 

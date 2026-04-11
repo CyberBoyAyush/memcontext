@@ -125,21 +125,24 @@ Better Auth auto-generates its own tables (user, session, account, verification)
 
 ### memories
 
-| Column        | Type         | Constraints            | Description                            |
-| ------------- | ------------ | ---------------------- | -------------------------------------- |
-| id            | UUID         | PK, default random     |                                        |
-| user_id       | TEXT         | NOT NULL, FK -> user   | Owner                                  |
-| content       | TEXT         | NOT NULL               | Clean, atomic fact                     |
-| embedding     | VECTOR(1536) | NOT NULL               | From text-embedding-3-large            |
-| category      | TEXT         |                        | preference / fact / decision / context |
-| project       | TEXT         |                        | Normalized: lowercase, no spaces       |
-| source        | TEXT         | NOT NULL               | mcp / web / api                        |
-| is_current    | BOOLEAN      | NOT NULL, default true | False when superseded                  |
-| supersedes_id | UUID         | FK -> memories         | Previous version this replaces         |
-| root_id       | UUID         | FK -> memories         | Original memory in chain               |
-| version       | INTEGER      | NOT NULL, default 1    | Increments on update                   |
-| deleted_at    | TIMESTAMP    |                        | Soft delete                            |
-| created_at    | TIMESTAMP    | NOT NULL, default now  |                                        |
+| Column        | Type         | Constraints            | Description                             |
+| ------------- | ------------ | ---------------------- | --------------------------------------- |
+| id            | UUID         | PK, default random     |                                         |
+| user_id       | TEXT         | NOT NULL, FK -> user   | Owner                                   |
+| content       | TEXT         | NOT NULL               | Clean, atomic fact                      |
+| embedding     | VECTOR(1536) | NOT NULL               | From text-embedding-3-large             |
+| category      | TEXT         |                        | preference / fact / decision / context  |
+| project       | TEXT         |                        | Normalized: lowercase, no spaces        |
+| source        | TEXT         | NOT NULL               | mcp / web / api                         |
+| is_current    | BOOLEAN      | NOT NULL, default true | False when superseded                   |
+| supersedes_id | UUID         | FK -> memories         | Previous version this replaces          |
+| root_id       | UUID         | FK -> memories         | Original memory in chain                |
+| version       | INTEGER      | NOT NULL, default 1    | Increments on update                    |
+| valid_from    | TIMESTAMP    |                        | When this memory became true            |
+| valid_until   | TIMESTAMP    |                        | When this memory expires (null=forever) |
+| content_tsv   | TSVECTOR     | GENERATED              | Auto-generated for full-text search     |
+| deleted_at    | TIMESTAMP    |                        | Soft delete                             |
+| created_at    | TIMESTAMP    | NOT NULL, default now  |                                         |
 
 ### memory_relations
 
@@ -152,12 +155,25 @@ Better Auth auto-generates its own tables (user, session, account, verification)
 | strength      | REAL      |                          | Similarity score 0-1 |
 | created_at    | TIMESTAMP | NOT NULL, default now    |                      |
 
+### memory_feedback
+
+| Column     | Type                 | Constraints           | Description                              |
+| ---------- | -------------------- | --------------------- | ---------------------------------------- |
+| id         | UUID                 | PK, default random    |                                          |
+| memory_id  | UUID                 | NOT NULL, FK          | Memory being rated                       |
+| user_id    | TEXT                 | NOT NULL              | Who submitted the feedback               |
+| type       | memory_feedback_type | NOT NULL              | helpful / not_helpful / outdated / wrong |
+| context    | TEXT                 |                       | Optional context                         |
+| created_at | TIMESTAMP            | NOT NULL, default now |                                          |
+
 ### Indexes
 
 - subscriptions.user_id already UNIQUE (implicit index)
 - HNSW on memories.embedding with vector_cosine_ops (fast similarity search)
 - Composite on memories(user_id, is_current, deleted_at) (filtered queries)
 - Index on memories.supersedes_id and memories.root_id (version traversal)
+- GIN on memories.content_tsv (full-text search)
+- Index on memories.valid_until (temporal queries)
 - Index on api_keys.key_hash (already UNIQUE, implicit index)
 
 ---
@@ -219,9 +235,9 @@ Use Drizzle's cosineDistance helper with lt() for threshold checks.
 
 ---
 
-## Search Flow (Multi-Query)
+## Search Flow (Hybrid Multi-Query)
 
-Search uses multi-query approach for better recall:
+Search uses hybrid multi-query approach for better recall. Combines vector similarity with PostgreSQL full-text search, merged via Reciprocal Rank Fusion (RRF).
 
 ```
 User Query: "authentication preferences"
@@ -231,20 +247,27 @@ User Query: "authentication preferences"
 [2] Create embedding for original query
         |
         v
-[3] Search with original embedding (parallel with step 4)
+[3] Search with original embedding (parallel with steps 4, 5)
 [4] Create embeddings for 3 variants
+[5] Full-text search via tsvector/tsquery (parallel with step 3)
         |
         v
-[5] Search with all 3 variant embeddings (parallel)
+[6] Search with all 3 variant embeddings (parallel)
         |
         v
-[6] Merge results, dedupe by ID, keep highest score per memory
+[7] Merge ALL results via Reciprocal Rank Fusion (RRF)
+    - Score = sum of 1/(k + rank) across all result sets
+    - Expired memories (validUntil < now) are excluded
         |
         v
-[7] Return top N results sorted by relevance
+[8] Return top N results sorted by fused score
 ```
 
-This approach catches memories stored with different wording than the query.
+This approach catches:
+
+- Semantically similar memories (vector search)
+- Exact name/entity matches (full-text search)
+- Memories stored with different wording (query variants)
 
 ---
 
@@ -252,13 +275,13 @@ This approach catches memories stored with different wording than the query.
 
 ### save_memory
 
-**Input:** content (required), category (optional), project (optional)
+**Input:** content (required), category (optional), project (optional), validUntil (optional)
 
 **Behavior:**
 
 1. Check subscription: memory_count < memory_limit (reject with LIMIT_EXCEEDED if over)
 2. Generate embedding via OpenRouter
-3. Search for similar memories (distance < 0.20, is_current = true)
+3. Search for similar memories (distance < 0.30, is_current = true, not expired)
 4. If match found, classify via LLM (update/extend/similar)
 5. Insert accordingly, update relations/versions
 6. Increment subscription.memory_count (+1 for all inserts)
@@ -267,18 +290,33 @@ This approach catches memories stored with different wording than the query.
 
 ### search_memory
 
-**Input:** query (required), limit (default 5, max 10), category (optional), project (optional)
+**Input:** query (required), limit (default 5, max 10), category (optional), project (optional), threshold (optional)
 
 **Behavior:**
 
-1. Expand query via LLM (adds keywords and context for better matching)
-2. Generate query embedding
-3. Vector search with filters (user_id, is_current=true, deleted_at=null)
-4. Return top results above 0.60 similarity
+1. Generate 3 query variants via LLM
+2. Generate embeddings for original + variants
+3. Run vector searches in parallel
+4. Run full-text search in parallel
+5. Merge all results via Reciprocal Rank Fusion (RRF)
+6. Filter out expired memories (validUntil < now)
+7. Return top results with normalized relevance scores
 
 **Output:** { found, memories: [{ id, content, category, relevance, created }] }
 
-**Project Normalization:** Both tools normalize project names to lowercase with no spaces/special characters.
+### memory_feedback
+
+**Input:** memoryId (required), type (required: helpful/not_helpful/outdated/wrong), context (optional)
+
+**Behavior:** Records feedback on a memory for future retrieval quality improvements.
+
+### delete_memory
+
+**Input:** memoryId (required)
+
+**Behavior:** Soft-deletes the specified memory.
+
+**Project Normalization:** All tools normalize project names to lowercase with no spaces/special characters.
 
 ---
 

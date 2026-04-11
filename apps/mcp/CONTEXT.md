@@ -13,7 +13,7 @@ Thin MCP wrapper that connects Claude Desktop to apps/api. No business logic her
 }
 ```
 
-## Tools (Only 2)
+## Tools (4)
 
 ### save_memory
 
@@ -25,6 +25,7 @@ Save a memory to the user's account.
 | content | string | Yes | The memory (atomic fact) |
 | category | enum | No | preference / fact / decision / context |
 | project | string | No | Project name (lowercase) |
+| validUntil | string | No | ISO 8601 datetime when this expires |
 
 **Output:**
 
@@ -38,7 +39,7 @@ Save a memory to the user's account.
 
 ### search_memory
 
-Find relevant memories using semantic search.
+Find relevant memories using hybrid search (vector + keyword + RRF).
 
 **Input:**
 | Param | Type | Required | Description |
@@ -47,6 +48,7 @@ Find relevant memories using semantic search.
 | limit | number | No | Max results (default 5, max 10) |
 | category | enum | No | Filter by category |
 | project | string | No | Filter by project |
+| threshold | number | No | Similarity threshold 0-1 (default 0.6) |
 
 **Output:**
 
@@ -64,6 +66,26 @@ Find relevant memories using semantic search.
   ]
 }
 ```
+
+### memory_feedback
+
+Rate a retrieved memory.
+
+**Input:**
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| memoryId | string | Yes | Memory ID from search results |
+| type | enum | Yes | helpful / not_helpful / outdated / wrong |
+| context | string | No | Why this feedback |
+
+### delete_memory
+
+Delete a memory by ID.
+
+**Input:**
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| memoryId | string | Yes | Memory ID from search results |
 
 ## Flow
 

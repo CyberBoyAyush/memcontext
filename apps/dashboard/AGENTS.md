@@ -226,3 +226,23 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 // Icons (lucide-react)
 import { Loader2, Plus, Trash2 } from "lucide-react";
 ```
+
+## v2 Features
+
+The memories page includes these v2 enhancements:
+
+- **Temporal badges**: Memories with `validUntil` show colored expiry badges (green=valid, yellow=expiring soon, red=expired)
+- **Feedback buttons**: Detail panel has Helpful / Not helpful / Outdated / Wrong buttons that call `POST /api/memories/:id/feedback`
+- **Version history**: Detail panel shows previous versions of a memory via `GET /api/memories/:id/history`
+- **Docs link**: Sidebar Developer section links to `https://docs.memcontext.in` (external, opens in new tab)
+
+### Query Hooks (lib/queries/memories.ts)
+
+```typescript
+memoriesQueryOptions(params); // List memories
+memoryHistoryQueryOptions(id); // Get version history
+useUpdateMemory(); // PATCH /:id
+useDeleteMemory(); // DELETE /:id
+useSubmitFeedback(); // POST /:id/feedback
+useForgetMemory(); // POST /:id/forget
+```

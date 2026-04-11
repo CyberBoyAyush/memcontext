@@ -6,9 +6,13 @@
 memcontext/
 ├── apps/
 │   ├── api/          # Hono backend (all business logic)
-│   └── mcp/          # MCP server (thin wrapper)
+│   ├── mcp/          # MCP server (thin wrapper)
+│   ├── dashboard/    # Next.js dashboard
+│   └── website/      # Landing page
 ├── packages/
 │   └── types/        # Shared TypeScript types
+├── docs/             # Public Mintlify documentation
+├── internal-docs/    # Internal planning docs (gitignored)
 ├── pnpm-workspace.yaml
 └── turbo.json
 ```
@@ -26,18 +30,20 @@ pnpm lint                       # Lint all packages
 
 ## Naming Conventions
 
-| Type | Convention | Example |
-|------|------------|---------|
-| Files | kebab-case | `save-memory.ts`, `api-client.ts` |
-| Functions | camelCase | `saveMemory()`, `validateApiKey()` |
-| Variables | camelCase | `memoryCount`, `isLoading` |
-| Types/Interfaces | PascalCase | `Memory`, `ApiKeyResponse` |
-| Constants | SCREAMING_SNAKE | `MAX_MEMORIES`, `API_BASE_URL` |
+| Type             | Convention      | Example                            |
+| ---------------- | --------------- | ---------------------------------- |
+| Files            | kebab-case      | `save-memory.ts`, `api-client.ts`  |
+| Functions        | camelCase       | `saveMemory()`, `validateApiKey()` |
+| Variables        | camelCase       | `memoryCount`, `isLoading`         |
+| Types/Interfaces | PascalCase      | `Memory`, `ApiKeyResponse`         |
+| Constants        | SCREAMING_SNAKE | `MAX_MEMORIES`, `API_BASE_URL`     |
 
 ## Package Names
 
 - `@memcontext/api` - apps/api
 - `@memcontext/mcp` - apps/mcp
+- `@memcontext/dashboard` - apps/dashboard
+- `@memcontext/website` - apps/website
 - `@memcontext/types` - packages/types
 
 ## Architecture Rules
@@ -50,6 +56,7 @@ pnpm lint                       # Lint all packages
 ## File Creation
 
 When creating new files:
+
 1. Use kebab-case for filenames: `memory-service.ts` not `memoryService.ts`
 2. One export per file when possible
 3. Index files for re-exports: `src/services/index.ts`
@@ -72,9 +79,13 @@ When creating new files:
 3. Test the specific app you changed
 
 <!-- Added: 2026-04-11 -->
+
 ## Documentation
+
 Use Mintlify for MemContext public documentation. The docs site lives in `docs/` with `docs/docs.json` as the Mintlify config and `docs/openapi.yaml` as the API reference source.
 
 <!-- Added: 2026-04-11 -->
+
 ## Documentation Structure
+
 Use `docs/` only for public Mintlify documentation. Store internal planning, architecture notes, and implementation references in `internal-docs/`.

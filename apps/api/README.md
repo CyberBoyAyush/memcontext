@@ -35,12 +35,20 @@ Database (Drizzle ORM)
 
 ## API Endpoints
 
-### Memories
+### Memories (API Key or Session auth)
 
-| Method | Path                 | Auth     | Description              |
-| ------ | -------------------- | -------- | ------------------------ |
-| POST   | /api/memories        | Required | Save a memory            |
-| GET    | /api/memories/search | Required | Semantic search memories |
+| Method | Path                       | Description                   |
+| ------ | -------------------------- | ----------------------------- |
+| POST   | /api/memories              | Save a memory                 |
+| GET    | /api/memories/search       | Hybrid search memories        |
+| GET    | /api/memories/profile      | Pre-aggregated user context   |
+| GET    | /api/memories              | List memories (paginated)     |
+| GET    | /api/memories/:id          | Get a single memory           |
+| GET    | /api/memories/:id/history  | Get memory version history    |
+| PATCH  | /api/memories/:id          | Update a memory               |
+| DELETE | /api/memories/:id          | Delete a memory               |
+| POST   | /api/memories/:id/forget   | Soft-delete (forget) a memory |
+| POST   | /api/memories/:id/feedback | Submit feedback on a memory   |
 
 ### API Keys
 
@@ -66,18 +74,21 @@ API endpoints are protected using the `X-API-Key` header. Keys are generated wit
 
 Stores all user memories with vector embeddings.
 
-| Field         | Description                            |
-| ------------- | -------------------------------------- |
-| id            | Unique identifier                      |
-| user_id       | Owner of the memory                    |
-| content       | The memory text                        |
-| embedding     | 1536-dimension vector                  |
-| category      | preference, fact, decision, or context |
-| project       | Optional project name                  |
-| source        | mcp, web, or api                       |
-| is_current    | Whether this is the latest version     |
-| supersedes_id | ID of memory this replaces             |
-| version       | Version number                         |
+| Field         | Description                             |
+| ------------- | --------------------------------------- |
+| id            | Unique identifier                       |
+| user_id       | Owner of the memory                     |
+| content       | The memory text                         |
+| embedding     | 1536-dimension vector                   |
+| category      | preference, fact, decision, or context  |
+| project       | Optional project name                   |
+| source        | mcp, web, or api                        |
+| is_current    | Whether this is the latest version      |
+| supersedes_id | ID of memory this replaces              |
+| version       | Version number                          |
+| valid_from    | When this memory became true            |
+| valid_until   | When this memory expires (null=forever) |
+| content_tsv   | Auto-generated tsvector for FTS         |
 
 ### memory_relations
 
@@ -120,6 +131,15 @@ Tracks user plans and memory usage.
 | hobby | 2,000  |
 | pro   | 10,000 |
 
+### memory_feedback
+
+| Field     | Description                              |
+| --------- | ---------------------------------------- |
+| memory_id | Memory being rated                       |
+| user_id   | Who submitted the feedback               |
+| type      | helpful, not_helpful, outdated, or wrong |
+| context   | Optional context                         |
+
 ## Memory Processing
 
 When a memory is saved:
@@ -127,9 +147,17 @@ When a memory is saved:
 1. Check if user is within their plan limit
 2. Expand the memory text using LLM for better searchability
 3. Generate vector embedding using text-embedding-3-large
-4. Search for similar existing memories (cosine similarity above 0.70)
+4. Search for similar existing memories (cosine similarity above 0.70, not expired)
 5. If similar found, classify relationship using LLM (update, extend, or similar)
-6. Store memory with appropriate relations
+6. Store memory with appropriate relations and temporal metadata
+
+When searching:
+
+1. Generate 3 query variants via LLM
+2. Run vector search + full-text search in parallel
+3. Merge results via Reciprocal Rank Fusion (RRF)
+4. Exclude expired memories (validUntil < now)
+5. Return top K with normalized relevance scores
 
 ## Environment Variables
 
