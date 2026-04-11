@@ -16,11 +16,16 @@
     ]
   },
   "footer": {
-    "links": {
-      "website": "https://memcontext.in",
-      "x": "https://x.com/memcontext",
-      "github": "https://github.com/CyberBoyAyush/memcontext"
-    }
+    "links": [
+      {
+        "name": "Website",
+        "url": "https://memcontext.in"
+      },
+      {
+        "name": "GitHub",
+        "url": "https://github.com/CyberBoyAyush/memcontext"
+      }
+    ]
   },
   "navigation": {
     "groups": [
