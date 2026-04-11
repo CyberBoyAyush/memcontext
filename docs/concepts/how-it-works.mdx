@@ -1,0 +1,39 @@
+---
+title: "How It Works"
+description: "How MemContext saves, evolves, and retrieves memory."
+---
+
+## Save flow
+
+When a memory is saved, MemContext:
+
+1. expands the content into a more searchable sentence
+2. generates an embedding
+3. finds similar current memories
+4. uses an LLM to classify the relationship
+5. saves a new memory, updates an old one, or links related memories
+
+## Relationship types
+
+- `update`: the new memory replaces older truth
+- `extend`: the new memory adds detail
+- `similar`: the new memory is related but distinct
+- `noop`: nothing new should be saved
+
+## Search flow
+
+MemContext search is hybrid:
+
+1. generate query variants
+2. embed original query and variants
+3. run vector search on all query forms
+4. run PostgreSQL full-text search on the original query
+5. merge rankings with Reciprocal Rank Fusion (RRF)
+
+This improves exact-match and mixed queries without materially increasing latency.
+
+## Temporal support
+
+Memories can optionally include `validUntil`.
+
+Expired memories are filtered out from retrieval, which helps with evolving facts like strategy changes or temporary states.

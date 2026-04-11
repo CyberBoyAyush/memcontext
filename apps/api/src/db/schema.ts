@@ -7,8 +7,16 @@ import {
   integer,
   real,
   index,
+  pgEnum,
   vector,
 } from "drizzle-orm/pg-core";
+
+export const memoryFeedbackTypeEnum = pgEnum("memory_feedback_type", [
+  "helpful",
+  "not_helpful",
+  "outdated",
+  "wrong",
+]);
 
 export const PLAN_LIMITS = {
   free: 300,
@@ -71,7 +79,11 @@ export const memories = pgTable(
     rootId: uuid("root_id"),
     version: integer("version").default(1).notNull(),
     deletedAt: timestamp("deleted_at"),
+    validFrom: timestamp("valid_from"),
+    validUntil: timestamp("valid_until"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
+    // `content_tsv` is created via raw SQL migration as a generated column.
+    // Search queries reference it with `sql` template literals in memory.ts.
   },
   (table) => [
     index("memories_embedding_idx").using(
@@ -85,6 +97,7 @@ export const memories = pgTable(
     ),
     index("memories_supersedes_idx").on(table.supersedesId),
     index("memories_root_idx").on(table.rootId),
+    index("memories_valid_until_idx").on(table.validUntil),
   ],
 );
 
@@ -104,6 +117,24 @@ export const memoryRelations = pgTable(
   ],
 );
 
+export const memoryFeedback = pgTable(
+  "memory_feedback",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    memoryId: uuid("memory_id")
+      .notNull()
+      .references(() => memories.id),
+    userId: text("user_id").notNull(),
+    type: memoryFeedbackTypeEnum("type").notNull(),
+    context: text("context"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("memory_feedback_memory_idx").on(table.memoryId),
+    index("memory_feedback_user_idx").on(table.userId),
+  ],
+);
+
 export type SubscriptionRow = typeof subscriptions.$inferSelect;
 export type NewSubscriptionRow = typeof subscriptions.$inferInsert;
 export type ApiKeyRow = typeof apiKeys.$inferSelect;
@@ -112,6 +143,8 @@ export type MemoryRow = typeof memories.$inferSelect;
 export type NewMemoryRow = typeof memories.$inferInsert;
 export type MemoryRelationRow = typeof memoryRelations.$inferSelect;
 export type NewMemoryRelationRow = typeof memoryRelations.$inferInsert;
+export type MemoryFeedbackRow = typeof memoryFeedback.$inferSelect;
+export type NewMemoryFeedbackRow = typeof memoryFeedback.$inferInsert;
 
 export const waitlist = pgTable("waitlist", {
   id: uuid("id").primaryKey().defaultRandom(),

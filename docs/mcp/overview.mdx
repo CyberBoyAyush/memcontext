@@ -1,0 +1,28 @@
+---
+title: "MCP Overview"
+description: "What the MemContext MCP server exposes and how to use it safely."
+---
+
+## Why MCP exists here
+
+The MCP server is a thin wrapper around the MemContext API.
+
+It gives AI tools first-class access to persistent memory without exposing database logic or internal implementation details.
+
+## Tool list
+
+- `save_memory`
+- `search_memory`
+- `memory_feedback`
+- `delete_memory`
+
+## Design rule
+
+All business logic lives in the API.
+
+The MCP layer should stay thin:
+
+- validate inputs with Zod
+- normalize project names
+- call the API
+- format responses cleanly for assistants

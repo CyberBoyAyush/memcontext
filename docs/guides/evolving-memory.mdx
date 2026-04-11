@@ -1,0 +1,44 @@
+---
+title: "Evolving Memory"
+description: "How to model time-sensitive knowledge in MemContext."
+---
+
+## The pattern
+
+Use evolving memory when facts can change over time.
+
+Examples:
+
+- content strategy
+- active product priorities
+- temporary experiments
+- current customer state
+
+## LinkedIn content example
+
+For a LinkedIn post generator, store:
+
+- stable brand rules as facts/preferences
+- current strategy as facts with `validUntil` when useful
+- recent post learnings as context or decisions
+- superseding updates when strategy changes
+
+## Recommended flow
+
+1. Save current working strategy
+2. Generate content by combining profile plus search
+3. Publish and observe outcome
+4. Save a lesson memory about what worked or failed
+5. Submit feedback on the memories that were useful or outdated
+6. When the strategy changes, save a new memory that supersedes the old truth
+
+## Why this works
+
+You do not need fine-tuning for this class of problem.
+
+You need:
+
+- current truth
+- historical trail
+- retrieval that surfaces exact and semantic matches
+- a feedback loop

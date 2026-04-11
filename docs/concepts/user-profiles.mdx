@@ -1,0 +1,33 @@
+---
+title: "User Profiles"
+description: "Pre-aggregated user context built from memory."
+---
+
+## What a profile is
+
+Profiles are a convenience layer over memory.
+
+Instead of running multiple search calls to gather broad context, clients can call one endpoint:
+
+`GET /api/memories/profile`
+
+## Profile sections
+
+- `static`: stable facts and preferences
+- `dynamic`: recent context from the last 14 days
+
+## Why profiles exist
+
+Profiles are useful when an application needs broad context quickly, for example:
+
+- personalization
+- assistant startup context
+- content generation
+- support systems
+
+## Important note
+
+Profiles do not replace search.
+
+- use profiles for broad context
+- use search for precise retrieval

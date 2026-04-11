@@ -15,6 +15,7 @@ export interface ApiClient {
     path: string,
     params?: Record<string, string | number | undefined>,
   ): Promise<T>;
+  delete<T>(path: string): Promise<T>;
 }
 
 async function parseErrorResponse(res: Response): Promise<string> {
@@ -65,6 +66,22 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       }
 
       const res = await fetch(url, {
+        headers: {
+          "X-API-Key": apiKey,
+        },
+      });
+
+      if (!res.ok) {
+        const message = await parseErrorResponse(res);
+        throw new Error(message);
+      }
+
+      return res.json() as Promise<T>;
+    },
+
+    async delete<T>(path: string): Promise<T> {
+      const res = await fetch(`${apiBase}${path}`, {
+        method: "DELETE",
         headers: {
           "X-API-Key": apiKey,
         },

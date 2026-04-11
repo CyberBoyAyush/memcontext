@@ -1,0 +1,41 @@
+---
+title: "Authentication"
+description: "How to authenticate to the MemContext API and MCP server."
+---
+
+## API authentication
+
+MemContext uses API keys for public API access.
+
+Send your key in the `X-API-Key` header:
+
+```bash
+-H "X-API-Key: mc_your_key"
+```
+
+## Session authentication
+
+The dashboard uses session auth internally. Public integrations should use API keys.
+
+## Rate limits
+
+MemContext rate-limits requests per endpoint.
+
+Current defaults:
+
+- save memory: 30 requests / minute
+- search memory: 60 requests / minute
+- feedback: 30 requests / minute
+
+Responses include:
+
+- `X-RateLimit-Limit`
+- `X-RateLimit-Remaining`
+- `X-RateLimit-Reset`
+
+## Best practices
+
+- create a separate API key per integration
+- keep API keys server-side where possible
+- rotate keys if you suspect exposure
+- scope your requests with `project` when using project-specific memory

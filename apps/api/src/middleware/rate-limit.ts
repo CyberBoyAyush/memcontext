@@ -12,6 +12,7 @@ interface RateLimitConfig {
 const RATE_LIMIT_CONFIGS = {
   saveMemory: { windowMs: 60_000, max: 30, keyPrefix: "rl:save:" },
   searchMemory: { windowMs: 60_000, max: 60, keyPrefix: "rl:search:" },
+  feedback: { windowMs: 60_000, max: 30, keyPrefix: "rl:feedback:" },
   health: { windowMs: 60_000, max: 60, keyPrefix: "rl:health:" },
   global: { windowMs: 60_000, max: 100, keyPrefix: "rl:global:" },
   waitlist: { windowMs: 3_600_000, max: 5, keyPrefix: "rl:waitlist:" },
@@ -108,6 +109,7 @@ export function createRateLimiter(configKey: keyof typeof RATE_LIMIT_CONFIGS) {
 
 export const rateLimitSaveMemory = createRateLimiter("saveMemory");
 export const rateLimitSearchMemory = createRateLimiter("searchMemory");
+export const rateLimitFeedback = createRateLimiter("feedback");
 export const rateLimitHealth = createRateLimiter("health");
 export const rateLimitGlobal = createRateLimiter("global");
 export const rateLimitWaitlist = createRateLimiter("waitlist");

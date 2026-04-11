@@ -1,0 +1,54 @@
+---
+title: "Quickstart"
+description: "Make your first MemContext API and MCP calls."
+---
+
+## 1. Create an API key
+
+Create an API key from the MemContext dashboard, then send it in the `X-API-Key` header.
+
+## 2. Save a memory
+
+```bash
+curl -X POST "https://api.memcontext.in/api/memories" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: mc_your_key" \
+  -d '{
+    "content": "MemContext uses PNPM in this monorepo",
+    "category": "fact",
+    "project": "memcontext"
+  }'
+```
+
+## 3. Search memories
+
+```bash
+curl "https://api.memcontext.in/api/memories/search?query=What%20package%20manager%20does%20this%20project%20use%3F&project=memcontext" \
+  -H "X-API-Key: mc_your_key"
+```
+
+## 4. Use the MCP server
+
+Add the MemContext MCP server to your client:
+
+```json
+{
+  "mcpServers": {
+    "memcontext": {
+      "command": "npx",
+      "args": ["@memcontext/mcp"],
+      "env": {
+        "MEMCONTEXT_API_KEY": "mc_your_key"
+      }
+    }
+  }
+}
+```
+
+## 5. Search first, save when durable
+
+Recommended workflow for assistants:
+
+1. search memory before making assumptions
+2. save memory when the user shares a stable preference or decision
+3. update or supersede old memory when reality changes

@@ -1,0 +1,34 @@
+---
+title: "Versioning"
+description: "How MemContext preserves memory history while returning current truth."
+---
+
+## Current truth plus history
+
+MemContext stores version chains with:
+
+- `supersedesId`
+- `rootId`
+- `version`
+- `isCurrent`
+
+When a new memory updates an older one:
+
+- the new memory is inserted as a fresh row
+- the old memory is marked `isCurrent = false`
+- the version chain remains intact
+
+## Why this matters
+
+This is what makes evolving memory possible.
+
+For example:
+
+1. `Long LinkedIn posts are performing well right now`
+2. `Short hook-first posts are now outperforming long posts`
+
+The second memory can supersede the first, while preserving the historical trail.
+
+## History endpoint
+
+Use `GET /api/memories/:id/history` to inspect how a memory evolved.

@@ -1,0 +1,43 @@
+---
+title: "Hybrid Search"
+description: "Why MemContext combines vector search and full-text search."
+---
+
+## Why pure vector search is not enough
+
+Vector search is great for semantic similarity.
+
+It is weaker for:
+
+- exact project names
+- company names
+- acronyms
+- concrete decisions like `pnpm`, `postgresql`, or `carq`
+
+## Hybrid approach
+
+MemContext combines:
+
+- vector search over embeddings
+- PostgreSQL full-text search over `content_tsv`
+
+Then it merges result rankings with Reciprocal Rank Fusion.
+
+## Benefits
+
+- better exact-match retrieval
+- better mixed intent queries
+- almost no extra wall-clock latency because FTS runs in parallel
+
+## Threshold
+
+Search accepts a configurable `threshold` parameter.
+
+- lower threshold = stricter search
+- higher threshold = broader search
+
+Examples:
+
+- `0.3` for stricter, high-precision searches
+- `0.6` as the default
+- `0.8` for broader recall

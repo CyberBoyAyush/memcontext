@@ -1,0 +1,54 @@
+---
+title: "Introduction"
+description: "MemContext is a memory API and MCP layer for persistent, evolving AI context."
+---
+
+## What is MemContext?
+
+MemContext is a memory infrastructure layer for AI systems.
+
+It helps agents and applications:
+
+- save durable user and project knowledge
+- retrieve relevant memories across sessions
+- update memories as facts change over time
+- expose memory through both a REST API and MCP tools
+
+MemContext is built for two kinds of use cases:
+
+- coding assistants that need stable preferences, decisions, and project context
+- product applications that need evolving memory, like content generation, support, onboarding, or personalization
+
+## Core ideas
+
+MemContext is opinionated around a few primitives:
+
+- `category`: broad memory type (`preference`, `fact`, `decision`, `context`)
+- `project`: scope boundary for project-specific memories
+- version chains: memories can supersede old memories without losing history
+- hybrid retrieval: vector similarity plus keyword search for stronger recall
+- MCP tools: assistants can save and search memory directly
+
+## Why it exists
+
+Plain vector search is not enough for memory.
+
+Memory needs:
+
+- updates when reality changes
+- history when strategy evolves
+- exact-match retrieval for product names, org names, and decisions
+- lightweight APIs other tools can build on
+
+## What this docs site covers
+
+- how the memory model works
+- how to call the REST API
+- how to use the MCP server
+- how to build evolving-memory apps on top of MemContext
+
+## Next steps
+
+- Start with the [Quickstart](./quickstart)
+- Read [How It Works](./concepts/how-it-works)
+- Browse the [API Reference](./api-reference/overview)

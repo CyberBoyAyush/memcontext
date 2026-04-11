@@ -1,8 +1,12 @@
 import { redis } from "../lib/redis.js";
 import { logger } from "../lib/logger.js";
+import type { MemoryProfile } from "@memcontext/types";
+import { normalizeProjectName } from "../utils/index.js";
 
 const API_KEY_CACHE_PREFIX = "api_key:";
 const CACHE_TTL_SECONDS = 24 * 60 * 60;
+const PROFILE_CACHE_PREFIX = "profile:";
+const PROFILE_CACHE_TTL_SECONDS = 5 * 60;
 
 export interface CachedApiKeyData {
   userId: string;
@@ -14,6 +18,10 @@ export interface CachedApiKeyData {
 
 function getCacheKey(keyHash: string): string {
   return `${API_KEY_CACHE_PREFIX}${keyHash}`;
+}
+
+function getProfileCacheKey(userId: string, project?: string): string {
+  return `${PROFILE_CACHE_PREFIX}${userId}:${normalizeProjectName(project) ?? "__global__"}`;
 }
 
 export async function getCachedApiKey(
@@ -158,6 +166,72 @@ export async function updateCachedMemoryCount(
         errorMessage: error instanceof Error ? error.message : String(error),
       },
       "cache memory count update failed",
+    );
+  }
+}
+
+export async function getCachedProfile(
+  userId: string,
+  project?: string,
+): Promise<MemoryProfile | null> {
+  const cacheKey = getProfileCacheKey(userId, project);
+
+  try {
+    return await redis.get<MemoryProfile>(cacheKey);
+  } catch (error) {
+    logger.error(
+      {
+        operation: "cache_get_profile",
+        key: cacheKey,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      },
+      "profile cache get failed",
+    );
+    return null;
+  }
+}
+
+export async function cacheProfile(
+  userId: string,
+  project: string | undefined,
+  profile: MemoryProfile,
+): Promise<void> {
+  const cacheKey = getProfileCacheKey(userId, project);
+
+  try {
+    await redis.set(cacheKey, profile, { ex: PROFILE_CACHE_TTL_SECONDS });
+  } catch (error) {
+    logger.error(
+      {
+        operation: "cache_set_profile",
+        key: cacheKey,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      },
+      "profile cache set failed",
+    );
+  }
+}
+
+export async function invalidateCachedProfile(
+  userId: string,
+  project?: string,
+): Promise<void> {
+  const keys = new Set<string>([
+    getProfileCacheKey(userId),
+    getProfileCacheKey(userId, project),
+  ]);
+
+  try {
+    await Promise.all(Array.from(keys).map((key) => redis.del(key)));
+  } catch (error) {
+    logger.error(
+      {
+        operation: "cache_invalidate_profile",
+        userId,
+        project,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      },
+      "profile cache invalidate failed",
     );
   }
 }

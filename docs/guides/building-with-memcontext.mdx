@@ -1,0 +1,49 @@
+---
+title: "Building With MemContext"
+description: "How to use MemContext as a reusable memory backend for other applications."
+---
+
+## Mental model
+
+MemContext should be treated as infrastructure, not as an app-specific feature.
+
+Your application can use it as:
+
+- a memory backend
+- a personalization layer
+- an evolving strategy store
+- a context service for agents
+
+## Good fit use cases
+
+- coding assistants
+- content generation
+- support bots
+- CRM memory
+- onboarding and education systems
+
+## Integration pattern
+
+1. save durable user or project context
+2. search before generation or decision-making
+3. optionally fetch the profile endpoint for broad context
+4. record feedback when memory quality can be judged
+
+## Design recommendation
+
+Keep your app logic outside MemContext.
+
+MemContext should own:
+
+- storage
+- retrieval
+- versioning
+- temporal filtering
+- MCP access
+
+Your app should own:
+
+- business-specific prompts
+- UI
+- workflow orchestration
+- downstream actions
