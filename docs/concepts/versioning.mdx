@@ -1,34 +1,76 @@
 ---
 title: "Versioning"
-description: "How MemContext preserves memory history while returning current truth."
+description: "How MemContext preserves memory history while always returning current truth."
 ---
 
-## Current truth plus history
+## How version chains work
 
-MemContext stores version chains with:
+Every memory has these version-tracking fields:
 
-- `supersedesId`
-- `rootId`
-- `version`
-- `isCurrent`
+| Field          | Description                                                                                  |
+| -------------- | -------------------------------------------------------------------------------------------- |
+| `isCurrent`    | Whether this is the active version. Only current memories appear in search and list results. |
+| `supersedesId` | The ID of the memory this version replaced.                                                  |
+| `rootId`       | The ID of the original memory in the chain.                                                  |
+| `version`      | Incrementing version number starting at 1.                                                   |
 
-When a new memory updates an older one:
+When a new memory is classified as an `update` to an existing one:
 
-- the new memory is inserted as a fresh row
-- the old memory is marked `isCurrent = false`
-- the version chain remains intact
+1. A new memory row is inserted with incremented `version`, `supersedesId`, and `rootId`
+2. The old memory is marked `isCurrent = false`
+3. The old memory remains in the database — nothing is deleted
 
 ## Why this matters
 
-This is what makes evolving memory possible.
+This is what makes evolving memory possible without losing context.
 
-For example:
+For example, a content strategy might evolve:
 
-1. `Long LinkedIn posts are performing well right now`
-2. `Short hook-first posts are now outperforming long posts`
+1. **v1:** "Long LinkedIn posts are performing well right now"
+2. **v2:** "Short hook-first posts are now outperforming long posts"
 
-The second memory can supersede the first, while preserving the historical trail.
+Version 2 supersedes version 1. Search returns only v2, but the full history is preserved and accessible via the history endpoint.
 
-## History endpoint
+## Inspecting history
 
-Use `GET /api/memories/:id/history` to inspect how a memory evolved.
+Use `GET /api/memories/:id/history` to see how a memory evolved:
+
+```bash
+curl https://api.memcontext.in/api/memories/a1b2c3d4-.../history \
+  -H "X-API-Key: mc_your_key"
+```
+
+Response:
+
+```json
+{
+  "current": {
+    "id": "e5f6g7h8-...",
+    "content": "Short hook-first posts are now outperforming long posts",
+    "version": 2,
+    "isCurrent": true,
+    "supersedesId": "a1b2c3d4-...",
+    "createdAt": "2026-04-10T00:00:00Z"
+  },
+  "history": [
+    {
+      "id": "a1b2c3d4-...",
+      "content": "Long LinkedIn posts are performing well right now",
+      "version": 1,
+      "isCurrent": false,
+      "createdAt": "2026-03-15T00:00:00Z"
+    }
+  ]
+}
+```
+
+## Soft delete vs hard delete
+
+MemContext supports two deletion modes:
+
+| Method               | Endpoint                        | Behavior                                                               |
+| -------------------- | ------------------------------- | ---------------------------------------------------------------------- |
+| Forget (soft delete) | `POST /api/memories/:id/forget` | Sets `deletedAt` — memory is excluded from results but preserved in DB |
+| Delete (hard delete) | `DELETE /api/memories/:id`      | Permanently removes the memory                                         |
+
+Use forget for audit-safe removal. Use delete only when permanent removal is required.

@@ -1,54 +1,101 @@
 ---
 title: "Quickstart"
-description: "Make your first MemContext API and MCP calls."
+description: "Make your first MemContext API and MCP calls in under 2 minutes."
 ---
 
-## 1. Create an API key
+## 1. Get an API key
 
-Create an API key from the MemContext dashboard, then send it in the `X-API-Key` header.
+Sign up at [app.memcontext.in](https://app.memcontext.in) and create an API key from **Settings > API Keys**.
+
+Your key will look like `mc_abc123...` and is shown only once — store it securely.
 
 ## 2. Save a memory
 
 ```bash
-curl -X POST "https://api.memcontext.in/api/memories" \
+curl -X POST https://api.memcontext.in/api/memories \
   -H "Content-Type: application/json" \
   -H "X-API-Key: mc_your_key" \
   -d '{
-    "content": "MemContext uses PNPM in this monorepo",
+    "content": "User prefers TypeScript over JavaScript for type safety",
+    "category": "preference"
+  }'
+```
+
+**Response:**
+
+```json
+{
+  "id": "a1b2c3d4-...",
+  "status": "saved"
+}
+```
+
+The `status` field tells you what happened:
+
+| Status      | Meaning                                       |
+| ----------- | --------------------------------------------- |
+| `saved`     | New memory created                            |
+| `updated`   | New memory superseded an existing one         |
+| `extended`  | New memory extends an existing one            |
+| `duplicate` | Content already exists, no new memory created |
+
+## 3. Search memories
+
+```bash
+curl "https://api.memcontext.in/api/memories/search?query=What%20language%20does%20the%20user%20prefer" \
+  -H "X-API-Key: mc_your_key"
+```
+
+**Response:**
+
+```json
+{
+  "found": 1,
+  "memories": [
+    {
+      "id": "a1b2c3d4-...",
+      "content": "User prefers TypeScript over JavaScript for type safety",
+      "category": "preference",
+      "project": null,
+      "relevance": 0.92,
+      "createdAt": "2026-04-11T12:00:00.000Z"
+    }
+  ]
+}
+```
+
+Use full natural-language sentences as queries for best results. Keywords alone reduce match quality.
+
+## 4. Save a project-scoped memory
+
+```bash
+curl -X POST https://api.memcontext.in/api/memories \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: mc_your_key" \
+  -d '{
+    "content": "This project uses PNPM as the package manager",
     "category": "fact",
     "project": "memcontext"
   }'
 ```
 
-## 3. Search memories
+## 5. Connect the MCP server
+
+Add MemContext to your AI coding assistant. For example, with Claude Code:
 
 ```bash
-curl "https://api.memcontext.in/api/memories/search?query=What%20package%20manager%20does%20this%20project%20use%3F&project=memcontext" \
-  -H "X-API-Key: mc_your_key"
+claude mcp add memcontext --scope user --transport http https://mcp.memcontext.in/mcp \
+  --header "MEMCONTEXT-API-KEY:mc_your_key"
 ```
 
-## 4. Use the MCP server
+No local installation required. Once connected, your assistant can call `save_memory` and `search_memory` directly.
 
-Add the MemContext MCP server to your client:
+See [MCP Setup](/guides/mcp-setup) for Cursor, OpenCode, Codex CLI, and agent instructions.
 
-```json
-{
-  "mcpServers": {
-    "memcontext": {
-      "command": "npx",
-      "args": ["@memcontext/mcp"],
-      "env": {
-        "MEMCONTEXT_API_KEY": "mc_your_key"
-      }
-    }
-  }
-}
-```
+## Recommended workflow
 
-## 5. Search first, save when durable
-
-Recommended workflow for assistants:
-
-1. search memory before making assumptions
-2. save memory when the user shares a stable preference or decision
-3. update or supersede old memory when reality changes
+1. **Search first** — check for existing context before making assumptions
+2. **Save when durable** — persist stable preferences, decisions, and project facts
+3. **Use categories** — tag memories so they can be filtered later
+4. **Use projects** — scope project-specific knowledge so it does not pollute general memory
+5. **Give feedback** — mark retrieved memories as helpful or outdated to improve quality

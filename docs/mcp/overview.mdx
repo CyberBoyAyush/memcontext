@@ -1,28 +1,35 @@
 ---
 title: "MCP Overview"
-description: "What the MemContext MCP server exposes and how to use it safely."
+description: "Hosted MCP server that gives AI assistants persistent memory."
 ---
 
-## Why MCP exists here
+## What is it?
 
-The MCP server is a thin wrapper around the MemContext API.
+MemContext provides a hosted MCP server that gives AI assistants persistent memory through the [Model Context Protocol](https://modelcontextprotocol.io). No local installation or infrastructure required.
 
-It gives AI tools first-class access to persistent memory without exposing database logic or internal implementation details.
+The server handles input validation, project name normalization, and formats responses for assistant consumption. All business logic — deduplication, classification, hybrid search — runs in the MemContext API.
 
-## Tool list
+## Connection URL
 
-- `save_memory`
-- `search_memory`
-- `memory_feedback`
-- `delete_memory`
+```
+https://mcp.memcontext.in/mcp
+```
 
-## Design rule
+Authenticate with your API key via the `MEMCONTEXT-API-KEY` or `X-API-Key` header. See [MCP Setup](/guides/mcp-setup) for client-specific configs.
 
-All business logic lives in the API.
+## Tools
 
-The MCP layer should stay thin:
+The server exposes four tools:
 
-- validate inputs with Zod
-- normalize project names
-- call the API
-- format responses cleanly for assistants
+| Tool                                      | Purpose                                                |
+| ----------------------------------------- | ------------------------------------------------------ |
+| [`save_memory`](/mcp/save-memory)         | Persist durable knowledge across sessions              |
+| [`search_memory`](/mcp/search-memory)     | Find relevant memories using hybrid search             |
+| [`memory_feedback`](/mcp/memory-feedback) | Rate a retrieved memory as helpful, outdated, or wrong |
+| [`delete_memory`](/mcp/delete-memory)     | Remove a memory by ID                                  |
+
+## Agent instructions
+
+For best results, add the recommended agent instructions to your client's preferences file. These tell the assistant when to search, when to save, and how to use categories and projects.
+
+The full instructions block and per-client file paths are documented in the [MCP Setup](/guides/mcp-setup#agent-instructions) guide.

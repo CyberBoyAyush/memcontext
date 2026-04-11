@@ -1,54 +1,58 @@
 ---
 title: "Introduction"
-description: "MemContext is a memory API and MCP layer for persistent, evolving AI context."
+description: "MemContext is a memory layer for AI systems — persistent, evolving, and retrievable across sessions."
 ---
 
 ## What is MemContext?
 
-MemContext is a memory infrastructure layer for AI systems.
+MemContext is memory infrastructure for AI agents and applications.
 
-It helps agents and applications:
+It provides a REST API and MCP server that allow AI systems to:
 
-- save durable user and project knowledge
-- retrieve relevant memories across sessions
-- update memories as facts change over time
-- expose memory through both a REST API and MCP tools
+- **Save** durable user and project knowledge across sessions
+- **Search** memories using hybrid retrieval (vector + full-text)
+- **Evolve** memories over time with automatic version chains
+- **Profile** users with pre-aggregated context from their memory
 
-MemContext is built for two kinds of use cases:
+## Who is it for?
 
-- coding assistants that need stable preferences, decisions, and project context
-- product applications that need evolving memory, like content generation, support, onboarding, or personalization
+MemContext serves two primary use cases:
 
-## Core ideas
+1. **Coding assistants** that need stable preferences, decisions, and project context across sessions
+2. **Product applications** that need evolving memory for content generation, support, onboarding, or personalization
 
-MemContext is opinionated around a few primitives:
+## Core primitives
 
-- `category`: broad memory type (`preference`, `fact`, `decision`, `context`)
-- `project`: scope boundary for project-specific memories
-- version chains: memories can supersede old memories without losing history
-- hybrid retrieval: vector similarity plus keyword search for stronger recall
-- MCP tools: assistants can save and search memory directly
+| Concept            | Description                                                                  |
+| ------------------ | ---------------------------------------------------------------------------- |
+| **Category**       | Broad memory type: `preference`, `fact`, `decision`, or `context`            |
+| **Project**        | Scope boundary for project-specific memories                                 |
+| **Version chains** | Memories can supersede old memories without losing history                   |
+| **Hybrid search**  | Vector similarity + keyword search merged with Reciprocal Rank Fusion        |
+| **MCP tools**      | AI assistants can save and search memory directly via Model Context Protocol |
 
 ## Why it exists
 
-Plain vector search is not enough for memory.
+Plain vector search is not enough for memory. Memory needs:
 
-Memory needs:
-
-- updates when reality changes
-- history when strategy evolves
-- exact-match retrieval for product names, org names, and decisions
-- lightweight APIs other tools can build on
-
-## What this docs site covers
-
-- how the memory model works
-- how to call the REST API
-- how to use the MCP server
-- how to build evolving-memory apps on top of MemContext
+- **Updates** when reality changes
+- **History** when strategy evolves
+- **Exact-match retrieval** for product names, org names, and decisions
+- **Lightweight APIs** other tools can build on
 
 ## Next steps
 
-- Start with the [Quickstart](./quickstart)
-- Read [How It Works](./concepts/how-it-works)
-- Browse the [API Reference](./api-reference/overview)
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Make your first API and MCP calls in under 2 minutes.
+  </Card>
+  <Card title="How It Works" icon="gear" href="/concepts/how-it-works">
+    Understand the save flow, classification, and search pipeline.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/overview">
+    Full endpoint documentation with interactive examples.
+  </Card>
+  <Card title="MCP Setup" icon="plug" href="/guides/mcp-setup">
+    Connect MemContext to Claude Desktop, Cursor, or any MCP client.
+  </Card>
+</CardGroup>

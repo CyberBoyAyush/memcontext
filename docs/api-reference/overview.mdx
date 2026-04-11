@@ -1,27 +1,70 @@
 ---
-title: "API Overview"
-description: "Base URL, authentication, and endpoint groups for the MemContext API."
+title: "API Reference"
+description: "Complete reference for the MemContext REST API."
 ---
 
 ## Base URL
 
-```text
+```
 https://api.memcontext.in
 ```
 
+All endpoints are prefixed with `/api/`.
+
 ## Authentication
 
-Send an API key in the `X-API-Key` header.
+Every request must include an API key in the `X-API-Key` header:
 
-## Main endpoint groups
+```bash
+curl https://api.memcontext.in/api/memories \
+  -H "X-API-Key: mc_your_key"
+```
 
-- save and search memory
-- list and manage memory records
-- inspect memory history
-- forget or delete memories
-- submit retrieval feedback
-- fetch pre-aggregated profile context
+API keys are created from the [MemContext dashboard](https://app.memcontext.in). See [Authentication](/authentication) for details.
 
-## OpenAPI reference
+## Endpoints
 
-This docs site includes an OpenAPI spec in `openapi.yaml` so Mintlify can generate interactive API pages and code examples.
+| Method   | Path                          | Description                                                                          |
+| -------- | ----------------------------- | ------------------------------------------------------------------------------------ |
+| `POST`   | `/api/memories`               | [Save a memory](/api-reference/endpoint/save-a-memory)                               |
+| `GET`    | `/api/memories`               | [List memories](/api-reference/endpoint/list-memories)                               |
+| `GET`    | `/api/memories/search`        | [Search memories](/api-reference/endpoint/search-memories)                           |
+| `GET`    | `/api/memories/profile`       | [Get user profile context](/api-reference/endpoint/get-user-profile-context)         |
+| `GET`    | `/api/memories/{id}`          | [Get a memory by ID](/api-reference/endpoint/get-a-memory-by-id)                     |
+| `PATCH`  | `/api/memories/{id}`          | [Update a memory](/api-reference/endpoint/update-a-memory)                           |
+| `DELETE` | `/api/memories/{id}`          | [Delete a memory](/api-reference/endpoint/delete-a-memory-hard-delete)               |
+| `POST`   | `/api/memories/{id}/forget`   | [Forget a memory (soft delete)](/api-reference/endpoint/forget-a-memory-soft-delete) |
+| `GET`    | `/api/memories/{id}/history`  | [Get memory version history](/api-reference/endpoint/get-memory-version-history)     |
+| `POST`   | `/api/memories/{id}/feedback` | [Submit feedback](/api-reference/endpoint/submit-feedback-for-a-memory)              |
+
+## Response format
+
+All successful responses return JSON. Error responses follow a consistent shape:
+
+```json
+{
+  "error": "Human-readable error message",
+  "code": "HTTP_404",
+  "requestId": "abc123xyz456"
+}
+```
+
+Every response includes an `X-Request-Id` header for tracing.
+
+## Rate limits
+
+Rate-limited endpoints return the following headers:
+
+| Header                  | Description                               |
+| ----------------------- | ----------------------------------------- |
+| `X-RateLimit-Limit`     | Maximum requests in the current window.   |
+| `X-RateLimit-Remaining` | Requests remaining in the current window. |
+| `X-RateLimit-Reset`     | Unix timestamp when the window resets.    |
+
+See [Authentication](/authentication#rate-limits) for per-endpoint limits.
+
+## Request limits
+
+- Maximum request body size: **50 KB**.
+- Memory content maximum length: **10,000 characters**.
+- Search query maximum length: **1,000 characters**.

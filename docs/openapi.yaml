@@ -2,211 +2,332 @@ openapi: 3.1.0
 info:
   title: MemContext API
   version: 1.1.0
-  description: REST API for persistent, evolving memory and MCP-backed integrations.
+  description: |
+    REST API for persistent, evolving AI memory. Save, search, and manage
+    memories with automatic deduplication, version chains, and hybrid retrieval.
 servers:
   - url: https://api.memcontext.in
+    description: Production
 security:
   - ApiKeyAuth: []
 tags:
   - name: Memories
+    description: Save, search, list, update, and delete memories.
+  - name: History
+    description: Inspect how memories evolve over time.
+  - name: Feedback
+    description: Rate retrieval quality to improve future results.
   - name: Profiles
+    description: Pre-aggregated user context from memory.
 paths:
   /api/memories:
     post:
       tags: [Memories]
       summary: Save a memory
       operationId: saveMemory
+      description: |
+        Persist a memory. MemContext automatically expands content for searchability,
+        generates embeddings, checks for duplicates, and classifies relationships
+        with existing memories. If similar content exists, it may update, extend,
+        or deduplicate instead of creating a new record.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SaveMemoryRequest'
+              $ref: "#/components/schemas/SaveMemoryRequest"
       responses:
-        '201':
-          description: Memory saved or updated
+        "201":
+          description: Memory saved, updated, extended, or deduplicated.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SaveMemoryResponse'
+                $ref: "#/components/schemas/SaveMemoryResponse"
+        "403":
+          description: Memory limit exceeded for the current plan.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     get:
       tags: [Memories]
       summary: List memories
       operationId: listMemories
+      description: |
+        Paginated list of current (non-deleted) memories. Supports filtering
+        by category, project, and text search. Categories and projects accept
+        comma-separated values for multi-filter queries.
       parameters:
         - in: query
           name: limit
-          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Number of memories to return.
         - in: query
           name: offset
-          schema: { type: integer, minimum: 0, default: 0 }
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Pagination offset.
         - in: query
           name: category
-          schema: { type: string }
+          schema:
+            type: string
+          description: "Comma-separated category filter. Values: `preference`, `fact`, `decision`, `context`."
         - in: query
           name: project
-          schema: { type: string }
+          schema:
+            type: string
+          description: "Comma-separated project filter. Use `__null__` for memories without a project."
         - in: query
           name: search
-          schema: { type: string }
+          schema:
+            type: string
+            maxLength: 200
+          description: Text search across memory content (case-insensitive substring match).
       responses:
-        '200':
-          description: Paginated memory list
+        "200":
+          description: Paginated memory list.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ListMemoriesResponse'
+                $ref: "#/components/schemas/ListMemoriesResponse"
   /api/memories/search:
     get:
       tags: [Memories]
       summary: Search memories
       operationId: searchMemories
+      description: |
+        Hybrid search combining vector similarity and PostgreSQL full-text search,
+        merged with Reciprocal Rank Fusion (RRF). Query variants are generated
+        automatically to improve recall.
       parameters:
         - in: query
           name: query
           required: true
-          schema: { type: string }
+          schema:
+            type: string
+            maxLength: 1000
+          description: Natural language search query. Use full sentences for best results.
         - in: query
           name: limit
-          schema: { type: integer, minimum: 1, maximum: 10, default: 5 }
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10
+            default: 5
+          description: Maximum number of results to return.
         - in: query
           name: category
           schema:
-            $ref: '#/components/schemas/MemoryCategory'
+            $ref: "#/components/schemas/MemoryCategory"
+          description: Filter results to a single category.
         - in: query
           name: project
-          schema: { type: string }
+          schema:
+            type: string
+          description: Filter results to a specific project.
         - in: query
           name: threshold
-          schema: { type: number, minimum: 0, maximum: 1 }
+          schema:
+            type: number
+            minimum: 0
+            maximum: 1
+          description: |
+            Maximum vector distance. Higher values return more results (broader search).
+            Use `0.2`-`0.4` for strict matching, `0.6` as default, `0.7`-`0.8` for broad recall.
       responses:
-        '200':
-          description: Search results
+        "200":
+          description: Ranked search results.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SearchMemoryResponse'
+                $ref: "#/components/schemas/SearchMemoryResponse"
   /api/memories/profile:
     get:
       tags: [Profiles]
-      summary: Get pre-aggregated profile context
+      summary: Get user profile context
       operationId: getMemoryProfile
+      description: |
+        Returns pre-aggregated user context split into static (stable preferences and facts)
+        and dynamic (recent context from the last 14 days). Cached for performance.
       parameters:
         - in: query
           name: project
-          schema: { type: string }
+          schema:
+            type: string
+          description: Scope the profile to a specific project.
       responses:
-        '200':
-          description: Profile context
+        "200":
+          description: Profile context.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MemoryProfile'
+                $ref: "#/components/schemas/MemoryProfile"
   /api/memories/{id}:
     get:
       tags: [Memories]
-      summary: Get a memory
+      summary: Get a memory by ID
       operationId: getMemory
       parameters:
-        - $ref: '#/components/parameters/MemoryId'
+        - $ref: "#/components/parameters/MemoryId"
       responses:
-        '200':
-          description: Memory record
+        "200":
+          description: Full memory record.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Memory'
+                $ref: "#/components/schemas/Memory"
+        "404":
+          description: Memory not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     patch:
       tags: [Memories]
       summary: Update a memory
       operationId: updateMemory
+      description: |
+        Update a memory's content, category, or project. If only metadata changes,
+        a simple update is performed. If content changes, the system re-runs the
+        classification flow against similar memories and may supersede or relate to them.
       parameters:
-        - $ref: '#/components/parameters/MemoryId'
+        - $ref: "#/components/parameters/MemoryId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateMemoryRequest'
+              $ref: "#/components/schemas/UpdateMemoryRequest"
       responses:
-        '200':
-          description: Updated memory result
+        "200":
+          description: Update result.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UpdateMemoryResponse'
+                $ref: "#/components/schemas/UpdateMemoryResponse"
+        "404":
+          description: Memory not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     delete:
       tags: [Memories]
-      summary: Delete a memory
+      summary: Delete a memory (hard delete)
       operationId: deleteMemory
+      description: Permanently removes a memory. For soft deletion, use the forget endpoint instead.
       parameters:
-        - $ref: '#/components/parameters/MemoryId'
+        - $ref: "#/components/parameters/MemoryId"
       responses:
-        '200':
-          description: Memory deleted
+        "200":
+          description: Memory deleted.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessResponse'
+                $ref: "#/components/schemas/SuccessResponse"
+        "404":
+          description: Memory not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/memories/{id}/history:
     get:
-      tags: [Memories]
+      tags: [History]
       summary: Get memory version history
       operationId: getMemoryHistory
+      description: |
+        Returns the current version of a memory and all previous versions in its
+        version chain. Use this to inspect how a memory evolved over time.
       parameters:
-        - $ref: '#/components/parameters/MemoryId'
+        - $ref: "#/components/parameters/MemoryId"
       responses:
-        '200':
-          description: Memory current version and history
+        "200":
+          description: Current version and version history.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MemoryHistoryResponse'
+                $ref: "#/components/schemas/MemoryHistoryResponse"
+        "404":
+          description: Memory not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/memories/{id}/forget:
     post:
       tags: [Memories]
       summary: Forget a memory (soft delete)
       operationId: forgetMemory
+      description: |
+        Soft-deletes a memory by setting `deletedAt`. The memory is excluded from
+        search and list results but preserved in the database for audit purposes.
       parameters:
-        - $ref: '#/components/parameters/MemoryId'
+        - $ref: "#/components/parameters/MemoryId"
       responses:
-        '200':
-          description: Memory forgotten
+        "200":
+          description: Memory forgotten.
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: '#/components/schemas/SuccessResponse'
-                  - type: object
-                    properties:
-                      message:
-                        type: string
+                type: object
+                required: [success, message]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Memory forgotten
+        "404":
+          description: Memory not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/memories/{id}/feedback:
     post:
-      tags: [Memories]
+      tags: [Feedback]
       summary: Submit feedback for a memory
       operationId: submitFeedback
+      description: |
+        Record whether a retrieved memory was useful, irrelevant, outdated, or wrong.
+        This signal can be used to improve retrieval quality over time.
       parameters:
-        - $ref: '#/components/parameters/MemoryId'
+        - $ref: "#/components/parameters/MemoryId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/MemoryFeedbackRequest'
+              $ref: "#/components/schemas/MemoryFeedbackRequest"
       responses:
-        '200':
-          description: Feedback recorded
+        "200":
+          description: Feedback recorded.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MemoryFeedbackResponse'
+                $ref: "#/components/schemas/MemoryFeedbackResponse"
+        "404":
+          description: Memory not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   securitySchemes:
     ApiKeyAuth:
       type: apiKey
       in: header
       name: X-API-Key
+      description: |
+        API key created from the MemContext dashboard. Keys are prefixed with `mc_`.
   parameters:
     MemoryId:
       in: path
@@ -215,85 +336,182 @@ components:
       schema:
         type: string
         format: uuid
+      description: Memory UUID.
   schemas:
     MemoryCategory:
       type: string
       enum: [preference, fact, decision, context]
+      description: |
+        - `preference` - User likes or dislikes (e.g. "prefers dark mode").
+        - `fact` - Objective information (e.g. "uses macOS").
+        - `decision` - Choices made (e.g. "chose PostgreSQL for DB").
+        - `context` - Background information (e.g. "working on e-commerce app").
+    MemorySource:
+      type: string
+      enum: [mcp, web, api, openclaw]
+      description: |
+        Where the memory originated.
+        - `mcp` - Saved via MCP tool.
+        - `web` - Saved from the dashboard.
+        - `api` - Saved via REST API (default).
+        - `openclaw` - Saved via OpenClaw integration.
     Memory:
       type: object
       required: [id, userId, content, source, isCurrent, version, createdAt]
       properties:
-        id: { type: string, format: uuid }
-        userId: { type: string }
-        content: { type: string }
-        category:
-          $ref: '#/components/schemas/MemoryCategory'
-        project: { type: string, nullable: true }
-        source:
+        id:
           type: string
-          enum: [mcp, web, api, openclaw]
-        isCurrent: { type: boolean }
-        supersedesId: { type: string, format: uuid, nullable: true }
-        rootId: { type: string, format: uuid, nullable: true }
-        version: { type: integer }
-        validFrom: { type: string, format: date-time, nullable: true }
-        validUntil: { type: string, format: date-time, nullable: true }
-        deletedAt: { type: string, format: date-time, nullable: true }
-        createdAt: { type: string, format: date-time }
+          format: uuid
+        userId:
+          type: string
+        content:
+          type: string
+        category:
+          $ref: "#/components/schemas/MemoryCategory"
+        project:
+          type: string
+          nullable: true
+        source:
+          $ref: "#/components/schemas/MemorySource"
+        isCurrent:
+          type: boolean
+          description: Whether this is the current version of this memory.
+        supersedesId:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID of the memory this version superseded.
+        rootId:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID of the original memory in the version chain.
+        version:
+          type: integer
+          description: Version number in the chain (starts at 1).
+        validFrom:
+          type: string
+          format: date-time
+          nullable: true
+        validUntil:
+          type: string
+          format: date-time
+          nullable: true
+          description: ISO 8601 datetime after which this memory is considered expired.
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
     SaveMemoryRequest:
       type: object
       required: [content]
       properties:
-        content: { type: string, maxLength: 10000 }
-        category:
-          $ref: '#/components/schemas/MemoryCategory'
-        project: { type: string }
-        source:
+        content:
           type: string
-          enum: [mcp, web, api, openclaw]
-        validUntil: { type: string, format: date-time }
+          maxLength: 10000
+          description: The memory content. Write as a clear, complete, searchable statement.
+        category:
+          $ref: "#/components/schemas/MemoryCategory"
+        project:
+          type: string
+          maxLength: 100
+          description: "Project scope. Format: lowercase, no spaces (e.g. `memcontext`)."
+        source:
+          $ref: "#/components/schemas/MemorySource"
+        validUntil:
+          type: string
+          format: date-time
+          description: ISO 8601 datetime when this memory expires. Omit for permanent memories.
     SaveMemoryResponse:
       type: object
       required: [id, status]
       properties:
-        id: { type: string }
+        id:
+          type: string
+          format: uuid
+          description: ID of the saved or matched memory.
         status:
           type: string
-          enum: [saved, updated, extended, duplicate, limit_exceeded]
-        superseded: { type: string }
-        existingId: { type: string }
-        current: { type: integer }
-        limit: { type: integer }
+          enum: [saved, updated, extended, duplicate]
+          description: |
+            - `saved` - New memory created.
+            - `updated` - New memory superseded an existing one.
+            - `extended` - New memory extends an existing one (relation created).
+            - `duplicate` - Content already exists; no new memory created.
+        superseded:
+          type: string
+          format: uuid
+          description: ID of the memory that was superseded (when status is `updated` or `extended`).
+        existingId:
+          type: string
+          format: uuid
+          description: ID of the existing duplicate (when status is `duplicate`).
     SearchMemoryResult:
       type: object
       required: [id, content, relevance, createdAt]
       properties:
-        id: { type: string }
-        content: { type: string }
+        id:
+          type: string
+          format: uuid
+        content:
+          type: string
         category:
-          $ref: '#/components/schemas/MemoryCategory'
-        project: { type: string, nullable: true }
-        relevance: { type: number }
-        createdAt: { type: string, format: date-time }
+          $ref: "#/components/schemas/MemoryCategory"
+        project:
+          type: string
+          nullable: true
+        relevance:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Relevance score from 0 (least relevant) to 1 (most relevant).
+        createdAt:
+          type: string
+          format: date-time
     SearchMemoryResponse:
       type: object
       required: [found, memories]
       properties:
-        found: { type: integer }
+        found:
+          type: integer
+          description: Number of results returned.
         memories:
           type: array
           items:
-            $ref: '#/components/schemas/SearchMemoryResult'
+            $ref: "#/components/schemas/SearchMemoryResult"
     ListMemoryItem:
       type: object
       required: [id, content, source, createdAt]
       properties:
-        id: { type: string }
-        content: { type: string }
-        category: { type: string, nullable: true }
-        project: { type: string, nullable: true }
-        source: { type: string }
-        createdAt: { type: string, format: date-time }
+        id:
+          type: string
+          format: uuid
+        content:
+          type: string
+        category:
+          type: string
+          nullable: true
+        project:
+          type: string
+          nullable: true
+        source:
+          type: string
+        version:
+          type: integer
+        validFrom:
+          type: string
+          format: date-time
+          nullable: true
+        validUntil:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
     ListMemoriesResponse:
       type: object
       required: [memories, total, hasMore]
@@ -301,36 +519,62 @@ components:
         memories:
           type: array
           items:
-            $ref: '#/components/schemas/ListMemoryItem'
-        total: { type: integer }
-        hasMore: { type: boolean }
+            $ref: "#/components/schemas/ListMemoryItem"
+        total:
+          type: integer
+          description: Total number of memories matching the filters.
+        hasMore:
+          type: boolean
+          description: Whether more results exist beyond the current page.
     UpdateMemoryRequest:
       type: object
       properties:
-        content: { type: string, maxLength: 10000 }
+        content:
+          type: string
+          maxLength: 10000
+          description: New content. If changed, triggers re-classification against similar memories.
         category:
-          $ref: '#/components/schemas/MemoryCategory'
-        project: { type: string }
+          $ref: "#/components/schemas/MemoryCategory"
+        project:
+          type: string
+          maxLength: 100
     UpdateMemoryResponse:
       type: object
       required: [success]
       properties:
-        success: { type: boolean }
+        success:
+          type: boolean
         memory:
           type: object
+          description: Returned when only metadata was updated.
           properties:
-            id: { type: string }
-            content: { type: string }
-            category: { type: string, nullable: true }
-            project: { type: string, nullable: true }
-        superseded: { type: string }
-        relatedTo: { type: string }
-        error: { type: string }
+            id:
+              type: string
+            content:
+              type: string
+            category:
+              type: string
+              nullable: true
+            project:
+              type: string
+              nullable: true
+        superseded:
+          type: string
+          format: uuid
+          description: ID of superseded memory (when content update triggers supersession).
+        relatedTo:
+          type: string
+          format: uuid
+          description: ID of related memory (when content update creates an extend/similar relation).
+        error:
+          type: string
+          description: Error message when `success` is `false`.
     SuccessResponse:
       type: object
       required: [success]
       properties:
-        success: { type: boolean }
+        success:
+          type: boolean
     MemoryFeedbackRequest:
       type: object
       required: [type]
@@ -338,29 +582,59 @@ components:
         type:
           type: string
           enum: [helpful, not_helpful, outdated, wrong]
-        context: { type: string }
+          description: |
+            - `helpful` - The memory was useful in the current context.
+            - `not_helpful` - The memory was irrelevant.
+            - `outdated` - The memory contains stale information.
+            - `wrong` - The memory contains incorrect information.
+        context:
+          type: string
+          maxLength: 1000
+          description: Optional explanation of why this feedback is being submitted.
     MemoryFeedbackResponse:
       type: object
       required: [success]
       properties:
-        success: { type: boolean }
+        success:
+          type: boolean
     MemoryProfile:
       type: object
       required: [static, dynamic]
       properties:
         static:
           type: array
-          items: { type: string }
+          items:
+            type: string
+          description: Stable preferences and facts.
         dynamic:
           type: array
-          items: { type: string }
+          items:
+            type: string
+          description: Recent context from the last 14 days.
     MemoryHistoryResponse:
       type: object
       required: [current, history]
       properties:
         current:
-          $ref: '#/components/schemas/Memory'
+          $ref: "#/components/schemas/Memory"
         history:
           type: array
           items:
-            $ref: '#/components/schemas/Memory'
+            $ref: "#/components/schemas/Memory"
+          description: Previous versions in the chain, ordered by version number.
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Human-readable error message.
+        code:
+          type: string
+          description: "Machine-readable error code (e.g. `HTTP_404`, `INTERNAL_ERROR`)."
+        requestId:
+          type: string
+          description: Unique request ID for tracing. Also returned in the `X-Request-Id` response header.
+        errorId:
+          type: string
+          description: Unique error ID for support reference (format `ERR_XXXXXXXX`).

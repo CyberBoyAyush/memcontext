@@ -1,39 +1,52 @@
 ---
 title: "How It Works"
-description: "How MemContext saves, evolves, and retrieves memory."
+description: "How MemContext saves, classifies, and retrieves memory."
 ---
 
 ## Save flow
 
-When a memory is saved, MemContext:
+When a memory is saved via `POST /api/memories` or `save_memory`, MemContext runs a multi-step pipeline:
 
-1. expands the content into a more searchable sentence
-2. generates an embedding
-3. finds similar current memories
-4. uses an LLM to classify the relationship
-5. saves a new memory, updates an old one, or links related memories
+1. **Expand** — the content is rewritten into a more searchable sentence using an LLM
+2. **Embed** — an embedding is generated from the expanded content
+3. **Find similar** — existing current memories are searched for semantic overlap
+4. **Classify** — if similar memories exist, an LLM classifies the relationship
+5. **Act** — based on the classification, the system saves, updates, extends, or deduplicates
 
-## Relationship types
+This means you do not need to manually manage deduplication or version chains. Save freely — the system handles it.
 
-- `update`: the new memory replaces older truth
-- `extend`: the new memory adds detail
-- `similar`: the new memory is related but distinct
-- `noop`: nothing new should be saved
+## Relationship classification
+
+When similar memories are found, the LLM classifies the relationship as one of:
+
+| Classification | What happens                                                                                                             |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `update`       | The new memory supersedes the old one. The old memory is marked `isCurrent = false` and a version chain link is created. |
+| `extend`       | The new memory adds detail to an existing one. A relation of type `extends` is created between them.                     |
+| `similar`      | The new memory is related but distinct. A relation of type `similar` is created.                                         |
+| `noop`         | The new content is a duplicate. Nothing is saved; the existing memory ID is returned.                                    |
 
 ## Search flow
 
-MemContext search is hybrid:
+Search via `GET /api/memories/search` or `search_memory` uses hybrid retrieval:
 
-1. generate query variants
-2. embed original query and variants
-3. run vector search on all query forms
-4. run PostgreSQL full-text search on the original query
-5. merge rankings with Reciprocal Rank Fusion (RRF)
+1. **Generate query variants** — the original query is expanded into alternative phrasings
+2. **Embed** — embeddings are created for the original query and all variants
+3. **Vector search** — runs against all query embeddings to find semantically similar memories
+4. **Full-text search** — PostgreSQL `tsvector` search runs in parallel on the original query
+5. **Merge** — results are combined using Reciprocal Rank Fusion (RRF) for a single ranked list
 
-This improves exact-match and mixed queries without materially increasing latency.
+This approach surfaces both semantic matches ("What database does the team use?") and exact matches ("PostgreSQL", "carq", "PNPM") reliably.
 
-## Temporal support
+## Temporal filtering
 
-Memories can optionally include `validUntil`.
+Memories can include a `validUntil` timestamp. Expired memories are automatically excluded from search and list results. This is useful for:
 
-Expired memories are filtered out from retrieval, which helps with evolving facts like strategy changes or temporary states.
+- Time-sensitive strategy decisions
+- Temporary experiments
+- Seasonal preferences
+- Active project states that change
+
+## Memory limits
+
+Each plan has a memory limit. When the limit is reached, new save requests return `403` with the current count and limit. The check happens both before and during the save transaction to handle concurrent requests safely.

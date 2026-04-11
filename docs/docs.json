@@ -2,48 +2,79 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "MemContext",
-  "colors": {
-    "primary": "#6366f1",
-    "light": "#818cf8",
-    "dark": "#4f46e5"
+  "logo": {
+    "light": "/logo.png",
+    "dark": "/logo.png"
   },
-  "navigation": [
-    {
-      "group": "Get Started",
-      "pages": ["index", "quickstart", "authentication"]
-    },
-    {
-      "group": "Concepts",
-      "pages": [
-        "concepts/how-it-works",
-        "concepts/versioning",
-        "concepts/hybrid-search",
-        "concepts/user-profiles"
-      ]
-    },
-    {
-      "group": "Guides",
-      "pages": [
-        "guides/mcp-setup",
-        "guides/evolving-memory",
-        "guides/building-with-memcontext"
-      ]
-    },
-    {
-      "group": "API Reference",
-      "pages": ["api-reference/overview"]
-    },
-    {
-      "group": "MCP Tools",
-      "pages": [
-        "mcp/overview",
-        "mcp/save-memory",
-        "mcp/search-memory",
-        "mcp/memory-feedback",
-        "mcp/delete-memory"
-      ]
+  "favicon": "/favicon.png",
+  "colors": {
+    "primary": "#e8613c",
+    "light": "#f0845f",
+    "dark": "#d95530"
+  },
+  "appearance": {
+    "default": "dark"
+  },
+  "background": {
+    "color": {
+      "dark": "#0a0a0a"
     }
-  ],
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Dashboard",
+        "href": "https://app.memcontext.in"
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "website": "https://memcontext.in",
+      "github": "https://github.com/CyberBoyAyush/memcontext",
+      "x": "https://x.com/AyushCodes03"
+    }
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get Started",
+        "pages": ["index", "quickstart", "authentication"]
+      },
+      {
+        "group": "Concepts",
+        "pages": [
+          "concepts/how-it-works",
+          "concepts/versioning",
+          "concepts/hybrid-search",
+          "concepts/user-profiles"
+        ]
+      },
+      {
+        "group": "Guides",
+        "pages": [
+          "guides/mcp-setup",
+          "guides/evolving-memory",
+          "guides/building-with-memcontext"
+        ]
+      },
+      {
+        "group": "API Reference",
+        "openapi": "openapi.yaml",
+        "pages": ["api-reference/overview"]
+      },
+      {
+        "group": "MCP Tools",
+        "pages": [
+          "mcp/overview",
+          "mcp/save-memory",
+          "mcp/search-memory",
+          "mcp/memory-feedback",
+          "mcp/delete-memory"
+        ]
+      }
+    ]
+  },
   "api": {
     "openapi": "openapi.yaml",
     "playground": {

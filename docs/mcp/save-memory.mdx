@@ -1,21 +1,64 @@
 ---
 title: "save_memory"
-description: "Persist durable user or project information through MCP."
+description: "Persist durable user or project knowledge across sessions."
 ---
 
-## Purpose
+## Description
 
-Use `save_memory` when information is durable and worth remembering across sessions.
+`save_memory` stores a piece of knowledge that should be remembered across sessions. MemContext automatically handles deduplication, versioning, and relationship classification — you just provide the content.
 
 ## Parameters
 
-- `content`
-- `category`
-- `project`
-- `validUntil`
+| Parameter    | Type   | Required | Description                                                                                                                            |
+| ------------ | ------ | -------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `content`    | string | Yes      | Clear, complete, searchable statement. Full sentences work best — not fragments or keywords.                                           |
+| `category`   | string | No       | One of `preference`, `fact`, `decision`, or `context`. See below.                                                                      |
+| `project`    | string | No       | Project scope. Use only for project-specific memories. Format: lowercase, no spaces (e.g. `memcontext`). Omit for general preferences. |
+| `validUntil` | string | No       | ISO 8601 datetime when this memory expires (e.g. `2026-05-01T00:00:00Z`). Omit for permanent memories.                                 |
 
-## Guidance
+### Categories
 
-- save preferences, facts, decisions, and important project context
-- do not save one-off debug noise
-- use `validUntil` only for time-sensitive memory
+| Category     | Use for                | Example                         |
+| ------------ | ---------------------- | ------------------------------- |
+| `preference` | User likes/dislikes    | "User prefers dark mode"        |
+| `fact`       | Objective information  | "User uses macOS"               |
+| `decision`   | Choices made           | "Chose PostgreSQL for database" |
+| `context`    | Background information | "Working on e-commerce app"     |
+
+## What happens on save
+
+1. Content is expanded into a more searchable form via LLM
+2. An embedding is generated
+3. Similar existing memories are found
+4. The relationship is classified (update, extend, similar, or duplicate)
+5. The memory is saved, supersedes an existing one, extends one, or is deduplicated
+
+## Response
+
+The response includes a `status` field indicating what happened:
+
+| Status      | Meaning                                                    |
+| ----------- | ---------------------------------------------------------- |
+| `saved`     | New memory created                                         |
+| `updated`   | Superseded an existing memory (old one marked non-current) |
+| `extended`  | Created a relation to an existing memory                   |
+| `duplicate` | Content already exists, nothing saved                      |
+
+Duplicates are handled automatically — re-saving an already-known fact is safe.
+
+## Example
+
+```
+save_memory({
+  content: "User prefers TypeScript over JavaScript for type safety",
+  category: "preference"
+})
+```
+
+### Content guidelines
+
+Content should be written as clear, self-contained statements that will be searchable later:
+
+- **Good:** `"User prefers TypeScript over JavaScript for type safety"`
+- **Bad:** `"TS > JS"` (too vague, not searchable)
+- **Bad:** `"user likes coding"` (not specific enough to be useful)

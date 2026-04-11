@@ -1,43 +1,50 @@
 ---
 title: "Hybrid Search"
-description: "Why MemContext combines vector search and full-text search."
+description: "Why MemContext combines vector search and full-text search for better retrieval."
 ---
 
-## Why pure vector search is not enough
+## The problem with pure vector search
 
-Vector search is great for semantic similarity.
+Vector search excels at semantic similarity — understanding that "package manager" and "npm" are related.
 
-It is weaker for:
+It struggles with:
 
-- exact project names
-- company names
-- acronyms
-- concrete decisions like `pnpm`, `postgresql`, or `carq`
+- Exact project names (e.g. "carq", "memcontext")
+- Company and product names
+- Acronyms (e.g. "PNPM", "JWT")
+- Concrete technical decisions (e.g. "chose PostgreSQL over MySQL")
 
-## Hybrid approach
+For memory retrieval, both semantic and exact-match queries need to work reliably.
 
-MemContext combines:
+## MemContext's approach
 
-- vector search over embeddings
-- PostgreSQL full-text search over `content_tsv`
+MemContext combines two retrieval methods and merges their results:
 
-Then it merges result rankings with Reciprocal Rank Fusion.
+| Method           | Strengths                                | Runs on                               |
+| ---------------- | ---------------------------------------- | ------------------------------------- |
+| Vector search    | Semantic similarity, paraphrased queries | pgvector embeddings (1536 dimensions) |
+| Full-text search | Exact matches, keywords, names           | PostgreSQL `tsvector` index           |
 
-## Benefits
+Both searches run in parallel, so there is almost no added latency. Results are merged using **Reciprocal Rank Fusion (RRF)**, which combines rankings from both methods into a single ordered list.
 
-- better exact-match retrieval
-- better mixed intent queries
-- almost no extra wall-clock latency because FTS runs in parallel
+## Query variants
 
-## Threshold
+Before searching, MemContext generates alternative phrasings of your query using an LLM. For example:
 
-Search accepts a configurable `threshold` parameter.
+- Original: "What database does the project use?"
+- Variant: "database technology PostgreSQL MySQL choice"
+- Variant: "which database was selected for this project"
 
-- lower threshold = stricter search
-- higher threshold = broader search
+All variants are embedded and searched in parallel, improving recall without degrading precision.
 
-Examples:
+## Configuring search precision
 
-- `0.3` for stricter, high-precision searches
-- `0.6` as the default
-- `0.8` for broader recall
+The `threshold` parameter controls how strict the vector search is:
+
+| Threshold     | Behavior                       | Use case                                        |
+| ------------- | ------------------------------ | ----------------------------------------------- |
+| `0.2` - `0.4` | Strict matching, fewer results | High-precision lookups for specific facts       |
+| `0.6`         | Default balance                | General-purpose retrieval                       |
+| `0.7` - `0.8` | Broad matching, more results   | Exploratory searches, gathering related context |
+
+The threshold represents maximum vector distance — higher values include more distant (less similar) results.
