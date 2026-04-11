@@ -2,10 +2,18 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "MemContext",
+  "logo": {
+    "light": "/logo.png",
+    "dark": "/logo.png"
+  },
+  "favicon": "/favicon.png",
   "colors": {
-    "primary": "#6366f1",
-    "light": "#818cf8",
-    "dark": "#4f46e5"
+    "primary": "#e8613c",
+    "light": "#f0845f",
+    "dark": "#d95530",
+    "background": {
+      "dark": "#0a0a0a"
+    }
   },
   "navbar": {
     "links": [
