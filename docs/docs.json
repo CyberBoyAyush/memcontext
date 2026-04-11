@@ -7,43 +7,46 @@
     "light": "#818cf8",
     "dark": "#4f46e5"
   },
-  "navigation": [
-    {
-      "group": "Get Started",
-      "pages": ["index", "quickstart", "authentication"]
-    },
-    {
-      "group": "Concepts",
-      "pages": [
-        "concepts/how-it-works",
-        "concepts/versioning",
-        "concepts/hybrid-search",
-        "concepts/user-profiles"
-      ]
-    },
-    {
-      "group": "Guides",
-      "pages": [
-        "guides/mcp-setup",
-        "guides/evolving-memory",
-        "guides/building-with-memcontext"
-      ]
-    },
-    {
-      "group": "API Reference",
-      "pages": ["api-reference/overview"]
-    },
-    {
-      "group": "MCP Tools",
-      "pages": [
-        "mcp/overview",
-        "mcp/save-memory",
-        "mcp/search-memory",
-        "mcp/memory-feedback",
-        "mcp/delete-memory"
-      ]
-    }
-  ],
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get Started",
+        "pages": ["index", "quickstart", "authentication"]
+      },
+      {
+        "group": "Concepts",
+        "pages": [
+          "concepts/how-it-works",
+          "concepts/versioning",
+          "concepts/hybrid-search",
+          "concepts/user-profiles"
+        ]
+      },
+      {
+        "group": "Guides",
+        "pages": [
+          "guides/mcp-setup",
+          "guides/evolving-memory",
+          "guides/building-with-memcontext"
+        ]
+      },
+      {
+        "group": "API Reference",
+        "openapi": "openapi.yaml",
+        "pages": ["api-reference/overview"]
+      },
+      {
+        "group": "MCP Tools",
+        "pages": [
+          "mcp/overview",
+          "mcp/save-memory",
+          "mcp/search-memory",
+          "mcp/memory-feedback",
+          "mcp/delete-memory"
+        ]
+      }
+    ]
+  },
   "api": {
     "openapi": "openapi.yaml",
     "playground": {
