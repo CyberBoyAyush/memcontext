@@ -99,7 +99,7 @@ created_at      TIMESTAMP
 ### embedding.ts
 
 - `generateEmbedding(text: string): Promise<number[]>`
-- `expandMemory(content: string): Promise<string>` - LLM enriches content before embedding
+- `expandMemory(content: string): Promise<ExpandMemoryResult>` - LLM enriches content, classifies temporal category, and suggests TTL
 - `generateQueryVariants(query: string): Promise<string[]>` - LLM generates 3 query variants for multi-query search
 - Uses OpenRouter with text-embedding-3-large (1536 dimensions)
 

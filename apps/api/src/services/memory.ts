@@ -195,13 +195,19 @@ export async function saveMemory(
         ? similarMemories[classification.targetIndex]
         : similarMemories[0];
 
-    // Re-confirmation: refresh validUntil if the existing memory has a TTL.
-    // User re-stating the same fact = it's still true = extend the expiry.
-    const refreshedValidUntil =
+    // Re-confirmation: only extend existing TTL-backed memories.
+    // Duplicate saves should not introduce a TTL to permanent memories or shorten one.
+    const suggestedRefresh =
       validUntilDate ??
       (expandResult.suggestedTtlDays
         ? new Date(Date.now() + expandResult.suggestedTtlDays * 86400000)
         : undefined);
+    const refreshedValidUntil =
+      targetMemory.validUntil && suggestedRefresh
+        ? suggestedRefresh.getTime() > targetMemory.validUntil.getTime()
+          ? suggestedRefresh
+          : targetMemory.validUntil
+        : undefined;
 
     if (refreshedValidUntil) {
       await db
@@ -417,6 +423,7 @@ interface SimilarMemoryResult {
   project: string | null;
   rootId: string | null;
   version: number;
+  validUntil: Date | null;
   distance: number;
 }
 
@@ -449,6 +456,7 @@ export async function findSimilarMemories(
       project: memories.project,
       rootId: memories.rootId,
       version: memories.version,
+      validUntil: memories.validUntil,
       distance,
     })
     .from(memories)
