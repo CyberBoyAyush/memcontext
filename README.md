@@ -248,7 +248,7 @@ Memory persists across all sessions - use project param for project-specific con
 3. Next session, when relevant context is needed, the assistant searches MemContext
 4. Your stored memories are retrieved and used automatically
 
-The system uses hybrid search — vector embeddings (1536-dim) for semantic similarity combined with PostgreSQL full-text search for exact keyword matching, merged via Reciprocal Rank Fusion. When saving, the system automatically detects similar existing memories and classifies the relationship as `saved`, `updated`, or `extended`. Memories support temporal validity (`validUntil`) so time-sensitive information is automatically excluded from search results when expired.
+The system uses hybrid search — vector embeddings (1536-dim) for semantic similarity combined with PostgreSQL full-text search for exact keyword matching, merged via Reciprocal Rank Fusion. Both vector search and full-text search run across the original query and the generated query variants, improving recall for wording-sensitive searches like "caching system" vs "Upstash Redis" or "frontend migration" vs "App Router". When saving, the system automatically detects similar existing memories and classifies the relationship as `saved`, `updated`, or `extended`. Memories support temporal validity (`validUntil`) — either set explicitly or auto-detected by the system during save. Time-sensitive information is automatically excluded from search results when expired. Search results are also ranked using feedback signals — memories marked "wrong" or "outdated" are demoted, while "helpful" memories get a boost.
 
 ## MCP Tools
 

@@ -5,7 +5,7 @@ description: "Rate a retrieved memory to improve future retrieval quality."
 
 ## Description
 
-`memory_feedback` records whether a retrieved memory was useful, irrelevant, outdated, or wrong. This signal helps surface quality issues and can be used to improve retrieval over time.
+`memory_feedback` records whether a retrieved memory was useful, irrelevant, outdated, or wrong. **This feedback directly affects search ranking** — memories marked "wrong" are heavily penalized (0.3x score), "outdated" moderately (0.5x), while "helpful" gets a small boost (1.1x). Feedback is scoped per user.
 
 ## Parameters
 

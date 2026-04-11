@@ -249,18 +249,27 @@ User Query: "authentication preferences"
         v
 [3] Search with original embedding (parallel with steps 4, 5)
 [4] Create embeddings for 3 variants
-[5] Full-text search via tsvector/tsquery (parallel with step 3)
+[5] Full-text search via tsvector/tsquery on original query (parallel with step 3)
         |
         v
 [6] Search with all 3 variant embeddings (parallel)
+[7] Full-text search via tsvector/tsquery on all 3 query variants (parallel)
         |
         v
-[7] Merge ALL results via Reciprocal Rank Fusion (RRF)
+[8] Merge ALL results via Reciprocal Rank Fusion (RRF)
     - Score = sum of 1/(k + rank) across all result sets
     - Expired memories (validUntil < now) are excluded
         |
         v
-[8] Return top N results sorted by fused score
+[9] Apply feedback-based scoring multipliers:
+    - Memory has "wrong" feedback → score × 0.3
+    - Memory has "outdated" feedback → score × 0.5
+    - "not_helpful" > "helpful" count → score × 0.7
+    - Only "helpful" feedback → score × 1.1
+    - No feedback → unchanged
+        |
+        v
+[10] Return top N results sorted by adjusted score
 ```
 
 This approach catches:
@@ -280,11 +289,14 @@ This approach catches:
 **Behavior:**
 
 1. Check subscription: memory_count < memory_limit (reject with LIMIT_EXCEEDED if over)
-2. Generate embedding via OpenRouter
-3. Search for similar memories (distance < 0.30, is_current = true, not expired)
-4. If match found, classify via LLM (update/extend/similar)
-5. Insert accordingly, update relations/versions
-6. Increment subscription.memory_count (+1 for all inserts)
+2. Expand memory via LLM (rewrite for searchability + classify temporal category)
+3. Auto-TTL: if user did NOT pass validUntil, set it based on temporal classification:
+   - permanent → null, short_term → 7 days, medium_term → 30 days, long_term → 90 days
+4. Generate embedding via OpenRouter
+5. Search for similar memories (distance < 0.30, is_current = true, not expired)
+6. If match found, classify via LLM (update/extend/similar)
+7. Insert accordingly, update relations/versions
+8. Increment subscription.memory_count (+1 for all inserts)
 
 **Output:** { id, status: "saved" | "updated" | "extended" | "duplicate", superseded?, existingId? }
 
@@ -296,11 +308,12 @@ This approach catches:
 
 1. Generate 3 query variants via LLM
 2. Generate embeddings for original + variants
-3. Run vector searches in parallel
-4. Run full-text search in parallel
+3. Run vector searches on original + variants in parallel
+4. Run full-text search on original query + variants in parallel
 5. Merge all results via Reciprocal Rank Fusion (RRF)
 6. Filter out expired memories (validUntil < now)
-7. Return top results with normalized relevance scores
+7. Apply feedback-based scoring: wrong (0.3x), outdated (0.5x), net-negative (0.7x), helpful (1.1x)
+8. Return top results sorted by adjusted scores
 
 **Output:** { found, memories: [{ id, content, category, relevance, created }] }
 
@@ -308,7 +321,7 @@ This approach catches:
 
 **Input:** memoryId (required), type (required: helpful/not_helpful/outdated/wrong), context (optional)
 
-**Behavior:** Records feedback on a memory for future retrieval quality improvements.
+**Behavior:** Records feedback on a memory. Feedback directly affects search ranking — memories marked "wrong" are heavily penalized (0.3x score), "outdated" moderately (0.5x), while "helpful" gets a small boost (1.1x). Feedback is per-user scoped.
 
 ### delete_memory
 

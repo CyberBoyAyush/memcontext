@@ -59,9 +59,15 @@ curl -X POST https://api.memcontext.in/api/memories \
   }'
 ```
 
-## Using `validUntil` for temporary knowledge
+## Temporal awareness — automatic and explicit
 
-For time-bounded information, set `validUntil` so it is automatically excluded from retrieval after it expires:
+MemContext automatically detects time-sensitive content during save. For example:
+
+- "LinkedIn algorithm favors short posts right now" → auto-classified as medium-term, expires in 30 days
+- "Meeting with client tomorrow at 3pm" → auto-classified as short-term, expires in 7 days
+- "User prefers TypeScript" → auto-classified as permanent, no expiry
+
+You can also explicitly set `validUntil` to override the auto-detection:
 
 ```json
 {
@@ -72,7 +78,7 @@ For time-bounded information, set `validUntil` so it is automatically excluded f
 }
 ```
 
-After April 25, this memory will not appear in search results.
+If you pass `validUntil`, auto-detection is skipped entirely. After April 25, this memory will not appear in search results.
 
 ## Recommended flow
 
@@ -83,11 +89,22 @@ After April 25, this memory will not appear in search results.
 5. Submit feedback on memories that were useful or stale
 6. When strategy changes, save a new memory — the system handles supersession automatically
 
+## Feedback-driven ranking
+
+When you use `memory_feedback` to mark memories as helpful, outdated, or wrong, search results are re-ranked accordingly:
+
+- "Wrong" memories are pushed to the bottom (0.3x score)
+- "Outdated" memories are demoted (0.5x score)
+- "Helpful" memories get a small boost (1.1x score)
+
+This means the system learns from your explicit signals over time.
+
 ## Why this works
 
 You do not need fine-tuning or retraining for this class of problem. You need:
 
 - Current truth (served by `isCurrent` filtering)
+- Auto-expiry of temporal content (auto-TTL classification)
 - Historical trail (accessible via the history endpoint)
 - Retrieval that handles both semantic and exact-match queries (hybrid search)
-- A feedback loop (via `memory_feedback`)
+- A feedback loop that directly affects ranking (via `memory_feedback`)

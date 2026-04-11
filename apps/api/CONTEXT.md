@@ -106,7 +106,7 @@ created_at      TIMESTAMP
 ### memory.ts
 
 - `saveMemory(userId, content, options): Promise<SaveResult>`
-- `searchMemories(userId, query, options): Promise<Memory[]>`
+- `searchMemories(userId, query, options): Promise<Memory[]>` - vector + FTS on original query and variants, merged via RRF and feedback reranking
 - `findSimilar(userId, embedding, threshold): Promise<Memory | null>`
 
 ### relation.ts

@@ -145,19 +145,22 @@ Tracks user plans and memory usage.
 When a memory is saved:
 
 1. Check if user is within their plan limit
-2. Expand the memory text using LLM for better searchability
-3. Generate vector embedding using text-embedding-3-large
-4. Search for similar existing memories (cosine similarity above 0.70, not expired)
-5. If similar found, classify relationship using LLM (update, extend, or similar)
-6. Store memory with appropriate relations and temporal metadata
+2. Expand the memory text using LLM for searchability + classify temporal category (permanent/short_term/medium_term/long_term)
+3. Auto-TTL: if user did NOT provide validUntil, set it from temporal classification (7d/30d/90d/null)
+4. Generate vector embedding using text-embedding-3-large
+5. Search for similar existing memories (cosine similarity above 0.70, not expired)
+6. If similar found, classify relationship using LLM (update, extend, or similar)
+7. Store memory with appropriate relations and temporal metadata
 
 When searching:
 
 1. Generate 3 query variants via LLM
-2. Run vector search + full-text search in parallel
-3. Merge results via Reciprocal Rank Fusion (RRF)
-4. Exclude expired memories (validUntil < now)
-5. Return top K with normalized relevance scores
+2. Run vector search on the original query and all variants
+3. Run full-text search on the original query and all variants
+4. Merge results via Reciprocal Rank Fusion (RRF)
+5. Exclude expired memories (validUntil < now)
+6. Apply feedback-based scoring: wrong (0.3x), outdated (0.5x), net-negative (0.7x), helpful (1.1x)
+7. Return top K sorted by adjusted relevance scores
 
 ## Environment Variables
 

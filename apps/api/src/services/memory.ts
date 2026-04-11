@@ -72,9 +72,18 @@ export async function saveMemory(
 ): Promise<SaveMemoryResponse> {
   const { userId, content, category, source, timing, validUntil } = params;
   const project = normalizeProjectName(params.project);
-  const validUntilDate = validUntil ? new Date(validUntil) : undefined;
+  const userValidUntil = validUntil ? new Date(validUntil) : undefined;
 
-  const expandedContent = await expandMemory(content, timing);
+  const expandResult = await expandMemory(content, timing);
+  const expandedContent = expandResult.expandedContent;
+
+  // Auto-TTL: only apply if user/agent did NOT explicitly provide validUntil
+  const autoValidUntil =
+    !userValidUntil && expandResult.suggestedTtlDays
+      ? new Date(Date.now() + expandResult.suggestedTtlDays * 86400000)
+      : undefined;
+  const validUntilDate = userValidUntil ?? autoValidUntil;
+
   const embedding = await generateEmbedding(expandedContent, timing);
 
   const similarMemories = await (timing
@@ -186,6 +195,21 @@ export async function saveMemory(
         ? similarMemories[classification.targetIndex]
         : similarMemories[0];
 
+    // Re-confirmation: refresh validUntil if the existing memory has a TTL.
+    // User re-stating the same fact = it's still true = extend the expiry.
+    const refreshedValidUntil =
+      validUntilDate ??
+      (expandResult.suggestedTtlDays
+        ? new Date(Date.now() + expandResult.suggestedTtlDays * 86400000)
+        : undefined);
+
+    if (refreshedValidUntil) {
+      await db
+        .update(memories)
+        .set({ validUntil: refreshedValidUntil })
+        .where(eq(memories.id, targetMemory.id));
+    }
+
     logger.info(
       {
         existingMemoryId: targetMemory.id,
@@ -194,6 +218,7 @@ export async function saveMemory(
         contentLength: content.length,
         status: "duplicate",
         reason: classification.reason,
+        ttlRefreshed: !!refreshedValidUntil,
       },
       "memory skipped (already exists)",
     );
@@ -491,18 +516,18 @@ export async function searchMemories(
       .limit(Math.max(limit * 2, 10));
   };
 
-  const runFtsSearch = async () => {
+  const runFtsSearch = async (queryText: string) => {
     const conditions = [
       eq(memories.userId, userId),
       eq(memories.isCurrent, true),
       isNull(memories.deletedAt),
       activeMemoryCondition,
-      sql`content_tsv @@ plainto_tsquery('english', ${query})`,
+      sql`content_tsv @@ plainto_tsquery('english', ${queryText})`,
     ];
     if (category) conditions.push(eq(memories.category, category));
     if (project) conditions.push(eq(memories.project, project));
 
-    const tsRank = sql<number>`ts_rank(content_tsv, plainto_tsquery('english', ${query}))`;
+    const tsRank = sql<number>`ts_rank(content_tsv, plainto_tsquery('english', ${queryText}))`;
 
     return db
       .select({
@@ -524,24 +549,35 @@ export async function searchMemories(
   // Filter out empty/whitespace-only variants to prevent embedding failures
   const validVariants = queryVariants.filter((v) => v && v.trim().length > 0);
 
-  // Run original vector search, FTS search, and generate variant embeddings in parallel
+  // Run original vector search, original FTS search, and generate variant embeddings in parallel
   const [originalResults, ftsResults, variantEmbeddings] = await Promise.all([
     runVectorSearch(originalEmbedding),
-    runFtsSearch(),
+    runFtsSearch(query),
     Promise.all(
       validVariants.map((variant) => generateEmbedding(variant, timing)),
     ),
   ]);
 
-  // Step 3: Search with variant embeddings in parallel
-  const variantResults = await (timing
+  // Step 3: Search with variant embeddings and FTS variant queries in parallel
+  const [variantResults, ftsVariantResults] = await (timing
     ? withTiming(timing, "db_search_variants", () =>
-        Promise.all(variantEmbeddings.map((emb) => runVectorSearch(emb))),
+        Promise.all([
+          Promise.all(variantEmbeddings.map((emb) => runVectorSearch(emb))),
+          Promise.all(validVariants.map((variant) => runFtsSearch(variant))),
+        ]),
       )
-    : Promise.all(variantEmbeddings.map((emb) => runVectorSearch(emb))));
+    : Promise.all([
+        Promise.all(variantEmbeddings.map((emb) => runVectorSearch(emb))),
+        Promise.all(validVariants.map((variant) => runFtsSearch(variant))),
+      ]));
 
   // Combine all results via Reciprocal Rank Fusion (RRF)
-  const allResults = [originalResults, ...variantResults, ftsResults];
+  const allResults = [
+    originalResults,
+    ...variantResults,
+    ftsResults,
+    ...ftsVariantResults,
+  ];
   const fusedScores = new Map<
     string,
     {
@@ -574,6 +610,66 @@ export async function searchMemories(
     });
   }
 
+  // Apply feedback-based scoring multipliers
+  const candidateIds = Array.from(fusedScores.keys());
+  let feedbackMap = new Map<
+    string,
+    { helpful: number; not_helpful: number; outdated: number; wrong: number }
+  >();
+
+  if (candidateIds.length > 0) {
+    const feedbackRows = await db
+      .select({
+        memoryId: memoryFeedback.memoryId,
+        type: memoryFeedback.type,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(memoryFeedback)
+      .where(
+        and(
+          sql`${memoryFeedback.memoryId} IN (${sql.join(
+            candidateIds.map((id) => sql`${id}`),
+            sql`, `,
+          )})`,
+          eq(memoryFeedback.userId, userId),
+        ),
+      )
+      .groupBy(memoryFeedback.memoryId, memoryFeedback.type);
+
+    for (const row of feedbackRows) {
+      const existing = feedbackMap.get(row.memoryId) ?? {
+        helpful: 0,
+        not_helpful: 0,
+        outdated: 0,
+        wrong: 0,
+      };
+      const fbType = row.type as string;
+      if (fbType === "helpful") existing.helpful = row.count;
+      else if (fbType === "not_helpful") existing.not_helpful = row.count;
+      else if (fbType === "outdated") existing.outdated = row.count;
+      else if (fbType === "wrong") existing.wrong = row.count;
+      feedbackMap.set(row.memoryId, existing);
+    }
+  }
+
+  for (const [id, entry] of fusedScores) {
+    const fb = feedbackMap.get(id);
+    if (!fb) continue;
+
+    let multiplier = 1.0;
+    if (fb.wrong > 0) {
+      multiplier = 0.3;
+    } else if (fb.outdated > 0) {
+      multiplier = 0.5;
+    } else if (fb.not_helpful > fb.helpful) {
+      multiplier = 0.7;
+    } else if (fb.helpful > 0 && fb.not_helpful === 0) {
+      multiplier = 1.1;
+    }
+
+    fusedScores.set(id, { ...entry, score: entry.score * multiplier });
+  }
+
   const merged = Array.from(fusedScores.values())
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
@@ -602,6 +698,10 @@ export async function searchMemories(
       category,
       threshold,
       ftsResultsCount: ftsResults.length,
+      ftsVariantResultsCount: ftsVariantResults.reduce(
+        (sum, resultSet) => sum + resultSet.length,
+        0,
+      ),
       resultsCount: memoriesWithRelevance.length,
       topScore: topScore > 0 ? Math.round(topScore * 1000) / 1000 : undefined,
       searchDuration,
@@ -688,7 +788,8 @@ export async function updateMemory(
   }
 
   // 3. Content changed - run through classification flow
-  const expandedContent = await expandMemory(content, timing);
+  const expandResult = await expandMemory(content, timing);
+  const expandedContent = expandResult.expandedContent;
   const embedding = await generateEmbedding(expandedContent, timing);
 
   // Find similar memories, EXCLUDING current memory
