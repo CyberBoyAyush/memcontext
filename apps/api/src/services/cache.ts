@@ -21,7 +21,7 @@ function getCacheKey(keyHash: string): string {
 }
 
 function getProfileCacheKey(userId: string, project?: string): string {
-  return `${PROFILE_CACHE_PREFIX}${userId}:${normalizeProjectName(project) ?? "all"}`;
+  return `${PROFILE_CACHE_PREFIX}${userId}:${normalizeProjectName(project) ?? "__global__"}`;
 }
 
 export async function getCachedApiKey(

@@ -5,7 +5,7 @@ ALTER TABLE memories ADD COLUMN content_tsv tsvector
   GENERATED ALWAYS AS (to_tsvector('english', coalesce(content, ''))) STORED;
 
 CREATE INDEX memories_content_tsv_idx ON memories USING gin (content_tsv);
-CREATE INDEX memories_valid_until_idx ON memories (valid_until) WHERE valid_until IS NOT NULL;
+CREATE INDEX memories_valid_until_idx ON memories (valid_until);
 
 CREATE TYPE memory_feedback_type AS ENUM ('helpful', 'not_helpful', 'outdated', 'wrong');
 
