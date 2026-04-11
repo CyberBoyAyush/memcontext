@@ -55,11 +55,12 @@ function getTemporalStatus(memory: Memory): {
   if (!memory.validUntil) return null;
   const until = new Date(memory.validUntil);
   const now = new Date();
+  if (until.getTime() <= now.getTime()) {
+    return { label: "Expired", color: "text-error bg-error/10" };
+  }
   const daysLeft = Math.ceil(
     (until.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
   );
-  if (daysLeft < 0)
-    return { label: "Expired", color: "text-error bg-error/10" };
   if (daysLeft <= 3)
     return {
       label: `Expires in ${daysLeft}d`,
