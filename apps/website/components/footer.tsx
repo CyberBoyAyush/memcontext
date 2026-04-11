@@ -125,6 +125,16 @@ export function Footer() {
                       FAQ
                     </Link>
                   </li>
+                  <li>
+                    <a
+                      href="https://docs.memcontext.in"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-foreground-muted hover:text-foreground transition-colors"
+                    >
+                      Docs
+                    </a>
+                  </li>
                 </ul>
               </div>
 

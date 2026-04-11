@@ -9,7 +9,7 @@ import { registerTools } from "./tools.js";
 
 const app = express();
 const port = parseInt(process.env.MCP_HTTP_PORT || "3001", 10);
-const apiBase = process.env.MEMCONTEXT_API_URL || "http://localhost:3000";
+const apiBase = process.env.MEMCONTEXT_API_URL || "https://api.memcontext.in";
 
 app.use((_req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");

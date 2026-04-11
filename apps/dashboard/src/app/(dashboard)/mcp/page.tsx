@@ -45,6 +45,9 @@ SAVE immediately (do not defer) when any of these happen:
 - User corrects you or says "remember" → save_memory(category: "fact")
 - Important project fact learned → save_memory(category: "fact", project: "<name>")
 - Significant work completed → save_memory(category: "context")
+For time-sensitive info, use validUntil: save_memory(content: "...", validUntil: "2026-05-01T00:00:00Z")
+After using search results, call memory_feedback to rate memories as helpful/not_helpful/outdated.
+Use delete_memory only when a memory was saved incorrectly and should be removed entirely.
 Duplicates are handled automatically — when in doubt, save.
 Memory persists across all sessions - use project param for project-specific context only.`;
 

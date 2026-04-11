@@ -27,8 +27,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   memoriesQueryOptions,
+  memoryHistoryQueryOptions,
   useDeleteMemory,
   useUpdateMemory,
+  useSubmitFeedback,
 } from "@/lib/queries/memories";
 import { formatDateTime, cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
@@ -40,7 +42,38 @@ interface Memory {
   category: string | null;
   project: string | null;
   source: string;
+  validFrom?: string | null;
+  validUntil?: string | null;
+  version?: number;
   createdAt: string;
+}
+
+function getTemporalStatus(memory: Memory): {
+  label: string;
+  color: string;
+} | null {
+  if (!memory.validUntil) return null;
+  const until = new Date(memory.validUntil);
+  const now = new Date();
+  const daysLeft = Math.ceil(
+    (until.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+  );
+  if (daysLeft < 0)
+    return { label: "Expired", color: "text-error bg-error/10" };
+  if (daysLeft <= 3)
+    return {
+      label: `Expires in ${daysLeft}d`,
+      color: "text-warning bg-warning/10",
+    };
+  if (daysLeft <= 7)
+    return {
+      label: `Expires in ${daysLeft}d`,
+      color: "text-amber-400 bg-amber-400/10",
+    };
+  return {
+    label: `Valid ${daysLeft}d`,
+    color: "text-emerald-400 bg-emerald-400/10",
+  };
 }
 
 const editCategories = [
@@ -212,7 +245,24 @@ function MemoryDetailPanel({
   const [isClosing, setIsClosing] = useState(false);
 
   const updateMutation = useUpdateMemory();
+  const feedbackMutation = useSubmitFeedback();
   const config = memory.category ? categoryConfig[memory.category] : null;
+  const temporalStatus = getTemporalStatus(memory);
+  const [feedbackSent, setFeedbackSent] = useState<string | null>(null);
+
+  const { data: historyData } = useQuery(memoryHistoryQueryOptions(memory.id));
+
+  async function handleFeedback(
+    type: "helpful" | "not_helpful" | "outdated" | "wrong",
+  ) {
+    try {
+      await feedbackMutation.mutateAsync({ id: memory.id, type });
+      setFeedbackSent(type);
+      onSuccess(`Marked as ${type.replace("_", " ")}`);
+    } catch {
+      onError("Failed to submit feedback");
+    }
+  }
 
   function handleClose() {
     setIsClosing(true);
@@ -413,6 +463,87 @@ function MemoryDetailPanel({
                   <span className="text-sm">{memory.source}</span>
                 </div>
               </div>
+
+              {temporalStatus && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-medium text-foreground-muted uppercase tracking-wider">
+                    <Clock className="h-3.5 w-3.5" />
+                    Validity
+                  </div>
+                  <span
+                    className={cn(
+                      "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
+                      temporalStatus.color,
+                    )}
+                  >
+                    {temporalStatus.label}
+                  </span>
+                  {memory.validUntil && (
+                    <div className="text-xs text-foreground-subtle">
+                      Until {formatDateTime(memory.validUntil).date}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Feedback */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs font-medium text-foreground-muted uppercase tracking-wider">
+                  Feedback
+                </div>
+                {feedbackSent ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400">
+                    <Check className="h-3 w-3" weight="bold" />
+                    Marked as {feedbackSent.replace("_", " ")}
+                  </span>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {(
+                      [
+                        { type: "helpful" as const, label: "Helpful" },
+                        { type: "not_helpful" as const, label: "Not helpful" },
+                        { type: "outdated" as const, label: "Outdated" },
+                        { type: "wrong" as const, label: "Wrong" },
+                      ] as const
+                    ).map((fb) => (
+                      <button
+                        key={fb.type}
+                        onClick={() => handleFeedback(fb.type)}
+                        disabled={feedbackMutation.isPending}
+                        className="px-2.5 py-1 rounded-lg text-xs font-medium border border-border text-foreground-muted hover:text-foreground hover:bg-surface-elevated transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        {fb.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Version History */}
+              {historyData && historyData.history.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-medium text-foreground-muted uppercase tracking-wider">
+                    <ArrowsClockwise className="h-3.5 w-3.5" />
+                    Version History ({historyData.history.length} previous)
+                  </div>
+                  <div className="space-y-2 max-h-48 overflow-y-auto scrollbar-hide">
+                    {historyData.history.map((prev) => (
+                      <div
+                        key={prev.id}
+                        className="p-2.5 rounded-lg border border-border bg-surface-elevated/50 space-y-1"
+                      >
+                        <p className="text-xs leading-relaxed text-foreground-muted line-clamp-3">
+                          {prev.content}
+                        </p>
+                        <p className="text-[10px] text-foreground-subtle">
+                          v{prev.version ?? "?"} &middot;{" "}
+                          {formatDateTime(prev.createdAt).date}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -1188,10 +1319,23 @@ export default function MemoriesPage() {
                         </td>
 
                         {/* Content */}
-                        <td className="px-4 py-3 w-48 md:flex-1 md:w-auto border-r border-border flex items-center">
-                          <p className="text-sm leading-relaxed line-clamp-2">
+                        <td className="px-4 py-3 w-48 md:flex-1 md:w-auto border-r border-border flex items-center gap-2">
+                          <p className="text-sm leading-relaxed line-clamp-2 flex-1">
                             {memory.content}
                           </p>
+                          {(() => {
+                            const ts = getTemporalStatus(memory);
+                            return ts ? (
+                              <span
+                                className={cn(
+                                  "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0",
+                                  ts.color,
+                                )}
+                              >
+                                {ts.label}
+                              </span>
+                            ) : null;
+                          })()}
                         </td>
 
                         {/* Category */}

@@ -12,7 +12,7 @@ const server = new McpServer({
 });
 
 const apiClient = createApiClient({
-  apiBase: process.env.MEMCONTEXT_API_URL || "http://localhost:3000",
+  apiBase: process.env.MEMCONTEXT_API_URL || "https://api.memcontext.in",
   apiKey: process.env.MEMCONTEXT_API_KEY || "",
 });
 
