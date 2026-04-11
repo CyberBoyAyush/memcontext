@@ -10,8 +10,13 @@
   "colors": {
     "primary": "#e8613c",
     "light": "#f0845f",
-    "dark": "#d95530",
-    "background": {
+    "dark": "#d95530"
+  },
+  "appearance": {
+    "default": "dark"
+  },
+  "background": {
+    "color": {
       "dark": "#0a0a0a"
     }
   },
