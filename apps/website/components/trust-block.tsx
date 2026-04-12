@@ -45,7 +45,7 @@ export function TrustBlock() {
         {/* Left side - Label */}
         <div className="shrink-0 pl-4 sm:pl-8 pr-4 sm:pr-6">
           <p className="text-[10px] sm:text-lg text-foreground opacity-70 whitespace-nowrap">
-            Compatible with any MCP-compatible tool
+            Works with every MCP-compatible tool and any custom app via REST API
           </p>
         </div>
 

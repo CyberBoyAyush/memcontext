@@ -1,8 +1,11 @@
 import {
   Header,
   Hero,
+  StatsBar,
   LaunchVideo,
   Features,
+  MemoryPipeline,
+  UseCases,
   HowItWorks,
   FAQ,
   FinalCTA,
@@ -15,10 +18,12 @@ export default function Home() {
       <Header />
       <main className="overflow-hidden px-4">
         <Hero />
-       
+        <StatsBar />
         <Features />
+        <MemoryPipeline />
         <HowItWorks />
-         <LaunchVideo />
+        <UseCases />
+        <LaunchVideo />
         <FAQ />
         <FinalCTA />
       </main>

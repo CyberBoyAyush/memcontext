@@ -1,8 +1,11 @@
 export { Header } from "./header";
 export { Hero } from "./hero";
 export { TrustBlock } from "./trust-block";
+export { StatsBar } from "./stats-bar";
 export { LaunchVideo } from "./launch-video";
 export { Features } from "./features";
+export { MemoryPipeline } from "./memory-pipeline";
+export { UseCases } from "./use-cases";
 export { HowItWorks } from "./how-it-works";
 export { Pricing } from "./pricing";
 export { FAQ } from "./faq";

@@ -119,29 +119,33 @@ export function Hero() {
           </div>
 
           <h1 className="animate-fade-in opacity-0 animation-delay-100 text-3xl sm:text-5xl lg:text-6xl font-display font-bold tracking-tight leading-[1.1]">
-            Your AI remembers everything.
+            Memory that evolves.
             <br />
-            <span className="text-foreground-muted">Automatically.</span>
+            <span className="text-foreground-muted">Not just stores.</span>
           </h1>
 
           <p className="animate-fade-in opacity-0 animation-delay-200 mt-4 sm:mt-5 text-sm sm:text-base text-foreground-muted/80 max-w-2xl mx-auto leading-relaxed">
-            Connect via MCP or REST API. Memories evolve over time, expire when
-            stale, and get smarter from your feedback. Works with any AI tool or
-            custom application.
+            Hybrid search. Auto-expiring temporal facts. Feedback-driven
+            ranking. Version history. Connect via MCP or build on the REST API.
           </p>
 
           {/* CTA Buttons */}
           <div className="animate-fade-in opacity-0 animation-delay-300 mt-6 sm:mt-8 flex justify-center gap-3">
-            {/* Pricing Button - glass pill */}
-            <Link href="/pricing" className="group relative">
+            {/* Docs Button - glass pill */}
+            <a
+              href="https://docs.memcontext.in"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group relative"
+            >
               <div className="absolute -inset-0.5 rounded-xl border border-white/8" />
               <div className="relative flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl bg-surface/60 backdrop-blur-sm border border-white/[0.08] transition-all group-hover:border-white/15 group-hover:bg-surface/80">
                 <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/[0.04] via-transparent to-transparent" />
                 <span className="text-sm sm:text-base text-foreground font-display font-semibold relative z-10">
-                  Pricing
+                  Read the Docs
                 </span>
               </div>
-            </Link>
+            </a>
 
             {/* Sign Up Button */}
             <a
