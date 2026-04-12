@@ -107,7 +107,7 @@ export function Hero() {
 
                 {/* Text */}
                 <span className="relative z-10 text-xs sm:text-sm text-foreground font-medium pr-1 sm:pr-2">
-                  Persistent memory for AI coding agents
+                  Persistent, evolving memory for AI
                 </span>
 
                 {/* Right arrow */}
@@ -125,8 +125,9 @@ export function Hero() {
           </h1>
 
           <p className="animate-fade-in opacity-0 animation-delay-200 mt-4 sm:mt-5 text-sm sm:text-base text-foreground-muted/80 max-w-2xl mx-auto leading-relaxed">
-            Connect the MCP server to Claude, Cursor, or Cline. Chat normally.
-            Context is saved and retrieved automatically.
+            Connect via MCP or REST API. Memories evolve over time, expire when
+            stale, and get smarter from your feedback. Works with any AI tool or
+            custom application.
           </p>
 
           {/* CTA Buttons */}
