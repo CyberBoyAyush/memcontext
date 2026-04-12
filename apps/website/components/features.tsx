@@ -824,30 +824,30 @@ const features: Feature[] = [
   {
     title: "Intelligent Memory",
     description:
-      "Your AI learns as you work. Preferences and context are saved automatically. Just code naturally, MemContext remembers what matters.",
+      "Your AI learns as you work. Preferences and context are saved automatically. Works with coding assistants, content tools, or any custom application.",
     icon: Brain,
     visual: <IntelligentMemoryVisual />,
   },
   {
-    title: "Semantic Retrieval",
+    title: "Hybrid Search",
     description:
-      'Forget exact keywords. Ask "how do I handle auth?" and find your JWT preferences. Semantic search understands intent, not just words.',
+      'Vector similarity plus keyword matching, fused together. "PostgreSQL" finds PostgreSQL. "How do I handle auth" finds your JWT preferences. Both work.',
     icon: Sparkles,
     visual: <SemanticRetrievalVisual />,
   },
   {
-    title: "Powerful Search",
+    title: "Evolving Memory",
     description:
-      "Search hundreds of memories in milliseconds. Filter by project or category. Context retrieved before you finish typing.",
-    icon: Search,
-    visual: <PowerfulSearchVisual />,
-  },
-  {
-    title: "Auto Updates",
-    description:
-      "Changed your mind about tabs vs spaces? When preferences evolve, old memories update automatically. No duplicates, always current.",
+      "Strategies change. Algorithms shift. MemContext auto-classifies temporal content and expires stale memories. Current truth always surfaces first.",
     icon: RefreshCcw,
     visual: <AutoUpdatesVisual />,
+  },
+  {
+    title: "Feedback Scoring",
+    description:
+      "Mark a memory as wrong and it drops in ranking immediately. Mark it helpful and it gets a boost. Your explicit signals shape every search result.",
+    icon: Search,
+    visual: <PowerfulSearchVisual />,
   },
   {
     title: "Encrypted & Private",
@@ -859,7 +859,7 @@ const features: Feature[] = [
   {
     title: "Cross-Tool Sync",
     description:
-      "Claude, Cursor, Windsurf, Cline. One memory for all. Save a preference in Claude, Cursor knows it too.",
+      "Claude, Cursor, Windsurf, Cline, or your own app via REST API. One memory for all. Save in Claude, search from your custom app.",
     icon: GitBranch,
     visual: <CrossToolSyncVisual />,
   },
@@ -909,11 +909,11 @@ export function Features() {
           </div>
 
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold mb-4 tracking-tight leading-[1.1]">
-            Everything your AI needs to remember
+            Memory that evolves with you
           </h2>
           <p className="text-base sm:text-lg text-foreground-muted max-w-2xl mx-auto">
-            MemContext gives your AI tools persistent memory, so you never
-            repeat yourself.
+            Hybrid search, auto-expiring temporal facts, feedback-driven
+            ranking, and version history. Built for AI agents and custom apps.
           </p>
         </div>
 

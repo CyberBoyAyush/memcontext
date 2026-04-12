@@ -15,7 +15,7 @@ import { BsGithub } from "react-icons/bs";
 const faqs = [
   {
     q: "What is MemContext?",
-    a: "MemContext is a persistent memory layer for AI coding assistants. It remembers your preferences, coding style, project context, and past conversations — so your AI never starts from scratch.",
+    a: "MemContext is a persistent, evolving memory layer for AI agents and applications. It stores preferences, facts, decisions, and context with hybrid search, auto-expiring temporal memories, and feedback-driven ranking. Use it via MCP with coding assistants or via REST API in any custom app.",
   },
   {
     q: "What is MCP?",
@@ -23,19 +23,19 @@ const faqs = [
   },
   {
     q: "How does automatic memory work?",
-    a: "When you share preferences or context, MemContext intelligently detects what's worth remembering and saves it. Later, when you ask something related, it automatically retrieves relevant memories — no manual tagging needed.",
+    a: "When you save a memory, MemContext expands it for searchability, classifies whether it's permanent or temporal, detects duplicates, and links related memories automatically. During search, it combines vector similarity with keyword matching, filters expired content, and adjusts ranking based on your feedback.",
   },
   {
     q: "Is my data private and secure?",
     a: "Absolutely. All memories are encrypted at rest and in transit. We never use your data to train models or share it with third parties. You own your data — export or delete anytime.",
   },
   {
-    q: "Does it work across multiple AI tools?",
-    a: "Yes! Connect any MCP-compatible tool and they share the same memory. Preferences you set in Claude Code automatically work in Cursor, Codex, and other supported tools.",
+    q: "Does it work across multiple AI tools and custom apps?",
+    a: "Yes. Connect any MCP-compatible tool and they share the same memory. You can also use the REST API to build custom applications on top of MemContext — content generators, support bots, CRM memory, anything.",
   },
   {
     q: "Is there a free plan?",
-    a: "We're still figuring out the exact pricing, but yes — there will definitely be a generous free tier. We want everyone to experience the magic of persistent AI memory.",
+    a: "Yes. The free plan includes 300 memories. Paid plans start at hobby tier with 2,000 memories and go up to pro with 10,000. Check the pricing page for current details.",
   },
 ];
 
