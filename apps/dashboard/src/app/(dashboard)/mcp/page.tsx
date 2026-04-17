@@ -43,9 +43,11 @@ SAVE immediately (do not defer) when any of these happen:
 - User shares a preference → save_memory(category: "preference")
 - A technology or architecture decision is made → save_memory(category: "decision")
 - User corrects you or says "remember" → save_memory(category: "fact")
-- Important project fact learned → save_memory(category: "fact", project: "<name>")
+- Important project fact learned → save_memory(category: "fact", project: "<known-project-name>")
 - Significant work completed → save_memory(category: "context")
-For time-sensitive info, use validUntil: save_memory(content: "...", validUntil: "2026-05-01T00:00:00Z")
+- Use project only when a clear project/app name is already known. Good: "memcontext", "carq". Omit if unsure. Never invent vague names like "123" or "abc".
+- Use validUntil only when the expiry is known exactly: save_memory(content: "...", validUntil: "2026-05-01T00:00:00Z")
+- If timing is fuzzy ("currently", "for now", "this quarter"), omit validUntil. MemContext auto-TTL handles those cases.
 After using search results, call memory_feedback to rate memories as helpful/not_helpful/outdated.
 Use delete_memory only when a memory was saved incorrectly and should be removed entirely.
 Duplicates are handled automatically — when in doubt, save.
