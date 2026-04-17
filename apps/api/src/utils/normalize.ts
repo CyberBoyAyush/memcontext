@@ -7,7 +7,7 @@ export function normalizeProjectName(
 
   const normalized = project
     .toLowerCase()
-    .replace(/[\s\-_]+/g, "")
+    .replace(/[\s_-]+/g, "")
     .replace(/[^a-z0-9]/g, "");
 
   return normalized.length > 0 ? normalized : undefined;

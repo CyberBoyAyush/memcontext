@@ -27,16 +27,17 @@ const saveMemorySchema = {
     .string()
     .optional()
     .describe(
-      "ONLY for project-specific memories (e.g., 'this project uses PNPM'). " +
-        "OMIT for general preferences (e.g., 'prefers Bun', 'likes dark mode'). " +
-        "Format: lowercase, no spaces. Example: 'memcontext', 'capychat'.",
+      "ONLY for project-specific memories when a clear project/app name is already known. " +
+        "OMIT if unsure. Examples: 'memcontext', 'carq'. Avoid vague names like '123' or 'abc'. " +
+        "Format: lowercase, no spaces.",
     ),
   validUntil: z
     .string()
     .optional()
     .describe(
-      "ISO 8601 datetime when this memory expires. Use for time-sensitive information. " +
-        "Example: '2026-05-01T00:00:00Z'. Omit for most memories.",
+      "ISO 8601 UTC datetime when this memory should stop being used. " +
+      "Set it only when the expiry/deadline is known exactly. If timing is fuzzy " +
+        "('currently', 'for now', 'this quarter'), omit it. MemContext auto-TTL handles those cases.",
     ),
 };
 
@@ -86,7 +87,7 @@ function normalizeProject(project: string | undefined): string | undefined {
   if (!project) return undefined;
   return project
     .toLowerCase()
-    .replace(/[\s\-_]+/g, "")
+    .replace(/[\s_-]+/g, "")
     .replace(/[^a-z0-9]/g, "");
 }
 

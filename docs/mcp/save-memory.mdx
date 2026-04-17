@@ -13,8 +13,8 @@ description: "Persist durable user or project knowledge across sessions."
 | ------------ | ------ | -------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | `content`    | string | Yes      | Clear, complete, searchable statement. Full sentences work best — not fragments or keywords.                                           |
 | `category`   | string | No       | One of `preference`, `fact`, `decision`, or `context`. See below.                                                                      |
-| `project`    | string | No       | Project scope. Use only for project-specific memories. Format: lowercase, no spaces (e.g. `memcontext`). Omit for general preferences. |
-| `validUntil` | string | No       | ISO 8601 datetime when this memory expires (e.g. `2026-05-01T00:00:00Z`). Omit for permanent memories.                                 |
+| `project`    | string | No       | Project scope. Use only when a clear project/app name is already known. Examples: `memcontext`, `carq`. Omit if unsure. Format: lowercase, no spaces. |
+| `validUntil` | string | No       | ISO 8601 UTC datetime when this memory should stop being used (e.g. `2026-05-01T00:00:00Z`). Use only for exact known expiry.          |
 
 ### Categories
 
@@ -32,6 +32,12 @@ description: "Persist durable user or project knowledge across sessions."
 3. Similar existing memories are found
 4. The relationship is classified (update, extend, similar, or duplicate)
 5. The memory is saved, supersedes an existing one, extends one, or is deduplicated
+
+## Timing guidance
+
+- Use `validUntil` only when the expiry is known exactly
+- If timing is fuzzy like "currently" or "for now", omit it. MemContext auto-TTL handles those cases
+- Durable preferences, facts, and decisions usually omit `validUntil`
 
 ## Response
 
