@@ -3262,9 +3262,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "agents_monorepo_architecture",
       "community": 1,
-      "norm_label": "memcontext monorepo architecture"
+      "norm_label": "memcontext monorepo architecture",
+      "id": "agents_monorepo_architecture"
     },
     {
       "label": "Business Logic in API Rule",
@@ -3275,9 +3275,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "agents_business_logic_in_api",
       "community": 1,
-      "norm_label": "business logic in api rule"
+      "norm_label": "business logic in api rule",
+      "id": "agents_business_logic_in_api"
     },
     {
       "label": "Centralized Memory System",
@@ -3288,9 +3288,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "context_centralized_memory_system",
       "community": 1,
-      "norm_label": "centralized memory system"
+      "norm_label": "centralized memory system",
+      "id": "context_centralized_memory_system"
     },
     {
       "label": "Thin Wrapper Architecture",
@@ -3301,9 +3301,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "context_thin_wrapper_architecture",
       "community": 1,
-      "norm_label": "thin wrapper architecture"
+      "norm_label": "thin wrapper architecture",
+      "id": "context_thin_wrapper_architecture"
     },
     {
       "label": "Hybrid Multi-Query Search",
@@ -3314,9 +3314,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "context_hybrid_search",
       "community": 1,
-      "norm_label": "hybrid multi-query search"
+      "norm_label": "hybrid multi-query search",
+      "id": "context_hybrid_search"
     },
     {
       "label": "Subscription Plan Limits",
@@ -3327,9 +3327,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "context_plan_limits",
       "community": 1,
-      "norm_label": "subscription plan limits"
+      "norm_label": "subscription plan limits",
+      "id": "context_plan_limits"
     },
     {
       "label": "Upstash Redis API Key Cache",
@@ -3340,9 +3340,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "context_upstash_redis_cache",
       "community": 1,
-      "norm_label": "upstash redis api key cache"
+      "norm_label": "upstash redis api key cache",
+      "id": "context_upstash_redis_cache"
     },
     {
       "label": "Better Auth Session Fallback",
@@ -3353,9 +3353,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "context_better_auth_session_fallback",
       "community": 1,
-      "norm_label": "better auth session fallback"
+      "norm_label": "better auth session fallback",
+      "id": "context_better_auth_session_fallback"
     },
     {
       "label": "End-to-End MCP Implementation Plan",
@@ -3366,9 +3366,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "plan_end_to_end_mcp_flow",
       "community": 1,
-      "norm_label": "end-to-end mcp implementation plan"
+      "norm_label": "end-to-end mcp implementation plan",
+      "id": "plan_end_to_end_mcp_flow"
     },
     {
       "label": "MemContext Platform",
@@ -3379,9 +3379,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "readme_memcontext_platform",
       "community": 1,
-      "norm_label": "memcontext platform"
+      "norm_label": "memcontext platform",
+      "id": "readme_memcontext_platform"
     },
     {
       "label": "Agent Instruction Pattern",
@@ -3392,9 +3392,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "readme_agent_instructions",
       "community": 1,
-      "norm_label": "agent instruction pattern"
+      "norm_label": "agent instruction pattern",
+      "id": "readme_agent_instructions"
     },
     {
       "label": "Mem0 Project",
@@ -3405,9 +3405,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "readme_mem0",
       "community": 1,
-      "norm_label": "mem0 project"
+      "norm_label": "mem0 project",
+      "id": "readme_mem0"
     },
     {
       "label": "Supermemory Project",
@@ -3418,9 +3418,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "readme_supermemory",
       "community": 1,
-      "norm_label": "supermemory project"
+      "norm_label": "supermemory project",
+      "id": "readme_supermemory"
     },
     {
       "label": "Hono API Patterns",
@@ -3431,9 +3431,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "api_agents_hono_api_patterns",
       "community": 1,
-      "norm_label": "hono api patterns"
+      "norm_label": "hono api patterns",
+      "id": "api_agents_hono_api_patterns"
     },
     {
       "label": "API Route Surface",
@@ -3444,9 +3444,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "api_context_api_surface",
       "community": 1,
-      "norm_label": "api route surface"
+      "norm_label": "api route surface",
+      "id": "api_context_api_surface"
     },
     {
       "label": "Memories Table",
@@ -3457,9 +3457,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "api_context_memories_table",
       "community": 1,
-      "norm_label": "memories table"
+      "norm_label": "memories table",
+      "id": "api_context_memories_table"
     },
     {
       "label": "Memory Relations Table",
@@ -3470,9 +3470,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "api_context_memory_relations_table",
       "community": 1,
-      "norm_label": "memory relations table"
+      "norm_label": "memory relations table",
+      "id": "api_context_memory_relations_table"
     },
     {
       "label": "Memory Feedback Table",
@@ -3483,9 +3483,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "api_context_memory_feedback_table",
       "community": 1,
-      "norm_label": "memory feedback table"
+      "norm_label": "memory feedback table",
+      "id": "api_context_memory_feedback_table"
     },
     {
       "label": "MemContext API Service",
@@ -3496,9 +3496,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "api_readme_api_service",
       "community": 1,
-      "norm_label": "memcontext api service"
+      "norm_label": "memcontext api service",
+      "id": "api_readme_api_service"
     },
     {
       "label": "TanStack Query Dashboard Pattern",
@@ -3509,9 +3509,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "dashboard_agents_tanstack_query_pattern",
       "community": 1,
-      "norm_label": "tanstack query dashboard pattern"
+      "norm_label": "tanstack query dashboard pattern",
+      "id": "dashboard_agents_tanstack_query_pattern"
     },
     {
       "label": "Dashboard Application",
@@ -3522,9 +3522,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "dashboard_readme_dashboard_app",
       "community": 1,
-      "norm_label": "dashboard application"
+      "norm_label": "dashboard application",
+      "id": "dashboard_readme_dashboard_app"
     },
     {
       "label": "MCP SDK Patterns",
@@ -3535,9 +3535,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "mcp_agents_mcp_sdk_patterns",
       "community": 1,
-      "norm_label": "mcp sdk patterns"
+      "norm_label": "mcp sdk patterns",
+      "id": "mcp_agents_mcp_sdk_patterns"
     },
     {
       "label": "MCP Tool Surface",
@@ -3548,9 +3548,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "mcp_context_mcp_tool_surface",
       "community": 1,
-      "norm_label": "mcp tool surface"
+      "norm_label": "mcp tool surface",
+      "id": "mcp_context_mcp_tool_surface"
     },
     {
       "label": "MemContext MCP Server",
@@ -3561,9 +3561,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "mcp_readme_mcp_server",
       "community": 1,
-      "norm_label": "memcontext mcp server"
+      "norm_label": "memcontext mcp server",
+      "id": "mcp_readme_mcp_server"
     },
     {
       "label": "Marketing Website",
@@ -3574,9 +3574,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "website_readme_marketing_site",
       "community": 1,
-      "norm_label": "marketing website"
+      "norm_label": "marketing website",
+      "id": "website_readme_marketing_site"
     },
     {
       "label": "API Key Authentication",
@@ -3587,9 +3587,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "authentication_api_key_authentication",
       "community": 1,
-      "norm_label": "api key authentication"
+      "norm_label": "api key authentication",
+      "id": "authentication_api_key_authentication"
     },
     {
       "label": "Request Rate Limits",
@@ -3600,9 +3600,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "authentication_rate_limits",
       "community": 1,
-      "norm_label": "request rate limits"
+      "norm_label": "request rate limits",
+      "id": "authentication_rate_limits"
     },
     {
       "label": "Error Response Format",
@@ -3613,9 +3613,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "authentication_error_response_format",
       "community": 1,
-      "norm_label": "error response format"
+      "norm_label": "error response format",
+      "id": "authentication_error_response_format"
     },
     {
       "label": "Core Memory Primitives",
@@ -3626,9 +3626,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "index_core_primitives",
       "community": 1,
-      "norm_label": "core memory primitives"
+      "norm_label": "core memory primitives",
+      "id": "index_core_primitives"
     },
     {
       "label": "Quickstart Workflow",
@@ -3639,9 +3639,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "quickstart_quickstart_workflow",
       "community": 1,
-      "norm_label": "quickstart workflow"
+      "norm_label": "quickstart workflow",
+      "id": "quickstart_quickstart_workflow"
     },
     {
       "label": "REST API Reference",
@@ -3652,9 +3652,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "apireference_rest_api_reference",
       "community": 1,
-      "norm_label": "rest api reference"
+      "norm_label": "rest api reference",
+      "id": "apireference_rest_api_reference"
     },
     {
       "label": "Memory Save and Search Pipeline",
@@ -3665,9 +3665,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "howitworks_memory_pipeline",
       "community": 1,
-      "norm_label": "memory save and search pipeline"
+      "norm_label": "memory save and search pipeline",
+      "id": "howitworks_memory_pipeline"
     },
     {
       "label": "Hybrid Search Design",
@@ -3678,9 +3678,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "hybridsearch_hybrid_search_design",
       "community": 1,
-      "norm_label": "hybrid search design"
+      "norm_label": "hybrid search design",
+      "id": "hybridsearch_hybrid_search_design"
     },
     {
       "label": "User Profiles",
@@ -3691,9 +3691,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "userprofiles_user_profiles",
       "community": 1,
-      "norm_label": "user profiles"
+      "norm_label": "user profiles",
+      "id": "userprofiles_user_profiles"
     },
     {
       "label": "Version Chains",
@@ -3704,9 +3704,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "versioning_version_chains",
       "community": 1,
-      "norm_label": "version chains"
+      "norm_label": "version chains",
+      "id": "versioning_version_chains"
     },
     {
       "label": "Forget Soft Delete",
@@ -3717,9 +3717,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "versioning_soft_delete_forget",
       "community": 1,
-      "norm_label": "forget soft delete"
+      "norm_label": "forget soft delete",
+      "id": "versioning_soft_delete_forget"
     },
     {
       "label": "Hard Delete",
@@ -3730,9 +3730,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "versioning_hard_delete",
       "community": 1,
-      "norm_label": "hard delete"
+      "norm_label": "hard delete",
+      "id": "versioning_hard_delete"
     },
     {
       "label": "Application Integration Pattern",
@@ -3743,9 +3743,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "building_integration_pattern",
       "community": 1,
-      "norm_label": "application integration pattern"
+      "norm_label": "application integration pattern",
+      "id": "building_integration_pattern"
     },
     {
       "label": "Application Ownership Boundary",
@@ -3756,9 +3756,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "building_ownership_boundary",
       "community": 1,
-      "norm_label": "application ownership boundary"
+      "norm_label": "application ownership boundary",
+      "id": "building_ownership_boundary"
     },
     {
       "label": "Evolving Memory Guide",
@@ -3769,9 +3769,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "evolving-memory_evolving_memory",
       "community": 5,
-      "norm_label": "evolving memory guide"
+      "norm_label": "evolving memory guide",
+      "id": "evolving-memory_evolving_memory"
     },
     {
       "label": "Version Chain",
@@ -3782,9 +3782,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "evolving-memory_version_chain",
       "community": 5,
-      "norm_label": "version chain"
+      "norm_label": "version chain",
+      "id": "evolving-memory_version_chain"
     },
     {
       "label": "Temporal Awareness",
@@ -3795,9 +3795,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "evolving-memory_temporal_awareness",
       "community": 5,
-      "norm_label": "temporal awareness"
+      "norm_label": "temporal awareness",
+      "id": "evolving-memory_temporal_awareness"
     },
     {
       "label": "Feedback-Driven Ranking",
@@ -3808,9 +3808,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "evolving-memory_feedback_driven_ranking",
       "community": 5,
-      "norm_label": "feedback-driven ranking"
+      "norm_label": "feedback-driven ranking",
+      "id": "evolving-memory_feedback_driven_ranking"
     },
     {
       "label": "Hybrid Search",
@@ -3821,9 +3821,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "evolving-memory_hybrid_search",
       "community": 5,
-      "norm_label": "hybrid search"
+      "norm_label": "hybrid search",
+      "id": "evolving-memory_hybrid_search"
     },
     {
       "label": "MCP Setup Guide",
@@ -3834,9 +3834,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "mcp-setup_mcp_setup",
       "community": 5,
-      "norm_label": "mcp setup guide"
+      "norm_label": "mcp setup guide",
+      "id": "mcp-setup_mcp_setup"
     },
     {
       "label": "Hosted MCP Server",
@@ -3847,9 +3847,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "mcp-setup_hosted_mcp_server",
       "community": 5,
-      "norm_label": "hosted mcp server"
+      "norm_label": "hosted mcp server",
+      "id": "mcp-setup_hosted_mcp_server"
     },
     {
       "label": "Agent Instructions",
@@ -3860,9 +3860,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "mcp-setup_agent_instructions",
       "community": 5,
-      "norm_label": "agent instructions"
+      "norm_label": "agent instructions",
+      "id": "mcp-setup_agent_instructions"
     },
     {
       "label": "delete_memory Tool",
@@ -3873,9 +3873,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "delete-memory_delete_memory",
       "community": 5,
-      "norm_label": "delete_memory tool"
+      "norm_label": "delete_memory tool",
+      "id": "delete-memory_delete_memory"
     },
     {
       "label": "memory_feedback Tool",
@@ -3886,9 +3886,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "memory-feedback_memory_feedback",
       "community": 5,
-      "norm_label": "memory_feedback tool"
+      "norm_label": "memory_feedback tool",
+      "id": "memory-feedback_memory_feedback"
     },
     {
       "label": "MCP Overview",
@@ -3899,9 +3899,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "overview_mcp_overview",
       "community": 5,
-      "norm_label": "mcp overview"
+      "norm_label": "mcp overview",
+      "id": "overview_mcp_overview"
     },
     {
       "label": "save_memory Tool",
@@ -3912,9 +3912,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "save-memory_save_memory",
       "community": 5,
-      "norm_label": "save_memory tool"
+      "norm_label": "save_memory tool",
+      "id": "save-memory_save_memory"
     },
     {
       "label": "search_memory Tool",
@@ -3925,9 +3925,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "search-memory_search_memory",
       "community": 5,
-      "norm_label": "search_memory tool"
+      "norm_label": "search_memory tool",
+      "id": "search-memory_search_memory"
     },
     {
       "label": "Optimization Plan",
@@ -3938,9 +3938,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "optimization_optimization_plan",
       "community": 11,
-      "norm_label": "optimization plan"
+      "norm_label": "optimization plan",
+      "id": "optimization_optimization_plan"
     },
     {
       "label": "NOOP Classification",
@@ -3951,9 +3951,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "optimization_noop_classification",
       "community": 11,
-      "norm_label": "noop classification"
+      "norm_label": "noop classification",
+      "id": "optimization_noop_classification"
     },
     {
       "label": "Top-5 Memory Comparison",
@@ -3964,9 +3964,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "optimization_top_5_memory_comparison",
       "community": 11,
-      "norm_label": "top-5 memory comparison"
+      "norm_label": "top-5 memory comparison",
+      "id": "optimization_top_5_memory_comparison"
     },
     {
       "label": "Query Expansion",
@@ -3977,9 +3977,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "optimization_query_expansion",
       "community": 11,
-      "norm_label": "query expansion"
+      "norm_label": "query expansion",
+      "id": "optimization_query_expansion"
     },
     {
       "label": "Payment Architecture",
@@ -3990,9 +3990,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "payment-architecture-diagram_payment_architecture",
       "community": 12,
-      "norm_label": "payment architecture"
+      "norm_label": "payment architecture",
+      "id": "payment-architecture-diagram_payment_architecture"
     },
     {
       "label": "Subscription Webhook Flow",
@@ -4003,9 +4003,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "payment-architecture-diagram_subscription_webhook_flow",
       "community": 12,
-      "norm_label": "subscription webhook flow"
+      "norm_label": "subscription webhook flow",
+      "id": "payment-architecture-diagram_subscription_webhook_flow"
     },
     {
       "label": "API Key Cache",
@@ -4016,9 +4016,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "payment-architecture-diagram_api_key_cache",
       "community": 12,
-      "norm_label": "api key cache"
+      "norm_label": "api key cache",
+      "id": "payment-architecture-diagram_api_key_cache"
     },
     {
       "label": "Dodo Payments",
@@ -4029,9 +4029,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "payment-architecture-diagram_dodo_payments",
       "community": 12,
-      "norm_label": "dodo payments"
+      "norm_label": "dodo payments",
+      "id": "payment-architecture-diagram_dodo_payments"
     },
     {
       "label": "Payment Integration Analysis",
@@ -4042,9 +4042,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "payment-integration-analysis_payment_integration_analysis",
       "community": 12,
-      "norm_label": "payment integration analysis"
+      "norm_label": "payment integration analysis",
+      "id": "payment-integration-analysis_payment_integration_analysis"
     },
     {
       "label": "Checkout User Identification Blocker",
@@ -4055,9 +4055,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "payment-integration-analysis_user_identification_blocker",
       "community": 12,
-      "norm_label": "checkout user identification blocker"
+      "norm_label": "checkout user identification blocker",
+      "id": "payment-integration-analysis_user_identification_blocker"
     },
     {
       "label": "Idempotency Key Blocker",
@@ -4068,9 +4068,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "payment-integration-analysis_idempotency_key_blocker",
       "community": 12,
-      "norm_label": "idempotency key blocker"
+      "norm_label": "idempotency key blocker",
+      "id": "payment-integration-analysis_idempotency_key_blocker"
     },
     {
       "label": "Inactive Subscription Validation Blocker",
@@ -4081,9 +4081,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "payment-integration-analysis_inactive_subscription_blocker",
       "community": 12,
-      "norm_label": "inactive subscription validation blocker"
+      "norm_label": "inactive subscription validation blocker",
+      "id": "payment-integration-analysis_inactive_subscription_blocker"
     },
     {
       "label": "Enhancement Plan",
@@ -4094,9 +4094,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "enhancement_enhancement_plan",
       "community": 5,
-      "norm_label": "enhancement plan"
+      "norm_label": "enhancement plan",
+      "id": "enhancement_enhancement_plan"
     },
     {
       "label": "Hybrid Search with RRF",
@@ -4107,9 +4107,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "enhancement_hybrid_search_rrf",
       "community": 5,
-      "norm_label": "hybrid search with rrf"
+      "norm_label": "hybrid search with rrf",
+      "id": "enhancement_hybrid_search_rrf"
     },
     {
       "label": "Temporal Support",
@@ -4120,9 +4120,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "enhancement_temporal_support",
       "community": 5,
-      "norm_label": "temporal support"
+      "norm_label": "temporal support",
+      "id": "enhancement_temporal_support"
     },
     {
       "label": "Profile Endpoint",
@@ -4133,9 +4133,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "enhancement_profile_endpoint",
       "community": 5,
-      "norm_label": "profile endpoint"
+      "norm_label": "profile endpoint",
+      "id": "enhancement_profile_endpoint"
     },
     {
       "label": "Memory History Endpoint",
@@ -4146,9 +4146,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "enhancement_memory_history_endpoint",
       "community": 5,
-      "norm_label": "memory history endpoint"
+      "norm_label": "memory history endpoint",
+      "id": "enhancement_memory_history_endpoint"
     },
     {
       "label": "Configurable Search Threshold",
@@ -4159,9 +4159,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "enhancement_configurable_threshold",
       "community": 5,
-      "norm_label": "configurable search threshold"
+      "norm_label": "configurable search threshold",
+      "id": "enhancement_configurable_threshold"
     },
     {
       "label": "Forget Endpoint",
@@ -4172,9 +4172,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "enhancement_forget_endpoint",
       "community": 5,
-      "norm_label": "forget endpoint"
+      "norm_label": "forget endpoint",
+      "id": "enhancement_forget_endpoint"
     },
     {
       "label": "Search Optimization",
@@ -4185,9 +4185,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "search-optimization_search_optimization",
       "community": 11,
-      "norm_label": "search optimization"
+      "norm_label": "search optimization",
+      "id": "search-optimization_search_optimization"
     },
     {
       "label": "Multi-Query Search",
@@ -4198,9 +4198,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "search-optimization_multi_query_search",
       "community": 11,
-      "norm_label": "multi-query search"
+      "norm_label": "multi-query search",
+      "id": "search-optimization_multi_query_search"
     },
     {
       "label": "Parallel Execution",
@@ -4211,9 +4211,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "search-optimization_parallel_execution",
       "community": 11,
-      "norm_label": "parallel execution"
+      "norm_label": "parallel execution",
+      "id": "search-optimization_parallel_execution"
     },
     {
       "label": "Memory Expansion on Save",
@@ -4224,9 +4224,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "search-optimization_memory_expansion",
       "community": 11,
-      "norm_label": "memory expansion on save"
+      "norm_label": "memory expansion on save",
+      "id": "search-optimization_memory_expansion"
     },
     {
       "label": "Internal Docs Boundary",
@@ -4237,9 +4237,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "readme_internal_docs_boundary",
       "community": 5,
-      "norm_label": "internal docs boundary"
+      "norm_label": "internal docs boundary",
+      "id": "readme_internal_docs_boundary"
     },
     {
       "label": "Shared Types Guidance",
@@ -4250,9 +4250,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "types-agents_shared_types_guidance",
       "community": 5,
-      "norm_label": "shared types guidance"
+      "norm_label": "shared types guidance",
+      "id": "types-agents_shared_types_guidance"
     },
     {
       "label": "Memory Types",
@@ -4263,9 +4263,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "types-agents_memory_types",
       "community": 5,
-      "norm_label": "memory types"
+      "norm_label": "memory types",
+      "id": "types-agents_memory_types"
     },
     {
       "label": "Feedback, Profile, and History Types",
@@ -4276,9 +4276,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "types-agents_feedback_profile_history_types",
       "community": 5,
-      "norm_label": "feedback, profile, and history types"
+      "norm_label": "feedback, profile, and history types",
+      "id": "types-agents_feedback_profile_history_types"
     },
     {
       "label": "MemContext Brandmark",
@@ -4289,9 +4289,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "favicon_memcontext_brandmark",
       "community": 52,
-      "norm_label": "memcontext brandmark"
+      "norm_label": "memcontext brandmark",
+      "id": "favicon_memcontext_brandmark"
     },
     {
       "label": "Dual Chevrons Motif",
@@ -4302,9 +4302,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "favicon_dual_chevrons_motif",
       "community": 52,
-      "norm_label": "dual chevrons motif"
+      "norm_label": "dual chevrons motif",
+      "id": "favicon_dual_chevrons_motif"
     },
     {
       "label": "MemContext Brandmark",
@@ -4315,9 +4315,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "logo_memcontext_brandmark",
       "community": 84,
-      "norm_label": "memcontext brandmark"
+      "norm_label": "memcontext brandmark",
+      "id": "logo_memcontext_brandmark"
     },
     {
       "label": "Neon Logomark",
@@ -4328,9 +4328,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "neon_logomark_dark_color_neon_logomark",
       "community": 53,
-      "norm_label": "neon logomark"
+      "norm_label": "neon logomark",
+      "id": "neon_logomark_dark_color_neon_logomark"
     },
     {
       "label": "Linear Gradients",
@@ -4341,9 +4341,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "neon_logomark_dark_color_linear_gradients",
       "community": 53,
-      "norm_label": "linear gradients"
+      "norm_label": "linear gradients",
+      "id": "neon_logomark_dark_color_linear_gradients"
     },
     {
       "label": "File Icon",
@@ -4354,9 +4354,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "file_file_icon",
       "community": 85,
-      "norm_label": "file icon"
+      "norm_label": "file icon",
+      "id": "file_file_icon"
     },
     {
       "label": "Zed Logo",
@@ -4367,9 +4367,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "zed_zed_logo",
       "community": 86,
-      "norm_label": "zed logo"
+      "norm_label": "zed logo",
+      "id": "zed_zed_logo"
     },
     {
       "label": "Gemini Logo",
@@ -4380,9 +4380,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "gemini-color_gemini_logo",
       "community": 87,
-      "norm_label": "gemini logo"
+      "norm_label": "gemini logo",
+      "id": "gemini-color_gemini_logo"
     },
     {
       "label": "Sign Logo",
@@ -4393,9 +4393,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "sign_sign_logo",
       "community": 34,
-      "norm_label": "sign logo"
+      "norm_label": "sign logo",
+      "id": "sign_sign_logo"
     },
     {
       "label": "White Chevron Segment",
@@ -4406,9 +4406,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "sign_white_chevron_segment",
       "community": 34,
-      "norm_label": "white chevron segment"
+      "norm_label": "white chevron segment",
+      "id": "sign_white_chevron_segment"
     },
     {
       "label": "Orange Chevron Segment",
@@ -4419,9 +4419,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "sign_orange_chevron_segment",
       "community": 34,
-      "norm_label": "orange chevron segment"
+      "norm_label": "orange chevron segment",
+      "id": "sign_orange_chevron_segment"
     },
     {
       "label": "MemContext Brand Logo",
@@ -4432,9 +4432,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "logo_memcontext_brand_logo",
       "community": 54,
-      "norm_label": "memcontext brand logo"
+      "norm_label": "memcontext brand logo",
+      "id": "logo_memcontext_brand_logo"
     },
     {
       "label": "Dual Chevron Mark",
@@ -4445,9 +4445,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "logo_dual_chevron_mark",
       "community": 54,
-      "norm_label": "dual chevron mark"
+      "norm_label": "dual chevron mark",
+      "id": "logo_dual_chevron_mark"
     },
     {
       "label": "Vercel Logo",
@@ -4458,9 +4458,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "vercel_vercel_logo",
       "community": 88,
-      "norm_label": "vercel logo"
+      "norm_label": "vercel logo",
+      "id": "vercel_vercel_logo"
     },
     {
       "label": "Next.js Logo",
@@ -4471,9 +4471,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "next_nextjs_logo",
       "community": 89,
-      "norm_label": "next.js logo"
+      "norm_label": "next.js logo",
+      "id": "next_nextjs_logo"
     },
     {
       "label": "OpenCode Logo",
@@ -4484,9 +4484,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "opencode-logo-dark_opencode_logo",
       "community": 90,
-      "norm_label": "opencode logo"
+      "norm_label": "opencode logo",
+      "id": "opencode-logo-dark_opencode_logo"
     },
     {
       "label": "OpenCode Logo",
@@ -4497,9 +4497,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "opencode_logo_dark_opencode_logo",
       "community": 91,
-      "norm_label": "opencode logo"
+      "norm_label": "opencode logo",
+      "id": "opencode_logo_dark_opencode_logo"
     },
     {
       "label": "Sign Logomark",
@@ -4510,9 +4510,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "sign_sign_logomark",
       "community": 92,
-      "norm_label": "sign logomark"
+      "norm_label": "sign logomark",
+      "id": "sign_sign_logomark"
     },
     {
       "label": "Dashboard Logo Mark",
@@ -4523,9 +4523,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "logo_dashboard_logo_mark",
       "community": 93,
-      "norm_label": "dashboard logo mark"
+      "norm_label": "dashboard logo mark",
+      "id": "logo_dashboard_logo_mark"
     },
     {
       "label": "Dashboard App Icon",
@@ -4536,9 +4536,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "icon_dashboard_app_icon",
       "community": 55,
-      "norm_label": "dashboard app icon"
+      "norm_label": "dashboard app icon",
+      "id": "icon_dashboard_app_icon"
     },
     {
       "label": "Two-Tone Angular Brandmark",
@@ -4549,9 +4549,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "icon_two_tone_brandmark",
       "community": 55,
-      "norm_label": "two-tone angular brandmark"
+      "norm_label": "two-tone angular brandmark",
+      "id": "icon_two_tone_brandmark"
     }
   ],
   "links": [
@@ -5270,8 +5270,8 @@
       "source_file": "apps/dashboard/src/app/(legend)/legend/users/[userId]/page.tsx",
       "source_location": "L490",
       "weight": 1.0,
-      "_src": "page_handleconfirm",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "page_handleconfirm",
       "source": "error_error",
       "target": "page_handleconfirm"
     },
@@ -5282,8 +5282,8 @@
       "source_file": "apps/dashboard/src/app/(dashboard)/api-keys/page.tsx",
       "source_location": "L114",
       "weight": 1.0,
-      "_src": "page_handlesubmit",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "page_handlesubmit",
       "source": "error_error",
       "target": "page_handlesubmit"
     },
@@ -5294,8 +5294,8 @@
       "source_file": "apps/dashboard/src/app/(dashboard)/api-keys/page.tsx",
       "source_location": "L234",
       "weight": 1.0,
-      "_src": "page_copykey",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "page_copykey",
       "source": "error_error",
       "target": "page_copykey"
     },
@@ -5306,8 +5306,8 @@
       "source_file": "apps/dashboard/src/app/(dashboard)/api-keys/page.tsx",
       "source_location": "L488",
       "weight": 1.0,
-      "_src": "page_handledelete",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "page_handledelete",
       "source": "error_error",
       "target": "page_handledelete"
     },
@@ -5318,8 +5318,8 @@
       "source_file": "apps/dashboard/src/app/(dashboard)/mcp/page.tsx",
       "source_location": "L402",
       "weight": 1.0,
-      "_src": "page_handlecopyprompt",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "page_handlecopyprompt",
       "source": "error_error",
       "target": "page_handlecopyprompt"
     },
@@ -5330,8 +5330,8 @@
       "source_file": "apps/dashboard/src/app/(dashboard)/subscription/page.tsx",
       "source_location": "L568",
       "weight": 1.0,
-      "_src": "page_handleupgrade",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "page_handleupgrade",
       "source": "error_error",
       "target": "page_handleupgrade"
     },
@@ -5342,8 +5342,8 @@
       "source_file": "apps/dashboard/src/app/(dashboard)/subscription/page.tsx",
       "source_location": "L645",
       "weight": 1.0,
-      "_src": "page_handlemanagebilling",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "page_handlemanagebilling",
       "source": "error_error",
       "target": "page_handlemanagebilling"
     },
@@ -5354,8 +5354,8 @@
       "source_file": "apps/dashboard/src/components/ui/code-block.tsx",
       "source_location": "L53",
       "weight": 1.0,
-      "_src": "code_block_handlecopy",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "code_block_handlecopy",
       "source": "error_error",
       "target": "code_block_handlecopy"
     },
@@ -5366,8 +5366,8 @@
       "source_file": "apps/api/src/utils/error.ts",
       "source_location": "L17",
       "weight": 1.0,
-      "_src": "error_logerror",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "error_logerror",
       "source": "error_error",
       "target": "error_logerror"
     },
@@ -5378,8 +5378,8 @@
       "source_file": "apps/api/src/lib/redis.ts",
       "source_location": "L49",
       "weight": 1.0,
-      "_src": "redis_checkredisconnection",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "redis_checkredisconnection",
       "source": "error_error",
       "target": "redis_checkredisconnection"
     },
@@ -5390,8 +5390,8 @@
       "source_file": "apps/api/src/lib/logger.ts",
       "source_location": "L73",
       "weight": 1.0,
-      "_src": "logger_sendtologtail",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "logger_sendtologtail",
       "source": "error_error",
       "target": "logger_sendtologtail"
     },
@@ -5402,8 +5402,8 @@
       "source_file": "apps/api/src/lib/openrouter.ts",
       "source_location": "L98",
       "weight": 1.0,
-      "_src": "openrouter_generateembedding",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "openrouter_generateembedding",
       "source": "error_error",
       "target": "openrouter_generateembedding"
     },
@@ -5414,8 +5414,8 @@
       "source_file": "apps/api/src/lib/openrouter.ts",
       "source_location": "L193",
       "weight": 1.0,
-      "_src": "openrouter_classifywithmultiplememories",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "openrouter_classifywithmultiplememories",
       "source": "error_error",
       "target": "openrouter_classifywithmultiplememories"
     },
@@ -5426,8 +5426,8 @@
       "source_file": "apps/api/src/lib/openrouter.ts",
       "source_location": "L300",
       "weight": 1.0,
-      "_src": "openrouter_expandmemory",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "openrouter_expandmemory",
       "source": "error_error",
       "target": "openrouter_expandmemory"
     },
@@ -5438,8 +5438,8 @@
       "source_file": "apps/api/src/lib/openrouter.ts",
       "source_location": "L376",
       "weight": 1.0,
-      "_src": "openrouter_generatequeryvariants",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "openrouter_generatequeryvariants",
       "source": "error_error",
       "target": "openrouter_generatequeryvariants"
     },
@@ -5450,8 +5450,8 @@
       "source_file": "apps/api/src/lib/betterstack.ts",
       "source_location": "L198",
       "weight": 1.0,
-      "_src": "betterstack_querybetterstack",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "betterstack_querybetterstack",
       "source": "error_error",
       "target": "betterstack_querybetterstack"
     },
@@ -5462,8 +5462,8 @@
       "source_file": "apps/api/src/db/index.ts",
       "source_location": "L81",
       "weight": 1.0,
-      "_src": "index_checkdbconnection",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "index_checkdbconnection",
       "source": "error_error",
       "target": "index_checkdbconnection"
     },
@@ -5474,8 +5474,8 @@
       "source_file": "apps/api/src/services/usage-stats.ts",
       "source_location": "L156",
       "weight": 1.0,
-      "_src": "usage_stats_getuserusagestats",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "usage_stats_getuserusagestats",
       "source": "error_error",
       "target": "usage_stats_getuserusagestats"
     },
@@ -5486,8 +5486,8 @@
       "source_file": "apps/api/src/services/dodo-webhooks.ts",
       "source_location": "L109",
       "weight": 1.0,
-      "_src": "dodo_webhooks_handlesubscriptionactive",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "dodo_webhooks_handlesubscriptionactive",
       "source": "error_error",
       "target": "dodo_webhooks_handlesubscriptionactive"
     },
@@ -5498,8 +5498,8 @@
       "source_file": "apps/api/src/services/dodo-webhooks.ts",
       "source_location": "L181",
       "weight": 1.0,
-      "_src": "dodo_webhooks_handlesubscriptioncancelled",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "dodo_webhooks_handlesubscriptioncancelled",
       "source": "error_error",
       "target": "dodo_webhooks_handlesubscriptioncancelled"
     },
@@ -5510,8 +5510,8 @@
       "source_file": "apps/api/src/services/dodo-webhooks.ts",
       "source_location": "L223",
       "weight": 1.0,
-      "_src": "dodo_webhooks_handlesubscriptionexpired",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "dodo_webhooks_handlesubscriptionexpired",
       "source": "error_error",
       "target": "dodo_webhooks_handlesubscriptionexpired"
     },
@@ -5522,8 +5522,8 @@
       "source_file": "apps/api/src/services/dodo-webhooks.ts",
       "source_location": "L272",
       "weight": 1.0,
-      "_src": "dodo_webhooks_handlesubscriptiononhold",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "dodo_webhooks_handlesubscriptiononhold",
       "source": "error_error",
       "target": "dodo_webhooks_handlesubscriptiononhold"
     },
@@ -5534,8 +5534,8 @@
       "source_file": "apps/api/src/services/dodo-webhooks.ts",
       "source_location": "L314",
       "weight": 1.0,
-      "_src": "dodo_webhooks_handlesubscriptionrenewed",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "dodo_webhooks_handlesubscriptionrenewed",
       "source": "error_error",
       "target": "dodo_webhooks_handlesubscriptionrenewed"
     },
@@ -5546,8 +5546,8 @@
       "source_file": "apps/api/src/services/dodo-webhooks.ts",
       "source_location": "L355",
       "weight": 1.0,
-      "_src": "dodo_webhooks_handlesubscriptionplanchanged",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "dodo_webhooks_handlesubscriptionplanchanged",
       "source": "error_error",
       "target": "dodo_webhooks_handlesubscriptionplanchanged"
     },
@@ -5558,8 +5558,8 @@
       "source_file": "apps/api/src/services/dodo-webhooks.ts",
       "source_location": "L414",
       "weight": 1.0,
-      "_src": "dodo_webhooks_handlesubscriptionfailed",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "dodo_webhooks_handlesubscriptionfailed",
       "source": "error_error",
       "target": "dodo_webhooks_handlesubscriptionfailed"
     },
@@ -5570,8 +5570,8 @@
       "source_file": "apps/api/src/services/cache.ts",
       "source_location": "L63",
       "weight": 1.0,
-      "_src": "cache_getcachedapikey",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "cache_getcachedapikey",
       "source": "error_error",
       "target": "cache_getcachedapikey"
     },
@@ -5582,8 +5582,8 @@
       "source_file": "apps/api/src/services/cache.ts",
       "source_location": "L97",
       "weight": 1.0,
-      "_src": "cache_cacheapikey",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "cache_cacheapikey",
       "source": "error_error",
       "target": "cache_cacheapikey"
     },
@@ -5594,8 +5594,8 @@
       "source_file": "apps/api/src/services/cache.ts",
       "source_location": "L126",
       "weight": 1.0,
-      "_src": "cache_invalidateapikey",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "cache_invalidateapikey",
       "source": "error_error",
       "target": "cache_invalidateapikey"
     },
@@ -5606,8 +5606,8 @@
       "source_file": "apps/api/src/services/cache.ts",
       "source_location": "L162",
       "weight": 1.0,
-      "_src": "cache_updatecachedmemorycount",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "cache_updatecachedmemorycount",
       "source": "error_error",
       "target": "cache_updatecachedmemorycount"
     },
@@ -5618,8 +5618,8 @@
       "source_file": "apps/api/src/services/cache.ts",
       "source_location": "L182",
       "weight": 1.0,
-      "_src": "cache_getcachedprofile",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "cache_getcachedprofile",
       "source": "error_error",
       "target": "cache_getcachedprofile"
     },
@@ -5630,8 +5630,8 @@
       "source_file": "apps/api/src/services/cache.ts",
       "source_location": "L204",
       "weight": 1.0,
-      "_src": "cache_cacheprofile",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "cache_cacheprofile",
       "source": "error_error",
       "target": "cache_cacheprofile"
     },
@@ -5642,8 +5642,8 @@
       "source_file": "apps/api/src/services/cache.ts",
       "source_location": "L227",
       "weight": 1.0,
-      "_src": "cache_invalidatecachedprofile",
-      "_tgt": "error_error",
+      "_src": "error_error",
+      "_tgt": "cache_invalidatecachedprofile",
       "source": "error_error",
       "target": "cache_invalidatecachedprofile"
     },
@@ -7766,8 +7766,8 @@
       "source_file": "apps/api/src/utils/error.ts",
       "source_location": "L16",
       "weight": 1.0,
-      "_src": "error_logerror",
-      "_tgt": "app_error_serializeerror",
+      "_src": "app_error_serializeerror",
+      "_tgt": "error_logerror",
       "source": "app_error_serializeerror",
       "target": "error_logerror"
     },
@@ -7778,8 +7778,8 @@
       "source_file": "apps/api/src/lib/openrouter.ts",
       "source_location": "L140",
       "weight": 1.0,
-      "_src": "openrouter_classifywithmultiplememories",
-      "_tgt": "app_error_escapeforprompt",
+      "_src": "app_error_escapeforprompt",
+      "_tgt": "openrouter_classifywithmultiplememories",
       "source": "app_error_escapeforprompt",
       "target": "openrouter_classifywithmultiplememories"
     },
@@ -7790,8 +7790,8 @@
       "source_file": "apps/api/src/lib/openrouter.ts",
       "source_location": "L247",
       "weight": 1.0,
-      "_src": "openrouter_expandmemory",
-      "_tgt": "app_error_escapeforprompt",
+      "_src": "app_error_escapeforprompt",
+      "_tgt": "openrouter_expandmemory",
       "source": "app_error_escapeforprompt",
       "target": "openrouter_expandmemory"
     },
@@ -7802,8 +7802,8 @@
       "source_file": "apps/api/src/lib/openrouter.ts",
       "source_location": "L329",
       "weight": 1.0,
-      "_src": "openrouter_generatequeryvariants",
-      "_tgt": "app_error_escapeforprompt",
+      "_src": "app_error_escapeforprompt",
+      "_tgt": "openrouter_generatequeryvariants",
       "source": "app_error_escapeforprompt",
       "target": "openrouter_generatequeryvariants"
     },
@@ -7934,8 +7934,8 @@
       "source_file": "apps/api/src/services/memory.ts",
       "source_location": "L90",
       "weight": 1.0,
-      "_src": "memory_savememory",
-      "_tgt": "timing_withtiming",
+      "_src": "timing_withtiming",
+      "_tgt": "memory_savememory",
       "source": "timing_withtiming",
       "target": "memory_savememory"
     },
@@ -7946,8 +7946,8 @@
       "source_file": "apps/api/src/services/memory.ts",
       "source_location": "L571",
       "weight": 1.0,
-      "_src": "memory_searchmemories",
-      "_tgt": "timing_withtiming",
+      "_src": "timing_withtiming",
+      "_tgt": "memory_searchmemories",
       "source": "timing_withtiming",
       "target": "memory_searchmemories"
     },
@@ -7958,8 +7958,8 @@
       "source_file": "apps/api/src/services/embedding.ts",
       "source_location": "L23",
       "weight": 1.0,
-      "_src": "embedding_generateembedding",
-      "_tgt": "timing_withtiming",
+      "_src": "timing_withtiming",
+      "_tgt": "embedding_generateembedding",
       "source": "timing_withtiming",
       "target": "embedding_generateembedding"
     },
@@ -7970,8 +7970,8 @@
       "source_file": "apps/api/src/services/embedding.ts",
       "source_location": "L44",
       "weight": 1.0,
-      "_src": "embedding_expandmemory",
-      "_tgt": "timing_withtiming",
+      "_src": "timing_withtiming",
+      "_tgt": "embedding_expandmemory",
       "source": "timing_withtiming",
       "target": "embedding_expandmemory"
     },
@@ -7982,8 +7982,8 @@
       "source_file": "apps/api/src/services/embedding.ts",
       "source_location": "L61",
       "weight": 1.0,
-      "_src": "embedding_generatequeryvariants",
-      "_tgt": "timing_withtiming",
+      "_src": "timing_withtiming",
+      "_tgt": "embedding_generatequeryvariants",
       "source": "timing_withtiming",
       "target": "embedding_generatequeryvariants"
     },
@@ -7994,8 +7994,8 @@
       "source_file": "apps/api/src/services/relation.ts",
       "source_location": "L25",
       "weight": 1.0,
-      "_src": "relation_classifywithsimilarmemories",
-      "_tgt": "timing_withtiming",
+      "_src": "timing_withtiming",
+      "_tgt": "relation_classifywithsimilarmemories",
       "source": "timing_withtiming",
       "target": "relation_classifywithsimilarmemories"
     },
@@ -8030,8 +8030,8 @@
       "source_file": "apps/api/src/services/cache.ts",
       "source_location": "L24",
       "weight": 1.0,
-      "_src": "cache_getprofilecachekey",
-      "_tgt": "normalize_normalizeprojectname",
+      "_src": "normalize_normalizeprojectname",
+      "_tgt": "cache_getprofilecachekey",
       "source": "normalize_normalizeprojectname",
       "target": "cache_getprofilecachekey"
     },
@@ -8042,8 +8042,8 @@
       "source_file": "apps/api/src/services/memory.ts",
       "source_location": "L74",
       "weight": 1.0,
-      "_src": "memory_savememory",
-      "_tgt": "normalize_normalizeprojectname",
+      "_src": "normalize_normalizeprojectname",
+      "_tgt": "memory_savememory",
       "source": "normalize_normalizeprojectname",
       "target": "memory_savememory"
     },
@@ -8054,8 +8054,8 @@
       "source_file": "apps/api/src/services/memory.ts",
       "source_location": "L490",
       "weight": 1.0,
-      "_src": "memory_searchmemories",
-      "_tgt": "normalize_normalizeprojectname",
+      "_src": "normalize_normalizeprojectname",
+      "_tgt": "memory_searchmemories",
       "source": "normalize_normalizeprojectname",
       "target": "memory_searchmemories"
     },
@@ -8066,8 +8066,8 @@
       "source_file": "apps/api/src/services/memory.ts",
       "source_location": "L752",
       "weight": 1.0,
-      "_src": "memory_updatememory",
-      "_tgt": "normalize_normalizeprojectname",
+      "_src": "normalize_normalizeprojectname",
+      "_tgt": "memory_updatememory",
       "source": "normalize_normalizeprojectname",
       "target": "memory_updatememory"
     },
@@ -8078,8 +8078,8 @@
       "source_file": "apps/api/src/services/memory.ts",
       "source_location": "L963",
       "weight": 1.0,
-      "_src": "memory_listmemories",
-      "_tgt": "normalize_normalizeprojectname",
+      "_src": "normalize_normalizeprojectname",
+      "_tgt": "memory_listmemories",
       "source": "normalize_normalizeprojectname",
       "target": "memory_listmemories"
     },
@@ -8090,8 +8090,8 @@
       "source_file": "apps/api/src/services/memory.ts",
       "source_location": "L1148",
       "weight": 1.0,
-      "_src": "memory_getmemoryprofile",
-      "_tgt": "normalize_normalizeprojectname",
+      "_src": "normalize_normalizeprojectname",
+      "_tgt": "memory_getmemoryprofile",
       "source": "normalize_normalizeprojectname",
       "target": "memory_getmemoryprofile"
     },
@@ -8834,8 +8834,8 @@
       "source_file": "apps/api/src/services/usage-stats.ts",
       "source_location": "L58",
       "weight": 1.0,
-      "_src": "usage_stats_getuserusagestats",
-      "_tgt": "betterstack_isbetterstackconfigured",
+      "_src": "betterstack_isbetterstackconfigured",
+      "_tgt": "usage_stats_getuserusagestats",
       "source": "betterstack_isbetterstackconfigured",
       "target": "usage_stats_getuserusagestats"
     },
@@ -8846,8 +8846,8 @@
       "source_file": "apps/api/src/services/usage-stats.ts",
       "source_location": "L129",
       "weight": 1.0,
-      "_src": "usage_stats_getuserusagestats",
-      "_tgt": "betterstack_querybetterstack",
+      "_src": "betterstack_querybetterstack",
+      "_tgt": "usage_stats_getuserusagestats",
       "source": "betterstack_querybetterstack",
       "target": "usage_stats_getuserusagestats"
     },
@@ -8882,8 +8882,8 @@
       "source_file": "apps/api/src/services/usage-stats.ts",
       "source_location": "L47",
       "weight": 1.0,
-      "_src": "usage_stats_alllogsunion",
-      "_tgt": "betterstack_getsourcetable",
+      "_src": "betterstack_getsourcetable",
+      "_tgt": "usage_stats_alllogsunion",
       "source": "betterstack_getsourcetable",
       "target": "usage_stats_alllogsunion"
     },
@@ -10502,8 +10502,8 @@
       "source_file": "docs/guides/building-with-memcontext.mdx",
       "source_location": null,
       "weight": 1.0,
-      "_src": "building_ownership_boundary",
-      "_tgt": "context_thin_wrapper_architecture",
+      "_src": "context_thin_wrapper_architecture",
+      "_tgt": "building_ownership_boundary",
       "source": "context_thin_wrapper_architecture",
       "target": "building_ownership_boundary"
     },
@@ -10646,8 +10646,8 @@
       "source_file": "apps/website/README.md",
       "source_location": null,
       "weight": 1.0,
-      "_src": "website_readme_marketing_site",
-      "_tgt": "readme_memcontext_platform",
+      "_src": "readme_memcontext_platform",
+      "_tgt": "website_readme_marketing_site",
       "source": "readme_memcontext_platform",
       "target": "website_readme_marketing_site"
     },
@@ -10706,8 +10706,8 @@
       "source_file": "docs/concepts/versioning.mdx",
       "source_location": null,
       "weight": 1.0,
-      "_src": "versioning_version_chains",
-      "_tgt": "api_context_memories_table",
+      "_src": "api_context_memories_table",
+      "_tgt": "versioning_version_chains",
       "source": "api_context_memories_table",
       "target": "versioning_version_chains"
     },
@@ -10730,8 +10730,8 @@
       "source_file": "docs/concepts/user-profiles.mdx",
       "source_location": null,
       "weight": 1.0,
-      "_src": "userprofiles_user_profiles",
-      "_tgt": "api_context_memories_table",
+      "_src": "api_context_memories_table",
+      "_tgt": "userprofiles_user_profiles",
       "source": "api_context_memories_table",
       "target": "userprofiles_user_profiles"
     },
@@ -10766,8 +10766,8 @@
       "source_file": "apps/dashboard/README.md",
       "source_location": null,
       "weight": 1.0,
-      "_src": "dashboard_readme_dashboard_app",
-      "_tgt": "api_readme_api_service",
+      "_src": "api_readme_api_service",
+      "_tgt": "dashboard_readme_dashboard_app",
       "source": "api_readme_api_service",
       "target": "dashboard_readme_dashboard_app"
     },
@@ -10778,8 +10778,8 @@
       "source_file": "apps/mcp/README.md",
       "source_location": null,
       "weight": 1.0,
-      "_src": "mcp_readme_mcp_server",
-      "_tgt": "api_readme_api_service",
+      "_src": "api_readme_api_service",
+      "_tgt": "mcp_readme_mcp_server",
       "source": "api_readme_api_service",
       "target": "mcp_readme_mcp_server"
     },
@@ -10862,8 +10862,8 @@
       "source_file": "docs/authentication.mdx",
       "source_location": null,
       "weight": 1.0,
-      "_src": "authentication_api_key_authentication",
-      "_tgt": "mcp_readme_mcp_server",
+      "_src": "mcp_readme_mcp_server",
+      "_tgt": "authentication_api_key_authentication",
       "source": "mcp_readme_mcp_server",
       "target": "authentication_api_key_authentication"
     },
@@ -10874,8 +10874,8 @@
       "source_file": "docs/quickstart.mdx",
       "source_location": null,
       "weight": 1.0,
-      "_src": "quickstart_quickstart_workflow",
-      "_tgt": "mcp_readme_mcp_server",
+      "_src": "mcp_readme_mcp_server",
+      "_tgt": "quickstart_quickstart_workflow",
       "source": "mcp_readme_mcp_server",
       "target": "quickstart_quickstart_workflow"
     },
@@ -10886,8 +10886,8 @@
       "source_file": "docs/api-reference/overview.mdx",
       "source_location": null,
       "weight": 1.0,
-      "_src": "apireference_rest_api_reference",
-      "_tgt": "authentication_api_key_authentication",
+      "_src": "authentication_api_key_authentication",
+      "_tgt": "apireference_rest_api_reference",
       "source": "authentication_api_key_authentication",
       "target": "apireference_rest_api_reference"
     },
@@ -10898,8 +10898,8 @@
       "source_file": "docs/authentication.mdx",
       "source_location": null,
       "weight": 1.0,
-      "_src": "authentication_rate_limits",
-      "_tgt": "authentication_api_key_authentication",
+      "_src": "authentication_api_key_authentication",
+      "_tgt": "authentication_rate_limits",
       "source": "authentication_api_key_authentication",
       "target": "authentication_rate_limits"
     },
@@ -10910,8 +10910,8 @@
       "source_file": "docs/quickstart.mdx",
       "source_location": null,
       "weight": 1.0,
-      "_src": "quickstart_quickstart_workflow",
-      "_tgt": "authentication_api_key_authentication",
+      "_src": "authentication_api_key_authentication",
+      "_tgt": "quickstart_quickstart_workflow",
       "source": "authentication_api_key_authentication",
       "target": "quickstart_quickstart_workflow"
     },
@@ -11018,8 +11018,8 @@
       "source_file": "docs/guides/building-with-memcontext.mdx",
       "source_location": null,
       "weight": 1.0,
-      "_src": "building_integration_pattern",
-      "_tgt": "apireference_rest_api_reference",
+      "_src": "apireference_rest_api_reference",
+      "_tgt": "building_integration_pattern",
       "source": "apireference_rest_api_reference",
       "target": "building_integration_pattern"
     },
@@ -11054,8 +11054,8 @@
       "source_file": "docs/guides/building-with-memcontext.mdx",
       "source_location": null,
       "weight": 1.0,
-      "_src": "building_integration_pattern",
-      "_tgt": "howitworks_memory_pipeline",
+      "_src": "howitworks_memory_pipeline",
+      "_tgt": "building_integration_pattern",
       "source": "howitworks_memory_pipeline",
       "target": "building_integration_pattern"
     },
@@ -11066,8 +11066,8 @@
       "source_file": "docs/guides/building-with-memcontext.mdx",
       "source_location": null,
       "weight": 1.0,
-      "_src": "building_integration_pattern",
-      "_tgt": "userprofiles_user_profiles",
+      "_src": "userprofiles_user_profiles",
+      "_tgt": "building_integration_pattern",
       "source": "userprofiles_user_profiles",
       "target": "building_integration_pattern"
     },
@@ -11162,8 +11162,8 @@
       "source_file": "internal-docs/enhancement.md",
       "source_location": null,
       "weight": 1.0,
-      "_src": "enhancement_temporal_support",
-      "_tgt": "evolving-memory_temporal_awareness",
+      "_src": "evolving-memory_temporal_awareness",
+      "_tgt": "enhancement_temporal_support",
       "source": "evolving-memory_temporal_awareness",
       "target": "enhancement_temporal_support"
     },
@@ -11270,8 +11270,8 @@
       "source_file": "docs/mcp/overview.mdx",
       "source_location": null,
       "weight": 1.0,
-      "_src": "overview_mcp_overview",
-      "_tgt": "mcp-setup_hosted_mcp_server",
+      "_src": "mcp-setup_hosted_mcp_server",
+      "_tgt": "overview_mcp_overview",
       "source": "mcp-setup_hosted_mcp_server",
       "target": "overview_mcp_overview"
     },
@@ -11330,8 +11330,8 @@
       "source_file": "docs/mcp/overview.mdx",
       "source_location": null,
       "weight": 1.0,
-      "_src": "overview_mcp_overview",
-      "_tgt": "delete-memory_delete_memory",
+      "_src": "delete-memory_delete_memory",
+      "_tgt": "overview_mcp_overview",
       "source": "delete-memory_delete_memory",
       "target": "overview_mcp_overview"
     },
@@ -11354,8 +11354,8 @@
       "source_file": "internal-docs/enhancement.md",
       "source_location": null,
       "weight": 1.0,
-      "_src": "enhancement_forget_endpoint",
-      "_tgt": "delete-memory_delete_memory",
+      "_src": "delete-memory_delete_memory",
+      "_tgt": "enhancement_forget_endpoint",
       "source": "delete-memory_delete_memory",
       "target": "enhancement_forget_endpoint"
     },
@@ -11366,8 +11366,8 @@
       "source_file": "docs/mcp/overview.mdx",
       "source_location": null,
       "weight": 1.0,
-      "_src": "overview_mcp_overview",
-      "_tgt": "memory-feedback_memory_feedback",
+      "_src": "memory-feedback_memory_feedback",
+      "_tgt": "overview_mcp_overview",
       "source": "memory-feedback_memory_feedback",
       "target": "overview_mcp_overview"
     },
@@ -11390,8 +11390,8 @@
       "source_file": "packages/types/AGENTS.md",
       "source_location": null,
       "weight": 1.0,
-      "_src": "types-agents_feedback_profile_history_types",
-      "_tgt": "memory-feedback_memory_feedback",
+      "_src": "memory-feedback_memory_feedback",
+      "_tgt": "types-agents_feedback_profile_history_types",
       "source": "memory-feedback_memory_feedback",
       "target": "types-agents_feedback_profile_history_types"
     },
@@ -11438,8 +11438,8 @@
       "source_file": "internal-docs/search-optimization.md",
       "source_location": null,
       "weight": 1.0,
-      "_src": "search-optimization_memory_expansion",
-      "_tgt": "save-memory_save_memory",
+      "_src": "save-memory_save_memory",
+      "_tgt": "search-optimization_memory_expansion",
       "source": "save-memory_save_memory",
       "target": "search-optimization_memory_expansion"
     },
@@ -11450,8 +11450,8 @@
       "source_file": "packages/types/AGENTS.md",
       "source_location": null,
       "weight": 1.0,
-      "_src": "types-agents_memory_types",
-      "_tgt": "save-memory_save_memory",
+      "_src": "save-memory_save_memory",
+      "_tgt": "types-agents_memory_types",
       "source": "save-memory_save_memory",
       "target": "types-agents_memory_types"
     },
@@ -11462,8 +11462,8 @@
       "source_file": "internal-docs/enhancement.md",
       "source_location": null,
       "weight": 1.0,
-      "_src": "enhancement_hybrid_search_rrf",
-      "_tgt": "search-memory_search_memory",
+      "_src": "search-memory_search_memory",
+      "_tgt": "enhancement_hybrid_search_rrf",
       "source": "search-memory_search_memory",
       "target": "enhancement_hybrid_search_rrf"
     },
@@ -11474,8 +11474,8 @@
       "source_file": "internal-docs/enhancement.md",
       "source_location": null,
       "weight": 1.0,
-      "_src": "enhancement_configurable_threshold",
-      "_tgt": "search-memory_search_memory",
+      "_src": "search-memory_search_memory",
+      "_tgt": "enhancement_configurable_threshold",
       "source": "search-memory_search_memory",
       "target": "enhancement_configurable_threshold"
     },
@@ -11486,8 +11486,8 @@
       "source_file": "packages/types/AGENTS.md",
       "source_location": null,
       "weight": 1.0,
-      "_src": "types-agents_memory_types",
-      "_tgt": "search-memory_search_memory",
+      "_src": "search-memory_search_memory",
+      "_tgt": "types-agents_memory_types",
       "source": "search-memory_search_memory",
       "target": "types-agents_memory_types"
     },
@@ -11546,8 +11546,8 @@
       "source_file": "internal-docs/search-optimization.md",
       "source_location": null,
       "weight": 1.0,
-      "_src": "search-optimization_multi_query_search",
-      "_tgt": "optimization_query_expansion",
+      "_src": "optimization_query_expansion",
+      "_tgt": "search-optimization_multi_query_search",
       "source": "optimization_query_expansion",
       "target": "search-optimization_multi_query_search"
     },
@@ -11594,8 +11594,8 @@
       "source_file": "internal-docs/PAYMENT_INTEGRATION_ANALYSIS.md",
       "source_location": null,
       "weight": 1.0,
-      "_src": "payment-integration-analysis_payment_integration_analysis",
-      "_tgt": "payment-architecture-diagram_payment_architecture",
+      "_src": "payment-architecture-diagram_payment_architecture",
+      "_tgt": "payment-integration-analysis_payment_integration_analysis",
       "source": "payment-architecture-diagram_payment_architecture",
       "target": "payment-integration-analysis_payment_integration_analysis"
     },
@@ -11606,8 +11606,8 @@
       "source_file": "internal-docs/PAYMENT_INTEGRATION_ANALYSIS.md",
       "source_location": null,
       "weight": 1.0,
-      "_src": "payment-integration-analysis_inactive_subscription_blocker",
-      "_tgt": "payment-architecture-diagram_payment_architecture",
+      "_src": "payment-architecture-diagram_payment_architecture",
+      "_tgt": "payment-integration-analysis_inactive_subscription_blocker",
       "source": "payment-architecture-diagram_payment_architecture",
       "target": "payment-integration-analysis_inactive_subscription_blocker"
     },
@@ -11618,8 +11618,8 @@
       "source_file": "internal-docs/PAYMENT_INTEGRATION_ANALYSIS.md",
       "source_location": null,
       "weight": 1.0,
-      "_src": "payment-integration-analysis_user_identification_blocker",
-      "_tgt": "payment-architecture-diagram_subscription_webhook_flow",
+      "_src": "payment-architecture-diagram_subscription_webhook_flow",
+      "_tgt": "payment-integration-analysis_user_identification_blocker",
       "source": "payment-architecture-diagram_subscription_webhook_flow",
       "target": "payment-integration-analysis_user_identification_blocker"
     },
@@ -11630,8 +11630,8 @@
       "source_file": "internal-docs/PAYMENT_INTEGRATION_ANALYSIS.md",
       "source_location": null,
       "weight": 1.0,
-      "_src": "payment-integration-analysis_idempotency_key_blocker",
-      "_tgt": "payment-architecture-diagram_dodo_payments",
+      "_src": "payment-architecture-diagram_dodo_payments",
+      "_tgt": "payment-integration-analysis_idempotency_key_blocker",
       "source": "payment-architecture-diagram_dodo_payments",
       "target": "payment-integration-analysis_idempotency_key_blocker"
     },
@@ -11750,8 +11750,8 @@
       "source_file": "internal-docs/README.md",
       "source_location": null,
       "weight": 1.0,
-      "_src": "readme_internal_docs_boundary",
-      "_tgt": "enhancement_enhancement_plan",
+      "_src": "enhancement_enhancement_plan",
+      "_tgt": "readme_internal_docs_boundary",
       "source": "enhancement_enhancement_plan",
       "target": "readme_internal_docs_boundary"
     },
@@ -11762,8 +11762,8 @@
       "source_file": "packages/types/AGENTS.md",
       "source_location": null,
       "weight": 1.0,
-      "_src": "types-agents_feedback_profile_history_types",
-      "_tgt": "enhancement_profile_endpoint",
+      "_src": "enhancement_profile_endpoint",
+      "_tgt": "types-agents_feedback_profile_history_types",
       "source": "enhancement_profile_endpoint",
       "target": "types-agents_feedback_profile_history_types"
     },
@@ -11774,8 +11774,8 @@
       "source_file": "packages/types/AGENTS.md",
       "source_location": null,
       "weight": 1.0,
-      "_src": "types-agents_feedback_profile_history_types",
-      "_tgt": "enhancement_memory_history_endpoint",
+      "_src": "enhancement_memory_history_endpoint",
+      "_tgt": "types-agents_feedback_profile_history_types",
       "source": "enhancement_memory_history_endpoint",
       "target": "types-agents_feedback_profile_history_types"
     },
@@ -11870,8 +11870,8 @@
       "source_file": "apps/website/public/sign.png",
       "source_location": null,
       "weight": 1.0,
-      "_src": "sign_white_chevron_segment",
-      "_tgt": "sign_sign_logo",
+      "_src": "sign_sign_logo",
+      "_tgt": "sign_white_chevron_segment",
       "source": "sign_sign_logo",
       "target": "sign_white_chevron_segment"
     },
@@ -11882,8 +11882,8 @@
       "source_file": "apps/website/public/sign.png",
       "source_location": null,
       "weight": 1.0,
-      "_src": "sign_orange_chevron_segment",
-      "_tgt": "sign_sign_logo",
+      "_src": "sign_sign_logo",
+      "_tgt": "sign_orange_chevron_segment",
       "source": "sign_sign_logo",
       "target": "sign_orange_chevron_segment"
     },
