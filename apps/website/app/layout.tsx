@@ -49,7 +49,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "https://1kf0b6y5pd.ufs.sh/f/whL3sWlbNOAPIi4lWrSq8BcalUnAK51orufTp2SNkO7GxHzm",
+        url: "https://1kf0b6y5pd.ufs.sh/f/whL3sWlbNOAPsuTX6nM5IKWmQ4hToSfHcD2uAy0z1GgL6dXp",
         width: 3362,
         height: 2012,
         alt: "MemContext - Persistent Memory for AI Coding Agents",
@@ -63,7 +63,7 @@ export const metadata: Metadata = {
       "Your AI assistant never forgets. Save context once, retrieve it forever.",
     images: [
       {
-        url: "https://1kf0b6y5pd.ufs.sh/f/whL3sWlbNOAPIi4lWrSq8BcalUnAK51orufTp2SNkO7GxHzm",
+        url: "https://1kf0b6y5pd.ufs.sh/f/whL3sWlbNOAPsuTX6nM5IKWmQ4hToSfHcD2uAy0z1GgL6dXp",
         width: 3362,
         height: 2012,
         alt: "MemContext - Persistent Memory for AI Coding Agents",
