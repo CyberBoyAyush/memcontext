@@ -1,119 +1,116 @@
 "use client";
 
 import { ArrowRight, Sparkles } from "lucide-react";
-import Link from "next/link";
-import { HeroCards } from "./hero-cards";
+// import { HeroCards } from "./hero-cards"; // temporarily hidden — swapped for dashboard preview
+import { HeroDashboard } from "./hero-dashboard";
+import { HeroShader } from "./hero-shader";
 import { TrustBlock } from "./trust-block";
 
 export function Hero() {
-  // Generate dots with varying opacities for the glow effect
-  const generateDots = (count: number, seed: number) => {
-    const dots = [];
-    for (let i = 0; i < count; i++) {
-      const x = (i * 17 + seed) % 100;
-      const y = (i * 23 + seed * 7) % 100;
-      const opacity = [0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6][i % 7];
-      const size = [2, 2, 3, 3, 4][i % 5];
-      dots.push({ x, y, opacity, size });
-    }
-    return dots;
-  };
-
-  const leftDots = generateDots(25, 42);
-  const rightDots = generateDots(25, 73);
-
   return (
-    <section className="pt-20 pb-8 sm:pt-24 sm:pb-12 lg:pt-24 lg:pb-16 min-h-screen flex flex-col relative overflow-visible">
-      {/* Dotted glow background - Top Left */}
-      <div className="absolute top-0 left-0 w-75 h-75 sm:w-100 sm:h-100 pointer-events-none">
-        <div className="relative w-full h-full">
-          {leftDots.map((dot, i) => (
-            <div
-              key={`left-${i}`}
-              className="absolute rounded-full bg-white"
-              style={{
-                left: `${dot.x}%`,
-                top: `${dot.y}%`,
-                width: `${dot.size}px`,
-                height: `${dot.size}px`,
-                opacity: dot.opacity,
-                boxShadow: `0 0 ${dot.size * 3}px ${dot.size}px rgba(255, 255, 255, ${dot.opacity * 0.5})`,
-              }}
-            />
-          ))}
-        </div>
-        {/* Gradient fade */}
-        <div className="absolute inset-0 bg-linear-to-br from-transparent via-transparent to-background" />
-      </div>
-
-      {/* Dotted glow background - Top Right */}
-      <div className="absolute top-0 right-0 w-75 h-75 sm:w-100 sm:h-100 pointer-events-none">
-        <div className="relative w-full h-full">
-          {rightDots.map((dot, i) => (
-            <div
-              key={`right-${i}`}
-              className="absolute rounded-full bg-white"
-              style={{
-                left: `${dot.x}%`,
-                top: `${dot.y}%`,
-                width: `${dot.size}px`,
-                height: `${dot.size}px`,
-                opacity: dot.opacity,
-                boxShadow: `0 0 ${dot.size * 3}px ${dot.size}px rgba(255, 255, 255, ${dot.opacity * 0.5})`,
-              }}
-            />
-          ))}
-        </div>
-        {/* Gradient fade */}
-        <div className="absolute inset-0 bg-linear-to-bl from-transparent via-transparent to-background" />
+    <section className="pt-20 pb-8 sm:pt-24 sm:pb-12 lg:pt-24 lg:pb-16 min-h-screen flex flex-col relative overflow-hidden">
+      {/* Atmospheric WebGL shader - domain-warped fBm embers.
+          Masked top + bottom so the canvas fades into the page background
+          instead of ending in a hard rectangle at the section edge. */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          WebkitMaskImage:
+            "linear-gradient(to bottom, transparent 0%, black 8%, black 78%, transparent 100%)",
+          maskImage:
+            "linear-gradient(to bottom, transparent 0%, black 8%, black 78%, transparent 100%)",
+        }}
+      >
+        <HeroShader />
       </div>
 
       <div className="mx-auto max-w-5xl px-4 sm:px-6 relative z-10">
         <div className="text-center">
-          {/* Glowing badge */}
+          {/* Glowing badge — refined glass pill with gradient ring */}
           <div className="animate-fade-in opacity-0 flex justify-center mb-4 sm:mb-4">
             <div className="group relative">
-              {/* Border glow spot - top left */}
+              {/* Outer ambient glow — very soft, accent-tinted */}
               <div
-                className="absolute -top-px -left-px w-20 h-11 rounded-full blur-[1px]"
+                aria-hidden
+                className="absolute -inset-4 rounded-full blur-2xl opacity-40 group-hover:opacity-60 transition-opacity duration-500"
                 style={{
                   background:
-                    "radial-gradient(ellipse at top left, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.3) 30%, transparent 70%)",
-                }}
-              />
-              {/* Border glow spot - bottom right */}
-              <div
-                className="absolute -bottom-px -right-px w-20 h-11 rounded-full blur-[1px]"
-                style={{
-                  background:
-                    "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 30%, transparent 70%)",
+                    "radial-gradient(ellipse at center, rgba(232,97,60,0.25) 0%, rgba(255,255,255,0.04) 40%, transparent 70%)",
                 }}
               />
 
-              {/* Subtle border all around */}
-              <div className="absolute -inset-0.5 rounded-full border border-white/10" />
+              {/* Gradient ring — uses padding trick for a crisp 1px conic border */}
+              <div
+                className="relative rounded-full p-[1px]"
+                style={{
+                  background:
+                    "linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 35%, rgba(232,97,60,0.15) 65%, rgba(255,255,255,0.12) 100%)",
+                }}
+              >
+                {/* Main pill */}
+                <div
+                  className="relative inline-flex items-center gap-2 sm:gap-2.5 pl-1 pr-3 sm:pr-4 py-1 rounded-full overflow-hidden cursor-default transition-all duration-300"
+                  style={{
+                    background:
+                      "linear-gradient(180deg, rgba(24,24,24,0.95) 0%, rgba(14,14,14,0.95) 100%)",
+                    boxShadow: [
+                      "inset 0 1px 0 rgba(255,255,255,0.06)",
+                      "inset 0 -1px 0 rgba(0,0,0,0.4)",
+                      "0 2px 8px rgba(0,0,0,0.4)",
+                    ].join(", "),
+                  }}
+                >
+                  {/* Top specular sheen */}
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-0 top-0 h-px"
+                    style={{
+                      background:
+                        "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 50%, transparent 100%)",
+                    }}
+                  />
 
-              {/* Main container */}
-              <div className="relative inline-flex items-center gap-2 sm:gap-3 px-1.5 py-1.5 sm:px-2 sm:py-2 rounded-full bg-surface/95 backdrop-blur-sm transition-all duration-300 cursor-default overflow-hidden">
-                {/* Inner glow - top left */}
-                <div className="absolute top-0 left-0 w-20 h-12 bg-white/8 rounded-full blur-xl -translate-x-1/3 -translate-y-1/2" />
-                {/* Inner glow - bottom right */}
-                <div className="absolute bottom-0 right-0 w-20 h-12 bg-white/8 rounded-full blur-xl translate-x-1/3 translate-y-1/2" />
+                  {/* Icon bubble — spherical with inner gradient + highlight */}
+                  <div className="relative shrink-0 z-10">
+                    {/* accent halo under the bubble */}
+                    <div
+                      aria-hidden
+                      className="absolute inset-0 rounded-full blur-md opacity-70"
+                      style={{
+                        background:
+                          "radial-gradient(circle at 30% 30%, rgba(232,97,60,0.35) 0%, transparent 70%)",
+                      }}
+                    />
+                    <div
+                      className="relative w-7 h-7 rounded-full flex items-center justify-center"
+                      style={{
+                        background:
+                          "linear-gradient(145deg, #2a2a2a 0%, #151515 55%, #0a0a0a 100%)",
+                        boxShadow: [
+                          "inset 0 1px 0 rgba(255,255,255,0.12)",
+                          "inset 0 -1px 0 rgba(0,0,0,0.5)",
+                          "0 1px 2px rgba(0,0,0,0.4)",
+                        ].join(", "),
+                      }}
+                    >
+                      {/* top-left highlight */}
+                      <div
+                        aria-hidden
+                        className="absolute top-0 left-1/4 w-3 h-1.5 rounded-full blur-[2px]"
+                        style={{
+                          background:
+                            "radial-gradient(ellipse, rgba(255,255,255,0.35) 0%, transparent 70%)",
+                        }}
+                      />
+                      <Sparkles className="relative w-3.5 h-3.5 text-[#e8613c]" />
+                    </div>
+                  </div>
 
-                {/* Left icon */}
-                <div className="relative z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-linear-to-br from-surface to-border-hover border border-border-hover/60 flex items-center justify-center">
-                  <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground-muted" />
+                  {/* Text */}
+                  <span className="relative z-10 text-xs sm:text-sm text-foreground/95 font-medium tracking-tight">
+                    Persistent, evolving memory for AI
+                  </span>
                 </div>
-
-                {/* Text */}
-                <span className="relative z-10 text-xs sm:text-sm text-foreground font-medium pr-1 sm:pr-2">
-                  Persistent, evolving memory for AI
-                </span>
-
-                {/* Right arrow */}
-                {/* <div className="relative z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-surface-elevated flex items-center justify-center">
-                  <ArrowUpRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground-muted" />
-                </div> */}
               </div>
             </div>
           </div>
@@ -190,10 +187,16 @@ export function Hero() {
         </div>
       </div>
 
-      {/* Hero Cards Stack - Visual showcase */}
-      <div className="animate-fade-in opacity-0 animation-delay-400 mt-8 sm:mt-10 lg:mt-16 flex-1 flex items-center justify-center">
-        <HeroCards />
+      {/* Dashboard preview — tilted, premium bordered showcase */}
+      <div className="animate-fade-in opacity-0 animation-delay-400 mt-10 sm:mt-14 lg:mt-20 flex-1 flex items-center justify-center">
+        <HeroDashboard />
       </div>
+
+      {/* Previous card stack preserved for reference — swap back by restoring this:
+          <div className="animate-fade-in opacity-0 animation-delay-400 mt-8 sm:mt-10 lg:mt-16 flex-1 flex items-center justify-center">
+            <HeroCards />
+          </div>
+      */}
 
       {/* Trust Block - overlays hero cards */}
       <div className="animate-fade-in opacity-0 animation-delay-500 relative z-30">

@@ -599,22 +599,6 @@ export function HeroCards() {
       ref={ref}
       className="relative w-full h-[380px] sm:h-[420px] lg:h-[460px] flex items-center justify-center"
     >
-      {/* Enhanced glow background */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-visible">
-        {/* Primary large glow - accent color */}
-        <div className="absolute w-150 h-150 sm:w-225 sm:h-225 rounded-full bg-accent/15 blur-[150px]" />
-        {/* Secondary intense glow - center */}
-        <div className="absolute w-100 h-100 sm:w-150 sm:h-150 rounded-full bg-accent/20 blur-[100px]" />
-        {/* Accent glow layer */}
-        <div className="absolute w-75 h-75 sm:w-112.5 sm:h-112.5 rounded-full bg-accent/25 blur-[80px] translate-y-5" />
-        {/* Purple accent glow - left */}
-        <div className="absolute w-[350px] h-[350px] sm:w-[500px] sm:h-[500px] rounded-full bg-orange-300/10 blur-[100px] -translate-x-[150px] -translate-y-[80px]" />
-        {/* Blue accent glow - right */}
-        <div className="absolute w-75 h-75 sm:w-112.5 sm:h-112.5 rounded-full bg-orange-300/10 blur-[100px] translate-x-[150px] translate-y-[50px]" />
-        {/* Warm highlight glow */}
-        <div className="absolute w-50 h-50 sm:w-75 sm:h-75 rounded-full bg-orange-300/15 blur-[60px] -translate-y-[30px]" />
-      </div>
-
       {/* Card Stack Container */}
       <div className="relative w-full scale-110 max-w-150 h-full flex items-center justify-center">
         {/* File Card - Left side, behind folder */}

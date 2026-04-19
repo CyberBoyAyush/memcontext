@@ -16,7 +16,7 @@ export default function Home() {
   return (
     <>
       <Header />
-      <main className="overflow-hidden px-4">
+      <main className="overflow-hidden ">
         <Hero />
         <StatsBar />
         <Features />
