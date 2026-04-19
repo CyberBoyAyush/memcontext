@@ -1110,12 +1110,13 @@ export async function getMemoryGraph(
   for (const memory of memoryRows) {
     const nodeRef = { id: memory.id, createdAt: memory.createdAt };
 
+    // rootId falls back to the memory's own id so the root of a version chain
+    // still groups with its own versions. The result is always a UUID, so no
+    // truthiness check is needed.
     const rootGroupKey = memory.rootId ?? memory.id;
-    if (rootGroupKey) {
-      const group = rootGroups.get(rootGroupKey) ?? [];
-      group.push(nodeRef);
-      rootGroups.set(rootGroupKey, group);
-    }
+    const group = rootGroups.get(rootGroupKey) ?? [];
+    group.push(nodeRef);
+    rootGroups.set(rootGroupKey, group);
 
     if (memory.project) {
       const group = projectGroups.get(memory.project) ?? [];

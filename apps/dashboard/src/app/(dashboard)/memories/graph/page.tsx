@@ -271,10 +271,12 @@ export default function MemoryGraphPage() {
     return ids;
   }, [activeNodeId, adjacency]);
 
+  // The sidebar detail panel must only react to explicit selection (clicks),
+  // otherwise it would flash every time the user hovers a node.
   const selectedNode = useMemo(() => {
-    if (!activeNodeId) return null;
-    return nodes.find((node) => node.id === activeNodeId) ?? null;
-  }, [activeNodeId, nodes]);
+    if (!selectedNodeId) return null;
+    return nodes.find((node) => node.id === selectedNodeId) ?? null;
+  }, [selectedNodeId, nodes]);
 
   const selectedNodeLinks = useMemo(() => {
     if (!selectedNode) return [];
