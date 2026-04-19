@@ -18,7 +18,7 @@ export function Hero() {
           eye reads as a line (Mach banding); the extra stops below smooth it
           into a gentle sigmoid the viewer cannot localize. */}
       <div
-        className="absolute inset-0 pointer-events-none"
+        className="absolute inset-0  pointer-events-none"
         style={{
           WebkitMaskImage:
             "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.2) 4%, rgba(0,0,0,0.6) 9%, rgba(0,0,0,0.9) 14%, rgba(0,0,0,1) 20%, rgba(0,0,0,1) 55%, rgba(0,0,0,0.95) 65%, rgba(0,0,0,0.8) 72%, rgba(0,0,0,0.55) 80%, rgba(0,0,0,0.3) 87%, rgba(0,0,0,0.12) 93%, rgba(0,0,0,0) 100%)",
@@ -29,12 +29,23 @@ export function Hero() {
         <HeroShader />
       </div>
 
-      {/* Warm radial vignette — section-level so the glow bleeds freely into
-          the surrounding content instead of clipping at the illustration's
-          flex container. */}
+      {/* Warm radial vignette — two variants:
+          • Mobile: a smaller, tighter ellipse behind the copy block only, so
+            the warm area doesn't engulf the viewport.
+          • Desktop (sm+): the original wide 1200×400 glow bleeding into the
+            surrounding content.
+          Only one renders at a time via `block`/`hidden` tailwind toggles. */}
+      {/* <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-[20%] bottom-[50%] block sm:hidden"
+        style={{
+          background:
+            "radial-gradient(600px 220px at 50% 55%, rgba(169,67,42,0.22), transparent 70%)",
+        }}
+      /> */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-56 top-1/4"
+        className="pointer-events-none absolute inset-x-0 top-1/4 bottom-56 hidden sm:block"
         style={{
           background:
             "radial-gradient(1200px 400px at 50% 60%, rgba(169,67,42,0.28), transparent 65%)",
@@ -44,7 +55,7 @@ export function Hero() {
       <div className="mx-auto max-w-5xl px-4 sm:px-6 relative z-10">
         <div className="text-center">
           {/* Glowing badge — refined glass pill with gradient ring */}
-          <div className="animate-fade-in opacity-0 flex justify-center mb-4 sm:mb-4">
+          <div className="animate-fade-in opacity-0 flex justify-center my-6 md:mt-0 sm:mb-4">
             <div className="group relative">
               {/* Outer ambient glow — very soft, accent-tinted */}
               <div
@@ -133,13 +144,13 @@ export function Hero() {
             </div>
           </div>
 
-          <h1 className="animate-fade-in opacity-0 animation-delay-100 text-3xl sm:text-5xl lg:text-7xl font-display font-bold tracking-tight leading-[1.1]">
+          <h1 className="animate-fade-in opacity-0 animation-delay-100 text-4xl sm:text-5xl lg:text-7xl font-display font-bold tracking-tight leading-[1.1]">
             Memory that evolves.
             <br />
             <span className="text-foreground-muted">Not just stores.</span>
           </h1>
 
-          <p className="animate-fade-in opacity-0 animation-delay-200 mt-4 sm:mt-5 text-sm sm:text-base text-foreground-muted/80 max-w-2xl mx-auto leading-relaxed">
+          <p className="animate-fade-in opacity-0 animation-delay-200 mt-5 text-sm sm:text-base text-foreground-muted/80 max-w-2xl mx-auto leading-relaxed">
             Hybrid search. Auto-expiring temporal facts. Feedback-driven
             ranking. Version history. Connect via MCP or build on the REST API.
           </p>
