@@ -21,6 +21,7 @@ import {
   CreditCard,
   Envelope,
   BookOpen,
+  ShareNetwork,
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -72,6 +73,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: "Dashboard", href: "/dashboard", icon: SquaresFour },
       { label: "Memories", href: "/memories", icon: Brain },
+      { label: "Memory Graph", href: "/memories/graph", icon: ShareNetwork },
     ],
   },
   {

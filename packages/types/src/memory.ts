@@ -4,6 +4,12 @@ export type MemorySource = "mcp" | "web" | "api" | "openclaw";
 
 export type RelationType = "extends" | "similar";
 
+export type MemoryGraphLinkType =
+  | RelationType
+  | "shared-root"
+  | "shared-project"
+  | "shared-category";
+
 export type FeedbackType = "helpful" | "not_helpful" | "outdated" | "wrong";
 
 export type RelationshipClassification =
@@ -94,4 +100,35 @@ export interface MemoryFeedbackResponse {
 export interface SearchMemoryResponse {
   found: number;
   memories: MemoryWithRelevance[];
+}
+
+export interface MemoryGraphNode {
+  id: string;
+  label: string;
+  content: string;
+  category: string | null;
+  project: string | null;
+  rootId: string | null;
+  createdAt: string;
+  degree: number;
+}
+
+export interface MemoryGraphLink {
+  id: string;
+  source: string;
+  target: string;
+  type: MemoryGraphLinkType;
+  strength: number | null;
+  derived: boolean;
+}
+
+export interface MemoryGraphResponse {
+  nodes: MemoryGraphNode[];
+  links: MemoryGraphLink[];
+  meta: {
+    totalNodes: number;
+    totalLinks: number;
+    relationLinks: number;
+    derivedLinks: number;
+  };
 }

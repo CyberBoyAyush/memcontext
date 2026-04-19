@@ -3,6 +3,11 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
+import type {
+  MemoryGraphLink,
+  MemoryGraphNode,
+  MemoryGraphResponse,
+} from "@memcontext/types";
 import { api } from "../api";
 
 interface Memory {
@@ -38,6 +43,8 @@ interface ListMemoriesParams {
   search?: string;
 }
 
+export type { MemoryGraphNode, MemoryGraphLink, MemoryGraphResponse };
+
 export const memoriesQueryOptions = (params?: ListMemoriesParams) =>
   queryOptions({
     queryKey: ["memories", params] as const,
@@ -65,6 +72,17 @@ export const memoriesQueryOptions = (params?: ListMemoriesParams) =>
         `/api/memories${query ? `?${query}` : ""}`,
       );
     },
+  });
+
+export const memoryGraphQueryOptions = () =>
+  queryOptions({
+    queryKey: ["memory-graph"] as const,
+    queryFn: async () => {
+      return api.get<MemoryGraphResponse>("/api/memories/graph");
+    },
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
 
 interface UpdateMemoryParams {
