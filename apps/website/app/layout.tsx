@@ -49,9 +49,9 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "https://1kf0b6y5pd.ufs.sh/f/whL3sWlbNOAP9SnpSCReBrI1hfDzyJn2Mm6gKN489Y7cOLFx",
-        width: 2858,
-        height: 1702,
+        url: "https://1kf0b6y5pd.ufs.sh/f/whL3sWlbNOAPIi4lWrSq8BcalUnAK51orufTp2SNkO7GxHzm",
+        width: 3362,
+        height: 2012,
         alt: "MemContext - Persistent Memory for AI Coding Agents",
       },
     ],
@@ -63,9 +63,9 @@ export const metadata: Metadata = {
       "Your AI assistant never forgets. Save context once, retrieve it forever.",
     images: [
       {
-        url: "https://1kf0b6y5pd.ufs.sh/f/whL3sWlbNOAP9SnpSCReBrI1hfDzyJn2Mm6gKN489Y7cOLFx",
-        width: 2858,
-        height: 1702,
+        url: "https://1kf0b6y5pd.ufs.sh/f/whL3sWlbNOAPIi4lWrSq8BcalUnAK51orufTp2SNkO7GxHzm",
+        width: 3362,
+        height: 2012,
         alt: "MemContext - Persistent Memory for AI Coding Agents",
       },
     ],
