@@ -26,6 +26,8 @@ import {
   ne,
   like,
   ilike,
+  inArray,
+  or,
 } from "drizzle-orm";
 import { cosineDistance } from "drizzle-orm";
 import type {
@@ -33,6 +35,10 @@ import type {
   Memory,
   MemoryCategory,
   MemoryFeedbackResponse,
+  MemoryGraphLink,
+  MemoryGraphLinkType,
+  MemoryGraphNode,
+  MemoryGraphResponse,
   MemoryHistoryResponse,
   MemoryProfile,
   MemorySource,
@@ -946,6 +952,219 @@ interface ListMemoriesResult {
   }>;
   total: number;
   hasMore: boolean;
+}
+
+function buildGraphLabel(content: string): string {
+  const normalized = content.replace(/\s+/g, " ").trim();
+  if (normalized.length <= 56) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, 53).trimEnd()}...`;
+}
+
+function buildGraphPairKey(source: string, target: string): string {
+  return [source, target].sort().join(":");
+}
+
+function buildGraphLinkKey(
+  source: string,
+  target: string,
+  type: MemoryGraphLinkType,
+): string {
+  return `${buildGraphPairKey(source, target)}:${type}`;
+}
+
+function addGroupedDerivedLinks(
+  groups: Map<string, Array<{ id: string; createdAt: Date }>>,
+  type: Extract<
+    MemoryGraphLinkType,
+    "shared-root" | "shared-project" | "shared-category"
+  >,
+  links: MemoryGraphLink[],
+  existingLinkKeys: Set<string>,
+): number {
+  let added = 0;
+
+  for (const nodes of groups.values()) {
+    if (nodes.length < 2) {
+      continue;
+    }
+
+    const sortedNodes = [...nodes].sort(
+      (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
+    );
+
+    for (let index = 1; index < sortedNodes.length; index += 1) {
+      const source = sortedNodes[index - 1];
+      const target = sortedNodes[index];
+      const linkKey = buildGraphLinkKey(source.id, target.id, type);
+
+      if (existingLinkKeys.has(linkKey)) {
+        continue;
+      }
+
+      existingLinkKeys.add(linkKey);
+      links.push({
+        id: `${type}:${source.id}:${target.id}`,
+        source: source.id,
+        target: target.id,
+        type,
+        strength: null,
+        derived: true,
+      });
+      added += 1;
+    }
+  }
+
+  return added;
+}
+
+export async function getMemoryGraph(
+  userId: string,
+): Promise<MemoryGraphResponse> {
+  const memoryRows = await db
+    .select({
+      id: memories.id,
+      content: memories.content,
+      category: memories.category,
+      project: memories.project,
+      rootId: memories.rootId,
+      createdAt: memories.createdAt,
+    })
+    .from(memories)
+    .where(
+      and(
+        eq(memories.userId, userId),
+        eq(memories.isCurrent, true),
+        isNull(memories.deletedAt),
+      ),
+    )
+    .orderBy(desc(memories.createdAt));
+
+  if (memoryRows.length === 0) {
+    return {
+      nodes: [],
+      links: [],
+      meta: {
+        totalNodes: 0,
+        totalLinks: 0,
+        relationLinks: 0,
+        derivedLinks: 0,
+      },
+    };
+  }
+
+  const memoryIds = memoryRows.map((memory) => memory.id);
+  const memoryIdSet = new Set(memoryIds);
+  const relationRows = await db
+    .select({
+      source: memoryRelations.sourceId,
+      target: memoryRelations.targetId,
+      type: memoryRelations.relationType,
+      strength: memoryRelations.strength,
+    })
+    .from(memoryRelations)
+    .where(
+      or(
+        inArray(memoryRelations.sourceId, memoryIds),
+        inArray(memoryRelations.targetId, memoryIds),
+      ),
+    );
+
+  const links: MemoryGraphLink[] = [];
+  const degreeById = new Map<string, number>(memoryIds.map((id) => [id, 0]));
+  const existingLinkKeys = new Set<string>();
+
+  let realRelationLinks = 0;
+  for (const relation of relationRows) {
+    // Skip dangling edges where one side no longer belongs to this user's current memories.
+    if (!memoryIdSet.has(relation.source) || !memoryIdSet.has(relation.target)) {
+      continue;
+    }
+
+    existingLinkKeys.add(
+      buildGraphLinkKey(
+        relation.source,
+        relation.target,
+        relation.type as MemoryGraphLinkType,
+      ),
+    );
+    links.push({
+      id: `relation:${relation.source}:${relation.target}:${relation.type}`,
+      source: relation.source,
+      target: relation.target,
+      type: relation.type as MemoryGraphLinkType,
+      strength: relation.strength,
+      derived: false,
+    });
+    degreeById.set(relation.source, (degreeById.get(relation.source) ?? 0) + 1);
+    degreeById.set(relation.target, (degreeById.get(relation.target) ?? 0) + 1);
+    realRelationLinks += 1;
+  }
+
+  const rootGroups = new Map<string, Array<{ id: string; createdAt: Date }>>();
+  const projectGroups = new Map<string, Array<{ id: string; createdAt: Date }>>();
+  const categoryGroups = new Map<string, Array<{ id: string; createdAt: Date }>>();
+
+  for (const memory of memoryRows) {
+    const nodeRef = { id: memory.id, createdAt: memory.createdAt };
+
+    const rootGroupKey = memory.rootId ?? memory.id;
+    if (rootGroupKey) {
+      const group = rootGroups.get(rootGroupKey) ?? [];
+      group.push(nodeRef);
+      rootGroups.set(rootGroupKey, group);
+    }
+
+    if (memory.project) {
+      const group = projectGroups.get(memory.project) ?? [];
+      group.push(nodeRef);
+      projectGroups.set(memory.project, group);
+    }
+
+    if (memory.category) {
+      const group = categoryGroups.get(memory.category) ?? [];
+      group.push(nodeRef);
+      categoryGroups.set(memory.category, group);
+    }
+  }
+
+  const derivedLinks =
+    addGroupedDerivedLinks(rootGroups, "shared-root", links, existingLinkKeys) +
+    addGroupedDerivedLinks(projectGroups, "shared-project", links, existingLinkKeys) +
+    addGroupedDerivedLinks(categoryGroups, "shared-category", links, existingLinkKeys);
+
+  for (const link of links) {
+    if (!link.derived) {
+      continue;
+    }
+
+    degreeById.set(link.source, (degreeById.get(link.source) ?? 0) + 1);
+    degreeById.set(link.target, (degreeById.get(link.target) ?? 0) + 1);
+  }
+
+  const nodes: MemoryGraphNode[] = memoryRows.map((memory) => ({
+    id: memory.id,
+    label: buildGraphLabel(memory.content),
+    content: memory.content,
+    category: memory.category,
+    project: memory.project,
+    rootId: memory.rootId,
+    createdAt: memory.createdAt.toISOString(),
+    degree: degreeById.get(memory.id) ?? 0,
+  }));
+
+  return {
+    nodes,
+    links,
+    meta: {
+      totalNodes: nodes.length,
+      totalLinks: links.length,
+      relationLinks: realRelationLinks,
+      derivedLinks,
+    },
+  };
 }
 
 export async function listMemories(

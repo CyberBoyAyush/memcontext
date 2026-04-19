@@ -13,6 +13,7 @@ import {
 } from "../middleware/rate-limit.js";
 import {
   getMemory,
+  getMemoryGraph,
   getMemoryHistory,
   getMemoryProfile,
   submitFeedback,
@@ -205,6 +206,13 @@ app.get("/profile", eitherAuthMiddleware, async (c) => {
   const profile = await getMemoryProfile(auth.userId, project);
   await cacheProfile(auth.userId, project, profile);
   return c.json(profile);
+});
+
+// GET /graph - Memory graph data for dashboard visualization
+app.get("/graph", eitherAuthMiddleware, async (c) => {
+  const auth = c.get("auth");
+  const graph = await getMemoryGraph(auth.userId);
+  return c.json(graph);
 });
 
 // GET / - List memories
