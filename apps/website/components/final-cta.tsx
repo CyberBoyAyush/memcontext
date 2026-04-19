@@ -7,7 +7,7 @@ import { BsGithub } from "react-icons/bs";
 export function FinalCTA() {
   return (
     <>
-      <section className="py-20 sm:pt-16 md:pb-28">
+      <section className="py-20 sm:pt-16 md:pb-28 px-4 sm:px-6">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           {/* Main CTA Card with Glass Effect */}
           <div className="relative">

@@ -40,7 +40,7 @@ export function LaunchVideo() {
     <section
       ref={sectionRef}
       id="launch-video"
-      className="py-20 sm:py-28"
+      className="py-20 sm:py-28 px-4 sm:px-6"
       aria-label="Product demo video"
     >
       <div className="mx-auto max-w-5xl px-4 sm:px-6">
