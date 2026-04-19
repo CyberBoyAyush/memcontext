@@ -1,7 +1,7 @@
 # Graph Report - /Users/ayush/Coding/WebSite/memcontext  (2026-04-20)
 
 ## Corpus Check
-- 129 files · ~170,662 words
+- 129 files · ~171,352 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
