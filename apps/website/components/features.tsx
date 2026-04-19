@@ -867,7 +867,7 @@ const features: Feature[] = [
 
 export function Features() {
   return (
-    <section id="features" className="py-20 sm:py-28">
+    <section id="features" className="py-20 sm:py-28 px-4 sm:px-6">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="text-center mb-12 sm:mb-14">
           {/* Glowing badge pill */}

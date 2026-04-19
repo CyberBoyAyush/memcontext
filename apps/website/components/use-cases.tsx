@@ -105,7 +105,7 @@ function UseCaseCard({ useCase }: { useCase: UseCaseProps }) {
 
 export function UseCases() {
   return (
-    <section className="py-20 sm:py-28">
+    <section className="py-20 sm:py-28 px-4 sm:px-6">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="text-center mb-12 sm:mb-16">
           {/* Glowing badge pill — matches Features / Pricing / FAQ sections */}

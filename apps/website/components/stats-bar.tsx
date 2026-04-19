@@ -25,7 +25,7 @@ const stats = [
 
 export function StatsBar() {
   return (
-    <section className="py-16 sm:py-20">
+    <section className="py-16 sm:py-20 px-4 sm:px-6">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="relative">
           {/* Shiny border corner glows — matches how-it-works + CTA pattern */}

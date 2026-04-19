@@ -169,14 +169,41 @@ function SavePipelineCard() {
 
 export function MemoryPipeline() {
   return (
-    <section className="py-20 sm:py-28">
+    <section className="py-20 sm:py-28 px-4 sm:px-6">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         {/* Header — identical to original */}
         <div className="text-center mb-12 sm:mb-16">
+          {/* Glowing badge pill — matches Features / Pricing / FAQ sections */}
           <div className="flex justify-center mb-6">
             <div className="group relative">
+              {/* Border glow spot - top left */}
+              <div
+                className="absolute -top-px -left-px w-16 h-9 rounded-full blur-[1px]"
+                style={{
+                  background:
+                    "radial-gradient(ellipse at top left, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 30%, transparent 70%)",
+                }}
+              />
+              {/* Border glow spot - bottom right */}
+              <div
+                className="absolute -bottom-px -right-px w-16 h-9 rounded-full blur-[1px]"
+                style={{
+                  background:
+                    "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 70%)",
+                }}
+              />
+
+              {/* Subtle border all around */}
               <div className="absolute -inset-0.5 rounded-full border border-white/10" />
+
+              {/* Main container */}
               <div className="relative inline-flex items-center px-4 py-2 rounded-full bg-surface/95 backdrop-blur-sm">
+                {/* Inner glow - top left */}
+                <div className="absolute top-0 left-0 w-16 h-10 bg-white/5 rounded-full blur-xl -translate-x-1/3 -translate-y-1/2" />
+                {/* Inner glow - bottom right */}
+                <div className="absolute bottom-0 right-0 w-16 h-10 bg-white/5 rounded-full blur-xl translate-x-1/3 translate-y-1/2" />
+
+                {/* Text */}
                 <span className="relative z-10 text-xs sm:text-sm text-foreground font-medium">
                   Under the Hood
                 </span>

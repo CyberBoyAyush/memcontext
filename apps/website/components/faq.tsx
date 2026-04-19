@@ -43,7 +43,7 @@ export function FAQ() {
   const [open, setOpen] = useState<number | null>(0);
 
   return (
-    <section id="faq" className="py-20 sm:py-28">
+    <section id="faq" className="py-20 sm:py-28 px-4 sm:px-6">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
           {/* Left Side - Header & CTA */}
