@@ -126,7 +126,7 @@ export function HeroDashboard() {
             filter: "blur(2px)",
           }}
         /> */}
-        <div
+        {/* <div
           aria-hidden
           className="pointer-events-none absolute -bottom-2 -right-2 w-5 h-5 rounded-full"
           style={{
@@ -134,7 +134,7 @@ export function HeroDashboard() {
               "radial-gradient(circle, rgba(255,255,255,0.5) 0%, rgba(232,97,60,0.1) 50%, transparent 80%)",
             filter: "blur(3px)",
           }}
-        />
+        /> */}
       </div>
     </div>
   );

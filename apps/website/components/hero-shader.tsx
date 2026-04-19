@@ -72,19 +72,24 @@ void main() {
 
   float f = fbm(uv + 3.0 * r);
 
-  // palette — softened intensities
+  // palette — visible warm glow, still soft everywhere
   vec3 ink   = vec3(0.035, 0.035, 0.04);
-  vec3 mid   = u_brand * 0.6;
-  vec3 hot   = u_brand * 1.0;
+  vec3 mid   = u_brand * 0.55;
+  vec3 warm  = u_brand * 0.82;
 
   vec3 col = ink;
-  col = mix(col, mid, smoothstep(0.28, 0.68, f));
+  col = mix(col, mid, smoothstep(0.25, 0.72, f));
 
-  // ember hotspots across full frame
-  col = mix(col, hot, smoothstep(0.48, 0.82, f));
+  // gentle warm peaks — never fully saturated
+  col = mix(col, warm, smoothstep(0.58, 0.90, f) * 0.75);
 
-  // 4% hash grain
-  col += (grain(uv) - 0.5) * 0.04;
+  // soft radial falloff — all edges ease into ink, no hard cut
+  float d = length(uv);
+  float vig = smoothstep(1.20, 0.10, d);
+  col = mix(ink, col, vig);
+
+  // 3% hash grain to kill banding
+  col += (grain(uv) - 0.5) * 0.03;
 
   gl_FragColor = vec4(col, 1.0);
 }

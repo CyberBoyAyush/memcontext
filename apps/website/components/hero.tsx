@@ -188,7 +188,7 @@ export function Hero() {
       </div>
 
       {/* Dashboard preview — tilted, premium bordered showcase */}
-      <div className="animate-fade-in opacity-0 animation-delay-400 mt-10 sm:mt-14 lg:mt-20 flex-1 flex items-center justify-center">
+      <div className="animate-fade-in opacity-0 animation-delay-400 mt-10 sm:mt-14 lg:mt-20 mb-8 sm:mb-12 flex-1 flex items-center justify-center">
         <HeroDashboard />
       </div>
 

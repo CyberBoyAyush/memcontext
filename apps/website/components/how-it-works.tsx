@@ -1,35 +1,214 @@
 "use client";
 
-import { useState, useEffect, ReactNode, useRef } from "react";
-import { Copy, Check, Bookmark, ArrowDownToLine, Circle } from "lucide-react";
-import { IoSend } from "react-icons/io5";
+import { useState, ReactNode, Fragment } from "react";
+import { Copy, Check, ArrowRight, Circle } from "lucide-react";
 import { Claude, Cursor, OpenAI } from "@lobehub/icons";
-import { useInView } from "@/lib/use-in-view";
-import { useReducedMotion } from "@/lib/use-reduced-motion";
 
-interface ChatMessage {
-  type: "user" | "ai" | "system";
-  content: string;
-  action?: "save" | "retrieve";
-  delay: number;
+// Warm, on-brand syntax palette matching the reference
+const SYN = {
+  key: "#EADDC8", // cream — JSON keys / TOML keys
+  string: "#E8A17A", // soft terracotta — string literals
+  punct: "#7A7168", // dim — braces, brackets, colons, commas
+  plain: "#D7CFC3", // default text
+  comment: "#6B6660",
+  flag: "#C9A37A", // cURL flags like -H, -X
+  method: "#E8A17A", // HTTP methods
+} as const;
+
+// Tokenize JSON/JSON-like text into colored spans.
+// Handles strings (with their surrounding quotes), keys vs values via trailing colon,
+// and punctuation. Everything else falls through as plain.
+function highlightJson(source: string): ReactNode[] {
+  const out: ReactNode[] = [];
+  let i = 0;
+  let key = 0;
+  const n = source.length;
+  while (i < n) {
+    const ch = source[i];
+    // string literal
+    if (ch === '"') {
+      let j = i + 1;
+      while (j < n) {
+        if (source[j] === "\\" && j + 1 < n) {
+          j += 2;
+          continue;
+        }
+        if (source[j] === '"') break;
+        j++;
+      }
+      const strEnd = Math.min(j + 1, n);
+      const literal = source.slice(i, strEnd);
+      // peek next non-space char — if it's ":" this string is a key
+      let k = strEnd;
+      while (k < n && (source[k] === " " || source[k] === "\t")) k++;
+      const isKey = source[k] === ":";
+      out.push(
+        <span key={key++} style={{ color: isKey ? SYN.key : SYN.string }}>
+          {literal}
+        </span>,
+      );
+      i = strEnd;
+      continue;
+    }
+    // punctuation
+    if ("{}[],:".includes(ch)) {
+      out.push(
+        <span key={key++} style={{ color: SYN.punct }}>
+          {ch}
+        </span>,
+      );
+      i++;
+      continue;
+    }
+    // whitespace / plain
+    let j = i;
+    while (j < n && !'"{}[],:'.includes(source[j])) j++;
+    out.push(
+      <span key={key++} style={{ color: SYN.plain }}>
+        {source.slice(i, j)}
+      </span>,
+    );
+    i = j;
+  }
+  return out;
 }
 
-interface ToolConfig {
+// Lightweight highlighter for TOML-ish and shell (cURL) snippets.
+// Strings in "..." get the string color, leading keys before "=" get the key color,
+// cURL flags (-X, -H, --foo) get the flag color.
+function highlightShellish(source: string): ReactNode[] {
+  const lines = source.split("\n");
+  const nodes: ReactNode[] = [];
+  lines.forEach((line, li) => {
+    let i = 0;
+    let k = 0;
+    const parts: ReactNode[] = [];
+    // detect "key = ..." style TOML lines
+    const tomlMatch = /^(\s*)([A-Za-z0-9_.\-\[\]]+)(\s*=\s*)/.exec(line);
+    if (tomlMatch) {
+      parts.push(tomlMatch[1]);
+      parts.push(
+        <span key={`k${k++}`} style={{ color: SYN.key }}>
+          {tomlMatch[2]}
+        </span>,
+      );
+      parts.push(
+        <span key={`k${k++}`} style={{ color: SYN.punct }}>
+          {tomlMatch[3]}
+        </span>,
+      );
+      i = tomlMatch[0].length;
+    }
+    // detect section headers like [section]
+    const sectionMatch = /^(\s*)(\[[^\]]+\])(\s*)$/.exec(line);
+    if (sectionMatch && !tomlMatch) {
+      parts.push(sectionMatch[1]);
+      parts.push(
+        <span key={`k${k++}`} style={{ color: SYN.key }}>
+          {sectionMatch[2]}
+        </span>,
+      );
+      parts.push(sectionMatch[3]);
+      i = line.length;
+    }
+    while (i < line.length) {
+      const ch = line[i];
+      // string
+      if (ch === '"') {
+        let j = i + 1;
+        while (j < line.length) {
+          if (line[j] === "\\" && j + 1 < line.length) {
+            j += 2;
+            continue;
+          }
+          if (line[j] === '"') break;
+          j++;
+        }
+        const end = Math.min(j + 1, line.length);
+        parts.push(
+          <span key={`k${k++}`} style={{ color: SYN.string }}>
+            {line.slice(i, end)}
+          </span>,
+        );
+        i = end;
+        continue;
+      }
+      // cURL flag: -X, -H, --long
+      if (
+        ch === "-" &&
+        (i === 0 || line[i - 1] === " " || line[i - 1] === "\t")
+      ) {
+        let j = i + 1;
+        if (line[j] === "-") j++;
+        while (j < line.length && /[A-Za-z0-9_-]/.test(line[j])) j++;
+        if (j > i + 1) {
+          parts.push(
+            <span key={`k${k++}`} style={{ color: SYN.flag }}>
+              {line.slice(i, j)}
+            </span>,
+          );
+          i = j;
+          continue;
+        }
+      }
+      // HTTP methods at token boundaries
+      const rest = line.slice(i);
+      const methodMatch = /^(GET|POST|PUT|DELETE|PATCH)\b/.exec(rest);
+      if (methodMatch && (i === 0 || /\s/.test(line[i - 1]))) {
+        parts.push(
+          <span key={`k${k++}`} style={{ color: SYN.method }}>
+            {methodMatch[0]}
+          </span>,
+        );
+        i += methodMatch[0].length;
+        continue;
+      }
+      // plain run until next notable char
+      let j = i;
+      while (j < line.length && line[j] !== '"' && line[j] !== "-") j++;
+      if (j === i) j = i + 1;
+      parts.push(
+        <span key={`k${k++}`} style={{ color: SYN.plain }}>
+          {line.slice(i, j)}
+        </span>,
+      );
+      i = j;
+    }
+    nodes.push(
+      <Fragment key={`l${li}`}>
+        {parts}
+        {li < lines.length - 1 ? "\n" : ""}
+      </Fragment>,
+    );
+  });
+  return nodes;
+}
+
+function highlightSnippet(source: string, fileName: string): ReactNode[] {
+  const looksJson = source.trimStart().startsWith("{");
+  return looksJson &&
+    !fileName.startsWith("POST") &&
+    !fileName.startsWith("GET")
+    ? highlightJson(source)
+    : highlightShellish(source);
+}
+
+interface Snippet {
   id: string;
   name: string;
   fileName: string;
-  icon: ReactNode;
+  icon?: ReactNode;
   config: string;
 }
 
 const MCP_SERVER_URL = "https://mcp.memcontext.in/mcp";
 
-const tools: ToolConfig[] = [
+const mcpSnippets: Snippet[] = [
   {
     id: "claude",
-    name: "Claude Code",
+    name: "Claude",
     fileName: "~/.claude.json",
-    icon: <Claude size={18} />,
+    icon: <Claude size={16} />,
     config: `{
   "mcpServers": {
     "memcontext": {
@@ -45,7 +224,7 @@ const tools: ToolConfig[] = [
     id: "cursor",
     name: "Cursor",
     fileName: ".cursor/mcp.json",
-    icon: <Cursor size={18} />,
+    icon: <Cursor size={16} />,
     config: `{
   "mcpServers": {
     "memcontext": {
@@ -61,7 +240,7 @@ const tools: ToolConfig[] = [
     id: "codex",
     name: "Codex",
     fileName: "~/.codex/config.toml",
-    icon: <OpenAI size={18} />,
+    icon: <OpenAI size={16} />,
     config: `[mcp_servers.memcontext]
 url = "${MCP_SERVER_URL}"
 
@@ -70,38 +249,10 @@ x-api-key = "YOUR_MEMCONTEXT_API_KEY"`,
   },
 ];
 
-const chatSequence: ChatMessage[] = [
-  {
-    type: "user",
-    content: "I prefer using Tailwind CSS for styling",
-    delay: 0,
-  },
-  { type: "system", content: "Memory saved", action: "save", delay: 1200 },
-  {
-    type: "ai",
-    content: "Got it! I'll remember that preference.",
-    delay: 1800,
-  },
-  { type: "user", content: "Build me a card component", delay: 4000 },
-  {
-    type: "system",
-    content: "Retrieved: styling preferences",
-    action: "retrieve",
-    delay: 5200,
-  },
-  {
-    type: "ai",
-    content: "Here's a card using Tailwind CSS, since that's your preference:",
-    delay: 5800,
-  },
-];
-
-type IntegrationMode = "mcp" | "api";
-
-const apiExamples = [
+const apiSnippets: Snippet[] = [
   {
     id: "save",
-    name: "Save Memory",
+    name: "Save",
     fileName: "POST /api/memories",
     config: `curl -X POST "https://api.memcontext.in/api/memories" \\
   -H "Content-Type: application/json" \\
@@ -136,131 +287,95 @@ MEMORY_ID/feedback" \\
   },
 ];
 
+type Mode = "mcp" | "api";
+
+const mcpSteps = [
+  {
+    num: "01",
+    title: "Drop the config",
+    body: "into Claude Code, Cursor, Codex or any MCP client.",
+  },
+  {
+    num: "02",
+    title: "Chat as usual",
+    body: "— nothing else changes. No prompts, no wrappers.",
+  },
+  {
+    num: "03",
+    title: "Context persists.",
+    body: "Saved and retrieved automatically, across every session.",
+  },
+];
+
+const apiSteps = [
+  {
+    num: "01",
+    title: "Grab an API key",
+    body: "from the dashboard. One header is all you need.",
+  },
+  {
+    num: "02",
+    title: "Call the REST API",
+    body: "from any language — Node, Python, Go, cURL, anything.",
+  },
+  {
+    num: "03",
+    title: "Save, search, learn.",
+    body: "Hybrid retrieval and feedback scoring built in.",
+  },
+];
+
 export function HowItWorks() {
+  const [mode, setMode] = useState<Mode>("mcp");
+  const [selectedIdx, setSelectedIdx] = useState(0);
   const [copied, setCopied] = useState(false);
-  const [mode, setMode] = useState<IntegrationMode>("mcp");
-  const [selectedTool, setSelectedTool] = useState(0);
-  const [selectedApiExample, setSelectedApiExample] = useState(0);
-  const [visibleMessages, setVisibleMessages] = useState<number[]>([]);
-  const [isTyping, setIsTyping] = useState(false);
-  const [currentPhase, setCurrentPhase] = useState(0);
 
-  const { ref, isInView } = useInView<HTMLElement>({ threshold: 0.2 });
-  const prefersReducedMotion = useReducedMotion();
-  const timeoutIds = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
-
-  const currentTool = tools[selectedTool];
-
-  // Pause animation when not in view or user prefers reduced motion
-  const shouldAnimate = isInView && !prefersReducedMotion;
-
-  // Helper to create tracked timeouts
-  const createTimeout = (callback: () => void, delay: number) => {
-    const id = setTimeout(() => {
-      timeoutIds.current.delete(id);
-      callback();
-    }, delay);
-    timeoutIds.current.add(id);
-    return id;
-  };
-
-  // Clear all queued timeouts
-  const clearAllTimeouts = () => {
-    timeoutIds.current.forEach((id) => clearTimeout(id));
-    timeoutIds.current.clear();
-  };
-
-  useEffect(() => {
-    if (!shouldAnimate) {
-      clearAllTimeouts();
-      return;
-    }
-
-    const showMessage = (index: number) => {
-      if (index >= chatSequence.length) {
-        createTimeout(() => {
-          setVisibleMessages([]);
-          setCurrentPhase(0);
-          showMessage(0);
-        }, 4000);
-        return;
-      }
-
-      const message = chatSequence[index];
-
-      if (message.type === "ai") {
-        setIsTyping(true);
-        createTimeout(() => {
-          setIsTyping(false);
-          setVisibleMessages((prev) => [...prev, index]);
-          setCurrentPhase(index);
-          showMessage(index + 1);
-        }, 800);
-      } else {
-        createTimeout(
-          () => {
-            setVisibleMessages((prev) => [...prev, index]);
-            setCurrentPhase(index);
-            showMessage(index + 1);
-          },
-          message.delay - (index > 0 ? chatSequence[index - 1].delay : 0),
-        );
-      }
-    };
-
-    createTimeout(() => showMessage(0), 1000);
-
-    return () => {
-      clearAllTimeouts();
-    };
-  }, [shouldAnimate]);
+  const snippets = mode === "mcp" ? mcpSnippets : apiSnippets;
+  const steps = mode === "mcp" ? mcpSteps : apiSteps;
+  const current = snippets[Math.min(selectedIdx, snippets.length - 1)];
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(currentTool.config);
+    await navigator.clipboard.writeText(current.config);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const switchMode = (next: Mode) => {
+    setMode(next);
+    setSelectedIdx(0);
+    setCopied(false);
+  };
+
   return (
     <section
-      ref={ref}
       id="how-it-works"
-      className="py-20 sm:py-28 overflow-hidden"
+      className="py-20 sm:py-28 lg:py-32 overflow-hidden"
     >
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        {/* Section Header */}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {/* Centered header — badge pill + heading + subtitle */}
         <div className="text-center mb-12 sm:mb-16">
-          {/* Glowing badge pill */}
+          {/* Glowing Setup badge */}
           <div className="flex justify-center mb-6">
             <div className="group relative">
-              {/* Border glow spot - top left */}
               <div
+                aria-hidden
                 className="absolute -top-px -left-px w-16 h-9 rounded-full blur-[1px]"
                 style={{
                   background:
                     "radial-gradient(ellipse at top left, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 30%, transparent 70%)",
                 }}
               />
-              {/* Border glow spot - bottom right */}
               <div
+                aria-hidden
                 className="absolute -bottom-px -right-px w-16 h-9 rounded-full blur-[1px]"
                 style={{
                   background:
                     "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 70%)",
                 }}
               />
-
-              {/* Subtle border all around */}
               <div className="absolute -inset-0.5 rounded-full border border-white/10" />
-
-              {/* Main container */}
-              <div className="relative inline-flex items-center px-4 py-2 rounded-full bg-surface/95 backdrop-blur-sm">
-                {/* Inner glow - top left */}
-                <div className="absolute top-0 left-0 w-16 h-10 bg-white/5 rounded-full blur-xl -translate-x-1/3 -translate-y-1/2" />
-                {/* Inner glow - bottom right */}
-                <div className="absolute bottom-0 right-0 w-16 h-10 bg-white/5 rounded-full blur-xl translate-x-1/3 translate-y-1/2" />
-
-                {/* Text */}
+              <div className="relative inline-flex items-center gap-2 px-4 py-2 rounded-full bg-surface/95 backdrop-blur-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-accent" />
                 <span className="relative z-10 text-xs sm:text-sm text-foreground font-medium">
                   Setup
                 </span>
@@ -268,755 +383,260 @@ export function HowItWorks() {
             </div>
           </div>
 
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold mb-4 tracking-tight leading-[1.1]">
-            Get started in under two minutes
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold tracking-tight leading-[1.1]">
+            Get started in under two minutes.
           </h2>
-          <p className="text-base sm:text-lg text-foreground-muted max-w-2xl mx-auto mb-8">
-            {mode === "mcp"
-              ? "One config file is all it takes. Your AI remembers everything from there."
-              : "Use the REST API to build memory into any application. Save, search, and learn from feedback."}
-          </p>
 
-          {/* MCP / REST API Mode Toggle */}
-          <div className="flex justify-center">
-            <div className="relative">
-              <div className="absolute -inset-px rounded-xl border border-white/[0.08]" />
-              <div className="relative flex p-1 bg-surface/80 backdrop-blur-md rounded-xl">
-                <div
-                  className="absolute top-1 bottom-1 rounded-lg transition-all duration-300 ease-out overflow-hidden shadow-[0_4px_16px_rgba(232,97,60,0.25)]"
-                  style={{
-                    width: `calc((100% - 8px) / 2)`,
-                    left:
-                      mode === "mcp" ? `4px` : `calc(4px + (100% - 8px) / 2)`,
-                    background:
-                      "linear-gradient(135deg, rgba(232, 97, 60, 0.85) 0%, rgba(201, 78, 46, 0.75) 100%)",
-                  }}
-                >
-                  <div
-                    className="absolute inset-0 rounded-lg"
-                    style={{
-                      background:
-                        "radial-gradient(ellipse at 20% 10%, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.1) 40%, transparent 70%)",
-                    }}
-                  />
-                  <div
-                    className="absolute top-0 left-0 right-0 h-[1px]"
-                    style={{
-                      background:
-                        "linear-gradient(90deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.25) 40%, rgba(255, 255, 255, 0.05) 100%)",
-                    }}
-                  />
-                </div>
-                {(["mcp", "api"] as const).map((m) => (
-                  <button
-                    key={m}
-                    onClick={() => {
-                      setMode(m);
-                      setCopied(false);
-                    }}
-                    className={`relative cursor-pointer px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 z-10 ${
-                      mode === m
-                        ? "text-foreground"
-                        : "text-foreground-muted hover:text-foreground"
-                    }`}
-                  >
-                    {m === "mcp" ? "MCP Server" : "REST API"}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+          <p className="mt-5 text-base sm:text-lg text-foreground-muted/80 max-w-2xl mx-auto leading-relaxed">
+            {mode === "mcp"
+              ? "One config file. That's it. Your AI remembers everything from there."
+              : "One API key. That's it. Build memory into any app with a few HTTP calls."}
+          </p>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-start mt-12">
-          {/* Config Panel */}
-          <div className="order-2 lg:order-1">
-            {mode === "mcp" ? (
-              <>
-                {/* Tool Tabs with Glass Effect - CTA style */}
-                <div className="relative mb-4">
-                  {/* Border glow - top left (longer) */}
+        <div className="grid lg:grid-cols-[1fr_1.2fr] gap-12 lg:gap-16 items-start">
+          {/* LEFT — toggle + steps + CTA */}
+          <div>
+            {/* MCP / REST API toggle — shiny pill, left-aligned */}
+            <div className="mb-10 flex">
+              <div className="relative">
+                <div className="absolute -inset-px rounded-xl border border-white/[0.08]" />
+                <div className="relative flex p-1 bg-surface/80 backdrop-blur-md rounded-xl">
                   <div
-                    className="absolute -top-px -left-px w-20 h-12 rounded-xl"
+                    className="absolute top-1 bottom-1 rounded-lg transition-all duration-300 ease-out overflow-hidden shadow-[0_4px_16px_rgba(232,97,60,0.25)]"
                     style={{
+                      width: `calc((100% - 8px) / 2)`,
+                      left:
+                        mode === "mcp" ? `4px` : `calc(4px + (100% - 8px) / 2)`,
                       background:
-                        "radial-gradient(ellipse at top left, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.15) 40%, transparent 70%)",
+                        "linear-gradient(135deg, rgba(232, 97, 60, 0.85) 0%, rgba(201, 78, 46, 0.75) 100%)",
                     }}
-                  />
-                  {/* Border glow - bottom right (longer) */}
-                  <div
-                    className="absolute -bottom-px -right-px w-20 h-12 rounded-xl"
-                    style={{
-                      background:
-                        "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.1) 40%, transparent 70%)",
-                    }}
-                  />
-
-                  {/* Subtle border all around */}
-                  <div className="absolute -inset-px rounded-xl border border-white/[0.08]" />
-
-                  {/* Main tabs container */}
-                  <div className="relative flex p-1 bg-surface/80 backdrop-blur-md rounded-xl">
-                    {/* Inner glow - top left */}
-                    <div className="absolute top-0 left-0 w-20 h-12 bg-white/[0.03] rounded-xl blur-xl -translate-x-1/4 -translate-y-1/4 pointer-events-none" />
-                    {/* Inner glow - bottom right */}
-                    <div className="absolute bottom-0 right-0 w-20 h-12 bg-white/[0.02] rounded-xl blur-xl translate-x-1/4 translate-y-1/4 pointer-events-none" />
-
-                    {/* Animated sliding indicator - coral glassy like folder */}
+                  >
                     <div
-                      className="absolute top-1 bottom-1 rounded-lg transition-all duration-300 ease-out overflow-hidden shadow-[0_4px_16px_rgba(232,97,60,0.25)]"
+                      className="absolute inset-0 rounded-lg"
                       style={{
-                        width: `calc((100% - 8px) / 3)`,
-                        left: `calc(4px + ${selectedTool} * ((100% - 8px) / 3))`,
                         background:
-                          "linear-gradient(135deg, rgba(232, 97, 60, 0.85) 0%, rgba(201, 78, 46, 0.75) 100%)",
+                          "radial-gradient(ellipse at 20% 10%, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.1) 40%, transparent 70%)",
                       }}
-                    >
-                      {/* Glass shine overlay - top left radial */}
-                      <div
-                        className="absolute inset-0 rounded-lg"
-                        style={{
-                          background:
-                            "radial-gradient(ellipse at 20% 10%, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.1) 40%, transparent 70%)",
-                        }}
-                      />
-                      {/* Top edge glow - horizontal fade */}
-                      <div
-                        className="absolute top-0 left-0 right-0 h-[1px]"
-                        style={{
-                          background:
-                            "linear-gradient(90deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.25) 40%, rgba(255, 255, 255, 0.05) 100%)",
-                        }}
-                      />
-                      {/* Left edge glow - vertical fade */}
-                      <div
-                        className="absolute top-0 left-0 bottom-0 w-[1px]"
-                        style={{
-                          background:
-                            "linear-gradient(180deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.2) 40%, transparent 100%)",
-                        }}
-                      />
-                    </div>
-
-                    {tools.map((tool, index) => (
-                      <button
-                        key={tool.id}
-                        onClick={() => {
-                          setSelectedTool(index);
-                          setCopied(false);
-                        }}
-                        className={`relative cursor-pointer flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex-1 justify-center z-10 ${
-                          selectedTool === index
-                            ? "text-foreground"
-                            : "text-foreground-muted hover:text-foreground"
-                        }`}
-                      >
-                        <span className="relative z-10">{tool.icon}</span>
-                        <span className="relative z-10 hidden sm:inline">
-                          {tool.name}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Code Panel with Glass Effect */}
-                <div className="relative">
-                  {/* Border glow - top left (longer) */}
-                  <div
-                    className="absolute -top-px -left-px w-24 h-16 rounded-xl"
-                    style={{
-                      background:
-                        "radial-gradient(ellipse at top left, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.15) 40%, transparent 70%)",
-                    }}
-                  />
-                  {/* Border glow - bottom right (longer) */}
-                  <div
-                    className="absolute -bottom-px -right-px w-24 h-16 rounded-xl"
-                    style={{
-                      background:
-                        "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.1) 40%, transparent 70%)",
-                    }}
-                  />
-
-                  {/* Main code container */}
-                  <div className="relative rounded-xl bg-surface/60 backdrop-blur-md border border-white/[0.08] shadow-lg shadow-black/20 overflow-hidden">
-                    {/* Inner glow overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/[0.04] via-transparent to-transparent rounded-xl pointer-events-none" />
-
-                    {/* Code header */}
-                    <div className="relative px-4 py-3 border-b border-white/[0.08] flex items-center justify-between bg-surface/40">
-                      <div className="flex items-center gap-2">
-                        <div className="flex gap-1.5">
-                          <span className="w-3 h-3 rounded-full bg-[#FF5F56]"></span>
-                          <span className="w-3 h-3 rounded-full bg-[#FFBD2E]"></span>
-                          <span className="w-3 h-3 rounded-full bg-[#27CA40]"></span>
-                        </div>
-                        <span className="text-xs text-foreground-subtle font-mono ml-2">
-                          {currentTool.fileName}
-                        </span>
-                      </div>
-                      <button
-                        onClick={handleCopy}
-                        className={`relative cursor-pointer flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg transition-all ${
-                          copied
-                            ? "text-accent"
-                            : "text-foreground-subtle hover:text-foreground hover:bg-white/5"
-                        }`}
-                      >
-                        {copied ? (
-                          <>
-                            <Check className="w-3.5 h-3.5" />
-                            <span>Copied!</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3.5 h-3.5" />
-                            <span>Copy</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    {/* Code content - horizontally scrollable */}
-                    <div className="overflow-x-auto max-w-[85vw] sm:max-w-none">
-                      <pre className="p-5 text-sm font-mono min-h-[180px]">
-                        <code className="text-foreground/90 whitespace-pre">
-                          {currentTool.config}
-                        </code>
-                      </pre>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Steps with Glass Number Indicators */}
-                <div className="mt-8 space-y-2">
-                  {[
-                    {
-                      num: "01",
-                      text: `Add the config to your ${currentTool.name}`,
-                    },
-                    { num: "02", text: "Chat with your AI as usual" },
-                    {
-                      num: "03",
-                      text: "Context is saved and retrieved automatically",
-                    },
-                  ].map((step, i) => {
-                    const isActive = currentPhase >= i * 2;
-                    return (
-                      <div key={step.num} className="relative">
-                        {/* Sharp shiny border corners - top left */}
-                        <div
-                          className="absolute -top-[0.5px] -left-[0.5px] w-10 h-6 rounded-lg"
-                          style={{
-                            background:
-                              "radial-gradient(ellipse at top left, rgba(255,255,255,0.9) 2%, rgba(255,255,255,0.12) 5%, transparent 70%)",
-                          }}
-                        />
-                        {/* Sharp shiny border corners - bottom right */}
-                        <div
-                          className="absolute -bottom-[0.5px] -right-[0.5px] w-10 h-6 rounded-lg"
-                          style={{
-                            background:
-                              "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.9) 2%, rgba(255,255,255,0.08) 5%, transparent 65%)",
-                          }}
-                        />
-
-                        {/* Main card - compact */}
-                        <div className="relative flex gap-3 items-center px-3 py-2.5 rounded-lg transition-all duration-500 bg-surface/15 border border-white/[0.1]">
-                          {/* Glass number indicator */}
-                          <div className="relative">
-                            {/* Border glow - top left */}
-                            <div
-                              className="absolute -top-[0.5px] -left-[0.5px] w-4 h-4 rounded-md"
-                              style={{
-                                background: isActive
-                                  ? "radial-gradient(ellipse at top left, rgba(232,97,60,0.55) 0%, rgba(232,97,60,0.15) 20%, transparent 70%)"
-                                  : "radial-gradient(ellipse at top left, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 20%, transparent 70%)",
-                              }}
-                            />
-                            <div
-                              className={`relative w-8 h-8 rounded-md flex items-center justify-center text-xs font-mono transition-all duration-300 border ${
-                                isActive
-                                  ? "bg-accent/15 text-accent border-accent/20"
-                                  : "bg-white/5 text-foreground-subtle border-white/[0.06]"
-                              }`}
-                            >
-                              <span className="relative z-10">{step.num}</span>
-                            </div>
-                          </div>
-                          <p
-                            className={`relative z-10 text-sm transition-colors duration-300 ${
-                              isActive
-                                ? "text-foreground"
-                                : "text-foreground-muted"
-                            }`}
-                          >
-                            {step.text}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            ) : (
-              <>
-                {/* REST API Example Tabs */}
-                <div className="relative mb-4">
-                  <div
-                    className="absolute -top-px -left-px w-20 h-12 rounded-xl"
-                    style={{
-                      background:
-                        "radial-gradient(ellipse at top left, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.15) 40%, transparent 70%)",
-                    }}
-                  />
-                  <div
-                    className="absolute -bottom-px -right-px w-20 h-12 rounded-xl"
-                    style={{
-                      background:
-                        "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.1) 40%, transparent 70%)",
-                    }}
-                  />
-                  <div className="absolute -inset-px rounded-xl border border-white/[0.08]" />
-                  <div className="relative flex p-1 bg-surface/80 backdrop-blur-md rounded-xl">
+                    />
                     <div
-                      className="absolute top-1 bottom-1 rounded-lg transition-all duration-300 ease-out overflow-hidden shadow-[0_4px_16px_rgba(232,97,60,0.25)]"
+                      className="absolute top-0 left-0 right-0 h-px"
                       style={{
-                        width: `calc((100% - 8px) / ${apiExamples.length})`,
-                        left: `calc(4px + ${selectedApiExample} * ((100% - 8px) / ${apiExamples.length}))`,
                         background:
-                          "linear-gradient(135deg, rgba(232, 97, 60, 0.85) 0%, rgba(201, 78, 46, 0.75) 100%)",
+                          "linear-gradient(90deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.25) 40%, rgba(255,255,255,0.05) 100%)",
                       }}
+                    />
+                  </div>
+                  {(["mcp", "api"] as const).map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => switchMode(m)}
+                      className={`relative cursor-pointer px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 z-10 ${
+                        mode === m
+                          ? "text-foreground"
+                          : "text-foreground-muted hover:text-foreground"
+                      }`}
                     >
-                      <div
-                        className="absolute inset-0 rounded-lg"
-                        style={{
-                          background:
-                            "radial-gradient(ellipse at 20% 10%, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.1) 40%, transparent 70%)",
-                        }}
-                      />
-                      <div
-                        className="absolute top-0 left-0 right-0 h-[1px]"
-                        style={{
-                          background:
-                            "linear-gradient(90deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.25) 40%, rgba(255, 255, 255, 0.05) 100%)",
-                        }}
-                      />
-                    </div>
-                    {apiExamples.map((ex, index) => (
-                      <button
-                        key={ex.id}
-                        onClick={() => {
-                          setSelectedApiExample(index);
-                          setCopied(false);
-                        }}
-                        className={`relative cursor-pointer flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex-1 justify-center z-10 ${
-                          selectedApiExample === index
-                            ? "text-foreground"
-                            : "text-foreground-muted hover:text-foreground"
-                        }`}
-                      >
-                        <span className="relative z-10">{ex.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* REST API Code Block */}
-                <div className="relative">
-                  <div
-                    className="absolute -top-px -left-px w-24 h-16 rounded-xl"
-                    style={{
-                      background:
-                        "radial-gradient(ellipse at top left, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.15) 40%, transparent 70%)",
-                    }}
-                  />
-                  <div
-                    className="absolute -bottom-px -right-px w-24 h-16 rounded-xl"
-                    style={{
-                      background:
-                        "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.1) 40%, transparent 70%)",
-                    }}
-                  />
-                  <div className="relative rounded-xl bg-surface/60 backdrop-blur-md border border-white/[0.08] shadow-lg shadow-black/20 overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/[0.04] via-transparent to-transparent rounded-xl pointer-events-none" />
-                    <div className="relative px-4 py-3 border-b border-white/[0.08] flex items-center justify-between bg-surface/40">
-                      <div className="flex items-center gap-2">
-                        <div className="flex gap-1.5">
-                          <span className="w-3 h-3 rounded-full bg-[#FF5F56]"></span>
-                          <span className="w-3 h-3 rounded-full bg-[#FFBD2E]"></span>
-                          <span className="w-3 h-3 rounded-full bg-[#27CA40]"></span>
-                        </div>
-                        <span className="text-xs text-foreground-subtle font-mono ml-2">
-                          {apiExamples[selectedApiExample].fileName}
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(
-                            apiExamples[selectedApiExample].config,
-                          );
-                          setCopied(true);
-                          setTimeout(() => setCopied(false), 2000);
-                        }}
-                        className={`relative cursor-pointer flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg transition-all ${
-                          copied
-                            ? "text-accent"
-                            : "text-foreground-subtle hover:text-foreground hover:bg-white/5"
-                        }`}
-                      >
-                        {copied ? (
-                          <>
-                            <Check className="w-3.5 h-3.5" />
-                            <span>Copied!</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3.5 h-3.5" />
-                            <span>Copy</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                    <div className="overflow-x-auto max-w-[85vw] sm:max-w-none">
-                      <pre className="p-5 text-sm font-mono min-h-[180px]">
-                        <code className="text-foreground/90 whitespace-pre">
-                          {apiExamples[selectedApiExample].config}
-                        </code>
-                      </pre>
-                    </div>
-                  </div>
-                </div>
-
-                {/* REST API Steps */}
-                <div className="mt-8 space-y-2">
-                  {[
-                    { num: "01", text: "Get an API key from the dashboard" },
-                    { num: "02", text: "Call the REST API from your app" },
-                    {
-                      num: "03",
-                      text: "Save, search, and learn from feedback",
-                    },
-                  ].map((step) => (
-                    <div key={step.num} className="relative">
-                      <div
-                        className="absolute -top-[0.5px] -left-[0.5px] w-10 h-6 rounded-lg"
-                        style={{
-                          background:
-                            "radial-gradient(ellipse at top left, rgba(255,255,255,0.9) 2%, rgba(255,255,255,0.12) 5%, transparent 70%)",
-                        }}
-                      />
-                      <div
-                        className="absolute -bottom-[0.5px] -right-[0.5px] w-10 h-6 rounded-lg"
-                        style={{
-                          background:
-                            "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.9) 2%, rgba(255,255,255,0.08) 5%, transparent 65%)",
-                        }}
-                      />
-                      <div className="relative flex gap-3 items-center px-3 py-2.5 rounded-lg transition-all duration-500 bg-surface/15 border border-white/[0.1]">
-                        <div className="relative">
-                          <div
-                            className="absolute -top-[0.5px] -left-[0.5px] w-4 h-4 rounded-md"
-                            style={{
-                              background:
-                                "radial-gradient(ellipse at top left, rgba(232,97,60,0.55) 0%, rgba(232,97,60,0.15) 20%, transparent 70%)",
-                            }}
-                          />
-                          <div className="relative w-8 h-8 rounded-md flex items-center justify-center text-xs font-mono transition-all duration-300 border bg-accent/15 text-accent border-accent/20">
-                            <span className="relative z-10">{step.num}</span>
-                          </div>
-                        </div>
-                        <p className="relative z-10 text-sm transition-colors duration-300 text-foreground">
-                          {step.text}
-                        </p>
-                      </div>
-                    </div>
+                      {m === "mcp" ? "MCP Server" : "REST API"}
+                    </button>
                   ))}
                 </div>
-              </>
-            )}
+              </div>
+            </div>
+
+            {/* Numbered steps — shiny glass badges, center-aligned with first line */}
+            <div className="space-y-4">
+              {steps.map((step) => (
+                <div key={step.num} className="flex items-start gap-4 sm:gap-5">
+                  {/* Glass number badge — tighter, aligned with text baseline */}
+                  <div className="relative shrink-0 mt-0.5">
+                    <div
+                      aria-hidden
+                      className="absolute -top-[0.5px] -left-[0.5px] w-5 h-5 rounded-lg"
+                      style={{
+                        background:
+                          "radial-gradient(ellipse at top left, rgba(232,97,60,0.6) 0%, rgba(232,97,60,0.15) 25%, transparent 70%)",
+                      }}
+                    />
+                    <div
+                      aria-hidden
+                      className="absolute -bottom-[0.5px] -right-[0.5px] w-5 h-5 rounded-lg"
+                      style={{
+                        background:
+                          "radial-gradient(ellipse at bottom right, rgba(232,97,60,0.4) 0%, rgba(232,97,60,0.08) 30%, transparent 70%)",
+                      }}
+                    />
+                    <div className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center text-[11px] font-mono text-accent bg-accent/10 border border-accent/20">
+                      <span className="relative z-10">{step.num}</span>
+                    </div>
+                  </div>
+
+                  {/* Text — flows naturally, badge sits next to first line */}
+                  <p className="flex-1 text-sm sm:text-base leading-7 sm:leading-8">
+                    <span className="font-semibold text-foreground">
+                      {step.title}
+                    </span>{" "}
+                    <span className="text-foreground-muted">{step.body}</span>
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Full setup guide CTA — glass pill */}
+            <div className="mt-10">
+              <a
+                href="https://docs.memcontext.in"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group relative inline-block"
+              >
+                <div className="absolute -inset-0.5 rounded-xl border border-white/8" />
+                <div className="relative flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-surface/60 backdrop-blur-sm border border-white/[0.08] transition-all group-hover:border-white/15 group-hover:bg-surface/80">
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/[0.04] via-transparent to-transparent" />
+                  <span className="text-sm sm:text-base text-foreground font-display font-semibold relative z-10">
+                    Full setup guide
+                  </span>
+                  <ArrowRight className="w-4 h-4 text-foreground relative z-10 transition-transform group-hover:translate-x-1" />
+                </div>
+              </a>
+            </div>
           </div>
 
-          {/* Right Panel — Chat (MCP) or App Visual (API) */}
-          <div className="order-1 lg:order-2">
-            {mode === "mcp" ? (
-              <>
-                <div className="relative">
+          {/* RIGHT — code panel */}
+          <div className="relative">
+            {/* Border glow - top left */}
+            <div
+              aria-hidden
+              className="absolute -top-px -left-px w-28 h-20 rounded-2xl"
+              style={{
+                background:
+                  "radial-gradient(ellipse at top left, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.15) 40%, transparent 70%)",
+              }}
+            />
+            {/* Border glow - bottom right */}
+            <div
+              aria-hidden
+              className="absolute -bottom-px -right-px w-28 h-20 rounded-2xl"
+              style={{
+                background:
+                  "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.1) 40%, transparent 70%)",
+              }}
+            />
+
+            {/* Soft ambient accent glow behind panel */}
+            <div
+              aria-hidden
+              className="absolute -inset-8 rounded-3xl blur-3xl opacity-40 pointer-events-none"
+              style={{
+                background:
+                  "radial-gradient(ellipse at 70% 30%, rgba(232,97,60,0.18) 0%, transparent 60%)",
+              }}
+            />
+
+            {/* Main panel */}
+            <div className="relative rounded-2xl bg-surface/50 backdrop-blur-md border border-white/[0.08] shadow-2xl shadow-black/40 overflow-hidden">
+              {/* Inner gradient overlay */}
+              <div
+                aria-hidden
+                className="absolute inset-0 bg-gradient-to-br from-white/[0.04] via-transparent to-transparent rounded-2xl pointer-events-none"
+              />
+
+              {/* Snippet tabs row — shiny pill switcher inside panel */}
+              <div className="relative p-3 sm:p-4 border-b border-white/[0.06]">
+                <div className="relative flex items-center p-1 rounded-xl bg-background/40 border border-white/[0.06]">
+                  {/* Sliding indicator — equal slices, aligned to each button */}
                   <div
-                    className="absolute -top-px -left-px w-20 h-64 rounded-xl"
+                    className="absolute top-1 bottom-1 rounded-lg transition-all duration-300 ease-out overflow-hidden shadow-[0_2px_10px_rgba(0,0,0,0.5)] pointer-events-none"
                     style={{
+                      width: `calc((100% - 8px) / ${snippets.length})`,
+                      left: `calc(4px + ${selectedIdx} * ((100% - 8px) / ${snippets.length}))`,
                       background:
-                        "radial-gradient(ellipse at top left, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 15%, transparent 65%)",
+                        "linear-gradient(180deg, rgba(42,42,42,0.95) 0%, rgba(24,24,24,0.95) 100%)",
+                      border: "1px solid rgba(255,255,255,0.08)",
                     }}
-                  />
-                  <div
-                    className="absolute -bottom-px -right-px w-40 h-72 rounded-xl"
-                    style={{
-                      background:
-                        "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.12) 15%, transparent 65%)",
-                    }}
-                  />
-
-                  <div className="relative rounded-xl overflow-hidden bg-surface/60 backdrop-blur-md border border-white/[0.08] shadow-xl shadow-black/30">
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/[0.04] via-transparent to-transparent rounded-xl pointer-events-none" />
-
-                    <div className="relative px-4 py-3 border-b border-white/[0.08] flex items-center justify-between bg-surface/40">
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <div
-                            className="absolute -top-[0.5px] -left-[0.5px] w-5 h-5 rounded-lg blur-[0.5px]"
-                            style={{
-                              background:
-                                "radial-gradient(ellipse at top left, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.4) 30%, transparent 60%)",
-                            }}
-                          />
-                          <div className="relative w-8 h-8 rounded-lg bg-surface/80 backdrop-blur-sm border border-white/10 flex items-center justify-center">
-                            <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-white/10 via-transparent to-transparent" />
-                            <span className="relative z-10">
-                              {currentTool.icon}
-                            </span>
-                          </div>
-                        </div>
-                        <div>
-                          <span className="text-sm font-medium">
-                            {currentTool.name}
-                          </span>
-                          <span className="text-xs text-foreground-subtle ml-1.5">
-                            · MemContext
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Circle className="w-2 h-2 fill-accent text-accent" />
-                        <span className="text-xs text-foreground-subtle">
-                          Active
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="relative p-4 min-h-[320px] sm:min-h-[360px] flex flex-col gap-3">
-                      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-surface/30 pointer-events-none" />
-                      {chatSequence.map((message, index) => {
-                        const isVisible = visibleMessages.includes(index);
-                        if (!isVisible) return null;
-                        if (message.type === "system") {
-                          return (
-                            <div
-                              key={index}
-                              className="flex justify-center animate-fade-in relative z-10"
-                            >
-                              <div
-                                className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono backdrop-blur-sm ${message.action === "save" ? "bg-accent/10 text-accent border border-accent/20" : "bg-white/5 text-foreground-muted border border-white/10"}`}
-                              >
-                                {message.action === "save" ? (
-                                  <Bookmark className="w-3 h-3" />
-                                ) : (
-                                  <ArrowDownToLine className="w-3 h-3" />
-                                )}
-                                <span>{message.content}</span>
-                              </div>
-                            </div>
-                          );
-                        }
-                        if (message.type === "user") {
-                          return (
-                            <div
-                              key={index}
-                              className="flex justify-end animate-slide-in-right relative z-10"
-                            >
-                              <div className="max-w-[85%]">
-                                <div className="bg-foreground text-background px-3.5 py-2.5 rounded-xl rounded-tr-sm text-sm">
-                                  {message.content}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        }
-                        return (
-                          <div
-                            key={index}
-                            className="flex justify-start animate-slide-in-left relative z-10"
-                          >
-                            <div className="flex gap-2.5 max-w-[85%]">
-                              <div className="w-6 h-6 rounded-md bg-surface-elevated border border-white/10 flex items-center justify-center shrink-0 mt-0.5">
-                                {selectedTool === 0 && (
-                                  <Claude.Color size={14} />
-                                )}
-                                {selectedTool === 1 && <Cursor size={14} />}
-                                {selectedTool === 2 && <OpenAI size={14} />}
-                              </div>
-                              <div className="bg-surface/80 backdrop-blur-sm px-3.5 py-2.5 rounded-xl rounded-tl-sm text-sm text-foreground border border-white/[0.06]">
-                                {message.content}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {isTyping && (
-                        <div className="flex justify-start animate-fade-in relative z-10">
-                          <div className="flex gap-2.5">
-                            <div className="w-6 h-6 rounded-md bg-surface-elevated border border-white/10 flex items-center justify-center shrink-0">
-                              {selectedTool === 0 && <Claude.Color size={14} />}
-                              {selectedTool === 1 && <Cursor size={14} />}
-                              {selectedTool === 2 && <OpenAI size={14} />}
-                            </div>
-                            <div className="bg-surface/80 backdrop-blur-sm px-4 py-3 rounded-xl rounded-tl-sm border border-white/[0.06]">
-                              <div className="flex gap-1">
-                                <span
-                                  className={`w-1.5 h-1.5 bg-foreground-subtle rounded-full ${prefersReducedMotion ? "" : "animate-bounce"}`}
-                                  style={{ animationDelay: "0ms" }}
-                                ></span>
-                                <span
-                                  className={`w-1.5 h-1.5 bg-foreground-subtle rounded-full ${prefersReducedMotion ? "" : "animate-bounce"}`}
-                                  style={{ animationDelay: "150ms" }}
-                                ></span>
-                                <span
-                                  className={`w-1.5 h-1.5 bg-foreground-subtle rounded-full ${prefersReducedMotion ? "" : "animate-bounce"}`}
-                                  style={{ animationDelay: "300ms" }}
-                                ></span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                  >
+                    <div
+                      aria-hidden
+                      className="absolute top-0 left-0 right-0 h-px"
+                      style={{
+                        background:
+                          "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%)",
+                      }}
+                    />
+                  </div>
+                  {snippets.map((snip, i) => (
+                    <button
+                      key={snip.id}
+                      onClick={() => {
+                        setSelectedIdx(i);
+                        setCopied(false);
+                      }}
+                      className={`relative z-10 flex-1 cursor-pointer flex items-center justify-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors duration-300 ${
+                        selectedIdx === i
+                          ? "text-foreground"
+                          : "text-foreground-muted hover:text-foreground"
+                      }`}
+                    >
+                      {snip.icon && (
+                        <span className="shrink-0">{snip.icon}</span>
                       )}
-                    </div>
-
-                    <div className="px-4 py-3 border-t border-white/[0.08] bg-surface/40">
-                      <div className="flex items-center gap-2 px-3 py-2 bg-surface/60 backdrop-blur-sm rounded-lg border border-white/[0.08]">
-                        <span className="text-sm text-foreground-subtle flex-1">
-                          Message...
-                        </span>
-                        <button className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center hover:bg-accent/90 transition-colors">
-                          <IoSend className="w-4 ml-1 h-4 -rotate-45 text-white" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                      <span className="whitespace-nowrap">{snip.name}</span>
+                    </button>
+                  ))}
                 </div>
-                <div className="mt-4 flex items-center justify-center gap-2 text-xs text-foreground-subtle">
-                  <span className="w-1.5 h-1.5 rounded-full bg-accent/60"></span>
-                  <span>Memories persist across sessions automatically</span>
+              </div>
+
+              {/* Filename + copy button row */}
+              <div className="relative px-4 sm:px-5 py-3 flex items-center justify-between border-b border-white/[0.06]">
+                <span className="text-xs sm:text-sm text-foreground-subtle font-mono truncate">
+                  {current.fileName}
+                </span>
+                <button
+                  onClick={handleCopy}
+                  className={`relative cursor-pointer shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-all ${
+                    copied
+                      ? "text-accent border-accent/20 bg-accent/10"
+                      : "text-foreground-subtle border-white/[0.08] hover:text-foreground hover:bg-white/5"
+                  }`}
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Copied</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copy</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Code body — warm syntax highlighting */}
+              <div className="relative overflow-x-auto max-w-[85vw] sm:max-w-none">
+                <pre className="p-5 sm:p-6 text-xs sm:text-sm font-mono leading-relaxed min-h-[280px] sm:min-h-[300px]">
+                  <code className="whitespace-pre">
+                    {highlightSnippet(current.config, current.fileName)}
+                  </code>
+                </pre>
+              </div>
+
+              {/* Footer status row */}
+              <div className="relative px-4 sm:px-5 py-3 border-t border-white/[0.06] flex items-center justify-between bg-background/20">
+                <div className="flex items-center gap-2">
+                  <Circle className="w-2 h-2 fill-accent text-accent" />
+                  <span className="text-xs text-foreground-muted">
+                    {mode === "mcp"
+                      ? "Memories persist across sessions automatically."
+                      : "Works in any language — Node, Python, Go, cURL."}
+                  </span>
                 </div>
-              </>
-            ) : (
-              <>
-                {/* REST API — App-style visual */}
-                <div className="relative">
-                  <div
-                    className="absolute -top-px -left-px w-20 h-64 rounded-xl"
-                    style={{
-                      background:
-                        "radial-gradient(ellipse at top left, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 15%, transparent 65%)",
-                    }}
-                  />
-                  <div
-                    className="absolute -bottom-px -right-px w-40 h-72 rounded-xl"
-                    style={{
-                      background:
-                        "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.12) 15%, transparent 65%)",
-                    }}
-                  />
-
-                  <div className="relative rounded-xl overflow-hidden bg-surface/60 backdrop-blur-md border border-white/[0.08] shadow-xl shadow-black/30">
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/[0.04] via-transparent to-transparent rounded-xl pointer-events-none" />
-
-                    {/* App Header */}
-                    <div className="relative px-4 py-3 border-b border-white/[0.08] flex items-center justify-between bg-surface/40">
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <div className="relative w-8 h-8 rounded-lg bg-accent/20 border border-accent/30 flex items-center justify-center">
-                            <span className="text-xs font-bold text-accent">
-                              API
-                            </span>
-                          </div>
-                        </div>
-                        <div>
-                          <span className="text-sm font-medium">Your App</span>
-                          <span className="text-xs text-foreground-subtle ml-1.5">
-                            · MemContext API
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Circle className="w-2 h-2 fill-accent text-accent" />
-                        <span className="text-xs text-foreground-subtle">
-                          Connected
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* API Flow Visualization */}
-                    <div className="relative p-4 min-h-[320px] sm:min-h-[360px] flex flex-col gap-3">
-                      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-surface/30 pointer-events-none" />
-
-                      {/* Request 1 — Save */}
-                      <div className="relative z-10 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">
-                            POST
-                          </span>
-                          <span className="text-xs font-mono text-foreground-muted">
-                            /api/memories
-                          </span>
-                        </div>
-                        <div className="rounded-lg bg-surface/80 border border-white/[0.06] p-3">
-                          <pre className="text-[11px] font-mono text-foreground/80 leading-relaxed">{`{ "content": "User prefers dark mode",
-  "category": "preference" }`}</pre>
-                        </div>
-                        <div className="flex justify-center">
-                          <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-mono bg-accent/10 text-accent border border-accent/20">
-                            <Bookmark className="w-3 h-3" />
-                            <span>201 — saved</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Request 2 — Search */}
-                      <div className="relative z-10 space-y-2 mt-2">
-                        <div className="flex items-center gap-2">
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-500/20 text-blue-400 border border-blue-500/20">
-                            GET
-                          </span>
-                          <span className="text-xs font-mono text-foreground-muted">
-                            /api/memories/search?query=theme
-                          </span>
-                        </div>
-                        <div className="rounded-lg bg-surface/80 border border-white/[0.06] p-3">
-                          <pre className="text-[11px] font-mono text-foreground/80 leading-relaxed">{`{ "found": 1,
-  "memories": [{
-    "content": "User prefers dark mode",
-    "relevance": 0.94
-  }] }`}</pre>
-                        </div>
-                        <div className="flex justify-center">
-                          <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-mono bg-white/5 text-foreground-muted border border-white/10">
-                            <ArrowDownToLine className="w-3 h-3" />
-                            <span>200 — 1 result</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* App Footer */}
-                    <div className="px-4 py-3 border-t border-white/[0.08] bg-surface/40">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-foreground-subtle font-mono">
-                          X-API-Key: mc_***
-                        </span>
-                        <span className="text-xs text-foreground-subtle">
-                          Hybrid search + feedback scoring
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-4 flex items-center justify-center gap-2 text-xs text-foreground-subtle">
-                  <span className="w-1.5 h-1.5 rounded-full bg-accent/60"></span>
-                  <span>Build any app with persistent, evolving memory</span>
-                </div>
-              </>
-            )}
+                <span className="text-[10px] sm:text-xs text-foreground-subtle font-mono hidden sm:block">
+                  {mode === "mcp" ? "mcp.memcontext.in" : "api.memcontext.in"}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
