@@ -1,10 +1,12 @@
 "use client";
 
-import { Code2, PenTool, Blocks, ArrowRight } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { Cube, PenNib, SquaresFour } from "@phosphor-icons/react/dist/ssr";
+import type { Icon } from "@phosphor-icons/react";
+import { GrTopCorner } from "react-icons/gr";
 
 interface UseCaseProps {
-  icon: LucideIcon;
+  icon: Icon;
   title: string;
   description: string;
   examples: string[];
@@ -14,7 +16,7 @@ interface UseCaseProps {
 
 const useCases: UseCaseProps[] = [
   {
-    icon: Code2,
+    icon: Cube,
     title: "AI Coding Assistants",
     description:
       "Connect via MCP. Your preferences, decisions, and project context persist across every session and every tool.",
@@ -27,7 +29,7 @@ const useCases: UseCaseProps[] = [
     href: "https://app.memcontext.in/mcp",
   },
   {
-    icon: PenTool,
+    icon: PenNib,
     title: "Content Generation",
     description:
       "Store evolving strategies with auto-TTL. Expired tactics drop out. Current best practices surface first.",
@@ -40,7 +42,7 @@ const useCases: UseCaseProps[] = [
     href: "https://docs.memcontext.in/guides/evolving-memory",
   },
   {
-    icon: Blocks,
+    icon: SquaresFour,
     title: "Custom Applications",
     description:
       "Use the REST API to build memory into any app. CRM context, support bots, onboarding flows, personalization.",
@@ -53,6 +55,55 @@ const useCases: UseCaseProps[] = [
     href: "https://docs.memcontext.in/api-reference/overview",
   },
 ];
+
+function UseCaseCard({ useCase }: { useCase: UseCaseProps }) {
+  return (
+    <div className="relative group h-full">
+      {/* Bracketed tile — holds all content including CTA */}
+      <div className="relative h-full rounded-xl border border-white/10 bg-border-hover/30 overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none bg-background/80 rounded-xl border border-white/10 m-2">
+          <GrTopCorner className="absolute top-2 left-2 w-4 h-4 text-foreground-muted z-10" />
+          <GrTopCorner className="absolute top-2 right-2 w-4 h-4 text-foreground-muted rotate-90 z-10" />
+          <GrTopCorner className="absolute bottom-2 right-2 w-4 h-4 text-foreground-muted rotate-180 z-10" />
+          <GrTopCorner className="absolute bottom-2 left-2 w-4 h-4 text-foreground-muted -rotate-90 z-10" />
+        </div>
+
+        <div className="relative p-7 sm:p-8 flex flex-col h-full min-h-[340px]">
+
+          <useCase.icon weight="duotone" className="w-7 h-7 mb-7 text-accent" />
+
+
+          <h3 className="text-lg font-semibold text-foreground mb-2">
+            {useCase.title}
+          </h3>
+
+          <p className="text-sm text-foreground-muted leading-relaxed mb-4">
+            {useCase.description}
+          </p>
+
+          <div className="space-y-2 mb-6 flex-1">
+            {useCase.examples.map((example) => (
+              <div key={example} className="flex items-center gap-2 text-xs">
+                <span className="w-1 h-1 rounded-full bg-accent/60 shrink-0" />
+                <span className="text-foreground-subtle">{example}</span>
+              </div>
+            ))}
+          </div>
+
+          <a
+            href={useCase.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:text-accent/80 transition-colors w-fit"
+          >
+            {useCase.cta}
+            <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function UseCases() {
   return (
@@ -79,66 +130,9 @@ export function UseCases() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-5 sm:gap-6">
+        <div className="grid md:grid-cols-3 gap-6 sm:gap-8">
           {useCases.map((useCase) => (
-            <div key={useCase.title} className="relative group">
-              <div
-                className="absolute -top-px -left-px w-16 h-12 rounded-2xl"
-                style={{
-                  background:
-                    "radial-gradient(ellipse at top left, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.15) 35%, transparent 65%)",
-                }}
-              />
-              <div
-                className="absolute -bottom-px -right-px w-16 h-12 rounded-2xl"
-                style={{
-                  background:
-                    "radial-gradient(ellipse at bottom right, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.1) 35%, transparent 65%)",
-                }}
-              />
-
-              <div className="relative rounded-2xl bg-surface/40 backdrop-blur-md border border-white/[0.08] p-6 h-full flex flex-col group-hover:border-white/[0.12] transition-colors">
-                <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] via-transparent to-transparent rounded-2xl pointer-events-none" />
-
-                <div className="relative z-10 flex flex-col h-full">
-                  <div className="w-10 h-10 rounded-xl bg-accent/15 border border-accent/20 flex items-center justify-center mb-4">
-                    <useCase.icon className="w-5 h-5 text-accent" />
-                  </div>
-
-                  <h3 className="text-lg font-semibold text-foreground mb-2">
-                    {useCase.title}
-                  </h3>
-
-                  <p className="text-sm text-foreground-muted leading-relaxed mb-4">
-                    {useCase.description}
-                  </p>
-
-                  <div className="space-y-2 mb-6 flex-1">
-                    {useCase.examples.map((example) => (
-                      <div
-                        key={example}
-                        className="flex items-center gap-2 text-xs"
-                      >
-                        <span className="w-1 h-1 rounded-full bg-accent/60 shrink-0" />
-                        <span className="text-foreground-subtle">
-                          {example}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <a
-                    href={useCase.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:text-accent/80 transition-colors"
-                  >
-                    {useCase.cta}
-                    <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
-                  </a>
-                </div>
-              </div>
-            </div>
+            <UseCaseCard key={useCase.title} useCase={useCase} />
           ))}
         </div>
       </div>
