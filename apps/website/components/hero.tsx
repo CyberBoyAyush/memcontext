@@ -6,6 +6,7 @@ import { ArrowRight, Sparkles } from "lucide-react";
 import { HeroMemoryTower } from "./hero-memory-tower";
 import { HeroShader } from "./hero-shader";
 import { TrustBlock } from "./trust-block";
+import { SparkleIcon } from "@phosphor-icons/react";
 
 export function Hero() {
   return (
@@ -115,7 +116,8 @@ export function Hero() {
                             "radial-gradient(ellipse, rgba(255,255,255,0.35) 0%, transparent 70%)",
                         }}
                       />
-                      <Sparkles className="relative w-3.5 h-3.5 text-[#e8613c]" />
+                      {/* <Sparkles className="relative w-3.5 h-3.5 text-[#e8613c]" /> */}
+                      <SparkleIcon size={14} weight="duotone"/>
                     </div>
                   </div>
 

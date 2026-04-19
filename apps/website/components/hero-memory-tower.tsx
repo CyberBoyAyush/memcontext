@@ -1,6 +1,6 @@
 "use client";
 
-import { Claude, Cursor } from "@lobehub/icons";
+import { Claude, Cursor, Gemini, OpenAI } from "@lobehub/icons";
 import { useMemo, type ReactElement } from "react";
 
 // ── Palette ──────────────────────────────────────────────────────────────
@@ -843,12 +843,22 @@ export function HeroMemoryTower({
         {
           x: 240,
           y: 90,
-          label: "Your app",
-          sub: "REST · mem_021",
+          label: "ChatGPT",
+          sub: "mem_021 · synced",
           icon: (
-            <g stroke="#BFBAB2" strokeWidth={1.5} strokeLinecap="round">
-              <line x1={24} y1={17} x2={24} y2={29} />
-              <line x1={18} y1={23} x2={30} y2={23} />
+            <g transform="translate(16 17)">
+              <OpenAI size={16} color="#BFBAB2" />
+            </g>
+          ),
+        },
+        {
+          x: -380,
+          y: 90,
+          label: "Gemini",
+          sub: "mem_021 · synced",
+          icon: (
+            <g transform="translate(16 17)">
+              <Gemini.Color size={16} />
             </g>
           ),
         },
@@ -905,32 +915,40 @@ export function HeroMemoryTower({
         );
       });
 
-      // Connectors: orthogonal dashed paths from card edge → capstone.
-      // Per-card routing strategy to avoid crossing sibling cards.
-      //   'hvh'  → H, V, H  (top cards: exit inner horizontal edge, run toward center)
-      //   'vhv'  → V, H, V  (bottom cards: exit top edge, rise above card row first)
-      const target = { x: capTop[0], y: capTop[1] };
-      type Route = "hvh" | "vhv";
-      const routes: Route[] = ["hvh", "hvh", "vhv"]; // Claude, Cursor, Your app
+      // Connectors: each top card maps to its own incoming cube; the bottom
+      // Gemini card connects directly to the capstone glow. This tells a
+      // clearer story — Claude, Cursor, ChatGPT each "feed" a memory block
+      // that lands on the tower, while Gemini taps into the core layer itself.
+      // Card → incoming cube index (null = capstone).
+      // Order matches cardData: Claude, Cursor, ChatGPT, Gemini
+      //   Claude   → incoming[0] (top-left floating cube)
+      //   Cursor   → incoming[1] (top-right floating cube)
+      //   ChatGPT  → incoming[2] (front/bottom floating cube)
+      //   Gemini   → capstone core
+      const cardTargets: (number | null)[] = [0, 1, 2, null];
+      // Per-card track offset so parallel connectors get their own vertical lane
+      const trackOffset = [90, 90, 140, 150];
+
+      // Landing points (screen-space) for each incoming cube — the bottom
+      // center of the cube so the dashed line visually rests on it.
+      const incomingLandings = incoming.map((inc) => {
+        const [lx, ly] = iso(inc.x, inc.y, inc.zBase);
+        return { x: lx, y: ly };
+      });
+      const capsuleTarget = { x: capTop[0], y: capTop[1] };
 
       cardData.forEach((c, i) => {
-        const route = routes[i];
-        const dx = target.x - (c.x + CARD_W / 2);
-        let x1: number, y1: number, d: string;
-
-        if (route === "hvh") {
-          // exit from the card edge nearest target (left or right), then H-V-H
-          x1 = dx > 0 ? c.x + CARD_W : c.x;
-          y1 = c.y + CARD_H / 2;
-          const mx = (x1 + target.x) / 2;
-          d = `M ${x1} ${y1} L ${mx} ${y1} L ${mx} ${target.y} L ${target.x} ${target.y}`;
-        } else {
-          // V-H-V: exit the top edge, rise above the card band, then cross over
-          x1 = c.x + CARD_W / 2;
-          y1 = c.y; // top edge
-          const my = (y1 + target.y) / 2;
-          d = `M ${x1} ${y1} L ${x1} ${my} L ${target.x} ${my} L ${target.x} ${target.y}`;
-        }
+        const t =
+          cardTargets[i] === null
+            ? capsuleTarget
+            : incomingLandings[cardTargets[i] as number];
+        const dx = t.x - (c.x + CARD_W / 2);
+        // exit from the card's inner edge (side nearest the target)
+        const x1 = dx > 0 ? c.x + CARD_W : c.x;
+        const y1 = c.y + CARD_H / 2;
+        // vertical track sits `trackOffset` px past the card edge toward target
+        const mx = dx > 0 ? x1 + trackOffset[i] : x1 - trackOffset[i];
+        const d = `M ${x1} ${y1} L ${mx} ${y1} L ${mx} ${t.y} L ${t.x} ${t.y}`;
         cards.push(
           <g key={`conn-${i}`}>
             <path
