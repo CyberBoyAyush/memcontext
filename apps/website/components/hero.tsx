@@ -12,15 +12,18 @@ export function Hero() {
   return (
     <section className="pt-20 pb-8 sm:pt-24 sm:pb-12 lg:pt-24 lg:pb-16 min-h-screen flex flex-col relative overflow-hidden">
       {/* Atmospheric WebGL shader - domain-warped fBm embers.
-          Masked top + bottom so the canvas fades into the page background
-          instead of ending in a hard rectangle at the section edge. */}
+          Multi-stop mask gradient approximating an ease curve (cubic-like),
+          so there's no perceptible horizontal band anywhere along the fade.
+          A pure two-stop linear fade has a sharp derivative corner that the
+          eye reads as a line (Mach banding); the extra stops below smooth it
+          into a gentle sigmoid the viewer cannot localize. */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           WebkitMaskImage:
-            "linear-gradient(to bottom, transparent 0%, black 8%, black 78%, transparent 100%)",
+            "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.2) 4%, rgba(0,0,0,0.6) 9%, rgba(0,0,0,0.9) 14%, rgba(0,0,0,1) 20%, rgba(0,0,0,1) 55%, rgba(0,0,0,0.95) 65%, rgba(0,0,0,0.8) 72%, rgba(0,0,0,0.55) 80%, rgba(0,0,0,0.3) 87%, rgba(0,0,0,0.12) 93%, rgba(0,0,0,0) 100%)",
           maskImage:
-            "linear-gradient(to bottom, transparent 0%, black 8%, black 78%, transparent 100%)",
+            "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.2) 4%, rgba(0,0,0,0.6) 9%, rgba(0,0,0,0.9) 14%, rgba(0,0,0,1) 20%, rgba(0,0,0,1) 55%, rgba(0,0,0,0.95) 65%, rgba(0,0,0,0.8) 72%, rgba(0,0,0,0.55) 80%, rgba(0,0,0,0.3) 87%, rgba(0,0,0,0.12) 93%, rgba(0,0,0,0) 100%)",
         }}
       >
         <HeroShader />
@@ -117,7 +120,7 @@ export function Hero() {
                         }}
                       />
                       {/* <Sparkles className="relative w-3.5 h-3.5 text-[#e8613c]" /> */}
-                      <SparkleIcon size={14} weight="duotone"/>
+                      <SparkleIcon size={14} weight="duotone" />
                     </div>
                   </div>
 
@@ -130,7 +133,7 @@ export function Hero() {
             </div>
           </div>
 
-          <h1 className="animate-fade-in opacity-0 animation-delay-100 text-3xl sm:text-5xl lg:text-6xl font-display font-bold tracking-tight leading-[1.1]">
+          <h1 className="animate-fade-in opacity-0 animation-delay-100 text-3xl sm:text-5xl lg:text-7xl font-display font-bold tracking-tight leading-[1.1]">
             Memory that evolves.
             <br />
             <span className="text-foreground-muted">Not just stores.</span>
@@ -203,9 +206,9 @@ export function Hero() {
       </div>
 
       {/* Memory Tower — isometric illustration of the memory layer.
-          Dashboard preview temporarily swapped out; restore by importing
-          HeroDashboard and replacing <HeroMemoryTower /> with <HeroDashboard />. */}
-      <div className="animate-fade-in opacity-0 animation-delay-400  mb-8 sm:mb-12 flex-1 flex items-center justify-center relative z-10">
+          Entrance choreography is handled inside HeroMemoryTower via motion,
+          so no CSS fade wrapper here (stacking them caused a visible delay). */}
+      <div className="mb-8 sm:mb-12 flex-1 flex items-center justify-center relative z-10">
         <HeroMemoryTower className="relative pointer-events-none w-[min(1100px,92%)]" />
       </div>
 

@@ -18,7 +18,7 @@ export default function Home() {
       <Header />
       <main className="overflow-hidden ">
         <Hero />
-        <StatsBar />
+        {/* <StatsBar /> */}
         <Features />
         <MemoryPipeline />
         <HowItWorks />

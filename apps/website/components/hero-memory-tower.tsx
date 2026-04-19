@@ -2,6 +2,8 @@
 
 import { Claude, Cursor, Gemini, OpenAI } from "@lobehub/icons";
 import { useMemo, type ReactElement } from "react";
+import { motion, type Variants } from "motion/react";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
 
 // ── Palette ──────────────────────────────────────────────────────────────
 const BRAND = "#A9432A";
@@ -199,6 +201,8 @@ export function HeroMemoryTower({
   showIncoming = true,
   showBottomPill = true,
 }: HeroMemoryTowerProps) {
+  const prefersReducedMotion = useReducedMotion();
+
   const body = useMemo(() => {
     // ── Floor ring tiles ────────────────────────────────────────────────
     type TileItem = {
@@ -577,8 +581,20 @@ export function HeroMemoryTower({
     // ── Painter-sort: tiles sorted by (i+j) ascending; then tower tiers in stack order
     tiles.sort((a, b) => a.sortKey - b.sortKey);
 
-    // ── Emit iso scene ──────────────────────────────────────────────────
-    const isoEls: ReactElement[] = [];
+    // ── Emit iso scene (split into named stages for staged entrance) ────
+    // Each stage becomes a motion.g group in render output, animated in order:
+    // ground → slab base → plate → fragments → floor ring → tower tiers →
+    // capstone → incoming cubes → glow → cards.
+    const isoEls: ReactElement[] = []; // legacy catchall (kept for types)
+    const stageGround: ReactElement[] = [];
+    const stageSlab: ReactElement[] = [];
+    const stagePlate: ReactElement[] = [];
+    const stageFragments: ReactElement[] = [];
+    const stageTiles: ReactElement[] = [];
+    const stageTiers: ReactElement[] = [];
+    const stageCap: ReactElement[] = [];
+    const stageIncoming: ReactElement[] = [];
+    const stageGlow: ReactElement[] = [];
 
     // -1. Ground sheet — a 3D slab (top face + two visible side faces) that
     // everything else sits on. Smaller than before so it just frames the scene,
@@ -645,7 +661,7 @@ export function HeroMemoryTower({
         />,
       );
     }
-    isoEls.push(
+    stageGround.push(
       <g key="ground" strokeLinejoin="round">
         <polygon
           points={groundLeftPts}
@@ -670,7 +686,7 @@ export function HeroMemoryTower({
     );
 
     // 0. slab side faces (behind the top plate) — filler first, then bricks
-    isoEls.push(
+    stageSlab.push(
       <g key="slab-sides" strokeLinejoin="round">
         <polygon points={slabFillerLeft} fill={SLAB_LEFT_B} />
         <polygon points={slabFillerRight} fill={SLAB_RIGHT_B} />
@@ -679,7 +695,7 @@ export function HeroMemoryTower({
     );
 
     // 1. plate (top face of the slab)
-    isoEls.push(
+    stagePlate.push(
       <g key="plate">
         <polygon points={platePts} fill="#0B0B0B" />
         {gridLines}
@@ -688,12 +704,12 @@ export function HeroMemoryTower({
 
     // 1.5 detached slab fragments
     fragments.forEach((f, i) => {
-      isoEls.push(renderCuboid(f, `frag-${i}`));
+      stageFragments.push(renderCuboid(f, `frag-${i}`));
     });
 
     // 2. floor ring (back-to-front)
     tiles.forEach((t, i) => {
-      isoEls.push(
+      stageTiles.push(
         renderCuboid(
           {
             cx: t.cx,
@@ -709,21 +725,22 @@ export function HeroMemoryTower({
       );
     });
 
-    // 3. tower (bottom → top)
+    // 3. tower (bottom → top) — each tier gets its own group so we can
+    // stagger them individually as they "rise" into place.
     tiers.forEach((t) => {
-      isoEls.push(renderCuboid(t.cuboid, `tier-${t.idx}`));
+      stageTiers.push(renderCuboid(t.cuboid, `tier-${t.idx}`));
     });
-    isoEls.push(<g key="ticks">{tickLines}</g>);
+    stageTiers.push(<g key="ticks">{tickLines}</g>);
 
     // 4. capstone
-    isoEls.push(renderCuboid(capCuboid, "cap"));
+    stageCap.push(renderCuboid(capCuboid, "cap"));
 
     // 5. incoming cubes — shadow first, then cube, then dashed trail
     if (showIncoming) {
       incoming.forEach((inc, i) => {
         // drop shadow at floor
         const [sx, sy] = iso(inc.x, inc.y, 0);
-        isoEls.push(
+        stageIncoming.push(
           <ellipse
             key={`sh-${i}`}
             cx={sx}
@@ -734,7 +751,7 @@ export function HeroMemoryTower({
           />,
         );
         // cube
-        isoEls.push(
+        stageIncoming.push(
           renderCuboid(
             {
               cx: inc.x,
@@ -750,7 +767,7 @@ export function HeroMemoryTower({
         );
         // dashed trail from cube center-top to cap top
         const [x1, y1] = iso(inc.x, inc.y, inc.zBase + inc.size);
-        isoEls.push(
+        stageIncoming.push(
           <g key={`tr-${i}`}>
             <path
               d={`M ${x1} ${y1} L ${capTop[0]} ${capTop[1]}`}
@@ -767,7 +784,7 @@ export function HeroMemoryTower({
     }
 
     // 6. glow dot + pulse rings on capstone top
-    isoEls.push(
+    stageGlow.push(
       <g key="glow">
         <circle
           cx={capTop[0]}
@@ -804,9 +821,12 @@ export function HeroMemoryTower({
 
     // ── Cards (screen-space) ────────────────────────────────────────────
     const cards: ReactElement[] = [];
+    const stageCards: ReactElement[] = [];
+    const stageConnectors: ReactElement[] = [];
+    const stageDefs: ReactElement[] = [];
     if (showCards) {
-      const CARD_W = 150,
-        CARD_H = 50;
+      const CARD_W = 196,
+        CARD_H = 52;
       const defs = (
         <defs key="defs">
           <linearGradient id="heroCardShine" x1="0" y1="0" x2="0" y2="1">
@@ -815,58 +835,74 @@ export function HeroMemoryTower({
           </linearGradient>
         </defs>
       );
-      cards.push(defs);
+      stageDefs.push(defs);
+
+      // Each card tells a different memory interaction story — the sub-line
+      // shows a recent, specific memory name + a status verb so all four read
+      // as distinct activities rather than identical syncs.
+      const STATUS_GREEN = "#22c55e"; // synced / recalled
+      const STATUS_AMBER = "#f59e0b"; // saving / indexing
+      const STATUS_BLUE = "#3b82f6"; // queried
 
       const cardData = [
         {
-          x: -380,
+          x: -420,
           y: -170,
           label: "Claude",
-          sub: "mem_021 · synced",
+          sub: "auth-flow-v2",
+          status: "retrieved",
+          dot: STATUS_GREEN,
           icon: (
-            <g transform="translate(16 17)">
-              <Claude size={16} color={BRAND_HI} />
+            <g transform="translate(14 16)">
+              <Claude size={20} color={BRAND_HI} />
             </g>
           ),
         },
         {
-          x: 240,
+          x: 225,
           y: -170,
           label: "Cursor",
-          sub: "mem_021 · synced",
+          sub: "api-schema",
+          status: "saving",
+          dot: STATUS_AMBER,
           icon: (
-            <g transform="translate(16 17)">
-              <Cursor size={16} color="#BFBAB2" />
+            <g transform="translate(14 16)">
+              <Cursor size={20} color="#BFBAB2" />
             </g>
           ),
         },
         {
-          x: 240,
+          x: 225,
           y: 90,
           label: "ChatGPT",
-          sub: "mem_021 · synced",
+          sub: "user-prefs",
+          status: "queried",
+          dot: STATUS_BLUE,
           icon: (
-            <g transform="translate(16 17)">
-              <OpenAI size={16} color="#BFBAB2" />
+            <g transform="translate(14 16)">
+              <OpenAI size={20} color="#BFBAB2" />
             </g>
           ),
         },
         {
-          x: -380,
+          x: -420,
           y: 90,
           label: "Gemini",
-          sub: "mem_021 · synced",
+          sub: "design-tokens",
+          status: "synced",
+          dot: STATUS_GREEN,
           icon: (
-            <g transform="translate(16 17)">
-              <Gemini.Color size={16} />
+            <g transform="translate(14 16)">
+              <Gemini.Color size={20} />
             </g>
           ),
         },
       ];
 
       cardData.forEach((c, i) => {
-        cards.push(
+        stageCards.push(
           <g key={`card-${i}`} transform={`translate(${c.x} ${c.y})`}>
+            {/* Card base */}
             <rect
               width={CARD_W}
               height={CARD_H}
@@ -874,6 +910,7 @@ export function HeroMemoryTower({
               fill={INK3}
               stroke={LINE2}
             />
+            {/* Top-to-bottom glass sheen */}
             <rect
               width={CARD_W}
               height={CARD_H}
@@ -881,19 +918,12 @@ export function HeroMemoryTower({
               fill="url(#heroCardShine)"
               opacity={0.6}
             />
-            <rect
-              x={12}
-              y={13}
-              width={24}
-              height={24}
-              rx={5}
-              fill="#222"
-              stroke={LINE2}
-            />
+            {/* Icon rendered directly on the card — no sub-container border */}
             {c.icon}
+            {/* Brand label */}
             <text
-              x={46}
-              y={24}
+              x={44}
+              y={23}
               fill="#FFFFFF"
               fontFamily="Geist, system-ui, sans-serif"
               fontSize={13}
@@ -901,16 +931,19 @@ export function HeroMemoryTower({
             >
               {c.label}
             </text>
+            {/* Memory name · status verb */}
             <text
-              x={46}
+              x={44}
               y={39}
-              fill="#6B6762"
               fontFamily="Geist Mono, ui-monospace, monospace"
               fontSize={10}
             >
-              {c.sub}
+              <tspan fill="#9A9590">{c.sub}</tspan>
+              <tspan fill="#5A5550"> · </tspan>
+              <tspan fill="#BFBAB2">{c.status}</tspan>
             </text>
-            <circle cx={CARD_W - 14} cy={16} r={3} fill={BRAND_HI} />
+            {/* Status dot — color matches the action */}
+            <circle cx={CARD_W - 14} cy={14} r={3} fill={c.dot} />
           </g>,
         );
       });
@@ -949,17 +982,83 @@ export function HeroMemoryTower({
         // vertical track sits `trackOffset` px past the card edge toward target
         const mx = dx > 0 ? x1 + trackOffset[i] : x1 - trackOffset[i];
         const d = `M ${x1} ${y1} L ${mx} ${y1} L ${mx} ${t.y} L ${t.x} ${t.y}`;
-        cards.push(
+
+        // Total path length so we can animate a pulse traveling along it.
+        // The path is 3 segments: horizontal, vertical, horizontal.
+        const pathLen =
+          Math.abs(mx - x1) + Math.abs(t.y - y1) + Math.abs(t.x - mx);
+
+        // Pulse geometry: a short bright dash with a large gap, so only one
+        // pulse is visible at a time. Travel direction is from card → target
+        // via decreasing dashoffset. Stagger per card so pulses fire in a
+        // gentle cascade rather than all at once. Slower duration + reduced
+        // opacity gives the whole effect a calm, ambient character.
+        const pulseLen = 12; // bright segment length
+        const gapLen = Math.max(pathLen + pulseLen, 240); // large enough to hide repeats
+        const duration = 3.8;
+        const staggerDelay = i * 0.8;
+
+        stageConnectors.push(
           <g key={`conn-${i}`}>
+            {/* Static dashed guideline — the faint base line */}
             <path
               d={d}
               stroke={BRAND_HI}
               strokeWidth={1}
-              opacity={0.55}
+              opacity={0.35}
               strokeDasharray="3 4"
               fill="none"
               strokeLinecap="round"
             />
+            {!prefersReducedMotion && (
+              <>
+                {/* Glow layer — soft, slower-moving blurred halo. Lower
+                    opacity + wider blur + longer duration gives it a gentle
+                    "afterglow" character rather than a second synced pulse. */}
+                {/* <path
+                  d={d}
+                  stroke={BRAND_HI}
+                  strokeWidth={4}
+                  opacity={0.22}
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeDasharray={`${pulseLen * 1.4} ${gapLen}`}
+                  strokeDashoffset={pulseLen * 1.4 + gapLen}
+                  style={{ filter: "blur(3.5px)" }}
+                >
+                  <animate
+                    attributeName="stroke-dashoffset"
+                    from={pulseLen * 1.4 + gapLen}
+                    to={-pathLen}
+                    dur={`${duration * 1.7}s`}
+                    begin={`${staggerDelay}s`}
+                    repeatCount="indefinite"
+                  />
+                </path> */}
+                {/* Core pulse — softer bright segment traveling along the
+                    path. Slower + lower opacity so it reads as a gentle
+                    flicker of data rather than a harsh strobe. */}
+                <path
+                  d={d}
+                  stroke="#FFE4D6"
+                  strokeWidth={1.4}
+                  opacity={0.6}
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeDasharray={`${pulseLen} ${gapLen}`}
+                  strokeDashoffset={pulseLen + gapLen}
+                >
+                  <animate
+                    attributeName="stroke-dashoffset"
+                    from={pulseLen + gapLen}
+                    to={-pathLen}
+                    dur={`${duration}s`}
+                    begin={`${staggerDelay}s`}
+                    repeatCount="indefinite"
+                  />
+                </path>
+              </>
+            )}
           </g>,
         );
       });
@@ -990,14 +1089,75 @@ export function HeroMemoryTower({
     //   </g>
     // ) : null;
 
-    return (
-      <>
-        <g>{isoEls}</g>
-        <g>{cards}</g>
-        {/* {pill} */}
-      </>
-    );
-  }, [showCards, showIncoming, showBottomPill]);
+    return {
+      stageDefs,
+      stageGround,
+      stageSlab,
+      stagePlate,
+      stageFragments,
+      stageTiles,
+      stageTiers,
+      stageCap,
+      stageIncoming,
+      stageGlow,
+      stageConnectors,
+      stageCards,
+      // suppress unused-var warnings for legacy catchalls
+      _isoEls: isoEls,
+      _cards: cards,
+    };
+  }, [showCards, showIncoming, showBottomPill, prefersReducedMotion]);
+
+  // Entrance choreography — each stage fades + translates into place with a
+  // stagger. Cubic-bezier easing feels "placed" rather than linear. Reduced
+  // motion collapses everything to an instant fade so the scene still appears.
+  const EASE = [0.22, 1, 0.36, 1] as const;
+  const fadeUp = (delay: number, dy = 10): Variants =>
+    prefersReducedMotion
+      ? {
+          hidden: { opacity: 0 },
+          visible: { opacity: 1, transition: { duration: 0.01, delay } },
+        }
+      : {
+          hidden: { opacity: 0, y: dy },
+          visible: {
+            opacity: 1,
+            y: 0,
+            transition: { duration: 0.5, delay, ease: EASE },
+          },
+        };
+
+  const fadeIn = (delay: number, duration = 0.45): Variants =>
+    prefersReducedMotion
+      ? {
+          hidden: { opacity: 0 },
+          visible: { opacity: 1, transition: { duration: 0.01, delay } },
+        }
+      : {
+          hidden: { opacity: 0 },
+          visible: {
+            opacity: 1,
+            transition: { duration, delay, ease: "easeOut" },
+          },
+        };
+
+  // Delays tuned so the scene reads as: ground appears → base/plate settle →
+  // fragments scatter in → tower tiers rise → capstone drops → incoming cubes
+  // arrive → glow pulses on → connectors draw → cards slide in.
+  // Tightened total runtime (~1.4s) so the entrance feels immediate.
+  const D = {
+    ground: 0.0,
+    slab: 0.08,
+    plate: 0.2,
+    fragments: 0.3,
+    tiles: 0.32,
+    tiers: 0.45,
+    cap: 0.8,
+    incoming: 0.92,
+    glow: 1.05,
+    connectors: 1.15,
+    cards: 1.05,
+  };
 
   return (
     <svg
@@ -1006,7 +1166,184 @@ export function HeroMemoryTower({
       preserveAspectRatio="xMidYMid meet"
       aria-hidden="true"
     >
-      {body}
+      {body.stageDefs}
+
+      {/* Ground — fades up gently first so the stage exists before anything
+          lands on it. */}
+      <motion.g
+        initial="hidden"
+        animate="visible"
+        variants={fadeUp(D.ground, 14)}
+      >
+        {body.stageGround}
+      </motion.g>
+
+      {/* Slab base + top plate — the memory-layer foundation grows upward. */}
+      <motion.g
+        initial="hidden"
+        animate="visible"
+        variants={fadeUp(D.slab, 18)}
+      >
+        {body.stageSlab}
+      </motion.g>
+
+      <motion.g initial="hidden" animate="visible" variants={fadeIn(D.plate)}>
+        {body.stagePlate}
+      </motion.g>
+
+      {/* Scattered construction fragments. */}
+      <motion.g
+        initial="hidden"
+        animate="visible"
+        variants={fadeUp(D.fragments, 6)}
+      >
+        {body.stageFragments}
+      </motion.g>
+
+      {/* Floor ring tiles. */}
+      <motion.g initial="hidden" animate="visible" variants={fadeIn(D.tiles)}>
+        {body.stageTiles}
+      </motion.g>
+
+      {/* Tower tiers — staggered so they "rise" into place bottom → top. */}
+      <motion.g
+        initial="hidden"
+        animate="visible"
+        variants={{
+          hidden: {},
+          visible: {
+            transition: {
+              delayChildren: D.tiers,
+              staggerChildren: prefersReducedMotion ? 0 : 0.06,
+            },
+          },
+        }}
+      >
+        {body.stageTiers.map((el, i) => (
+          <motion.g
+            key={el.key ?? `tier-${i}`}
+            variants={
+              prefersReducedMotion
+                ? {
+                    hidden: { opacity: 0 },
+                    visible: {
+                      opacity: 1,
+                      transition: { duration: 0.01 },
+                    },
+                  }
+                : {
+                    hidden: { opacity: 0, y: 18, scale: 0.96 },
+                    visible: {
+                      opacity: 1,
+                      y: 0,
+                      scale: 1,
+                      transition: { duration: 0.4, ease: EASE },
+                    },
+                  }
+            }
+            style={{ transformOrigin: "center" }}
+          >
+            {el}
+          </motion.g>
+        ))}
+      </motion.g>
+
+      {/* Capstone — drops in from above with a slightly snappier ease. */}
+      <motion.g
+        initial="hidden"
+        animate="visible"
+        variants={
+          prefersReducedMotion
+            ? {
+                hidden: { opacity: 0 },
+                visible: {
+                  opacity: 1,
+                  transition: { duration: 0.01, delay: D.cap },
+                },
+              }
+            : {
+                hidden: { opacity: 0, y: -16, scale: 0.9 },
+                visible: {
+                  opacity: 1,
+                  y: 0,
+                  scale: 1,
+                  transition: { duration: 0.4, delay: D.cap, ease: EASE },
+                },
+              }
+        }
+        style={{ transformOrigin: "center" }}
+      >
+        {body.stageCap}
+      </motion.g>
+
+      {/* Incoming cubes + trails. */}
+      <motion.g
+        initial="hidden"
+        animate="visible"
+        variants={fadeUp(D.incoming, -12)}
+      >
+        {body.stageIncoming}
+      </motion.g>
+
+      {/* Glow rings on the capstone. */}
+      <motion.g
+        initial="hidden"
+        animate="visible"
+        variants={fadeIn(D.glow, 0.8)}
+      >
+        {body.stageGlow}
+      </motion.g>
+
+      {/* Connector paths (dashed lines from cards to cubes/capstone). */}
+      <motion.g
+        initial="hidden"
+        animate="visible"
+        variants={fadeIn(D.connectors, 0.7)}
+      >
+        {body.stageConnectors}
+      </motion.g>
+
+      {/* Cards — final stage, scale+fade in from their anchor points. */}
+      <motion.g
+        initial="hidden"
+        animate="visible"
+        variants={{
+          hidden: {},
+          visible: {
+            transition: {
+              delayChildren: D.cards,
+              staggerChildren: prefersReducedMotion ? 0 : 0.07,
+            },
+          },
+        }}
+      >
+        {body.stageCards.map((el, i) => (
+          <motion.g
+            key={el.key ?? `card-${i}`}
+            variants={
+              prefersReducedMotion
+                ? {
+                    hidden: { opacity: 0 },
+                    visible: {
+                      opacity: 1,
+                      transition: { duration: 0.01 },
+                    },
+                  }
+                : {
+                    hidden: { opacity: 0, scale: 0.94 },
+                    visible: {
+                      opacity: 1,
+                      scale: 1,
+                      transition: { duration: 0.4, ease: EASE },
+                    },
+                  }
+            }
+            style={{ transformOrigin: "center" }}
+          >
+            {el}
+          </motion.g>
+        ))}
+      </motion.g>
     </svg>
   );
 }
