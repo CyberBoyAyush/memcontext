@@ -477,7 +477,7 @@ const rightDots = generateDots(25, 73);
 
 export function Pricing() {
   return (
-    <section className="py-20 md:py-28 relative overflow-hidden">
+    <section className="py-20 md:py-28 px-4 sm:px-6 relative overflow-hidden">
       {/* Starry glow background - Top Left */}
       <div className="absolute top-0 left-0 w-75 h-75 sm:w-100 sm:h-100 pointer-events-none">
         <div className="relative w-full h-full">

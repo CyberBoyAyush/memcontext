@@ -1,12 +1,12 @@
-# Graph Report - /Users/ayush/Coding/WebSite/memcontext  (2026-04-19)
+# Graph Report - /Users/ayush/Coding/WebSite/memcontext  (2026-04-20)
 
 ## Corpus Check
-- 124 files · ~143,647 words
+- 129 files · ~171,352 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 474 nodes · 620 edges · 97 communities detected
-- Extraction: 85% EXTRACTED · 15% INFERRED · 0% AMBIGUOUS · INFERRED: 95 edges (avg confidence: 0.8)
+- 485 nodes · 626 edges · 103 communities detected
+- Extraction: 85% EXTRACTED · 15% INFERRED · 0% AMBIGUOUS · INFERRED: 93 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
@@ -107,6 +107,12 @@
 - [[_COMMUNITY_Community 94|Community 94]]
 - [[_COMMUNITY_Community 95|Community 95]]
 - [[_COMMUNITY_Community 96|Community 96]]
+- [[_COMMUNITY_Community 97|Community 97]]
+- [[_COMMUNITY_Community 98|Community 98]]
+- [[_COMMUNITY_Community 99|Community 99]]
+- [[_COMMUNITY_Community 100|Community 100]]
+- [[_COMMUNITY_Community 101|Community 101]]
+- [[_COMMUNITY_Community 102|Community 102]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `Error()` - 34 edges
@@ -142,10 +148,10 @@
 
 ### Community 0 - "Community 0"
 Cohesion: 0.06
-Nodes (33): escapeForPrompt(), serializeError(), handleCopy(), findUserIdFromCustomer(), handleSubscriptionActive(), handleSubscriptionCancelled(), handleSubscriptionExpired(), handleSubscriptionFailed() (+25 more)
+Nodes (39): updateUserPlan(), updateLastUsed(), validateApiKey(), cacheApiKey(), cacheProfile(), getCachedApiKey(), getCachedProfile(), getCacheKey() (+31 more)
 
 ### Community 1 - "Community 1"
-Cohesion: 0.1
+Cohesion: 0.09
 Nodes (9): checkDbConnection(), closeDb(), getConnectionString(), getPool(), shutdown(), checkMemoryLimit(), getOrCreateSubscription(), getSubscriptionData() (+1 more)
 
 ### Community 2 - "Community 2"
@@ -161,8 +167,8 @@ Cohesion: 0.16
 Nodes (24): delete_memory Tool, Configurable Search Threshold, Enhancement Plan, Forget Endpoint, Hybrid Search with RRF, Memory History Endpoint, Profile Endpoint, Temporal Support (+16 more)
 
 ### Community 5 - "Community 5"
-Cohesion: 0.16
-Nodes (16): updateUserPlan(), updateLastUsed(), validateApiKey(), cacheApiKey(), cacheProfile(), getCachedApiKey(), getCachedProfile(), getCacheKey() (+8 more)
+Cohesion: 0.17
+Nodes (11): AppError, escapeForPrompt(), serializeError(), logError(), classifyWithMultipleMemories(), expandMemory(), generateEmbedding(), generateQueryVariants() (+3 more)
 
 ### Community 6 - "Community 6"
 Cohesion: 0.26
@@ -173,68 +179,68 @@ Cohesion: 0.24
 Nodes (1): main()
 
 ### Community 8 - "Community 8"
-Cohesion: 0.22
-Nodes (3): TrustBlock(), useInView(), useReducedMotion()
-
-### Community 9 - "Community 9"
 Cohesion: 0.36
 Nodes (6): getInitialReferrer(), getSnapshot(), isAcceptedReferrer(), isStoredReferrer(), normalizeReferrer(), useReferrer()
+
+### Community 9 - "Community 9"
+Cohesion: 0.25
+Nodes (0): 
 
 ### Community 10 - "Community 10"
 Cohesion: 0.25
 Nodes (0): 
 
 ### Community 11 - "Community 11"
-Cohesion: 0.25
-Nodes (0): 
-
-### Community 12 - "Community 12"
 Cohesion: 0.29
 Nodes (8): NOOP Classification, Optimization Plan, Query Expansion, Top-5 Memory Comparison, Memory Expansion on Save, Multi-Query Search, Parallel Execution, Search Optimization
 
-### Community 13 - "Community 13"
+### Community 12 - "Community 12"
 Cohesion: 0.36
 Nodes (8): API Key Cache, Dodo Payments, Payment Architecture, Subscription Webhook Flow, Idempotency Key Blocker, Inactive Subscription Validation Blocker, Payment Integration Analysis, Checkout User Identification Blocker
 
-### Community 14 - "Community 14"
-Cohesion: 0.33
-Nodes (4): formatDate(), formatDate(), formatDateTime(), formatRelativeTime()
-
-### Community 15 - "Community 15"
+### Community 13 - "Community 13"
 Cohesion: 0.29
 Nodes (1): handleCopyPrompt()
 
-### Community 16 - "Community 16"
+### Community 14 - "Community 14"
 Cohesion: 0.29
 Nodes (0): 
 
-### Community 17 - "Community 17"
+### Community 15 - "Community 15"
+Cohesion: 0.33
+Nodes (4): formatDate(), formatDate(), formatDateTime(), formatRelativeTime()
+
+### Community 16 - "Community 16"
 Cohesion: 0.47
 Nodes (4): getSession(), requireAdmin(), requireSession(), AdminLayout()
 
-### Community 18 - "Community 18"
+### Community 17 - "Community 17"
 Cohesion: 0.4
 Nodes (2): getProjectColor(), hashString()
 
-### Community 19 - "Community 19"
+### Community 18 - "Community 18"
 Cohesion: 0.33
 Nodes (0): 
 
-### Community 20 - "Community 20"
+### Community 19 - "Community 19"
 Cohesion: 0.6
 Nodes (3): getDistanceFromCenter(), getOpacity(), isHighlight()
+
+### Community 20 - "Community 20"
+Cohesion: 0.5
+Nodes (2): cuboidPolys(), renderCuboid()
 
 ### Community 21 - "Community 21"
 Cohesion: 0.4
 Nodes (0): 
 
 ### Community 22 - "Community 22"
-Cohesion: 0.5
-Nodes (2): getQueryClient(), makeQueryClient()
+Cohesion: 0.4
+Nodes (0): 
 
 ### Community 23 - "Community 23"
 Cohesion: 0.5
-Nodes (1): AppError
+Nodes (2): getQueryClient(), makeQueryClient()
 
 ### Community 24 - "Community 24"
 Cohesion: 0.5
@@ -269,12 +275,12 @@ Cohesion: 0.67
 Nodes (0): 
 
 ### Community 32 - "Community 32"
-Cohesion: 0.67
-Nodes (0): 
+Cohesion: 1.0
+Nodes (2): highlightShellish(), highlightSnippet()
 
 ### Community 33 - "Community 33"
-Cohesion: 1.0
-Nodes (2): SkeletonProvider(), useIsMounted()
+Cohesion: 0.67
+Nodes (0): 
 
 ### Community 34 - "Community 34"
 Cohesion: 0.67
@@ -285,24 +291,24 @@ Cohesion: 0.67
 Nodes (0): 
 
 ### Community 36 - "Community 36"
-Cohesion: 0.67
-Nodes (0): 
+Cohesion: 1.0
+Nodes (2): SkeletonProvider(), useIsMounted()
 
 ### Community 37 - "Community 37"
 Cohesion: 0.67
-Nodes (3): Orange Chevron Segment, Sign Logo, White Chevron Segment
+Nodes (0): 
 
 ### Community 38 - "Community 38"
-Cohesion: 1.0
+Cohesion: 0.67
 Nodes (0): 
 
 ### Community 39 - "Community 39"
-Cohesion: 1.0
+Cohesion: 0.67
 Nodes (0): 
 
 ### Community 40 - "Community 40"
-Cohesion: 1.0
-Nodes (0): 
+Cohesion: 0.67
+Nodes (3): Orange Chevron Segment, Sign Logo, White Chevron Segment
 
 ### Community 41 - "Community 41"
 Cohesion: 1.0
@@ -362,23 +368,23 @@ Nodes (0):
 
 ### Community 55 - "Community 55"
 Cohesion: 1.0
-Nodes (2): Dual Chevrons Motif, MemContext Brandmark
+Nodes (0): 
 
 ### Community 56 - "Community 56"
 Cohesion: 1.0
-Nodes (2): Linear Gradients, Neon Logomark
+Nodes (2): Dual Chevrons Motif, MemContext Brandmark
 
 ### Community 57 - "Community 57"
 Cohesion: 1.0
-Nodes (2): Dual Chevron Mark, MemContext Brand Logo
+Nodes (2): Linear Gradients, Neon Logomark
 
 ### Community 58 - "Community 58"
 Cohesion: 1.0
-Nodes (2): Dashboard App Icon, Two-Tone Angular Brandmark
+Nodes (2): Dual Chevron Mark, MemContext Brand Logo
 
 ### Community 59 - "Community 59"
 Cohesion: 1.0
-Nodes (0): 
+Nodes (2): Dashboard App Icon, Two-Tone Angular Brandmark
 
 ### Community 60 - "Community 60"
 Cohesion: 1.0
@@ -490,173 +496,203 @@ Nodes (0):
 
 ### Community 87 - "Community 87"
 Cohesion: 1.0
-Nodes (1): MemContext Brandmark
+Nodes (0): 
 
 ### Community 88 - "Community 88"
 Cohesion: 1.0
-Nodes (1): File Icon
+Nodes (0): 
 
 ### Community 89 - "Community 89"
 Cohesion: 1.0
-Nodes (1): Zed Logo
+Nodes (0): 
 
 ### Community 90 - "Community 90"
 Cohesion: 1.0
-Nodes (1): Gemini Logo
+Nodes (0): 
 
 ### Community 91 - "Community 91"
 Cohesion: 1.0
-Nodes (1): Vercel Logo
+Nodes (0): 
 
 ### Community 92 - "Community 92"
 Cohesion: 1.0
-Nodes (1): Next.js Logo
+Nodes (0): 
 
 ### Community 93 - "Community 93"
 Cohesion: 1.0
-Nodes (1): OpenCode Logo
+Nodes (1): MemContext Brandmark
 
 ### Community 94 - "Community 94"
 Cohesion: 1.0
-Nodes (1): OpenCode Logo
+Nodes (1): File Icon
 
 ### Community 95 - "Community 95"
 Cohesion: 1.0
-Nodes (1): Sign Logomark
+Nodes (1): Zed Logo
 
 ### Community 96 - "Community 96"
+Cohesion: 1.0
+Nodes (1): Gemini Logo
+
+### Community 97 - "Community 97"
+Cohesion: 1.0
+Nodes (1): Vercel Logo
+
+### Community 98 - "Community 98"
+Cohesion: 1.0
+Nodes (1): Next.js Logo
+
+### Community 99 - "Community 99"
+Cohesion: 1.0
+Nodes (1): OpenCode Logo
+
+### Community 100 - "Community 100"
+Cohesion: 1.0
+Nodes (1): OpenCode Logo
+
+### Community 101 - "Community 101"
+Cohesion: 1.0
+Nodes (1): Sign Logomark
+
+### Community 102 - "Community 102"
 Cohesion: 1.0
 Nodes (1): Dashboard Logo Mark
 
 ## Knowledge Gaps
 - **41 isolated node(s):** `Business Logic in API Rule`, `Hybrid Multi-Query Search`, `Subscription Plan Limits`, `Upstash Redis API Key Cache`, `Better Auth Session Fallback` (+36 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **Thin community `Community 38`** (2 nodes): `admin.ts`, `user.ts`
+- **Thin community `Community 41`** (2 nodes): `admin.ts`, `user.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 39`** (2 nodes): `page.tsx`, `Home()`
+- **Thin community `Community 42`** (2 nodes): `Home()`, `page.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 40`** (2 nodes): `page.tsx`, `PricingPage()`
+- **Thin community `Community 43`** (2 nodes): `page.tsx`, `PricingPage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 41`** (2 nodes): `hero.tsx`, `generateDots()`
+- **Thin community `Community 44`** (2 nodes): `UseCaseCard()`, `use-cases.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 42`** (2 nodes): `stats-bar.tsx`, `StatsBar()`
+- **Thin community `Community 45`** (2 nodes): `MemoryCard()`, `hero-cards.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 43`** (2 nodes): `memory-pipeline.tsx`, `MemoryPipeline()`
+- **Thin community `Community 46`** (2 nodes): `toggleMute()`, `launch-video.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 44`** (2 nodes): `hero-cards.tsx`, `MemoryCard()`
+- **Thin community `Community 47`** (2 nodes): `use-in-view.ts`, `useInView()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 45`** (2 nodes): `how-it-works.tsx`, `showMessage()`
+- **Thin community `Community 48`** (2 nodes): `waitlist.ts`, `joinWaitlist()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 46`** (2 nodes): `launch-video.tsx`, `toggleMute()`
+- **Thin community `Community 49`** (2 nodes): `middleware.ts`, `middleware()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 47`** (2 nodes): `waitlist.ts`, `joinWaitlist()`
+- **Thin community `Community 50`** (2 nodes): `page.tsx`, `HomePage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 48`** (2 nodes): `middleware.ts`, `middleware()`
+- **Thin community `Community 51`** (2 nodes): `global-error.tsx`, `GlobalError()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 49`** (2 nodes): `page.tsx`, `HomePage()`
+- **Thin community `Community 52`** (2 nodes): `not-found.tsx`, `NotFound()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 50`** (2 nodes): `global-error.tsx`, `GlobalError()`
+- **Thin community `Community 53`** (2 nodes): `page.tsx`, `LegendPage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 51`** (2 nodes): `not-found.tsx`, `NotFound()`
+- **Thin community `Community 54`** (2 nodes): `layout.tsx`, `AuthLayout()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 52`** (2 nodes): `page.tsx`, `LegendPage()`
+- **Thin community `Community 55`** (2 nodes): `theme-provider.tsx`, `ThemeProvider()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 53`** (2 nodes): `layout.tsx`, `AuthLayout()`
+- **Thin community `Community 56`** (2 nodes): `Dual Chevrons Motif`, `MemContext Brandmark`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 54`** (2 nodes): `theme-provider.tsx`, `ThemeProvider()`
+- **Thin community `Community 57`** (2 nodes): `Linear Gradients`, `Neon Logomark`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 55`** (2 nodes): `Dual Chevrons Motif`, `MemContext Brandmark`
+- **Thin community `Community 58`** (2 nodes): `Dual Chevron Mark`, `MemContext Brand Logo`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 56`** (2 nodes): `Linear Gradients`, `Neon Logomark`
+- **Thin community `Community 59`** (2 nodes): `Dashboard App Icon`, `Two-Tone Angular Brandmark`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 57`** (2 nodes): `Dual Chevron Mark`, `MemContext Brand Logo`
+- **Thin community `Community 60`** (1 nodes): `api.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 58`** (2 nodes): `Dashboard App Icon`, `Two-Tone Angular Brandmark`
+- **Thin community `Community 61`** (1 nodes): `memory.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 59`** (1 nodes): `api.ts`
+- **Thin community `Community 62`** (1 nodes): `index.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 60`** (1 nodes): `memory.ts`
+- **Thin community `Community 63`** (1 nodes): `postcss.config.mjs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 61`** (1 nodes): `index.ts`
+- **Thin community `Community 64`** (1 nodes): `next-env.d.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 62`** (1 nodes): `postcss.config.mjs`
+- **Thin community `Community 65`** (1 nodes): `eslint.config.mjs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 63`** (1 nodes): `next-env.d.ts`
+- **Thin community `Community 66`** (1 nodes): `next.config.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 64`** (1 nodes): `eslint.config.mjs`
+- **Thin community `Community 67`** (1 nodes): `trust-block.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 65`** (1 nodes): `next.config.ts`
+- **Thin community `Community 68`** (1 nodes): `final-cta.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 66`** (1 nodes): `use-cases.tsx`
+- **Thin community `Community 69`** (1 nodes): `hero.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 67`** (1 nodes): `final-cta.tsx`
+- **Thin community `Community 70`** (1 nodes): `stats-bar.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 68`** (1 nodes): `pricing.tsx`
+- **Thin community `Community 71`** (1 nodes): `pricing.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 69`** (1 nodes): `index.ts`
+- **Thin community `Community 72`** (1 nodes): `memory-pipeline.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 70`** (1 nodes): `faq.tsx`
+- **Thin community `Community 73`** (1 nodes): `hero-dashboard.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 71`** (1 nodes): `postcss.config.mjs`
+- **Thin community `Community 74`** (1 nodes): `classification-chart.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 72`** (1 nodes): `next-env.d.ts`
+- **Thin community `Community 75`** (1 nodes): `index.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 73`** (1 nodes): `eslint.config.mjs`
+- **Thin community `Community 76`** (1 nodes): `faq.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 74`** (1 nodes): `next.config.ts`
+- **Thin community `Community 77`** (1 nodes): `postcss.config.mjs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 75`** (1 nodes): `loading.tsx`
+- **Thin community `Community 78`** (1 nodes): `next-env.d.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 76`** (1 nodes): `layout-content.tsx`
+- **Thin community `Community 79`** (1 nodes): `eslint.config.mjs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 77`** (1 nodes): `page.tsx`
+- **Thin community `Community 80`** (1 nodes): `next.config.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 78`** (1 nodes): `page.tsx`
+- **Thin community `Community 81`** (1 nodes): `loading.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 79`** (1 nodes): `layout.tsx`
+- **Thin community `Community 82`** (1 nodes): `layout-content.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 80`** (1 nodes): `loading.tsx`
+- **Thin community `Community 83`** (1 nodes): `page.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 81`** (1 nodes): `card.tsx`
+- **Thin community `Community 84`** (1 nodes): `page.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 82`** (1 nodes): `label.tsx`
+- **Thin community `Community 85`** (1 nodes): `layout.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 83`** (1 nodes): `button.tsx`
+- **Thin community `Community 86`** (1 nodes): `loading.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 84`** (1 nodes): `input.tsx`
+- **Thin community `Community 87`** (1 nodes): `card.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 85`** (1 nodes): `auth-client.ts`
+- **Thin community `Community 88`** (1 nodes): `label.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 86`** (1 nodes): `drizzle.config.ts`
+- **Thin community `Community 89`** (1 nodes): `button.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 87`** (1 nodes): `MemContext Brandmark`
+- **Thin community `Community 90`** (1 nodes): `input.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 88`** (1 nodes): `File Icon`
+- **Thin community `Community 91`** (1 nodes): `auth-client.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 89`** (1 nodes): `Zed Logo`
+- **Thin community `Community 92`** (1 nodes): `drizzle.config.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 90`** (1 nodes): `Gemini Logo`
+- **Thin community `Community 93`** (1 nodes): `MemContext Brandmark`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 91`** (1 nodes): `Vercel Logo`
+- **Thin community `Community 94`** (1 nodes): `File Icon`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 92`** (1 nodes): `Next.js Logo`
+- **Thin community `Community 95`** (1 nodes): `Zed Logo`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 93`** (1 nodes): `OpenCode Logo`
+- **Thin community `Community 96`** (1 nodes): `Gemini Logo`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 94`** (1 nodes): `OpenCode Logo`
+- **Thin community `Community 97`** (1 nodes): `Vercel Logo`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 95`** (1 nodes): `Sign Logomark`
+- **Thin community `Community 98`** (1 nodes): `Next.js Logo`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 96`** (1 nodes): `Dashboard Logo Mark`
+- **Thin community `Community 99`** (1 nodes): `OpenCode Logo`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 100`** (1 nodes): `OpenCode Logo`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 101`** (1 nodes): `Sign Logomark`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 102`** (1 nodes): `Dashboard Logo Mark`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Error()` connect `Community 0` to `Community 1`, `Community 5`, `Community 6`, `Community 7`, `Community 15`?**
-  _High betweenness centrality (0.083) - this node is a cross-community bridge._
-- **Why does `getProfileCacheKey()` connect `Community 5` to `Community 3`?**
-  _High betweenness centrality (0.018) - this node is a cross-community bridge._
+- **Why does `Error()` connect `Community 0` to `Community 1`, `Community 5`, `Community 6`, `Community 7`, `Community 13`?**
+  _High betweenness centrality (0.080) - this node is a cross-community bridge._
+- **Why does `getProfileCacheKey()` connect `Community 0` to `Community 3`?**
+  _High betweenness centrality (0.017) - this node is a cross-community bridge._
 - **Are the 33 inferred relationships involving `Error()` (e.g. with `main()` and `handleConfirm()`) actually correct?**
   _`Error()` has 33 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 4 inferred relationships involving `search_memory Tool` (e.g. with `save_memory Tool` and `Hybrid Search with RRF`) actually correct?**

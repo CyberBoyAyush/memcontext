@@ -40,8 +40,11 @@ export function TrustBlock() {
   const shouldAnimate = isInView && !prefersReducedMotion;
 
   return (
-    <section ref={ref} className="py-6 sm:py-8 relative z-20">
-      <div className="flex flex-col items-center gap-2 gap-y-4 overflow-hidden">
+    <section
+      ref={ref}
+      className="pb-6 sm:pt-24 sm:pb-8 px-4 sm:px-6 relative z-20"
+    >
+      <div className="flex flex-col items-center gap-3 gap-y-6 overflow-hidden">
         {/* Left side - Label */}
         <div className="shrink-0 pl-4 sm:pl-8 pr-4 sm:pr-6">
           <p className="text-[10px] sm:text-lg text-foreground opacity-70 whitespace-nowrap">
