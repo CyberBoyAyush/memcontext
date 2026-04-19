@@ -11,23 +11,34 @@ import { SparkleIcon } from "@phosphor-icons/react";
 export function Hero() {
   return (
     <section className="pt-20 pb-8 sm:pt-24 sm:pb-12 lg:pt-24 lg:pb-16 min-h-screen flex flex-col relative overflow-hidden">
-      {/* Atmospheric WebGL shader - domain-warped fBm embers.
-          Multi-stop mask gradient approximating an ease curve (cubic-like),
-          so there's no perceptible horizontal band anywhere along the fade.
-          A pure two-stop linear fade has a sharp derivative corner that the
-          eye reads as a line (Mach banding); the extra stops below smooth it
-          into a gentle sigmoid the viewer cannot localize. */}
-      <div
-        className="absolute inset-0  pointer-events-none"
-        style={{
-          WebkitMaskImage:
-            "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.2) 4%, rgba(0,0,0,0.6) 9%, rgba(0,0,0,0.9) 14%, rgba(0,0,0,1) 20%, rgba(0,0,0,1) 55%, rgba(0,0,0,0.95) 65%, rgba(0,0,0,0.8) 72%, rgba(0,0,0,0.55) 80%, rgba(0,0,0,0.3) 87%, rgba(0,0,0,0.12) 93%, rgba(0,0,0,0) 100%)",
-          maskImage:
-            "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.2) 4%, rgba(0,0,0,0.6) 9%, rgba(0,0,0,0.9) 14%, rgba(0,0,0,1) 20%, rgba(0,0,0,1) 55%, rgba(0,0,0,0.95) 65%, rgba(0,0,0,0.8) 72%, rgba(0,0,0,0.55) 80%, rgba(0,0,0,0.3) 87%, rgba(0,0,0,0.12) 93%, rgba(0,0,0,0) 100%)",
-        }}
-      >
+      {/* Atmospheric WebGL shader — rendered at full opacity, no mask.
+          The shader fade is achieved by two solid bg-color gradient overlays
+          below (top and bottom). They physically blend the shader into the
+          page background instead of using opacity masks — eliminates Mach
+          banding because there's no opacity transition for the eye to localize. */}
+      <div className="absolute inset-0 pointer-events-none">
         <HeroShader />
       </div>
+
+      {/* Top fade — solid background blending into transparent over ~20vh */}
+      <div
+        aria-hidden
+        className="absolute top-0 left-0 right-0 h-[20vh] pointer-events-none z-[1]"
+        style={{
+          background:
+            "linear-gradient(to bottom, var(--background) 0%, var(--background) 25%, rgba(10,10,10,0) 100%)",
+        }}
+      />
+
+      {/* Bottom fade — solid background blending into transparent over ~35vh */}
+      <div
+        aria-hidden
+        className="absolute bottom-0 left-0 right-0 h-[35vh] pointer-events-none z-[1]"
+        style={{
+          background:
+            "linear-gradient(to top, var(--background) 0%, var(--background) 30%, rgba(10,10,10,0) 100%)",
+        }}
+      />
 
       {/* Warm radial vignette — two variants:
           • Mobile: a smaller, tighter ellipse behind the copy block only, so
