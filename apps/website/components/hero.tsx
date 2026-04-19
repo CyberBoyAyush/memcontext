@@ -2,7 +2,8 @@
 
 import { ArrowRight, Sparkles } from "lucide-react";
 // import { HeroCards } from "./hero-cards"; // temporarily hidden — swapped for dashboard preview
-import { HeroDashboard } from "./hero-dashboard";
+// import { HeroDashboard } from "./hero-dashboard"; // temporarily hidden — swapped for memory tower
+import { HeroMemoryTower } from "./hero-memory-tower";
 import { HeroShader } from "./hero-shader";
 import { TrustBlock } from "./trust-block";
 
@@ -23,6 +24,18 @@ export function Hero() {
       >
         <HeroShader />
       </div>
+
+      {/* Warm radial vignette — section-level so the glow bleeds freely into
+          the surrounding content instead of clipping at the illustration's
+          flex container. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-56 top-1/4"
+        style={{
+          background:
+            "radial-gradient(1200px 400px at 50% 60%, rgba(169,67,42,0.28), transparent 65%)",
+        }}
+      />
 
       <div className="mx-auto max-w-5xl px-4 sm:px-6 relative z-10">
         <div className="text-center">
@@ -187,16 +200,12 @@ export function Hero() {
         </div>
       </div>
 
-      {/* Dashboard preview — tilted, premium bordered showcase */}
-      <div className="animate-fade-in opacity-0 animation-delay-400 mt-10 sm:mt-14 lg:mt-20 mb-8 sm:mb-12 flex-1 flex items-center justify-center">
-        <HeroDashboard />
+      {/* Memory Tower — isometric illustration of the memory layer.
+          Dashboard preview temporarily swapped out; restore by importing
+          HeroDashboard and replacing <HeroMemoryTower /> with <HeroDashboard />. */}
+      <div className="animate-fade-in opacity-0 animation-delay-400  mb-8 sm:mb-12 flex-1 flex items-center justify-center relative z-10">
+        <HeroMemoryTower className="relative pointer-events-none w-[min(1100px,92%)]" />
       </div>
-
-      {/* Previous card stack preserved for reference — swap back by restoring this:
-          <div className="animate-fade-in opacity-0 animation-delay-400 mt-8 sm:mt-10 lg:mt-16 flex-1 flex items-center justify-center">
-            <HeroCards />
-          </div>
-      */}
 
       {/* Trust Block - overlays hero cards */}
       <div className="animate-fade-in opacity-0 animation-delay-500 relative z-30">
