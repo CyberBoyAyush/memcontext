@@ -90,11 +90,6 @@ Use Mintlify for MemContext public documentation. The docs site lives in `docs/`
 
 Use `docs/` only for public Mintlify documentation. Store internal planning, architecture notes, and implementation references in `internal-docs/`.
 
-## graphify
-
-This project has a graphify knowledge graph at graphify-out/.
-
-Rules:
-- Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
-- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
-- After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)
+<!-- Added: 2026-04-20 -->
+## Website Security Headers
+Configure baseline security headers for the public website in `apps/website/next.config.ts`. Disable Next.js `X-Powered-By` with `poweredByHeader: false` and set `Strict-Transport-Security`, `X-Frame-Options`, and `X-Content-Type-Options` alongside the existing CSP.
