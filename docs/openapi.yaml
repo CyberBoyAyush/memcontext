@@ -88,7 +88,7 @@ paths:
           name: project
           schema:
             type: string
-          description: "Comma-separated project filter within the selected scope. Use `__null__` for memories without a project."
+          description: "Comma-separated project filter within the selected scope. Use `__memcontext_no_project__` for memories without a project."
         - in: query
           name: search
           schema:
@@ -518,13 +518,12 @@ components:
           description: ID of the saved or matched memory.
         status:
           type: string
-          enum: [saved, updated, extended, duplicate, limit_exceeded]
+          enum: [saved, updated, extended, duplicate]
           description: |
             - `saved` - New memory created.
             - `updated` - New memory superseded an existing one.
             - `extended` - New memory extends an existing one (relation created).
             - `duplicate` - Content already exists; no new memory created.
-            - `limit_exceeded` - Save was rejected because the current plan limit was reached.
         superseded:
           type: string
           format: uuid
@@ -533,12 +532,6 @@ components:
           type: string
           format: uuid
           description: ID of the existing duplicate (when status is `duplicate`).
-        current:
-          type: integer
-          description: Current memory count when status is `limit_exceeded`.
-        limit:
-          type: integer
-          description: Memory limit when status is `limit_exceeded`.
     SearchMemoryResult:
       type: object
       required: [id, content, relevance, createdAt]

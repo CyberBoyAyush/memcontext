@@ -65,6 +65,15 @@ interface SaveMemoryParams {
   validUntil?: string;
 }
 
+type SaveMemoryResult =
+  | SaveMemoryResponse
+  | {
+      id: "";
+      status: "limit_exceeded";
+      current?: number;
+      limit?: number;
+    };
+
 interface SearchMemoriesParams {
   userId: string;
   query: string;
@@ -78,7 +87,7 @@ interface SearchMemoriesParams {
 
 export async function saveMemory(
   params: SaveMemoryParams,
-): Promise<SaveMemoryResponse> {
+): Promise<SaveMemoryResult> {
   const { userId, content, category, source, timing, validUntil } = params;
   const scope = normalizeScope(params.scope);
   const project = normalizeProjectName(params.project);
@@ -1264,7 +1273,8 @@ export async function listMemories(
     search,
   } = params;
   const scope = normalizeScope(rawScope);
-  const project = normalizeProjectName(params.project);
+  const rawProject = params.project;
+  const project = normalizeProjectName(rawProject);
   const start = performance.now();
 
   const conditions = [
@@ -1319,7 +1329,7 @@ export async function listMemories(
         )}))`,
       );
     }
-  } else if (project === NO_PROJECT_FILTER_VALUE) {
+  } else if (rawProject === NO_PROJECT_FILTER_VALUE) {
     conditions.push(isNull(memories.project));
   } else if (project) {
     const escapedProject = project

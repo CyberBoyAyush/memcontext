@@ -56,11 +56,9 @@ export interface SaveMemoryRequest {
 
 export interface SaveMemoryResponse {
   id: string;
-  status: "saved" | "updated" | "extended" | "duplicate" | "limit_exceeded";
+  status: "saved" | "updated" | "extended" | "duplicate";
   superseded?: string;
   existingId?: string;
-  current?: number;
-  limit?: number;
 }
 
 export interface SearchMemoryRequest {
