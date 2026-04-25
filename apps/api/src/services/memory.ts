@@ -1239,7 +1239,7 @@ export async function getMemoryGraph(
     id: memory.id,
     label: buildGraphLabel(memory.content),
     content: memory.content,
-    category: memory.category,
+    category: memory.category as MemoryCategory | null,
     scope: memory.scope,
     project: memory.project,
     rootId: memory.rootId,
