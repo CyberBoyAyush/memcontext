@@ -71,8 +71,21 @@ function normalizeProject(project: string | undefined): string | undefined {
 
 type JsonMemory = Omit<
   Memory,
-  "deletedAt" | "validFrom" | "validUntil" | "createdAt"
+  | "category"
+  | "scope"
+  | "project"
+  | "supersedesId"
+  | "rootId"
+  | "deletedAt"
+  | "validFrom"
+  | "validUntil"
+  | "createdAt"
 > & {
+  category?: Memory["category"] | null;
+  scope?: string | null;
+  project?: string | null;
+  supersedesId?: string | null;
+  rootId?: string | null;
   deletedAt?: string | null;
   validFrom?: string | null;
   validUntil?: string | null;
@@ -81,14 +94,23 @@ type JsonMemory = Omit<
 
 type JsonListMemoryItem = Omit<
   ListMemoryItem,
-  "validFrom" | "validUntil" | "createdAt"
+  "category" | "scope" | "project" | "validFrom" | "validUntil" | "createdAt"
 > & {
+  category?: ListMemoryItem["category"] | null;
+  scope?: string | null;
+  project?: string | null;
   validFrom?: string | null;
   validUntil?: string | null;
   createdAt: string;
 };
 
-type JsonMemoryWithRelevance = Omit<MemoryWithRelevance, "createdAt"> & {
+type JsonMemoryWithRelevance = Omit<
+  MemoryWithRelevance,
+  "category" | "scope" | "project" | "createdAt"
+> & {
+  category?: MemoryWithRelevance["category"] | null;
+  scope?: string | null;
+  project?: string | null;
   createdAt: string;
 };
 
@@ -99,6 +121,11 @@ function dateOrUndefined(value: string | null | undefined): Date | undefined {
 function hydrateMemory(memory: JsonMemory): Memory {
   return {
     ...memory,
+    category: memory.category ?? undefined,
+    scope: memory.scope ?? undefined,
+    project: memory.project ?? undefined,
+    supersedesId: memory.supersedesId ?? undefined,
+    rootId: memory.rootId ?? undefined,
     deletedAt: dateOrUndefined(memory.deletedAt),
     validFrom: dateOrUndefined(memory.validFrom),
     validUntil: dateOrUndefined(memory.validUntil),
@@ -109,6 +136,9 @@ function hydrateMemory(memory: JsonMemory): Memory {
 function hydrateListMemory(memory: JsonListMemoryItem): ListMemoryItem {
   return {
     ...memory,
+    category: memory.category ?? undefined,
+    scope: memory.scope ?? undefined,
+    project: memory.project ?? undefined,
     validFrom: dateOrUndefined(memory.validFrom),
     validUntil: dateOrUndefined(memory.validUntil),
     createdAt: new Date(memory.createdAt),
@@ -216,6 +246,9 @@ export class MemContextClient {
       ...response,
       memories: response.memories.map((memory) => ({
         ...memory,
+        category: memory.category ?? undefined,
+        scope: memory.scope ?? undefined,
+        project: memory.project ?? undefined,
         createdAt: new Date(memory.createdAt),
       })),
     };
