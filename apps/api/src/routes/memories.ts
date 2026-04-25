@@ -58,6 +58,7 @@ const saveMemorySchema = z.object({
     .min(1, "Content is required")
     .max(10000, "Content too long (max 10000 chars)"),
   category: z.enum(["preference", "fact", "decision", "context"]).optional(),
+  scope: z.string().trim().min(1).max(200, "Scope too long").optional(),
   project: z.string().max(100, "Project name too long").optional(),
   source: z.enum(["mcp", "web", "api", "openclaw"]).optional().default("api"),
   validUntil: z.string().datetime().optional(),
@@ -71,6 +72,7 @@ const searchMemorySchema = z.object({
     .max(1000, "Query too long (max 1000 chars)"),
   limit: z.coerce.number().min(1).max(10).optional().default(5),
   category: z.enum(["preference", "fact", "decision", "context"]).optional(),
+  scope: z.string().trim().min(1).max(200, "Scope too long").optional(),
   project: z.string().max(100, "Project name too long").optional(),
   threshold: z.coerce.number().min(0).max(1).optional(),
 });
@@ -79,6 +81,7 @@ const listMemorySchema = z.object({
   limit: z.coerce.number().min(1).max(100).optional().default(20),
   offset: z.coerce.number().min(0).optional().default(0),
   category: z.string().max(200).optional(),
+  scope: z.string().trim().min(1).max(200, "Scope too long").optional(),
   project: z.string().max(500).optional(),
   search: z.string().max(200, "Search query too long").optional(),
 });
@@ -87,6 +90,15 @@ const updateMemorySchema = z.object({
   content: z.string().trim().min(1).max(10000).optional(),
   category: z.enum(["preference", "fact", "decision", "context"]).optional(),
   project: z.string().max(100).optional(),
+});
+
+const scopedQuerySchema = z.object({
+  scope: z.string().trim().min(1).max(200, "Scope too long").optional(),
+});
+
+const profileQuerySchema = z.object({
+  scope: z.string().trim().min(1).max(200, "Scope too long").optional(),
+  project: z.string().max(100, "Project name too long").optional(),
 });
 
 const memoryIdParamSchema = z.object({
@@ -123,6 +135,7 @@ app.post(
       userId: auth.userId,
       content: body.content,
       category: body.category as MemoryCategory | undefined,
+      scope: body.scope,
       project: body.project,
       source: body.source as MemorySource,
       timing,
@@ -161,7 +174,17 @@ app.post(
       result.status === "updated" ||
       result.status === "extended"
     ) {
-      await invalidateCachedProfile(auth.userId, body.project).catch(() => {});
+      const persistedMemory = await getMemory(
+        auth.userId,
+        result.id,
+        body.scope,
+      );
+      await invalidateCachedProfile(
+        auth.userId,
+        persistedMemory?.scope ?? body.scope,
+        persistedMemory?.project ?? body.project,
+      ).catch(() => {});
+      await invalidateCachedProfile(auth.userId, body.scope).catch(() => {});
     }
 
     return c.json(result, 201);
@@ -184,6 +207,7 @@ app.get(
       query: query.query,
       limit: query.limit,
       category: query.category as MemoryCategory | undefined,
+      scope: query.scope,
       project: query.project,
       timing,
       threshold: query.threshold,
@@ -194,26 +218,45 @@ app.get(
 );
 
 // GET /profile - Pre-aggregated user context
-app.get("/profile", eitherAuthMiddleware, async (c) => {
-  const auth = c.get("auth");
-  const project = c.req.query("project") || undefined;
+app.get(
+  "/profile",
+  eitherAuthMiddleware,
+  zValidator("query", profileQuerySchema),
+  async (c) => {
+    const auth = c.get("auth");
+    const query = c.req.valid("query");
 
-  const cached = await getCachedProfile(auth.userId, project);
-  if (cached) {
-    return c.json(cached);
-  }
+    const cached = await getCachedProfile(
+      auth.userId,
+      query.scope,
+      query.project,
+    );
+    if (cached) {
+      return c.json(cached);
+    }
 
-  const profile = await getMemoryProfile(auth.userId, project);
-  await cacheProfile(auth.userId, project, profile);
-  return c.json(profile);
-});
+    const profile = await getMemoryProfile(
+      auth.userId,
+      query.project,
+      query.scope,
+    );
+    await cacheProfile(auth.userId, query.scope, query.project, profile);
+    return c.json(profile);
+  },
+);
 
 // GET /graph - Memory graph data for dashboard visualization
-app.get("/graph", eitherAuthMiddleware, async (c) => {
-  const auth = c.get("auth");
-  const graph = await getMemoryGraph(auth.userId);
-  return c.json(graph);
-});
+app.get(
+  "/graph",
+  eitherAuthMiddleware,
+  zValidator("query", scopedQuerySchema),
+  async (c) => {
+    const auth = c.get("auth");
+    const query = c.req.valid("query");
+    const graph = await getMemoryGraph(auth.userId, query.scope);
+    return c.json(graph);
+  },
+);
 
 // GET / - List memories
 app.get(
@@ -263,6 +306,7 @@ app.get(
       limit: query.limit,
       offset: query.offset,
       categories: categories?.length ? categories : undefined,
+      scope: query.scope,
       projects: projects?.length ? projects : undefined,
       search: query.search,
     });
@@ -276,11 +320,13 @@ app.get(
   "/:id/history",
   eitherAuthMiddleware,
   zValidator("param", memoryIdParamSchema),
+  zValidator("query", scopedQuerySchema),
   async (c) => {
     const auth = c.get("auth");
     const { id: memoryId } = c.req.valid("param");
+    const query = c.req.valid("query");
 
-    const result = await getMemoryHistory(auth.userId, memoryId);
+    const result = await getMemoryHistory(auth.userId, memoryId, query.scope);
     if (!result) {
       throw new HTTPException(404, { message: "Memory not found" });
     }
@@ -295,10 +341,12 @@ app.post(
   rateLimitFeedback,
   eitherAuthMiddleware,
   zValidator("param", memoryIdParamSchema),
+  zValidator("query", scopedQuerySchema),
   zValidator("json", feedbackSchema),
   async (c) => {
     const auth = c.get("auth");
     const { id: memoryId } = c.req.valid("param");
+    const query = c.req.valid("query");
     const body = c.req.valid("json");
 
     try {
@@ -307,6 +355,7 @@ app.post(
         memoryId,
         body.type as FeedbackType,
         body.context,
+        query.scope,
       );
       return c.json(result);
     } catch (error) {
@@ -323,20 +372,22 @@ app.post(
   "/:id/forget",
   eitherAuthMiddleware,
   zValidator("param", memoryIdParamSchema),
+  zValidator("query", scopedQuerySchema),
   async (c) => {
     const auth = c.get("auth");
     const { id: memoryId } = c.req.valid("param");
-    const existing = await getMemory(auth.userId, memoryId);
+    const query = c.req.valid("query");
+    const existing = await getMemory(auth.userId, memoryId, query.scope);
 
-    const deleted = await deleteMemory(auth.userId, memoryId);
+    const deleted = await deleteMemory(auth.userId, memoryId, query.scope);
 
     if (!deleted) {
       throw new HTTPException(404, { message: "Memory not found" });
     }
 
     await Promise.all([
-      invalidateCachedProfile(auth.userId),
-      invalidateCachedProfile(auth.userId, existing?.project),
+      invalidateCachedProfile(auth.userId, existing?.scope),
+      invalidateCachedProfile(auth.userId, existing?.scope, existing?.project),
     ]).catch(() => {});
 
     if (auth.authType === "api_key" && auth.keyHash) {
@@ -363,11 +414,13 @@ app.get(
   "/:id",
   eitherAuthMiddleware,
   zValidator("param", memoryIdParamSchema),
+  zValidator("query", scopedQuerySchema),
   async (c) => {
     const auth = c.get("auth");
     const { id: memoryId } = c.req.valid("param");
+    const query = c.req.valid("query");
 
-    const memory = await getMemory(auth.userId, memoryId);
+    const memory = await getMemory(auth.userId, memoryId, query.scope);
     if (!memory) {
       throw new HTTPException(404, { message: "Memory not found" });
     }
@@ -381,19 +434,22 @@ app.patch(
   "/:id",
   eitherAuthMiddleware,
   zValidator("param", memoryIdParamSchema),
+  zValidator("query", scopedQuerySchema),
   zValidator("json", updateMemorySchema),
   async (c) => {
     const auth = c.get("auth");
     const { id: memoryId } = c.req.valid("param");
+    const query = c.req.valid("query");
     const body = c.req.valid("json");
     const timing = getTimingContext(c);
-    const existing = await getMemory(auth.userId, memoryId);
+    const existing = await getMemory(auth.userId, memoryId, query.scope);
 
     const result = await updateMemory({
       userId: auth.userId,
       memoryId,
       content: body.content,
       category: body.category as MemoryCategory | undefined,
+      scope: query.scope,
       project: body.project,
       timing,
     });
@@ -405,9 +461,9 @@ app.patch(
     }
 
     await Promise.all([
-      invalidateCachedProfile(auth.userId),
-      invalidateCachedProfile(auth.userId, existing?.project),
-      invalidateCachedProfile(auth.userId, body.project),
+      invalidateCachedProfile(auth.userId, existing?.scope),
+      invalidateCachedProfile(auth.userId, existing?.scope, existing?.project),
+      invalidateCachedProfile(auth.userId, existing?.scope, body.project),
     ]).catch(() => {});
 
     return c.json(result);
@@ -419,20 +475,22 @@ app.delete(
   "/:id",
   eitherAuthMiddleware,
   zValidator("param", memoryIdParamSchema),
+  zValidator("query", scopedQuerySchema),
   async (c) => {
     const auth = c.get("auth");
     const { id: memoryId } = c.req.valid("param");
-    const existing = await getMemory(auth.userId, memoryId);
+    const query = c.req.valid("query");
+    const existing = await getMemory(auth.userId, memoryId, query.scope);
 
-    const deleted = await deleteMemory(auth.userId, memoryId);
+    const deleted = await deleteMemory(auth.userId, memoryId, query.scope);
 
     if (!deleted) {
       throw new HTTPException(404, { message: "Memory not found" });
     }
 
     await Promise.all([
-      invalidateCachedProfile(auth.userId),
-      invalidateCachedProfile(auth.userId, existing?.project),
+      invalidateCachedProfile(auth.userId, existing?.scope),
+      invalidateCachedProfile(auth.userId, existing?.scope, existing?.project),
     ]).catch(() => {});
 
     if (auth.authType === "api_key" && auth.keyHash) {

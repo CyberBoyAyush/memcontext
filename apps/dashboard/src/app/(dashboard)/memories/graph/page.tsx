@@ -15,12 +15,14 @@ import {
 } from "@phosphor-icons/react";
 import {
   memoryGraphQueryOptions,
+  memoryHierarchyQueryOptions,
   type MemoryGraphLink,
   type MemoryGraphNode,
 } from "@/lib/queries/memories";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ScopePicker } from "@/components/scope-picker";
 import { cn, formatDateTime } from "@/lib/utils";
 
 const GraphCanvas = dynamic(() => import("./graph-canvas"), {
@@ -75,7 +77,9 @@ function hashString(value: string): number {
 
 function getProjectColor(project: string | null): string {
   if (!project) return "#94a3b8";
-  return PROJECT_COLORS[hashString(project) % PROJECT_COLORS.length] ?? "#94a3b8";
+  return (
+    PROJECT_COLORS[hashString(project) % PROJECT_COLORS.length] ?? "#94a3b8"
+  );
 }
 
 function getCategoryColor(category: string | null): string {
@@ -86,7 +90,9 @@ function getCategoryColor(category: string | null): string {
 function sortByPriority(nodes: CanvasNode[]): CanvasNode[] {
   return [...nodes].sort((left, right) => {
     if (right.degree !== left.degree) return right.degree - left.degree;
-    return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
+    return (
+      new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+    );
   });
 }
 
@@ -148,8 +154,9 @@ function GraphEmptyState() {
             Your memory graph is waiting for its first thought
           </p>
           <p className="text-sm text-foreground-muted">
-            Save a few memories and they will start connecting automatically by explicit
-            relations, shared projects, version chains, and categories — no setup needed.
+            Save a few memories and they will start connecting automatically by
+            explicit relations, shared projects, version chains, and categories
+            — no setup needed.
           </p>
         </div>
 
@@ -172,17 +179,37 @@ function GraphEmptyState() {
 
 export default function MemoryGraphPage() {
   const [search, setSearch] = useState("");
+  const [selectedScope, setSelectedScope] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [relationFilter, setRelationFilter] = useState<RelationFilter>("all");
   const [includeDerived, setIncludeDerived] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("full");
 
+  const { data: hierarchy, isLoading: hierarchyLoading } = useQuery(
+    memoryHierarchyQueryOptions(),
+  );
+
   const { data, isLoading, isError, error } = useQuery({
-    ...memoryGraphQueryOptions(),
+    ...memoryGraphQueryOptions(selectedScope ?? undefined),
     staleTime: 60_000,
     refetchOnWindowFocus: false,
   });
+
+  function handleScopeChange(next: string | null) {
+    if (next === selectedScope) return;
+    setSelectedScope(next);
+    // Reset selection / hover so we don't keep references to nodes from a
+    // different scope in the UI.
+    setSelectedNodeId(null);
+    setHoveredNodeId(null);
+    setSearch("");
+  }
+
+  const scopeContextLabel =
+    selectedScope === null
+      ? "Viewing Global"
+      : `Viewing scope: ${selectedScope}`;
 
   const nodes = useMemo<CanvasNode[]>(() => {
     return (
@@ -195,7 +222,10 @@ export default function MemoryGraphPage() {
     );
   }, [data?.nodes]);
 
-  const links = useMemo<MemoryGraphLink[]>(() => data?.links ?? [], [data?.links]);
+  const links = useMemo<MemoryGraphLink[]>(
+    () => data?.links ?? [],
+    [data?.links],
+  );
 
   const searchMatches = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -232,7 +262,10 @@ export default function MemoryGraphPage() {
     return map;
   }, [filteredLinks]);
 
-  const seedNodeId = useMemo(() => sortByPriority(nodes)[0]?.id ?? null, [nodes]);
+  const seedNodeId = useMemo(
+    () => sortByPriority(nodes)[0]?.id ?? null,
+    [nodes],
+  );
   // In Focused mode the neighborhood is centered on the user's selection, or
   // falls back to the most-connected memory as a starting point.
   const focusedNodeId = selectedNodeId ?? seedNodeId;
@@ -257,7 +290,8 @@ export default function MemoryGraphPage() {
   const graphLinks = useMemo(
     () =>
       filteredLinks.filter(
-        (link) => visibleNodeIds.has(link.source) && visibleNodeIds.has(link.target),
+        (link) =>
+          visibleNodeIds.has(link.source) && visibleNodeIds.has(link.target),
       ),
     [filteredLinks, visibleNodeIds],
   );
@@ -281,21 +315,55 @@ export default function MemoryGraphPage() {
   const selectedNodeLinks = useMemo(() => {
     if (!selectedNode) return [];
     return filteredLinks.filter(
-      (link) => link.source === selectedNode.id || link.target === selectedNode.id,
+      (link) =>
+        link.source === selectedNode.id || link.target === selectedNode.id,
     );
   }, [filteredLinks, selectedNode]);
 
-  const graphTime = selectedNode ? formatDateTime(selectedNode.createdAt) : null;
+  const graphTime = selectedNode
+    ? formatDateTime(selectedNode.createdAt)
+    : null;
+
+  const headerBlock = (
+    <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Memory Graph</h1>
+        <p className="mt-1 text-foreground-muted">
+          Real links come from saved memory relations. Shared roots, projects,
+          and categories fill in the rest when that data exists.
+        </p>
+        <p className="mt-2 text-xs font-medium uppercase tracking-wider text-foreground-subtle">
+          {scopeContextLabel}
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <ScopePicker
+          value={selectedScope}
+          onChange={handleScopeChange}
+          hierarchy={hierarchy}
+          isLoading={hierarchyLoading}
+        />
+        {data && (
+          <div className="flex flex-wrap items-center gap-2 text-xs text-foreground-muted">
+            <span className="rounded-full border border-border px-3 py-1">
+              {data.meta.totalNodes} memories
+            </span>
+            <span className="rounded-full border border-border px-3 py-1">
+              {data.meta.relationLinks} real links
+            </span>
+            <span className="rounded-full border border-border px-3 py-1">
+              {data.meta.derivedLinks} shared-context links
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   if (isLoading) {
     return (
       <div className="space-y-6 animate-fade-in">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Memory Graph</h1>
-          <p className="mt-1 text-foreground-muted">
-            Mapping your explicit links and shared memory context.
-          </p>
-        </div>
+        {headerBlock}
         <Card className="min-h-[560px] border-border/70">
           <CardContent className="flex min-h-[560px] items-center justify-center pt-6">
             <div className="flex items-center gap-3 text-foreground-muted">
@@ -311,15 +379,12 @@ export default function MemoryGraphPage() {
   if (isError) {
     return (
       <div className="space-y-6 animate-fade-in">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Memory Graph</h1>
-          <p className="mt-1 text-foreground-muted">
-            Mapping your explicit links and shared memory context.
-          </p>
-        </div>
+        {headerBlock}
         <Card className="border-error/20 bg-error/5">
           <CardContent className="pt-6 text-sm text-foreground-muted">
-            {error instanceof Error ? error.message : "Failed to load graph data."}
+            {error instanceof Error
+              ? error.message
+              : "Failed to load graph data."}
           </CardContent>
         </Card>
       </div>
@@ -329,13 +394,7 @@ export default function MemoryGraphPage() {
   if (!data || data.nodes.length === 0) {
     return (
       <div className="space-y-6 animate-fade-in">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Memory Graph</h1>
-          <p className="mt-1 text-foreground-muted">
-            Save memories from any source and they&apos;ll start weaving themselves
-            together here.
-          </p>
-        </div>
+        {headerBlock}
         <GraphEmptyState />
       </div>
     );
@@ -343,26 +402,7 @@ export default function MemoryGraphPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Memory Graph</h1>
-          <p className="mt-1 text-foreground-muted">
-            Real links come from saved memory relations. Shared roots, projects, and
-            categories fill in the rest when that data exists.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs text-foreground-muted">
-          <span className="rounded-full border border-border px-3 py-1">
-            {data.meta.totalNodes} memories
-          </span>
-          <span className="rounded-full border border-border px-3 py-1">
-            {data.meta.relationLinks} real links
-          </span>
-          <span className="rounded-full border border-border px-3 py-1">
-            {data.meta.derivedLinks} shared-context links
-          </span>
-        </div>
-      </div>
+      {headerBlock}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-4">
@@ -386,7 +426,9 @@ export default function MemoryGraphPage() {
                           key={match.id}
                           type="button"
                           variant={
-                            selectedNodeId === match.id ? "secondary" : "outline"
+                            selectedNodeId === match.id
+                              ? "secondary"
+                              : "outline"
                           }
                           size="sm"
                           onClick={() => setSelectedNodeId(match.id)}
@@ -483,6 +525,7 @@ export default function MemoryGraphPage() {
 
           <Card className="overflow-hidden border-border/70 p-0">
             <GraphCanvas
+              key={JSON.stringify(["scope", selectedScope])}
               nodes={graphNodes}
               links={graphLinks}
               selectedNodeId={selectedNodeId}
@@ -560,7 +603,9 @@ export default function MemoryGraphPage() {
                       <p className="mt-2 text-sm font-medium text-foreground">
                         {graphTime?.date}
                       </p>
-                      <p className="text-xs text-foreground-muted">{graphTime?.time}</p>
+                      <p className="text-xs text-foreground-muted">
+                        {graphTime?.time}
+                      </p>
                     </div>
                   </div>
 
@@ -585,8 +630,8 @@ export default function MemoryGraphPage() {
               ) : (
                 <div className="space-y-4 text-foreground-muted">
                   <p>
-                    Click a memory node to inspect the raw memory content and the link
-                    types currently keeping it connected.
+                    Click a memory node to inspect the raw memory content and
+                    the link types currently keeping it connected.
                   </p>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="rounded-xl border border-border bg-surface-elevated p-3">
@@ -594,7 +639,11 @@ export default function MemoryGraphPage() {
                         Projects represented
                       </p>
                       <p className="mt-2 text-lg font-semibold text-foreground">
-                        {new Set(nodes.map((node) => node.project).filter(Boolean)).size}
+                        {
+                          new Set(
+                            nodes.map((node) => node.project).filter(Boolean),
+                          ).size
+                        }
                       </p>
                     </div>
                     <div className="rounded-xl border border-border bg-surface-elevated p-3">
@@ -602,7 +651,11 @@ export default function MemoryGraphPage() {
                         Categories represented
                       </p>
                       <p className="mt-2 text-lg font-semibold text-foreground">
-                        {new Set(nodes.map((node) => node.category).filter(Boolean)).size}
+                        {
+                          new Set(
+                            nodes.map((node) => node.category).filter(Boolean),
+                          ).size
+                        }
                       </p>
                     </div>
                   </div>
@@ -621,7 +674,9 @@ export default function MemoryGraphPage() {
                   />
                   <p>
                     You&apos;re looking at a focused neighborhood. Switch to
-                    <span className="mx-1 font-medium text-foreground">Full</span>
+                    <span className="mx-1 font-medium text-foreground">
+                      Full
+                    </span>
                     to explore every memory and discover cross-project links.
                   </p>
                 </div>

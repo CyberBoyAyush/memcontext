@@ -10,6 +10,7 @@ MemContext is memory infrastructure for AI agents and applications.
 It provides a REST API and MCP server that allow AI systems to:
 
 - **Save** durable user and project knowledge across sessions
+- **Isolate** app users and tenants with hard memory containers via `scope`
 - **Search** memories using hybrid retrieval (vector + full-text)
 - **Evolve** memories over time with automatic version chains
 - **Profile** users with pre-aggregated context from their memory
@@ -25,8 +26,9 @@ MemContext serves two primary use cases:
 
 | Concept            | Description                                                                  |
 | ------------------ | ---------------------------------------------------------------------------- |
+| **Scope**          | Hard isolation boundary for app users or tenants (e.g. `user_123`)           |
 | **Category**       | Broad memory type: `preference`, `fact`, `decision`, or `context`            |
-| **Project**        | Scope boundary for project-specific memories                                 |
+| **Project**        | Soft grouping/filter inside a scope or the global memory lane                |
 | **Version chains** | Memories can supersede old memories without losing history                   |
 | **Hybrid search**  | Vector similarity + keyword search merged with Reciprocal Rank Fusion        |
 | **MCP tools**      | AI assistants can save and search memory directly via Model Context Protocol |

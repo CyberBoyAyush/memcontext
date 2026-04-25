@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { eq, and, isNull, sql, desc } from "drizzle-orm";
+import { eq, and, isNull, sql, desc, asc } from "drizzle-orm";
 import {
   sessionAuthMiddleware,
   type SessionContext,
@@ -14,6 +14,8 @@ const app = new Hono<{
     session: SessionContext;
   };
 }>();
+
+const NO_PROJECT_FILTER_VALUE = "__memcontext_no_project__";
 
 // All routes require session authentication
 app.use("*", sessionAuthMiddleware);
@@ -140,6 +142,71 @@ app.get("/dashboard-stats", async (c) => {
       project: m.project ?? "Global",
       createdAt: m.createdAt,
     })),
+  });
+});
+
+// GET /memory-hierarchy - Get global scopes and projects inside each scope
+app.get("/memory-hierarchy", async (c) => {
+  const { userId } = c.get("session");
+
+  const rows = await db
+    .select({
+      scope: memories.scope,
+      project: memories.project,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(memories)
+    .where(
+      and(
+        eq(memories.userId, userId),
+        eq(memories.isCurrent, true),
+        isNull(memories.deletedAt),
+      ),
+    )
+    .groupBy(memories.scope, memories.project)
+    .orderBy(asc(memories.scope), asc(memories.project));
+
+  const global = {
+    count: 0,
+    projects: [] as Array<{ name: string; value: string; count: number }>,
+  };
+  const scopes = new Map<
+    string,
+    {
+      name: string;
+      count: number;
+      projects: Array<{ name: string; value: string; count: number }>;
+    }
+  >();
+
+  for (const row of rows) {
+    const project = {
+      name: row.project ?? "No project",
+      value: row.project ?? NO_PROJECT_FILTER_VALUE,
+      count: row.count,
+    };
+
+    if (row.scope === null) {
+      global.count += row.count;
+      global.projects.push(project);
+      continue;
+    }
+
+    const scope = scopes.get(row.scope) ?? {
+      name: row.scope,
+      count: 0,
+      projects: [],
+    };
+    scope.count += row.count;
+    scope.projects.push(project);
+    scopes.set(row.scope, scope);
+  }
+
+  return c.json({
+    global,
+    scopes: Array.from(scopes.values()).sort((left, right) =>
+      left.name.localeCompare(right.name),
+    ),
   });
 });
 

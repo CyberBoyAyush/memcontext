@@ -18,6 +18,8 @@ A typical integration follows four steps:
 3. **Profile** (optional) — fetch broad context in one call via `GET /api/memories/profile`
 4. **Feedback** — record retrieval quality via `POST /api/memories/:id/feedback`
 
+For multi-user applications, always pass a stable end-user or tenant ID in `scope`. `project` remains a secondary grouping field inside that scope.
+
 ## Example: Support bot
 
 ```
@@ -69,8 +71,9 @@ Keep your application logic outside MemContext.
 ```typescript
 const MEMCONTEXT_API = "https://api.memcontext.in";
 
-async function searchMemory(query: string, project?: string) {
+async function searchMemory(query: string, scope: string, project?: string) {
   const params = new URLSearchParams({ query });
+  params.set("scope", scope);
   if (project) params.set("project", project);
 
   const res = await fetch(`${MEMCONTEXT_API}/api/memories/search?${params}`, {
@@ -80,23 +83,58 @@ async function searchMemory(query: string, project?: string) {
   return res.json();
 }
 
-async function saveMemory(content: string, category: string, project?: string) {
+async function saveMemory(
+  content: string,
+  category: string,
+  scope: string,
+  project?: string,
+) {
   const res = await fetch(`${MEMCONTEXT_API}/api/memories`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "X-API-Key": process.env.MEMCONTEXT_API_KEY,
     },
-    body: JSON.stringify({ content, category, project }),
+    body: JSON.stringify({ content, category, scope, project }),
   });
 
   return res.json();
 }
 ```
 
+## TypeScript SDK example
+
+Install the SDK:
+
+```bash
+npm install memcontext-sdk
+```
+
+```typescript
+import { MemContextClient } from "memcontext-sdk";
+
+const client = new MemContextClient({
+  apiKey: process.env.MEMCONTEXT_API_KEY!,
+  scope: "user_123",
+  project: "memcontext",
+});
+
+const profile = await client.profile();
+
+await client.save({
+  content: "User prefers TypeScript over JavaScript for type safety",
+  category: "preference",
+});
+
+const results = await client.search({
+  query: "What language does the user prefer?",
+});
+```
+
 ## Tips
 
 - **Search before saving** — avoid duplicates by checking if the knowledge already exists
-- **Use projects** to scope memories so different applications or contexts do not interfere
+- **Use scope** for hard per-user or per-tenant isolation
+- **Use projects** only to group memories inside that scope
 - **Category matters** — `preference` and `fact` go into profile `static` context; everything goes into `dynamic`
 - **Do not save noise** — only persist information with long-term value

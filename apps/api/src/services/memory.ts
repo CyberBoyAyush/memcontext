@@ -13,7 +13,7 @@ import {
   decrementMemoryCount,
   checkMemoryLimit,
 } from "./subscription.js";
-import { normalizeProjectName } from "../utils/index.js";
+import { normalizeProjectName, normalizeScope } from "../utils/index.js";
 import { logger } from "../lib/logger.js";
 import {
   eq,
@@ -52,22 +52,34 @@ import { withTiming } from "../utils/timing.js";
 const SIMILARITY_THRESHOLD = 0.3;
 const SEARCH_THRESHOLD = 0.6;
 const SIMILAR_MEMORIES_LIMIT = 5;
+const NO_PROJECT_FILTER_VALUE = "__memcontext_no_project__";
 
 interface SaveMemoryParams {
   userId: string;
   content: string;
   category?: MemoryCategory;
+  scope?: string;
   project?: string;
   source: MemorySource;
   timing?: TimingContext;
   validUntil?: string;
 }
 
+type SaveMemoryResult =
+  | SaveMemoryResponse
+  | {
+      id: "";
+      status: "limit_exceeded";
+      current?: number;
+      limit?: number;
+    };
+
 interface SearchMemoriesParams {
   userId: string;
   query: string;
   limit?: number;
   category?: MemoryCategory;
+  scope?: string;
   project?: string;
   timing?: TimingContext;
   threshold?: number;
@@ -75,8 +87,9 @@ interface SearchMemoriesParams {
 
 export async function saveMemory(
   params: SaveMemoryParams,
-): Promise<SaveMemoryResponse> {
+): Promise<SaveMemoryResult> {
   const { userId, content, category, source, timing, validUntil } = params;
+  const scope = normalizeScope(params.scope);
   const project = normalizeProjectName(params.project);
   const userValidUntil = validUntil ? new Date(validUntil) : undefined;
 
@@ -94,9 +107,9 @@ export async function saveMemory(
 
   const similarMemories = await (timing
     ? withTiming(timing, "find_similar", () =>
-        findSimilarMemories(userId, embedding),
+        findSimilarMemories(userId, embedding, undefined, scope),
       )
-    : findSimilarMemories(userId, embedding));
+    : findSimilarMemories(userId, embedding, undefined, scope));
 
   if (similarMemories.length === 0) {
     const result = await (timing
@@ -114,6 +127,7 @@ export async function saveMemory(
               .insert(memories)
               .values({
                 userId,
+                scope,
                 content,
                 embedding,
                 category,
@@ -140,6 +154,7 @@ export async function saveMemory(
             .insert(memories)
             .values({
               userId,
+              scope,
               content,
               embedding,
               category,
@@ -170,6 +185,7 @@ export async function saveMemory(
       {
         memoryId: result.id,
         userId,
+        scope,
         project,
         contentLength: content.length,
         status: "saved",
@@ -226,6 +242,7 @@ export async function saveMemory(
       {
         existingMemoryId: targetMemory.id,
         userId,
+        scope,
         project,
         contentLength: content.length,
         status: "duplicate",
@@ -255,6 +272,7 @@ export async function saveMemory(
               .insert(memories)
               .values({
                 userId,
+                scope: scope ?? targetMemory.scope,
                 content,
                 embedding,
                 category: category ?? targetMemory.category,
@@ -279,6 +297,7 @@ export async function saveMemory(
             .insert(memories)
             .values({
               userId,
+              scope: scope ?? targetMemory.scope,
               content,
               embedding,
               category: category ?? targetMemory.category,
@@ -303,6 +322,7 @@ export async function saveMemory(
         memoryId: newMemoryId,
         supersededId: targetMemory.id,
         userId,
+        scope,
         project,
         contentLength: content.length,
         status: "updated",
@@ -338,6 +358,7 @@ export async function saveMemory(
             .insert(memories)
             .values({
               userId,
+              scope,
               content,
               embedding,
               category,
@@ -370,6 +391,7 @@ export async function saveMemory(
           .insert(memories)
           .values({
             userId,
+            scope,
             content,
             embedding,
             category,
@@ -408,6 +430,7 @@ export async function saveMemory(
       relatedTo: targetMemory.id,
       relationType,
       userId,
+      scope,
       project,
       contentLength: content.length,
       status: classificationStatus,
@@ -426,6 +449,7 @@ interface SimilarMemoryResult {
   id: string;
   content: string;
   category: string | null;
+  scope: string | null;
   project: string | null;
   rootId: string | null;
   version: number;
@@ -437,9 +461,11 @@ export async function findSimilarMemories(
   userId: string,
   embedding: number[],
   excludeId?: string,
+  scope?: string,
 ): Promise<SimilarMemoryResult[]> {
   const start = performance.now();
   const distance = cosineDistance(memories.embedding, embedding);
+  const normalizedScope = normalizeScope(scope);
 
   const conditions = [
     eq(memories.userId, userId),
@@ -448,6 +474,12 @@ export async function findSimilarMemories(
     sql`(${memories.validUntil} IS NULL OR ${memories.validUntil} > NOW())`,
     lt(distance, SIMILARITY_THRESHOLD),
   ];
+
+  conditions.push(
+    normalizedScope
+      ? eq(memories.scope, normalizedScope)
+      : isNull(memories.scope),
+  );
 
   // Exclude specific memory if provided (used in updateMemory)
   if (excludeId) {
@@ -459,6 +491,7 @@ export async function findSimilarMemories(
       id: memories.id,
       content: memories.content,
       category: memories.category,
+      scope: memories.scope,
       project: memories.project,
       rootId: memories.rootId,
       version: memories.version,
@@ -475,6 +508,7 @@ export async function findSimilarMemories(
   logger.debug(
     {
       userId,
+      scope: normalizedScope,
       duration,
       found: results.length,
       excludeId,
@@ -493,6 +527,7 @@ export async function searchMemories(
   params: SearchMemoriesParams,
 ): Promise<SearchMemoryResponse> {
   const { userId, query, limit = 5, category, timing } = params;
+  const scope = normalizeScope(params.scope);
   const project = normalizeProjectName(params.project);
   const threshold = params.threshold ?? SEARCH_THRESHOLD;
   const activeMemoryCondition = sql`(${memories.validUntil} IS NULL OR ${memories.validUntil} > NOW())`;
@@ -512,6 +547,7 @@ export async function searchMemories(
       isNull(memories.deletedAt),
       activeMemoryCondition,
       lt(distance, threshold),
+      scope ? eq(memories.scope, scope) : isNull(memories.scope),
     ];
     if (category) conditions.push(eq(memories.category, category));
     if (project) conditions.push(eq(memories.project, project));
@@ -521,6 +557,7 @@ export async function searchMemories(
         id: memories.id,
         content: memories.content,
         category: memories.category,
+        scope: memories.scope,
         project: memories.project,
         createdAt: memories.createdAt,
       })
@@ -537,6 +574,7 @@ export async function searchMemories(
       isNull(memories.deletedAt),
       activeMemoryCondition,
       sql`content_tsv @@ plainto_tsquery('english', ${queryText})`,
+      scope ? eq(memories.scope, scope) : isNull(memories.scope),
     ];
     if (category) conditions.push(eq(memories.category, category));
     if (project) conditions.push(eq(memories.project, project));
@@ -548,6 +586,7 @@ export async function searchMemories(
         id: memories.id,
         content: memories.content,
         category: memories.category,
+        scope: memories.scope,
         project: memories.project,
         createdAt: memories.createdAt,
         rank: tsRank,
@@ -600,6 +639,7 @@ export async function searchMemories(
         id: string;
         content: string;
         category: string | null;
+        scope: string | null;
         project: string | null;
         createdAt: Date;
       };
@@ -617,6 +657,7 @@ export async function searchMemories(
           id: row.id,
           content: row.content,
           category: row.category,
+          scope: row.scope,
           project: row.project,
           createdAt: row.createdAt,
         },
@@ -696,6 +737,7 @@ export async function searchMemories(
       id: row.id,
       content: row.content,
       category: row.category as MemoryCategory | undefined,
+      scope: row.scope ?? undefined,
       project: row.project ?? undefined,
       relevance: topScore > 0 ? Math.round((score / topScore) * 100) / 100 : 0,
       createdAt: row.createdAt,
@@ -708,6 +750,7 @@ export async function searchMemories(
       queryLength: query.length,
       variantCount: validVariants.length,
       totalQueries: validVariants.length + 1,
+      scope,
       project,
       category,
       threshold,
@@ -734,6 +777,7 @@ interface UpdateMemoryParams {
   memoryId: string;
   content?: string;
   category?: MemoryCategory;
+  scope?: string;
   project?: string;
   timing?: TimingContext;
 }
@@ -744,6 +788,7 @@ interface UpdateMemoryResult {
     id: string;
     content: string;
     category: string | null;
+    scope: string | null;
     project: string | null;
   };
   superseded?: string;
@@ -755,6 +800,7 @@ export async function updateMemory(
   params: UpdateMemoryParams,
 ): Promise<UpdateMemoryResult> {
   const { userId, memoryId, content, category, timing } = params;
+  const scope = normalizeScope(params.scope);
   const project = normalizeProjectName(params.project);
   const start = performance.now();
 
@@ -768,6 +814,7 @@ export async function updateMemory(
         eq(memories.userId, userId),
         eq(memories.isCurrent, true),
         isNull(memories.deletedAt),
+        scope ? eq(memories.scope, scope) : isNull(memories.scope),
       ),
     );
 
@@ -789,12 +836,19 @@ export async function updateMemory(
         id: memories.id,
         content: memories.content,
         category: memories.category,
+        scope: memories.scope,
         project: memories.project,
       });
 
     const duration = Math.round(performance.now() - start);
     logger.info(
-      { memoryId, userId, duration, updatedFields: ["category", "project"] },
+      {
+        memoryId,
+        userId,
+        scope,
+        duration,
+        updatedFields: ["category", "project"],
+      },
       "memory metadata updated",
     );
 
@@ -811,6 +865,7 @@ export async function updateMemory(
     userId,
     embedding,
     memoryId,
+    scope,
   );
 
   // 4. If no similar memories, just update in place
@@ -828,12 +883,13 @@ export async function updateMemory(
         id: memories.id,
         content: memories.content,
         category: memories.category,
+        scope: memories.scope,
         project: memories.project,
       });
 
     const duration = Math.round(performance.now() - start);
     logger.info(
-      { memoryId, userId, duration, contentChanged: true },
+      { memoryId, userId, scope, duration, contentChanged: true },
       "memory content updated (no similar memories)",
     );
 
@@ -861,7 +917,7 @@ export async function updateMemory(
   if (classification.action === "noop") {
     const duration = Math.round(performance.now() - start);
     logger.warn(
-      { memoryId, userId, duration, duplicateOf: targetMemory.id },
+      { memoryId, userId, scope, duration, duplicateOf: targetMemory.id },
       "update rejected - content duplicates another memory",
     );
     return {
@@ -891,7 +947,7 @@ export async function updateMemory(
 
     const duration = Math.round(performance.now() - start);
     logger.info(
-      { memoryId, userId, duration, superseded: targetMemory.id },
+      { memoryId, userId, scope, duration, superseded: targetMemory.id },
       "memory updated and superseded another",
     );
 
@@ -923,7 +979,14 @@ export async function updateMemory(
 
   const duration = Math.round(performance.now() - start);
   logger.info(
-    { memoryId, userId, duration, relatedTo: targetMemory.id, relationType },
+    {
+      memoryId,
+      userId,
+      scope,
+      duration,
+      relatedTo: targetMemory.id,
+      relationType,
+    },
     "memory updated with relation",
   );
 
@@ -936,6 +999,7 @@ interface ListMemoriesParams {
   offset?: number;
   category?: MemoryCategory;
   categories?: MemoryCategory[];
+  scope?: string;
   project?: string;
   projects?: string[];
   search?: string;
@@ -946,6 +1010,7 @@ interface ListMemoriesResult {
     id: string;
     content: string;
     category: string | null;
+    scope: string | null;
     project: string | null;
     source: string;
     createdAt: Date;
@@ -1022,12 +1087,15 @@ function addGroupedDerivedLinks(
 
 export async function getMemoryGraph(
   userId: string,
+  scope?: string,
 ): Promise<MemoryGraphResponse> {
+  const normalizedScope = normalizeScope(scope);
   const memoryRows = await db
     .select({
       id: memories.id,
       content: memories.content,
       category: memories.category,
+      scope: memories.scope,
       project: memories.project,
       rootId: memories.rootId,
       createdAt: memories.createdAt,
@@ -1038,6 +1106,9 @@ export async function getMemoryGraph(
         eq(memories.userId, userId),
         eq(memories.isCurrent, true),
         isNull(memories.deletedAt),
+        normalizedScope
+          ? eq(memories.scope, normalizedScope)
+          : isNull(memories.scope),
       ),
     )
     .orderBy(desc(memories.createdAt));
@@ -1079,7 +1150,10 @@ export async function getMemoryGraph(
   let realRelationLinks = 0;
   for (const relation of relationRows) {
     // Skip dangling edges where one side no longer belongs to this user's current memories.
-    if (!memoryIdSet.has(relation.source) || !memoryIdSet.has(relation.target)) {
+    if (
+      !memoryIdSet.has(relation.source) ||
+      !memoryIdSet.has(relation.target)
+    ) {
       continue;
     }
 
@@ -1104,8 +1178,14 @@ export async function getMemoryGraph(
   }
 
   const rootGroups = new Map<string, Array<{ id: string; createdAt: Date }>>();
-  const projectGroups = new Map<string, Array<{ id: string; createdAt: Date }>>();
-  const categoryGroups = new Map<string, Array<{ id: string; createdAt: Date }>>();
+  const projectGroups = new Map<
+    string,
+    Array<{ id: string; createdAt: Date }>
+  >();
+  const categoryGroups = new Map<
+    string,
+    Array<{ id: string; createdAt: Date }>
+  >();
 
   for (const memory of memoryRows) {
     const nodeRef = { id: memory.id, createdAt: memory.createdAt };
@@ -1133,8 +1213,18 @@ export async function getMemoryGraph(
 
   const derivedLinks =
     addGroupedDerivedLinks(rootGroups, "shared-root", links, existingLinkKeys) +
-    addGroupedDerivedLinks(projectGroups, "shared-project", links, existingLinkKeys) +
-    addGroupedDerivedLinks(categoryGroups, "shared-category", links, existingLinkKeys);
+    addGroupedDerivedLinks(
+      projectGroups,
+      "shared-project",
+      links,
+      existingLinkKeys,
+    ) +
+    addGroupedDerivedLinks(
+      categoryGroups,
+      "shared-category",
+      links,
+      existingLinkKeys,
+    );
 
   for (const link of links) {
     if (!link.derived) {
@@ -1150,6 +1240,7 @@ export async function getMemoryGraph(
     label: buildGraphLabel(memory.content),
     content: memory.content,
     category: memory.category,
+    scope: memory.scope,
     project: memory.project,
     rootId: memory.rootId,
     createdAt: memory.createdAt.toISOString(),
@@ -1177,16 +1268,20 @@ export async function listMemories(
     offset = 0,
     category,
     categories,
+    scope: rawScope,
     projects,
     search,
   } = params;
-  const project = normalizeProjectName(params.project);
+  const scope = normalizeScope(rawScope);
+  const rawProject = params.project;
+  const project = normalizeProjectName(rawProject);
   const start = performance.now();
 
   const conditions = [
     eq(memories.userId, userId),
     eq(memories.isCurrent, true),
     isNull(memories.deletedAt),
+    scope ? eq(memories.scope, scope) : isNull(memories.scope),
   ];
 
   // Multi-value category filter
@@ -1204,11 +1299,11 @@ export async function listMemories(
     }
   }
 
-  // Multi-value project filter (supports __null__ for Global)
+  // Multi-value project filter (supports dashboard's reserved no-project token)
   if (projects && projects.length > 0) {
-    const hasGlobal = projects.includes("__null__");
+    const hasGlobal = projects.includes(NO_PROJECT_FILTER_VALUE);
     const namedProjects = projects
-      .filter((p) => p !== "__null__")
+      .filter((p) => p !== NO_PROJECT_FILTER_VALUE)
       .map((p) => normalizeProjectName(p))
       .filter((p): p is string => p !== undefined);
 
@@ -1226,7 +1321,7 @@ export async function listMemories(
         );
       }
     } else if (hasGlobal && namedProjects.length > 0) {
-      // Global OR specific projects
+      // No project OR specific projects
       conditions.push(
         sql`(${memories.project} IS NULL OR ${memories.project} IN (${sql.join(
           namedProjects.map((p) => sql`${p}`),
@@ -1234,7 +1329,7 @@ export async function listMemories(
         )}))`,
       );
     }
-  } else if (project === "__null__") {
+  } else if (rawProject === NO_PROJECT_FILTER_VALUE) {
     conditions.push(isNull(memories.project));
   } else if (project) {
     const escapedProject = project
@@ -1258,6 +1353,7 @@ export async function listMemories(
         id: memories.id,
         content: memories.content,
         category: memories.category,
+        scope: memories.scope,
         project: memories.project,
         source: memories.source,
         validFrom: memories.validFrom,
@@ -1286,6 +1382,7 @@ export async function listMemories(
       limit,
       offset,
       categories: effectiveCategories,
+      scope,
       projects,
       project,
       searchLength: search?.length,
@@ -1306,7 +1403,9 @@ export async function listMemories(
 export async function getMemory(
   userId: string,
   memoryId: string,
+  scope?: string,
 ): Promise<Memory | null> {
+  const normalizedScope = normalizeScope(scope);
   const [memory] = await db
     .select()
     .from(memories)
@@ -1315,6 +1414,9 @@ export async function getMemory(
         eq(memories.id, memoryId),
         eq(memories.userId, userId),
         isNull(memories.deletedAt),
+        normalizedScope
+          ? eq(memories.scope, normalizedScope)
+          : isNull(memories.scope),
       ),
     );
 
@@ -1325,6 +1427,7 @@ export async function getMemory(
   return {
     id: memory.id,
     userId: memory.userId,
+    scope: memory.scope ?? undefined,
     content: memory.content,
     category: (memory.category as MemoryCategory | null) ?? undefined,
     project: memory.project ?? undefined,
@@ -1345,8 +1448,9 @@ export async function submitFeedback(
   memoryId: string,
   type: FeedbackType,
   context?: string,
+  scope?: string,
 ): Promise<MemoryFeedbackResponse> {
-  const memory = await getMemory(userId, memoryId);
+  const memory = await getMemory(userId, memoryId, scope);
   if (!memory) {
     throw new Error("Memory not found");
   }
@@ -1364,13 +1468,18 @@ export async function submitFeedback(
 export async function getMemoryProfile(
   userId: string,
   project?: string,
+  scope?: string,
 ): Promise<MemoryProfile> {
   const normalizedProject = normalizeProjectName(project);
+  const normalizedScope = normalizeScope(scope);
 
   const staticConditions = [
     eq(memories.userId, userId),
     eq(memories.isCurrent, true),
     isNull(memories.deletedAt),
+    normalizedScope
+      ? eq(memories.scope, normalizedScope)
+      : isNull(memories.scope),
     sql`${memories.category} IN ('preference', 'fact')`,
     sql`${memories.createdAt} < NOW() - INTERVAL '7 days'`,
     sql`(${memories.validUntil} IS NULL OR ${memories.validUntil} > NOW())`,
@@ -1384,6 +1493,9 @@ export async function getMemoryProfile(
     eq(memories.userId, userId),
     eq(memories.isCurrent, true),
     isNull(memories.deletedAt),
+    normalizedScope
+      ? eq(memories.scope, normalizedScope)
+      : isNull(memories.scope),
     sql`${memories.createdAt} > NOW() - INTERVAL '14 days'`,
     sql`(${memories.validUntil} IS NULL OR ${memories.validUntil} > NOW())`,
   ];
@@ -1416,8 +1528,10 @@ export async function getMemoryProfile(
 export async function getMemoryHistory(
   userId: string,
   memoryId: string,
+  scope?: string,
 ): Promise<MemoryHistoryResponse | null> {
-  const memory = await getMemory(userId, memoryId);
+  const normalizedScope = normalizeScope(scope);
+  const memory = await getMemory(userId, memoryId, normalizedScope);
   if (!memory) {
     return null;
   }
@@ -1430,6 +1544,9 @@ export async function getMemoryHistory(
       and(
         eq(memories.userId, userId),
         isNull(memories.deletedAt),
+        normalizedScope
+          ? eq(memories.scope, normalizedScope)
+          : isNull(memories.scope),
         sql`(${memories.rootId} = ${rootId} OR ${memories.id} = ${rootId})`,
       ),
     )
@@ -1438,6 +1555,7 @@ export async function getMemoryHistory(
   const allVersions: Memory[] = rows.map((row) => ({
     id: row.id,
     userId: row.userId,
+    scope: row.scope ?? undefined,
     content: row.content,
     category: (row.category as MemoryCategory | null) ?? undefined,
     project: row.project ?? undefined,
@@ -1463,11 +1581,13 @@ export async function getMemoryHistory(
 export async function deleteMemory(
   userId: string,
   memoryId: string,
+  scope?: string,
 ): Promise<boolean> {
   const start = performance.now();
+  const normalizedScope = normalizeScope(scope);
 
   const deleted = await db.transaction(async (tx) => {
-    const result = await tx
+    const [deletedRow] = await tx
       .update(memories)
       .set({ deletedAt: sql`NOW()` })
       .where(
@@ -1475,12 +1595,16 @@ export async function deleteMemory(
           eq(memories.id, memoryId),
           eq(memories.userId, userId),
           isNull(memories.deletedAt),
+          normalizedScope
+            ? eq(memories.scope, normalizedScope)
+            : isNull(memories.scope),
         ),
-      );
+      )
+      .returning({ isCurrent: memories.isCurrent });
 
-    const wasDeleted = (result.rowCount ?? 0) > 0;
+    const wasDeleted = !!deletedRow;
 
-    if (wasDeleted) {
+    if (deletedRow?.isCurrent) {
       await decrementMemoryCount(userId, tx);
     }
 
@@ -1494,6 +1618,7 @@ export async function deleteMemory(
       {
         memoryId,
         userId,
+        scope: normalizedScope,
         duration,
       },
       "memory deleted",
@@ -1503,6 +1628,7 @@ export async function deleteMemory(
       {
         memoryId,
         userId,
+        scope: normalizedScope,
         duration,
       },
       "memory delete failed - not found",

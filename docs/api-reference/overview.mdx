@@ -30,9 +30,10 @@ API keys are created from the [MemContext dashboard](https://app.memcontext.in).
 | `GET`    | `/api/memories`               | [List memories](/api-reference/endpoint/list-memories)                               |
 | `GET`    | `/api/memories/search`        | [Search memories](/api-reference/endpoint/search-memories)                           |
 | `GET`    | `/api/memories/profile`       | [Get user profile context](/api-reference/endpoint/get-user-profile-context)         |
+| `GET`    | `/api/memories/graph`         | Memory graph data for visualization                                                  |
 | `GET`    | `/api/memories/{id}`          | [Get a memory by ID](/api-reference/endpoint/get-a-memory-by-id)                     |
 | `PATCH`  | `/api/memories/{id}`          | [Update a memory](/api-reference/endpoint/update-a-memory)                           |
-| `DELETE` | `/api/memories/{id}`          | [Delete a memory](/api-reference/endpoint/delete-a-memory-hard-delete)               |
+| `DELETE` | `/api/memories/{id}`          | Delete a memory (soft delete)                                                        |
 | `POST`   | `/api/memories/{id}/forget`   | [Forget a memory (soft delete)](/api-reference/endpoint/forget-a-memory-soft-delete) |
 | `GET`    | `/api/memories/{id}/history`  | [Get memory version history](/api-reference/endpoint/get-memory-version-history)     |
 | `POST`   | `/api/memories/{id}/feedback` | [Submit feedback](/api-reference/endpoint/submit-feedback-for-a-memory)              |

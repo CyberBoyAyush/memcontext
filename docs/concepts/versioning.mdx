@@ -64,13 +64,13 @@ Response:
 }
 ```
 
-## Soft delete vs hard delete
+## Delete semantics
 
-MemContext supports two deletion modes:
+MemContext uses soft delete for both removal endpoints:
 
 | Method               | Endpoint                        | Behavior                                                               |
 | -------------------- | ------------------------------- | ---------------------------------------------------------------------- |
 | Forget (soft delete) | `POST /api/memories/:id/forget` | Sets `deletedAt` — memory is excluded from results but preserved in DB |
-| Delete (hard delete) | `DELETE /api/memories/:id`      | Permanently removes the memory                                         |
+| Delete (soft delete) | `DELETE /api/memories/:id`      | Sets `deletedAt` — memory is excluded from results but preserved in DB |
 
-Use forget for audit-safe removal. Use delete only when permanent removal is required.
+Use either endpoint when a memory should stop appearing in search and list results.

@@ -21,6 +21,7 @@ export type RelationshipClassification =
 export interface Memory {
   id: string;
   userId: string;
+  scope?: string;
   content: string;
   category?: MemoryCategory;
   project?: string;
@@ -47,6 +48,7 @@ export interface MemoryRelation {
 export interface SaveMemoryRequest {
   content: string;
   category?: MemoryCategory;
+  scope?: string;
   project?: string;
   source?: MemorySource;
   validUntil?: string;
@@ -54,28 +56,82 @@ export interface SaveMemoryRequest {
 
 export interface SaveMemoryResponse {
   id: string;
-  status: "saved" | "updated" | "extended" | "duplicate" | "limit_exceeded";
+  status: "saved" | "updated" | "extended" | "duplicate";
   superseded?: string;
   existingId?: string;
-  current?: number;
-  limit?: number;
 }
 
 export interface SearchMemoryRequest {
   query: string;
   limit?: number;
   category?: MemoryCategory;
+  scope?: string;
   project?: string;
   threshold?: number;
+}
+
+export interface ListMemoriesRequest {
+  limit?: number;
+  offset?: number;
+  category?: string;
+  scope?: string;
+  project?: string;
+  search?: string;
 }
 
 export interface MemoryWithRelevance {
   id: string;
   content: string;
   category?: MemoryCategory;
+  scope?: string;
   project?: string;
   relevance: number;
   createdAt: Date;
+}
+
+export interface ListMemoryItem {
+  id: string;
+  content: string;
+  category?: MemoryCategory;
+  scope?: string;
+  project?: string;
+  source: MemorySource;
+  validFrom?: Date;
+  validUntil?: Date;
+  version: number;
+  createdAt: Date;
+}
+
+export interface ListMemoriesResponse {
+  memories: ListMemoryItem[];
+  total: number;
+  hasMore: boolean;
+}
+
+export interface UpdateMemoryRequest {
+  content?: string;
+  category?: MemoryCategory;
+  project?: string;
+}
+
+export interface UpdateMemoryResultMemory {
+  id: string;
+  content: string;
+  category: string | null;
+  scope: string | null;
+  project: string | null;
+}
+
+export interface UpdateMemoryResponse {
+  success: boolean;
+  memory?: UpdateMemoryResultMemory;
+  superseded?: string;
+  relatedTo?: string;
+  error?: string;
+}
+
+export interface SuccessResponse {
+  success: boolean;
 }
 
 export interface MemoryProfile {
@@ -107,6 +163,7 @@ export interface MemoryGraphNode {
   label: string;
   content: string;
   category: string | null;
+  scope: string | null;
   project: string | null;
   rootId: string | null;
   createdAt: string;

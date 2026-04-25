@@ -1,7 +1,7 @@
 import { redis } from "../lib/redis.js";
 import { logger } from "../lib/logger.js";
 import type { MemoryProfile } from "@memcontext/types";
-import { normalizeProjectName } from "../utils/index.js";
+import { normalizeProjectName, normalizeScope } from "../utils/index.js";
 
 const API_KEY_CACHE_PREFIX = "api_key:";
 const CACHE_TTL_SECONDS = 24 * 60 * 60;
@@ -20,8 +20,18 @@ function getCacheKey(keyHash: string): string {
   return `${API_KEY_CACHE_PREFIX}${keyHash}`;
 }
 
-function getProfileCacheKey(userId: string, project?: string): string {
-  return `${PROFILE_CACHE_PREFIX}${userId}:${normalizeProjectName(project) ?? "__global__"}`;
+function getProfileCacheKey(
+  userId: string,
+  scope?: string,
+  project?: string,
+): string {
+  const parts = {
+    userId,
+    scope: normalizeScope(scope) ?? null,
+    project: normalizeProjectName(project) ?? null,
+  };
+
+  return `${PROFILE_CACHE_PREFIX}${encodeURIComponent(JSON.stringify(parts))}`;
 }
 
 export async function getCachedApiKey(
@@ -172,9 +182,10 @@ export async function updateCachedMemoryCount(
 
 export async function getCachedProfile(
   userId: string,
+  scope?: string,
   project?: string,
 ): Promise<MemoryProfile | null> {
-  const cacheKey = getProfileCacheKey(userId, project);
+  const cacheKey = getProfileCacheKey(userId, scope, project);
 
   try {
     return await redis.get<MemoryProfile>(cacheKey);
@@ -193,10 +204,11 @@ export async function getCachedProfile(
 
 export async function cacheProfile(
   userId: string,
+  scope: string | undefined,
   project: string | undefined,
   profile: MemoryProfile,
 ): Promise<void> {
-  const cacheKey = getProfileCacheKey(userId, project);
+  const cacheKey = getProfileCacheKey(userId, scope, project);
 
   try {
     await redis.set(cacheKey, profile, { ex: PROFILE_CACHE_TTL_SECONDS });
@@ -214,11 +226,12 @@ export async function cacheProfile(
 
 export async function invalidateCachedProfile(
   userId: string,
+  scope?: string,
   project?: string,
 ): Promise<void> {
   const keys = new Set<string>([
-    getProfileCacheKey(userId),
-    getProfileCacheKey(userId, project),
+    getProfileCacheKey(userId, scope),
+    getProfileCacheKey(userId, scope, project),
   ]);
 
   try {
@@ -228,6 +241,7 @@ export async function invalidateCachedProfile(
       {
         operation: "cache_invalidate_profile",
         userId,
+        scope,
         project,
         errorMessage: error instanceof Error ? error.message : String(error),
       },

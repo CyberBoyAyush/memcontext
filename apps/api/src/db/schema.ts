@@ -10,6 +10,7 @@ import {
   pgEnum,
   vector,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const memoryFeedbackTypeEnum = pgEnum("memory_feedback_type", [
   "helpful",
@@ -69,6 +70,7 @@ export const memories = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     userId: text("user_id").notNull(),
+    scope: text("scope"),
     content: text("content").notNull(),
     embedding: vector("embedding", { dimensions: 1536 }).notNull(),
     category: text("category"),
@@ -95,6 +97,15 @@ export const memories = pgTable(
       table.isCurrent,
       table.deletedAt,
     ),
+    index("memories_user_scope_current_idx").on(
+      table.userId,
+      table.scope,
+      table.isCurrent,
+      table.deletedAt,
+    ),
+    index("memories_user_scope_project_current_idx")
+      .on(table.userId, table.scope, table.project)
+      .where(sql`${table.isCurrent} = true AND ${table.deletedAt} IS NULL`),
     index("memories_supersedes_idx").on(table.supersedesId),
     index("memories_root_idx").on(table.rootId),
     index("memories_valid_until_idx").on(table.validUntil),
