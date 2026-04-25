@@ -308,10 +308,6 @@ importers:
         version: 5.9.2
 
   packages/sdk:
-    dependencies:
-      '@memcontext/types':
-        specifier: workspace:*
-        version: link:../types
     devDependencies:
       '@types/node':
         specifier: ^22.15.18

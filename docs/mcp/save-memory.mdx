@@ -9,13 +9,12 @@ description: "Persist durable user or project knowledge across sessions."
 
 ## Parameters
 
-| Parameter    | Type   | Required | Description                                                                                                                                                                        |
-| ------------ | ------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `content`    | string | Yes      | Clear, complete, searchable statement. Full sentences work best — not fragments or keywords.                                                                                       |
-| `category`   | string | No       | One of `preference`, `fact`, `decision`, or `context`. See below.                                                                                                                  |
-| `scope`      | string | No       | Hard isolation boundary. Use a stable end-user or tenant ID like `user_123` or `org_acme_user_42`. When provided, MemContext saves and retrieves only within that scope.           |
-| `project`    | string | No       | Project grouping inside the selected scope. Use only when a clear project/app name is already known. Examples: `memcontext`, `carq`. Omit if unsure. Format: lowercase, no spaces. |
-| `validUntil` | string | No       | ISO 8601 UTC datetime when this memory should stop being used (e.g. `2026-05-01T00:00:00Z`). Use only for exact known expiry.                                                      |
+| Parameter    | Type   | Required | Description                                                                                                                                           |
+| ------------ | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `content`    | string | Yes      | Clear, complete, searchable statement. Full sentences work best — not fragments or keywords.                                                          |
+| `category`   | string | No       | One of `preference`, `fact`, `decision`, or `context`. See below.                                                                                     |
+| `project`    | string | No       | Project grouping for known project/app context. Examples: `memcontext`, `carq`. Omit if unsure. Format: lowercase, no spaces.                         |
+| `validUntil` | string | No       | ISO 8601 UTC datetime when this memory should stop being used. Omit by default; use only when an exact expiry/deadline is known.                     |
 
 ### Categories
 
@@ -36,9 +35,10 @@ description: "Persist durable user or project knowledge across sessions."
 
 ## Timing guidance
 
-- Use `validUntil` only when the expiry is known exactly
-- If timing is fuzzy like "currently" or "for now", omit it. MemContext auto-TTL handles those cases
-- Durable preferences, facts, and decisions usually omit `validUntil`
+- Omit `validUntil` by default. MemContext has auto-TTL.
+- Use `validUntil` only when an exact expiry or deadline is known, and convert that date/time to ISO 8601 UTC.
+- Do not set `validUntil` for durable preferences, project conventions, completed work, architecture decisions, or reusable context.
+- If timing is fuzzy like "currently", "for now", or "this quarter", omit it. MemContext auto-TTL handles those cases.
 
 ## Response
 
@@ -58,10 +58,13 @@ Duplicates are handled automatically — re-saving an already-known fact is safe
 ```
 save_memory({
   content: "User prefers TypeScript over JavaScript for type safety",
-  category: "preference",
-  scope: "user_123"
+  category: "preference"
 })
 ```
+
+<Note>
+  MCP tools do not accept `scope` because AI agents can hallucinate isolation IDs. Use the REST API or TypeScript SDK for app-user or tenant scoped integrations.
+</Note>
 
 ### Content guidelines
 

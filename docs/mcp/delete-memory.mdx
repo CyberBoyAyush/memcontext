@@ -9,17 +9,15 @@ description: "Remove a memory by ID."
 
 ## Parameters
 
-| Parameter  | Type   | Required | Description                                                                                  |
-| ---------- | ------ | -------- | -------------------------------------------------------------------------------------------- |
-| `memoryId` | string | Yes      | The memory ID to delete. Use the `id` returned by `search_memory`.                           |
-| `scope`    | string | No       | Hard isolation boundary. Provide the same scope that was used when the memory was retrieved. |
+| Parameter  | Type   | Required | Description                                                        |
+| ---------- | ------ | -------- | ------------------------------------------------------------------ |
+| `memoryId` | string | Yes      | The memory ID to delete. Use the `id` returned by `search_memory`. |
 
 ## Example
 
 ```
 delete_memory({
-  memoryId: "a1b2c3d4-...",
-  scope: "user_123"
+  memoryId: "a1b2c3d4-..."
 })
 ```
 

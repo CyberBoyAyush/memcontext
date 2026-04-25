@@ -44,6 +44,16 @@ Search via `GET /api/memories/search` or `search_memory` uses hybrid retrieval w
 
 This approach surfaces both semantic matches and exact matches reliably, while improving wording-sensitive recall. For example, a query like "What caching system do we use?" can match a memory that says "Upstash Redis is used for API key caching" even if the raw query never says "Redis".
 
+## Scope isolation
+
+Every save, search, list, profile, graph, get, update, delete, feedback, and history operation runs inside one memory lane:
+
+- If `scope` is provided, only memories in that scope are considered
+- If `scope` is omitted, only unscoped/global memories are considered
+- `project` filters inside the selected scope, but it is not the isolation boundary
+
+This lets one API key safely serve multiple app users or tenants without mixing their memories. See [Scopes and Projects](/concepts/scopes-and-projects) for the full model.
+
 ## Temporal awareness
 
 Memories can include a `validUntil` timestamp. This can be:
