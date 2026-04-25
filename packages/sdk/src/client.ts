@@ -18,7 +18,7 @@ import type {
   Memory,
   ListMemoryItem,
   MemoryWithRelevance,
-} from "@memcontext/types";
+} from "./types.js";
 import { MemContextApiError } from "./errors.js";
 
 export interface MemContextClientOptions {

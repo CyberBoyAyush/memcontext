@@ -27,6 +27,8 @@ MemContext combines two retrieval methods and merges their results:
 
 Both searches run in parallel, so there is almost no added latency. Results are merged using **Reciprocal Rank Fusion (RRF)**, which combines rankings from both methods into a single ordered list.
 
+Search always runs inside the selected memory lane. If you pass `scope=user_123`, vector search and full-text search both operate only inside `user_123`. If you omit `scope`, search uses only unscoped/global memories.
+
 ## Query variants
 
 Before searching, MemContext generates alternative phrasings of your query using an LLM. For example:

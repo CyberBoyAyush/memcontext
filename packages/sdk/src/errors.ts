@@ -1,4 +1,4 @@
-import type { ApiError } from "@memcontext/types";
+import type { ApiError } from "./types.js";
 
 export class MemContextApiError extends Error {
   readonly status: number;

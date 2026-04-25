@@ -9,14 +9,13 @@ description: "Retrieve relevant memories using hybrid search."
 
 ## Parameters
 
-| Parameter   | Type   | Required | Default | Description                                                                                                           |
-| ----------- | ------ | -------- | ------- | --------------------------------------------------------------------------------------------------------------------- |
-| `query`     | string | Yes      | —       | Natural language description of what to find. Full sentences produce the best results.                                |
-| `limit`     | number | No       | 5       | Number of results to return (1-10). Use higher values for broad topics.                                               |
-| `category`  | string | No       | all     | Filter to a single category: `preference`, `fact`, `decision`, or `context`.                                          |
-| `scope`     | string | No       | global  | Hard isolation boundary. When provided, search runs only in that scope. Omit to search only unscoped/global memories. |
-| `project`   | string | No       | all     | Filter to a specific project inside the selected scope.                                                               |
-| `threshold` | number | No       | 0.6     | Maximum vector distance (0-1). Higher values return more results (broader search).                                    |
+| Parameter   | Type   | Required | Default | Description                                                                        |
+| ----------- | ------ | -------- | ------- | ---------------------------------------------------------------------------------- |
+| `query`     | string | Yes      | —       | Natural language description of what to find. Full sentences produce best results. |
+| `limit`     | number | No       | 5       | Number of results to return (1-10). Use higher values for broad topics.            |
+| `category`  | string | No       | all     | Filter to a single category: `preference`, `fact`, `decision`, or `context`.       |
+| `project`   | string | No       | all     | Filter to a specific known project.                                                |
+| `threshold` | number | No       | 0.6     | Maximum vector distance (0-1). Higher values return more results.                  |
 
 ### Threshold guide
 
@@ -44,7 +43,7 @@ description: "Retrieve relevant memories using hybrid search."
       "id": "a1b2c3d4-...",
       "content": "User prefers TypeScript over JavaScript",
       "category": "preference",
-      "scope": "user_123",
+      "scope": null,
       "project": null,
       "relevance": 0.92,
       "createdAt": "2026-04-11T12:00:00.000Z"
@@ -59,10 +58,13 @@ Each result includes a `relevance` score from 0 (least relevant) to 1 (most rele
 
 ```
 search_memory({
-  query: "What package manager does the user prefer?",
-  scope: "user_123"
+  query: "What package manager does the user prefer?"
 })
 ```
+
+<Note>
+  MCP tools intentionally do not expose `scope`. Use the REST API or TypeScript SDK when your app needs hard per-user or per-tenant isolation.
+</Note>
 
 ### Query guidelines
 

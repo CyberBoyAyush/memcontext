@@ -32,7 +32,7 @@
     "socials": {
       "website": "https://memcontext.in",
       "github": "https://github.com/CyberBoyAyush/memcontext",
-      "x": "https://x.com/AyushCodes03"
+      "x": "https://x.com/theayush"
     }
   },
   "navigation": {
@@ -45,6 +45,7 @@
         "group": "Concepts",
         "pages": [
           "concepts/how-it-works",
+          "concepts/scopes-and-projects",
           "concepts/versioning",
           "concepts/hybrid-search",
           "concepts/user-profiles"
@@ -57,6 +58,10 @@
           "guides/evolving-memory",
           "guides/building-with-memcontext"
         ]
+      },
+      {
+        "group": "SDK",
+        "pages": ["sdk/typescript"]
       },
       {
         "group": "API Reference",

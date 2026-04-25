@@ -56,6 +56,8 @@ Profiles work well for:
 
 Use profiles for "who is this user?" and search for "what did they decide about X?".
 
+Profiles follow the same scope isolation rules as search and list. A scoped profile never includes memories from another scope, and an unscoped profile only includes global/unscoped memories.
+
 ## Scoping by scope and project
 
 Pass a `scope` query parameter to build profile context from one isolated memory container only:

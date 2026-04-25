@@ -7,7 +7,9 @@ description: "Hosted MCP server that gives AI assistants persistent memory."
 
 MemContext provides a hosted MCP server that gives AI assistants persistent memory through the [Model Context Protocol](https://modelcontextprotocol.io). No local installation or infrastructure required.
 
-The server handles input validation, scope isolation, project name normalization, and formats responses for assistant consumption. All business logic — deduplication, classification, hybrid search — runs in the MemContext API.
+The server handles input validation, project name normalization, and response formatting for assistant consumption. All business logic — deduplication, classification, hybrid search — runs in the MemContext API.
+
+MCP tools intentionally do not expose a free-form `scope` parameter. AI agents can invent isolation IDs, so app-user and tenant scopes should be controlled by your application through the REST API or TypeScript SDK. MCP remains focused on unscoped assistant memory plus optional `project` grouping.
 
 ## Connection URL
 

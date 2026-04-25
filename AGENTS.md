@@ -101,3 +101,7 @@ Use a first-class optional `scope` field as the hard isolation boundary for memo
 <!-- Added: 2026-04-25 -->
 ## Dashboard Memory Hierarchy
 Represent memories in the dashboard as a scope-first hierarchy: Global/unscoped memories first, then named scopes, with projects nested inside the selected scope. Treat `scope` as the hard isolation boundary and `project` as a soft grouping within that selected scope. Use a dedicated hierarchy endpoint rather than making global search mean all scopes.
+
+<!-- Added: 2026-04-25 -->
+## SDK Type Synchronization
+The published `memcontext-sdk` package is self-contained and must not depend on workspace-only packages such as `@memcontext/types`. When changing public API request/response types in `packages/types` or API docs, also update the mirrored public SDK types in `packages/sdk/src/types.ts` and verify `pnpm --filter=memcontext-sdk check-types`, `pnpm --filter=memcontext-sdk build`, and `npm pack --dry-run` from `packages/sdk` before publishing.

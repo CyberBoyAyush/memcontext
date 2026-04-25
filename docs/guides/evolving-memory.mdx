@@ -27,6 +27,7 @@ curl -X POST https://api.memcontext.in/api/memories \
   -d '{
     "content": "Long-form LinkedIn posts with personal stories are performing best right now",
     "category": "fact",
+    "scope": "user_123",
     "project": "linkedin-generator"
   }'
 ```
@@ -40,6 +41,7 @@ curl -X POST https://api.memcontext.in/api/memories \
   -d '{
     "content": "Short hook-first posts are now outperforming long-form content on LinkedIn",
     "category": "fact",
+    "scope": "user_123",
     "project": "linkedin-generator"
   }'
 ```
@@ -55,6 +57,7 @@ curl -X POST https://api.memcontext.in/api/memories \
   -d '{
     "content": "Posts with a question hook in the first line get 3x more engagement",
     "category": "decision",
+    "scope": "user_123",
     "project": "linkedin-generator"
   }'
 ```
@@ -73,10 +76,13 @@ You can also explicitly set `validUntil` to override the auto-detection:
 {
   "content": "Running a 2-week A/B test on carousel vs single-image posts",
   "category": "context",
+  "scope": "user_123",
   "project": "linkedin-generator",
   "validUntil": "2026-04-25T00:00:00Z"
 }
 ```
+
+Use the same `scope` for all memories that belong to the same end user or tenant. The `project` groups the LinkedIn generator context inside that isolated lane.
 
 If you pass `validUntil`, auto-detection is skipped entirely. After April 25, this memory will not appear in search results.
 

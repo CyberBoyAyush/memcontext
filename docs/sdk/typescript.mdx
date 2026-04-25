@@ -1,0 +1,243 @@
+---
+title: "TypeScript SDK"
+description: "Install and use the official MemContext TypeScript SDK."
+---
+
+`memcontext-sdk` is the official TypeScript SDK for the MemContext public API. It is a small typed wrapper around the REST API with API key auth, scope/project helpers, typed responses, and normalized API errors.
+
+## Install
+
+```bash
+npm install memcontext-sdk
+```
+
+## Quickstart
+
+```typescript
+import { MemContextClient } from "memcontext-sdk";
+
+const client = new MemContextClient({
+  apiKey: process.env.MEMCONTEXT_API_KEY!,
+});
+
+const userMemory = client.withScope("user_123");
+const projectMemory = userMemory.withProject("memcontext");
+
+await projectMemory.save({
+  content: "User prefers concise release notes",
+  category: "preference",
+});
+
+const results = await projectMemory.search({
+  query: "How should release notes be written?",
+});
+```
+
+Use `withScope()` for the hard end-user or tenant boundary. Use `withProject()` only as a grouping filter inside that scope.
+
+## Client Setup
+
+```typescript
+const client = new MemContextClient({
+  apiKey: process.env.MEMCONTEXT_API_KEY!,
+  baseUrl: "https://api.memcontext.in",
+  scope: "user_123",
+  project: "memcontext",
+});
+```
+
+| Option    | Required | Description                                                |
+| --------- | -------- | ---------------------------------------------------------- |
+| `apiKey`  | Yes      | MemContext API key from the dashboard.                     |
+| `baseUrl` | No       | API base URL. Defaults to `https://api.memcontext.in`.     |
+| `scope`   | No       | Default hard isolation boundary for this client instance.  |
+| `project` | No       | Default project grouping inside the selected scope.        |
+| `fetch`   | No       | Custom fetch implementation for tests or custom runtimes.  |
+
+## Scope Helpers
+
+### `withScope(scope)`
+
+Creates a new client with a default `scope`. Use this when one API key serves multiple app users, workspaces, organizations, or tenants.
+
+```typescript
+const userMemory = client.withScope("user_123");
+```
+
+### `withProject(project)`
+
+Creates a new client with a default `project`. Projects are soft grouping filters inside the current scope.
+
+```typescript
+const projectMemory = userMemory.withProject("memcontext");
+```
+
+## Methods
+
+### `save(request, options?)`
+
+Saves durable memory. MemContext automatically handles embeddings, deduplication, relationship classification, and versioning.
+
+```typescript
+await client.save({
+  content: "User prefers TypeScript over JavaScript",
+  category: "preference",
+  scope: "user_123",
+  project: "memcontext",
+});
+```
+
+Returns a save result with `status` set to `saved`, `updated`, `extended`, or `duplicate`.
+
+### `search(request)`
+
+Searches memories using hybrid retrieval. Use full natural-language questions for best results.
+
+```typescript
+const results = await client.search({
+  query: "What language does the user prefer?",
+  limit: 5,
+  threshold: 0.6,
+});
+```
+
+Returns `{ found, memories }`, where each memory includes content, category, scope, project, relevance, and `createdAt` as a `Date`.
+
+### `list(request?)`
+
+Lists current non-deleted memories with pagination and filters.
+
+```typescript
+const page = await client.list({
+  limit: 20,
+  offset: 0,
+  category: "fact",
+  search: "release notes",
+});
+```
+
+Returns `{ memories, total, hasMore }`.
+
+### `get(memoryId, options?)`
+
+Fetches one memory by ID. Pass `scope` when retrieving scoped memories from a base client.
+
+```typescript
+const memory = await client.get("memory-id", {
+  scope: "user_123",
+});
+```
+
+### `update(memoryId, request, options?)`
+
+Updates memory content, category, or project. Content updates may create relations or supersede related memories.
+
+```typescript
+await client.update(
+  "memory-id",
+  { content: "User now prefers concise changelogs" },
+  { scope: "user_123" },
+);
+```
+
+### `delete(memoryId, options?)`
+
+Soft-deletes a memory so it no longer appears in search or list results.
+
+```typescript
+await client.delete("memory-id", {
+  scope: "user_123",
+});
+```
+
+### `forget(memoryId, options?)`
+
+Endpoint-parity alias for soft delete. Prefer `delete()` unless you specifically want the `/forget` response shape.
+
+```typescript
+await client.forget("memory-id", {
+  scope: "user_123",
+});
+```
+
+### `feedback(memoryId, request, options?)`
+
+Records retrieval quality feedback. Feedback helps improve future ranking.
+
+```typescript
+await client.feedback(
+  "memory-id",
+  {
+    type: "helpful",
+    context: "This memory answered the user's question directly.",
+  },
+  { scope: "user_123" },
+);
+```
+
+Feedback `type` can be `helpful`, `not_helpful`, `outdated`, or `wrong`.
+
+### `history(memoryId, options?)`
+
+Returns the current memory and previous versions in its version chain.
+
+```typescript
+const history = await client.history("memory-id", {
+  scope: "user_123",
+});
+```
+
+### `profile(options?)`
+
+Returns pre-aggregated profile context split into stable and recent memory.
+
+```typescript
+const profile = await client.profile({
+  scope: "user_123",
+  project: "memcontext",
+});
+```
+
+Returns `{ static, dynamic }`.
+
+### `graph(options?)`
+
+Returns graph visualization data for memories in the selected scope.
+
+```typescript
+const graph = await client.graph({
+  scope: "user_123",
+});
+```
+
+Returns `{ nodes, links, meta }`.
+
+### `health(signal?)`
+
+Checks API health.
+
+```typescript
+const health = await client.health();
+```
+
+## Error Handling
+
+Failed API responses throw `MemContextApiError`.
+
+```typescript
+import { MemContextApiError } from "memcontext-sdk";
+
+try {
+  await client.get("missing-id");
+} catch (error) {
+  if (error instanceof MemContextApiError) {
+    console.error(error.status, error.code, error.message);
+  }
+}
+```
+
+## Links
+
+- Website: [memcontext.in](https://memcontext.in)
+- Official docs: [docs.memcontext.in](https://docs.memcontext.in)
+- API reference: [REST API](/api-reference/overview)
