@@ -14,7 +14,7 @@ description: "Persist durable user or project knowledge across sessions."
 | `content`    | string | Yes      | Clear, complete, searchable statement. Full sentences work best — not fragments or keywords.                                                          |
 | `category`   | string | No       | One of `preference`, `fact`, `decision`, or `context`. See below.                                                                                     |
 | `project`    | string | No       | Project grouping for known project/app context. Examples: `memcontext`, `carq`. Omit if unsure. Format: lowercase, no spaces.                         |
-| `validUntil` | string | No       | ISO 8601 UTC datetime when this memory should stop being used (e.g. `2026-05-01T00:00:00Z`). Use only for exact known expiry.                         |
+| `validUntil` | string | No       | ISO 8601 UTC datetime when this memory should stop being used. Omit by default; use only when an exact expiry/deadline is known.                     |
 
 ### Categories
 
@@ -35,9 +35,10 @@ description: "Persist durable user or project knowledge across sessions."
 
 ## Timing guidance
 
-- Use `validUntil` only when the expiry is known exactly
-- If timing is fuzzy like "currently" or "for now", omit it. MemContext auto-TTL handles those cases
-- Durable preferences, facts, and decisions usually omit `validUntil`
+- Omit `validUntil` by default. MemContext has auto-TTL.
+- Use `validUntil` only when an exact expiry or deadline is known, and convert that date/time to ISO 8601 UTC.
+- Do not set `validUntil` for durable preferences, project conventions, completed work, architecture decisions, or reusable context.
+- If timing is fuzzy like "currently", "for now", or "this quarter", omit it. MemContext auto-TTL handles those cases.
 
 ## Response
 

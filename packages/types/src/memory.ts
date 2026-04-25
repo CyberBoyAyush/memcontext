@@ -73,7 +73,7 @@ export interface SearchMemoryRequest {
 export interface ListMemoriesRequest {
   limit?: number;
   offset?: number;
-  category?: string;
+  category?: MemoryCategory;
   scope?: string;
   project?: string;
   search?: string;
@@ -117,7 +117,7 @@ export interface UpdateMemoryRequest {
 export interface UpdateMemoryResultMemory {
   id: string;
   content: string;
-  category: string | null;
+  category: MemoryCategory | null;
   scope: string | null;
   project: string | null;
 }
@@ -162,7 +162,7 @@ export interface MemoryGraphNode {
   id: string;
   label: string;
   content: string;
-  category: string | null;
+  category: MemoryCategory | null;
   scope: string | null;
   project: string | null;
   rootId: string | null;

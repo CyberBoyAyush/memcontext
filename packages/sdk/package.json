@@ -1,6 +1,6 @@
 {
   "name": "memcontext-sdk",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "TypeScript SDK for the MemContext public API",
   "type": "module",
   "main": "./dist/index.js",
