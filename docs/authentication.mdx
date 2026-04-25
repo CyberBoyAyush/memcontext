@@ -97,4 +97,5 @@ Common error codes:
 - Create a separate API key per integration or environment
 - Keep API keys server-side — never expose them in client-side code
 - Rotate keys immediately if you suspect exposure
-- Use the `project` parameter to scope memories when working across multiple projects
+- Use `scope` as the hard isolation boundary when one API key serves multiple app users or tenants
+- Use `project` only as a secondary grouping/filter inside that scope

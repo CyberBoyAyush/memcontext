@@ -27,14 +27,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   memoriesQueryOptions,
+  memoryHierarchyQueryOptions,
   memoryHistoryQueryOptions,
   useDeleteMemory,
   useUpdateMemory,
   useSubmitFeedback,
+  type MemoryHierarchyProject,
 } from "@/lib/queries/memories";
 import { formatDateTime, cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
-import { api } from "@/lib/api";
+import { ScopePicker } from "@/components/scope-picker";
 
 interface Memory {
   id: string;
@@ -133,24 +135,6 @@ const categoryConfig: Record<
 
 const ITEMS_PER_PAGE = 10;
 
-interface DashboardStats {
-  categories: {
-    preference: number;
-    fact: number;
-    decision: number;
-    context: number;
-    uncategorized: number;
-  };
-  projects: Array<{ name: string; count: number }>;
-  recentMemories: Array<{
-    id: string;
-    content: string;
-    category: string | null;
-    project: string;
-    createdAt: string;
-  }>;
-}
-
 function TableSkeleton() {
   return (
     <div className="flex flex-col flex-1 min-h-0 gap-4">
@@ -227,12 +211,14 @@ function TableSkeleton() {
 
 function MemoryDetailPanel({
   memory,
+  scope,
   onClose,
   onSuccess,
   onError,
   onDelete,
 }: {
   memory: Memory;
+  scope: string | null;
   onClose: () => void;
   onSuccess: (message: string) => void;
   onError: (message: string) => void;
@@ -251,13 +237,19 @@ function MemoryDetailPanel({
   const temporalStatus = getTemporalStatus(memory);
   const [feedbackSent, setFeedbackSent] = useState<string | null>(null);
 
-  const { data: historyData } = useQuery(memoryHistoryQueryOptions(memory.id));
+  const { data: historyData } = useQuery(
+    memoryHistoryQueryOptions(memory.id, scope ?? undefined),
+  );
 
   async function handleFeedback(
     type: "helpful" | "not_helpful" | "outdated" | "wrong",
   ) {
     try {
-      await feedbackMutation.mutateAsync({ id: memory.id, type });
+      await feedbackMutation.mutateAsync({
+        id: memory.id,
+        type,
+        scope: scope ?? undefined,
+      });
       setFeedbackSent(type);
       onSuccess(`Marked as ${type.replace("_", " ")}`);
     } catch {
@@ -276,6 +268,7 @@ function MemoryDetailPanel({
     try {
       await updateMutation.mutateAsync({
         id: memory.id,
+        scope: scope ?? undefined,
         content: content !== memory.content ? content : undefined,
         category:
           editCategory !== (memory.category || "")
@@ -944,21 +937,16 @@ function ProjectFilter({
 }: {
   values: string[];
   onChange: (values: string[]) => void;
-  projects: Array<{ name: string; count: number }>;
+  projects: MemoryHierarchyProject[];
   isLoading: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
-  const globalProject = projects.find((project) => project.name === "Global");
-  const otherProjects = projects.filter((project) => project.name !== "Global");
-  const projectOptions = [
-    ...(globalProject ? [{ value: "__null__", label: "Global" }] : []),
-    ...otherProjects.map((project) => ({
-      value: project.name,
-      label: project.name,
-    })),
-  ];
+  const projectOptions = projects.map((project) => ({
+    value: project.value,
+    label: project.name,
+  }));
 
   const filteredProjects = projectOptions.filter((project) =>
     project.label.toLowerCase().includes(search.toLowerCase()),
@@ -1037,11 +1025,6 @@ function ProjectFilter({
                       <Check className="h-3 w-3 text-white" weight="bold" />
                     )}
                   </div>
-                  {/* {project.value === "__null__" ? (
-                    <Globe className="h-3.5 w-3.5 text-foreground-subtle shrink-0" />
-                  ) : (
-                    <FolderOpen className="h-3.5 w-3.5 text-foreground-subtle shrink-0" />
-                  )} */}
                   <span className="truncate text-foreground-muted">
                     {project.label}
                   </span>
@@ -1074,6 +1057,7 @@ function ProjectFilter({
 }
 
 export default function MemoriesPage() {
+  const [selectedScope, setSelectedScope] = useState<string | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [searchInput, setSearchInput] = useState("");
@@ -1087,11 +1071,25 @@ export default function MemoriesPage() {
   const queryClient = useQueryClient();
   const offset = page * ITEMS_PER_PAGE;
 
-  // Fetch dashboard stats for project list (reuses cache if already fetched on dashboard)
-  const { data: dashboardStats, isLoading: statsLoading } = useQuery({
-    queryKey: ["dashboard-stats"],
-    queryFn: () => api.get<DashboardStats>("/api/user/dashboard-stats"),
-  });
+  const { data: hierarchy, isLoading: hierarchyLoading } = useQuery(
+    memoryHierarchyQueryOptions(),
+  );
+
+  // Projects shown in the project filter depend on the selected scope.
+  const scopeProjects: MemoryHierarchyProject[] =
+    selectedScope === null
+      ? (hierarchy?.global.projects ?? [])
+      : (hierarchy?.scopes.find((scope) => scope.name === selectedScope)
+          ?.projects ?? []);
+
+  // Reset scope-dependent state when scope changes (named scope or global).
+  function handleScopeChange(next: string | null) {
+    if (next === selectedScope) return;
+    setSelectedScope(next);
+    setSelectedProjects([]);
+    setPage(0);
+    setSelectedMemory(null);
+  }
 
   // Debounce search input
   useEffect(() => {
@@ -1115,6 +1113,7 @@ export default function MemoriesPage() {
       categories: apiCategories,
       projects: apiProjects,
       search: search || undefined,
+      scope: selectedScope ?? undefined,
     }),
   );
 
@@ -1124,7 +1123,10 @@ export default function MemoriesPage() {
     if (!deletingMemory) return;
     setIsDeleting(true);
     try {
-      await deleteMutation.mutateAsync(deletingMemory.id);
+      await deleteMutation.mutateAsync({
+        id: deletingMemory.id,
+        scope: selectedScope ?? undefined,
+      });
       toast.success("Memory deleted successfully");
       setDeletingMemory(null);
       setSelectedMemory(null);
@@ -1140,12 +1142,9 @@ export default function MemoriesPage() {
   const totalPages = data ? Math.ceil(data.total / ITEMS_PER_PAGE) : 0;
   const showingFrom = data && data.total > 0 ? offset + 1 : 0;
   const showingTo = data ? Math.min(offset + ITEMS_PER_PAGE, data.total) : 0;
-  const totalMemoriesCount = dashboardStats
-    ? Object.values(dashboardStats.categories).reduce(
-        (total, count) => total + count,
-        0,
-      )
-    : 0;
+  const totalMemoriesCount =
+    (hierarchy?.global.count ?? 0) +
+    (hierarchy?.scopes.reduce((sum, scope) => sum + scope.count, 0) ?? 0);
   const hasActiveFilters =
     selectedCategories.length > 0 ||
     selectedProjects.length > 0 ||
@@ -1179,6 +1178,12 @@ export default function MemoriesPage() {
 
         {/* Search and Filters */}
         <div className="flex items-center gap-2">
+          <ScopePicker
+            value={selectedScope}
+            onChange={handleScopeChange}
+            hierarchy={hierarchy}
+            isLoading={hierarchyLoading}
+          />
           {/* Content Search */}
           <div className="relative w-full sm:w-64">
             <MagnifyingGlass
@@ -1243,7 +1248,7 @@ export default function MemoriesPage() {
                   }}
                   className="hover:translate-y-0 hover:shadow-none cursor-pointer"
                 >
-                  Reset all filters
+                  Reset filters
                 </Button>
               </>
             ) : (
@@ -1287,8 +1292,8 @@ export default function MemoriesPage() {
                           setSelectedProjects(values);
                           setPage(0);
                         }}
-                        projects={dashboardStats?.projects ?? []}
-                        isLoading={statsLoading}
+                        projects={scopeProjects}
+                        isLoading={hierarchyLoading}
                       />
                     </th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-48 shrink-0 border-r border-border flex items-center">
@@ -1361,7 +1366,7 @@ export default function MemoriesPage() {
                         {/* Project */}
                         <td className="px-4 py-3 w-44 shrink-0 border-r border-border flex items-center">
                           <span className="text-sm text-foreground-muted truncate block">
-                            {memory.project || "Global"}
+                            {memory.project || "No project"}
                           </span>
                         </td>
 
@@ -1515,6 +1520,7 @@ export default function MemoriesPage() {
         <MemoryDetailPanel
           key={selectedMemory.id}
           memory={selectedMemory}
+          scope={selectedScope}
           onClose={() => setSelectedMemory(null)}
           onSuccess={(message) => toast.success(message)}
           onError={(message) => toast.error(message)}

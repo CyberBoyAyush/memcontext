@@ -23,6 +23,14 @@ const saveMemorySchema = {
         "decision: choices made (e.g., 'chose PostgreSQL for DB'). " +
         "context: background info (e.g., 'working on e-commerce app').",
     ),
+  scope: z
+    .string()
+    .optional()
+    .describe(
+      "Hard isolation boundary for the memory container. " +
+        "Use a stable app-level end-user or tenant ID, such as 'user_123' or 'org_acme_user_42'. " +
+        "When provided, MemContext only saves and retrieves within this scope.",
+    ),
   project: z
     .string()
     .optional()
@@ -36,7 +44,7 @@ const saveMemorySchema = {
     .optional()
     .describe(
       "ISO 8601 UTC datetime when this memory should stop being used. " +
-      "Set it only when the expiry/deadline is known exactly. If timing is fuzzy " +
+        "Set it only when the expiry/deadline is known exactly. If timing is fuzzy " +
         "('currently', 'for now', 'this quarter'), omit it. MemContext auto-TTL handles those cases.",
     ),
 };
@@ -62,11 +70,18 @@ const searchMemorySchema = {
     .enum(["preference", "fact", "decision", "context"])
     .optional()
     .describe("Filter by type. OMIT to search all categories."),
+  scope: z
+    .string()
+    .optional()
+    .describe(
+      "Hard isolation boundary for the memory container. " +
+        "When provided, search runs only within that scope. Omit to search only unscoped/global memories.",
+    ),
   project: z
     .string()
     .optional()
     .describe(
-      "OMIT to search ALL memories (recommended for most searches). " +
+      "OMIT to search all projects within the selected scope. " +
         "ONLY set to filter to a specific project's memories.",
     ),
   threshold: z
@@ -89,6 +104,12 @@ function normalizeProject(project: string | undefined): string | undefined {
     .toLowerCase()
     .replace(/[\s_-]+/g, "")
     .replace(/[^a-z0-9]/g, "");
+}
+
+function normalizeScope(scope: string | undefined): string | undefined {
+  if (!scope) return undefined;
+  const normalized = scope.trim();
+  return normalized.length > 0 ? normalized : undefined;
 }
 
 export function registerTools(server: McpServer, apiClient: ApiClient): void {
@@ -118,6 +139,7 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
           {
             content: args.content,
             category: args.category,
+            scope: normalizeScope(args.scope),
             project: normalizeProject(args.project),
             source: "mcp",
             validUntil: args.validUntil,
@@ -172,6 +194,7 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
             query: args.query,
             limit: args.limit,
             category: args.category,
+            scope: normalizeScope(args.scope),
             project: normalizeProject(args.project),
             threshold: args.threshold,
           },
@@ -193,6 +216,8 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
             (m, i) =>
               `${i + 1}. [${(m.relevance * 100).toFixed(0)}% match] ${m.content}${
                 m.category ? ` (${m.category})` : ""
+              }${
+                m.scope ? ` [scope:${m.scope}]` : ""
               }${m.project ? ` [${m.project}]` : ""} [id: ${m.id}]`,
           )
           .join("\n\n");
@@ -234,6 +259,13 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
           .describe(
             "The memory ID to rate. Use the ID returned by search_memory.",
           ),
+        scope: z
+          .string()
+          .optional()
+          .describe(
+            "Hard isolation boundary for the memory container. " +
+              "Provide the same scope that was used when the memory was retrieved.",
+          ),
         type: z
           .enum(["helpful", "not_helpful", "outdated", "wrong"])
           .describe("Type of feedback for the memory."),
@@ -247,7 +279,14 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
     },
     async (args) => {
       try {
-        await apiClient.post(`/api/memories/${args.memoryId}/feedback`, {
+        const scope = normalizeScope(args.scope);
+        const feedbackPath = scope
+          ? `/api/memories/${args.memoryId}/feedback?scope=${encodeURIComponent(
+              scope,
+            )}`
+          : `/api/memories/${args.memoryId}/feedback`;
+
+        await apiClient.post(feedbackPath, {
           type: args.type,
           context: args.context,
         });
@@ -281,18 +320,32 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
     {
       title: "Delete Memory",
       description:
-        "Delete a specific memory by ID. Use when a memory was saved incorrectly or the user explicitly asks to remove it.",
+        "Soft-delete a specific memory by ID. Use when a memory was saved incorrectly or the user explicitly asks to remove it from future retrieval.",
       inputSchema: {
         memoryId: z
           .string()
           .describe(
             "The memory ID to delete. Use the ID returned by search_memory.",
           ),
+        scope: z
+          .string()
+          .optional()
+          .describe(
+            "Hard isolation boundary for the memory container. " +
+              "Provide the same scope that was used when the memory was retrieved.",
+          ),
       },
     },
     async (args) => {
       try {
-        await apiClient.delete(`/api/memories/${args.memoryId}`);
+        const scope = normalizeScope(args.scope);
+        const deletePath = scope
+          ? `/api/memories/${args.memoryId}?scope=${encodeURIComponent(
+              scope,
+            )}`
+          : `/api/memories/${args.memoryId}`;
+
+        await apiClient.delete(deletePath);
 
         return {
           content: [

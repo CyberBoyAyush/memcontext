@@ -56,12 +56,20 @@ Profiles work well for:
 
 Use profiles for "who is this user?" and search for "what did they decide about X?".
 
-## Scoping by project
+## Scoping by scope and project
 
-Pass a `project` query parameter to get profile context scoped to a specific project:
+Pass a `scope` query parameter to build profile context from one isolated memory container only:
 
 ```
-GET /api/memories/profile?project=memcontext
+GET /api/memories/profile?scope=user_123
 ```
 
-This returns only memories tagged with that project.
+Omit `scope` to build a profile from unscoped/global memories only.
+
+You can also add `project` to narrow the profile inside that scope:
+
+```
+GET /api/memories/profile?scope=user_123&project=memcontext
+```
+
+This returns only memories tagged with that project inside `user_123`.

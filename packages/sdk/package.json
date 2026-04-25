@@ -1,0 +1,30 @@
+{
+  "name": "memcontext-sdk",
+  "version": "1.0.0",
+  "description": "TypeScript SDK for the MemContext public API",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "check-types": "tsc --noEmit",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@memcontext/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.18",
+    "typescript": "^5.9.2"
+  },
+  "license": "GPL-3.0"
+}

@@ -93,3 +93,11 @@ Use `docs/` only for public Mintlify documentation. Store internal planning, arc
 <!-- Added: 2026-04-20 -->
 ## Website Security Headers
 Configure baseline security headers for the public website in `apps/website/next.config.ts`. Disable Next.js `X-Powered-By` with `poweredByHeader: false` and set `Strict-Transport-Security`, `X-Frame-Options`, and `X-Content-Type-Options` alongside the existing CSP.
+
+<!-- Added: 2026-04-22 -->
+## Memory Isolation
+Use a first-class optional `scope` field as the hard isolation boundary for memory operations. When a request provides `scope`, all save, search, list, profile, get, update, delete, and history queries must only operate within that scope. Keep `project` as a soft grouping and filtering field, not a security boundary.
+
+<!-- Added: 2026-04-25 -->
+## Dashboard Memory Hierarchy
+Represent memories in the dashboard as a scope-first hierarchy: Global/unscoped memories first, then named scopes, with projects nested inside the selected scope. Treat `scope` as the hard isolation boundary and `project` as a soft grouping within that selected scope. Use a dedicated hierarchy endpoint rather than making global search mean all scopes.

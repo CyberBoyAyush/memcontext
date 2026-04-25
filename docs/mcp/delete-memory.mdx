@@ -5,22 +5,24 @@ description: "Remove a memory by ID."
 
 ## Description
 
-`delete_memory` permanently removes a memory. In most cases, you do not need to call this directly — when new information contradicts an old memory, MemContext supersedes it automatically. Use delete only when explicit removal is desired.
+`delete_memory` soft-deletes a memory by setting `deletedAt`. In most cases, you do not need to call this directly — when new information contradicts an old memory, MemContext supersedes it automatically. Use delete when explicit removal is desired.
 
 ## Parameters
 
-| Parameter  | Type   | Required | Description                                                        |
-| ---------- | ------ | -------- | ------------------------------------------------------------------ |
-| `memoryId` | string | Yes      | The memory ID to delete. Use the `id` returned by `search_memory`. |
+| Parameter  | Type   | Required | Description                                                                                  |
+| ---------- | ------ | -------- | -------------------------------------------------------------------------------------------- |
+| `memoryId` | string | Yes      | The memory ID to delete. Use the `id` returned by `search_memory`.                           |
+| `scope`    | string | No       | Hard isolation boundary. Provide the same scope that was used when the memory was retrieved. |
 
 ## Example
 
 ```
 delete_memory({
-  memoryId: "a1b2c3d4-..."
+  memoryId: "a1b2c3d4-...",
+  scope: "user_123"
 })
 ```
 
 ## Response
 
-Returns `{ success: true }` on success, or a `404` error if the memory was not found.
+Returns `{ success: true }` on success, or a `404` error if the memory was not found. Deleted memories stop appearing in search and list results but remain in the database.

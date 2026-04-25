@@ -1,6 +1,8 @@
 export interface ApiError {
   error: string;
   code?: string;
+  requestId?: string;
+  errorId?: string;
 }
 
 export interface ApiResponse<T> {

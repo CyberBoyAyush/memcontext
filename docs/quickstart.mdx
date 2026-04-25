@@ -56,6 +56,7 @@ curl "https://api.memcontext.in/api/memories/search?query=What%20language%20does
       "id": "a1b2c3d4-...",
       "content": "User prefers TypeScript over JavaScript for type safety",
       "category": "preference",
+      "scope": null,
       "project": null,
       "relevance": 0.92,
       "createdAt": "2026-04-11T12:00:00.000Z"
@@ -66,7 +67,22 @@ curl "https://api.memcontext.in/api/memories/search?query=What%20language%20does
 
 Use full natural-language sentences as queries for best results. Keywords alone reduce match quality.
 
-## 4. Save a project-scoped memory
+## 4. Save a scope-isolated memory
+
+```bash
+curl -X POST https://api.memcontext.in/api/memories \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: mc_your_key" \
+  -d '{
+    "content": "User prefers concise release notes",
+    "category": "fact",
+    "scope": "user_123"
+  }'
+```
+
+Use `scope` when one API key serves multiple end users or tenants. Omit it only for global, unscoped memories.
+
+## 5. Save a project memory inside that scope
 
 ```bash
 curl -X POST https://api.memcontext.in/api/memories \
@@ -75,11 +91,12 @@ curl -X POST https://api.memcontext.in/api/memories \
   -d '{
     "content": "This project uses PNPM as the package manager",
     "category": "fact",
+    "scope": "user_123",
     "project": "memcontext"
   }'
 ```
 
-## 5. Connect the MCP server
+## 6. Connect the MCP server
 
 Add MemContext to your AI coding assistant. For example, with Claude Code:
 
@@ -92,10 +109,41 @@ No local installation required. Once connected, your assistant can call `save_me
 
 See [MCP Setup](/guides/mcp-setup) for Cursor, OpenCode, Codex CLI, and agent instructions.
 
+## TypeScript SDK
+
+Install the SDK when integrating from a Node.js or TypeScript app:
+
+```bash
+npm install memcontext-sdk
+```
+
+```typescript
+import { MemContextClient } from "memcontext-sdk";
+
+const client = new MemContextClient({
+  apiKey: process.env.MEMCONTEXT_API_KEY!,
+});
+
+const userMemory = client.withScope("user_123");
+const projectMemory = userMemory.withProject("memcontext");
+
+await projectMemory.save({
+  content: "User prefers concise release notes",
+  category: "preference",
+});
+
+const results = await projectMemory.search({
+  query: "How should release notes be written?",
+});
+```
+
+Use `withScope()` for the hard end-user or tenant boundary. Use `withProject()` only as a grouping filter inside that scope.
+
 ## Recommended workflow
 
 1. **Search first** — check for existing context before making assumptions
 2. **Save when durable** — persist stable preferences, decisions, and project facts
 3. **Use categories** — tag memories so they can be filtered later
-4. **Use projects** — scope project-specific knowledge so it does not pollute general memory
-5. **Give feedback** — mark retrieved memories as helpful or outdated to improve quality
+4. **Use scope** — isolate each app user or tenant into its own memory container
+5. **Use projects** — group project-specific knowledge inside that scope
+6. **Give feedback** — mark retrieved memories as helpful or outdated to improve quality

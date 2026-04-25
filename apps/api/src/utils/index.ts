@@ -1,5 +1,5 @@
 export { hashApiKey } from "./hash.js";
-export { normalizeProjectName } from "./normalize.js";
+export { normalizeProjectName, normalizeScope } from "./normalize.js";
 export { generateApiKey, extractKeyPrefix } from "./id.js";
 export {
   AppError,
