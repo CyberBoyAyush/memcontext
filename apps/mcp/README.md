@@ -16,12 +16,12 @@ The server exposes four tools to AI assistants:
 
 Saves a memory that should be remembered across sessions.
 
-| Parameter  | Type   | Required | Description                                 |
-| ---------- | ------ | -------- | ------------------------------------------- |
-| content    | string | Yes      | The memory to save                          |
-| category   | string | No       | One of: preference, fact, decision, context |
-| project    | string | No       | Project name for filtering                  |
-| validUntil | string | No       | ISO 8601 datetime when this memory expires  |
+| Parameter  | Type   | Required | Description                                      |
+| ---------- | ------ | -------- | ------------------------------------------------ |
+| content    | string | Yes      | Clear, atomic memory to save                     |
+| category   | string | No       | One of: preference, fact, decision, context      |
+| project    | string | No       | Project grouping; normalized before API requests |
+| validUntil | string | No       | Exact ISO 8601 expiry; omit for fuzzy timing     |
 
 Returns the memory ID and status (saved, updated, or extended).
 
@@ -51,7 +51,7 @@ Rates a retrieved memory to improve future retrieval quality.
 
 ### delete_memory
 
-Deletes a specific memory by ID.
+Soft-deletes a specific memory by ID.
 
 | Parameter | Type   | Required | Description                         |
 | --------- | ------ | -------- | ----------------------------------- |
@@ -138,7 +138,7 @@ npx @modelcontextprotocol/inspector
 4. Server makes HTTP request to MemContext API
 5. API response is formatted and returned to the assistant
 
-Project names are automatically normalized (lowercase, no spaces or special characters) before sending to the API.
+Project names are automatically normalized (lowercase, no spaces or special characters) before sending to the API. MCP tools intentionally do not expose `scope`; they operate on unscoped assistant memory with optional `project` grouping. REST and SDK clients should use `scope` for hard multi-user or tenant isolation.
 
 ## Dependencies
 

@@ -7,6 +7,7 @@ packages/types/
 ├── src/
 │   ├── memory.ts       # Memory, MemoryRelation types
 │   ├── user.ts         # User, ApiKey types
+│   ├── admin.ts        # Admin response types
 │   ├── api.ts          # Request/Response types
 │   └── index.ts        # Re-exports
 ├── package.json
@@ -30,9 +31,11 @@ import type { Memory, SaveMemoryRequest } from "@memcontext/types";
 export interface Memory {
   id: string;
   userId: string;
+  scope?: string;
   content: string;
   category?: "preference" | "fact" | "decision" | "context";
   project?: string;
+  source: "mcp" | "web" | "api" | "openclaw";
   isCurrent: boolean;
   validFrom?: Date;
   validUntil?: Date;
@@ -43,6 +46,7 @@ export interface Memory {
 export interface SaveMemoryRequest {
   content: string;
   category?: Memory["category"];
+  scope?: string;
   project?: string;
   validUntil?: string;
 }
@@ -51,14 +55,16 @@ export interface SearchMemoryRequest {
   query: string;
   limit?: number;
   category?: MemoryCategory;
+  scope?: string;
   project?: string;
   threshold?: number;
 }
 
 export interface SaveMemoryResponse {
   id: string;
-  status: "saved" | "updated" | "extended";
+  status: "saved" | "updated" | "extended" | "duplicate";
   superseded?: string;
+  existingId?: string;
 }
 
 export type FeedbackType = "helpful" | "not_helpful" | "outdated" | "wrong";
@@ -71,6 +77,17 @@ export interface MemoryProfile {
 export interface MemoryHistoryResponse {
   current: Memory;
   history: Memory[];
+}
+
+export interface MemoryGraphResponse {
+  nodes: MemoryGraphNode[];
+  links: MemoryGraphLink[];
+  meta: {
+    totalNodes: number;
+    totalLinks: number;
+    relationLinks: number;
+    derivedLinks: number;
+  };
 }
 ```
 
@@ -89,3 +106,5 @@ export * from "./api";
 2. **Export everything** - From index.ts
 3. **Use interfaces** - For object shapes
 4. **Use type aliases** - For unions and simple types
+5. **Keep SDK types synced** - Public API shape changes in `packages/types` must also be mirrored in `packages/sdk/src/types.ts`
+6. **Scope is first-class** - Public REST/SDK memory request and response types should preserve optional `scope`

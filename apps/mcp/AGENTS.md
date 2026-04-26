@@ -5,12 +5,12 @@
 ```
 apps/mcp/
 ├── src/
-│   ├── tools/
-│   │   ├── save-memory.ts
-│   │   └── search-memory.ts
+│   ├── tools.ts              # Tool schemas + handlers
+│   ├── http.ts               # Streamable HTTP transport
 │   ├── lib/
 │   │   └── api-client.ts
-│   └── index.ts
+│   ├── env.ts
+│   └── index.ts              # Stdio transport
 ├── package.json
 └── tsconfig.json
 ```
@@ -25,6 +25,7 @@ pnpm build        # Build for distribution
 ## MCP SDK Patterns
 
 ### Server Setup
+
 ```typescript
 // src/index.ts
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -45,6 +46,7 @@ await server.connect(transport);
 ```
 
 ### Tool Definition
+
 ```typescript
 // src/tools/save-memory.ts
 import { z } from "zod";
@@ -52,10 +54,15 @@ import { z } from "zod";
 export const saveMemorySchema = z.object({
   content: z.string().describe("The memory to save"),
   category: z.enum(["preference", "fact", "decision", "context"]).optional(),
-  project: z.string().optional().describe("Project name (lowercase, no spaces)"),
+  project: z
+    .string()
+    .optional()
+    .describe("Project name (lowercase, no spaces)"),
 });
 
-export async function saveMemoryHandler(args: z.infer<typeof saveMemorySchema>) {
+export async function saveMemoryHandler(
+  args: z.infer<typeof saveMemorySchema>,
+) {
   const response = await apiClient.post("/api/memories", args);
   return {
     content: [{ type: "text", text: JSON.stringify(response) }],
@@ -64,6 +71,7 @@ export async function saveMemoryHandler(args: z.infer<typeof saveMemorySchema>) 
 ```
 
 ### API Client
+
 ```typescript
 // src/lib/api-client.ts
 const API_BASE = process.env.MEMCONTEXT_API_URL || "http://localhost:3000";
@@ -100,12 +108,19 @@ Include project naming rules in tool descriptions:
 ```typescript
 const saveMemorySchema = z.object({
   content: z.string(),
-  project: z.string().optional().describe(
-    "Project name. RULES: lowercase, no spaces, no special characters. " +
-    "Examples: 'capychat', 'memcontext'. If user says 'Capy Chat' use 'capychat'."
-  ),
+  project: z
+    .string()
+    .optional()
+    .describe(
+      "Project name. RULES: lowercase, no spaces, no special characters. " +
+        "Examples: 'capychat', 'memcontext'. If user says 'Capy Chat' use 'capychat'.",
+    ),
 });
 ```
+
+Do not expose `scope` in MCP tools. MCP is for unscoped assistant memory with optional `project` grouping; REST, SDK, and dashboard callers provide real tenant/user scopes when isolation is required.
+
+For `validUntil`, tell agents to set it only for exact known expiry/deadline times and omit it for fuzzy timing so API auto-TTL can classify it.
 
 ## Environment Variables
 
@@ -117,6 +132,7 @@ MEMCONTEXT_API_KEY=mc_...
 ## Claude Desktop Config
 
 User adds to `claude_desktop_config.json`:
+
 ```json
 {
   "mcpServers": {
@@ -134,6 +150,7 @@ User adds to `claude_desktop_config.json`:
 ## Testing
 
 Use MCP Inspector for testing:
+
 ```bash
 npx @modelcontextprotocol/inspector
 ```
@@ -145,3 +162,4 @@ npx @modelcontextprotocol/inspector
 3. **Validate inputs** - Use Zod schemas
 4. **Handle errors** - Return user-friendly messages
 5. **Normalize project names** - Lowercase before sending to API
+6. **Do not add scope to MCP schemas** - Scope belongs to REST/SDK/dashboard callers only

@@ -9,14 +9,20 @@ apps/api/
 │   │   ├── index.ts          # Drizzle connection
 │   │   └── schema.ts         # All table definitions
 │   ├── routes/
-│   │   ├── auth.ts           # /api/auth/*
-│   │   └── memories.ts       # /api/memories/*
+│   │   ├── memories.ts       # /api/memories/*
+│   │   ├── api-keys.ts       # /api/api-keys/*
+│   │   ├── user.ts           # /api/user/*
+│   │   ├── subscription.ts   # /api/subscription/*
+│   │   ├── admin.ts          # /api/admin/*
+│   │   └── waitlist.ts       # /api/waitlist/*
 │   ├── services/
-│   │   ├── embedding.ts      # OpenAI calls
+│   │   ├── embedding.ts      # Embedding calls
 │   │   ├── memory.ts         # CRUD + search
-│   │   └── relation.ts       # LLM classification
+│   │   └── subscription.ts   # Plan limits + billing state
 │   ├── middleware/
-│   │   └── auth.ts           # API key + session validation
+│   │   ├── auth.ts           # API key validation
+│   │   ├── session-auth.ts   # Dashboard session validation
+│   │   └── either-auth.ts    # API key or session validation
 │   └── index.ts              # Hono app entry
 ├── drizzle.config.ts
 └── package.json
@@ -60,12 +66,12 @@ export default app;
 // src/index.ts
 import { Hono } from "hono";
 import memories from "./routes/memories";
-import auth from "./routes/auth";
+import apiKeys from "./routes/api-keys";
 
 const app = new Hono();
 
 app.route("/api/memories", memories);
-app.route("/api/auth", auth);
+app.route("/api/api-keys", apiKeys);
 
 export default app;
 ```
@@ -102,6 +108,7 @@ import {
 export const memories = pgTable("memories", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id").notNull(),
+  scope: text("scope"),
   content: text("content").notNull(),
   embedding: vector("embedding", { dimensions: 1536 }).notNull(),
   isCurrent: boolean("is_current").default(true).notNull(),
@@ -137,11 +144,19 @@ export async function saveMemory(userId: string, content: string) {
 }
 
 export async function searchMemories(userId: string, query: string) {
-  // 1. Generate query embedding
-  // 2. Vector search
-  // 3. Return results
+  // 1. Generate query variants + embedding
+  // 2. Run vector and full-text search
+  // 3. Merge with RRF and feedback scoring
+  // 4. Respect scope/project filters and exclude expired/deleted memories
 }
 ```
+
+## Scope Rules
+
+- Treat `scope` as the hard isolation boundary for REST, SDK, and dashboard callers.
+- Every scoped memory operation must filter by `userId` and the exact `scope`; do not let global/unscoped queries read named scopes.
+- Treat `project` only as a grouping/filter inside the selected scope.
+- MCP requests intentionally arrive without `scope` and should stay unscoped.
 
 ## Environment Variables
 
