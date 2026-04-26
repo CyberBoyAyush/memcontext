@@ -235,10 +235,11 @@ SAVE immediately (do not defer) when any of these happen:
 - A technology or architecture decision is made -> save_memory(category: "decision")
 - User corrects you or says "remember" -> save_memory(category: "fact")
 - Important project fact learned -> save_memory(category: "fact", project: "<name>")
-- Significant work completed -> save_memory(category: "context")
+- Significant work completed that creates useful future context -> save_memory(category: "context")
 
-Duplicates are handled automatically - when in doubt, save.
+Duplicates are handled automatically - when in doubt, save useful durable context.
 Memory persists across all sessions - use project param for project-specific context only.
+Omit validUntil by default. Only pass validUntil for an exact known expiry/deadline; otherwise MemContext auto-TTL handles expiry.
 ```
 
 ## How It Works
@@ -256,14 +257,16 @@ The MCP server exposes four tools to AI assistants:
 
 ### `save_memory`
 
-Save a memory with optional category, project scope, and temporal expiry.
+Save a memory with optional category, project grouping, and temporal expiry.
 
-| Parameter    | Type   | Required | Description                                                    |
-| ------------ | ------ | -------- | -------------------------------------------------------------- |
-| `content`    | string | Yes      | Clear, atomic memory to save (1-10,000 chars)                  |
-| `category`   | enum   | No       | `preference`, `fact`, `decision`, or `context`                 |
-| `project`    | string | No       | Project scope (lowercase, no spaces). Omit for global memories |
-| `validUntil` | string | No       | ISO 8601 datetime when this memory expires                     |
+| Parameter    | Type   | Required | Description                                               |
+| ------------ | ------ | -------- | --------------------------------------------------------- |
+| `content`    | string | Yes      | Clear, atomic memory to save (1-10,000 chars)             |
+| `category`   | enum   | No       | `preference`, `fact`, `decision`, or `context`            |
+| `project`    | string | No       | Project grouping (lowercase, no spaces). Omit when unsure |
+| `validUntil` | string | No       | Exact ISO 8601 expiry. Omit by default for auto-TTL       |
+
+MCP tools intentionally do not expose `scope`; they operate on unscoped assistant memory with optional `project` grouping. Use the REST API or SDK `scope` field when building multi-user or multi-tenant apps that need hard isolation.
 
 ### `search_memory`
 
@@ -350,6 +353,7 @@ MemContext is open source and can be self-hosted. The project is a Turborepo mon
 | `apps/dashboard` | Next.js dashboard - manage memories, API keys, subscriptions          |
 | `apps/website`   | Marketing landing page                                                |
 | `packages/types` | Shared TypeScript type definitions                                    |
+| `packages/sdk`   | Published TypeScript SDK (`memcontext-sdk`)                           |
 | `docs/`          | Public Mintlify documentation (docs.memcontext.in)                    |
 
 ### Tech Stack
@@ -435,6 +439,7 @@ Full API docs: [docs.memcontext.in](https://docs.memcontext.in)
 | POST   | `/api/memories`              | Save a memory                 |
 | GET    | `/api/memories/search`       | Hybrid search memories        |
 | GET    | `/api/memories/profile`      | Pre-aggregated user context   |
+| GET    | `/api/memories/graph`        | Memory graph data             |
 | GET    | `/api/memories`              | List memories (with filters)  |
 | GET    | `/api/memories/:id`          | Get a single memory           |
 | GET    | `/api/memories/:id/history`  | Get memory version history    |
@@ -454,8 +459,12 @@ Full API docs: [docs.memcontext.in](https://docs.memcontext.in)
 | GET    | `/api/user/profile`             | Session only | Get user profile         |
 | GET    | `/api/user/subscription`        | Session only | Get subscription info    |
 | GET    | `/api/user/dashboard-stats`     | Session only | Get dashboard statistics |
+| GET    | `/api/user/memory-hierarchy`    | Session only | Get scope/project tree   |
 | POST   | `/api/subscription/change-plan` | Session only | Change subscription plan |
 | GET    | `/api/subscription/current`     | Session only | Get current subscription |
+| POST   | `/api/waitlist`                 | None         | Join waitlist            |
+
+REST and SDK clients can pass `scope` on memory operations for hard isolation. The dashboard renders memories as Global/unscoped first, then named scopes, with projects nested inside the selected scope. MCP tools intentionally omit `scope` to avoid agents inventing isolation IDs.
 
 ## Acknowledgments
 

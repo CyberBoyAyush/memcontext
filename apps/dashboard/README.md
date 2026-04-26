@@ -1,14 +1,16 @@
 # MemContext Dashboard
 
-Next.js dashboard for managing memories, API keys, and account settings.
+Next.js dashboard for managing memories, API keys, MCP setup, subscriptions, and account settings.
 
 ## Features
 
-- Memory management (view, search, delete)
+- Scope-first memory management with search, category/project filters, edit, delete, feedback, and version history
+- Interactive memory graph with relation filters and focused/full graph modes
 - API key generation and management
-- MCP configuration instructions
-- Account settings
-- Admin panel for user management and statistics
+- MCP setup guides and auto-config prompts for supported agents
+- Subscription and billing management via Dodo Payments
+- Account settings with light/dark/system theme selection
+- Admin/Legend panel for user management and platform statistics
 
 ## Development
 

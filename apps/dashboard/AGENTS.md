@@ -13,8 +13,12 @@ apps/dashboard/
 │   │   │   ├── layout.tsx          # Dashboard layout with sidebar
 │   │   │   ├── page.tsx            # Dashboard overview
 │   │   │   ├── memories/page.tsx   # Memories list
+│   │   │   ├── memories/graph/     # Memory graph
 │   │   │   ├── api-keys/page.tsx   # API keys management
+│   │   │   ├── mcp/page.tsx        # MCP setup guide
+│   │   │   ├── subscription/page.tsx # Plans + billing
 │   │   │   └── settings/page.tsx   # User settings
+│   │   ├── (legend)/               # Admin-only pages
 │   │   ├── layout.tsx              # Root layout
 │   │   ├── page.tsx                # Redirect to /dashboard
 │   │   └── globals.css             # Design system CSS
@@ -73,7 +77,8 @@ export function useDeleteMemory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => api.delete(`/api/memories/${id}`),
+    mutationFn: ({ id, scope }: { id: string; scope?: string }) =>
+      api.delete(`/api/memories/${id}${scope ? `?scope=${scope}` : ""}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["memories"] });
     },
@@ -126,7 +131,14 @@ Middleware protects dashboard routes:
 
 ```typescript
 // middleware.ts
-const protectedRoutes = ["/dashboard", "/memories", "/api-keys", "/settings"];
+const protectedRoutes = [
+  "/dashboard",
+  "/memories",
+  "/api-keys",
+  "/mcp",
+  "/subscription",
+  "/settings",
+];
 const authRoutes = ["/login", "/signup"];
 
 // Redirects unauthenticated users to /login
@@ -201,7 +213,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3020
 
 ## Design System
 
-- Forced dark theme (no light mode toggle)
+- Supports light, dark, and system theme modes through `next-themes`
 - Uses custom CSS variables matching website aesthetic
 - Animations: `animate-fade-in`, `animate-slide-up`
 - Rounded corners: `rounded-xl` for cards, `rounded-lg` for inputs
@@ -231,18 +243,22 @@ import { Loader2, Plus, Trash2 } from "lucide-react";
 
 The memories page includes these v2 enhancements:
 
+- **Scope picker**: Global/unscoped memories first, then named scopes, with projects filtered inside the selected scope
 - **Temporal badges**: Memories with `validUntil` show colored expiry badges (green=valid, yellow=expiring soon, red=expired)
 - **Feedback buttons**: Detail panel has Helpful / Not helpful / Outdated / Wrong buttons that call `POST /api/memories/:id/feedback`
 - **Version history**: Detail panel shows previous versions of a memory via `GET /api/memories/:id/history`
+- **Memory graph**: Graph page reads `GET /api/memories/graph` and supports relation filters, derived-link toggles, and focused/full modes
 - **Docs link**: Sidebar Developer section links to `https://docs.memcontext.in` (external, opens in new tab)
 
 ### Query Hooks (lib/queries/memories.ts)
 
 ```typescript
 memoriesQueryOptions(params); // List memories
-memoryHistoryQueryOptions(id); // Get version history
+memoryHierarchyQueryOptions(); // Scope/project tree
+memoryGraphQueryOptions(params); // Graph data
+memoryHistoryQueryOptions({ id, scope }); // Get version history
 useUpdateMemory(); // PATCH /:id
-useDeleteMemory(); // DELETE /:id
-useSubmitFeedback(); // POST /:id/feedback
-useForgetMemory(); // POST /:id/forget
+useDeleteMemory(); // DELETE /:id with optional scope
+useSubmitFeedback(); // POST /:id/feedback with optional scope
+useForgetMemory(); // POST /:id/forget with optional scope
 ```

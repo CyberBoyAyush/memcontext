@@ -4,12 +4,12 @@ The backend service for MemContext. Handles all business logic, database operati
 
 ## Overview
 
-This is the core of MemContext. All other clients (MCP server, future web dashboard) are thin wrappers that call this API. The API is responsible for:
+This is the core of MemContext. MCP, dashboard, website, and SDK clients call this API. The API is responsible for:
 
 - Storing and retrieving memories
 - Generating vector embeddings for semantic search
 - Processing memory relationships using LLM
-- Managing API keys and subscriptions
+- Managing API keys, subscriptions, waitlist, and admin views
 - Enforcing rate limits and plan quotas
 
 ## Architecture
@@ -21,7 +21,7 @@ Request
 Middleware (auth, rate-limit, logging)
    |
    v
-Routes (/api/memories, /api/api-keys)
+Routes (/api/auth, /api/memories, /api/api-keys, /api/user, /api/subscription, /api/admin, /api/waitlist)
    |
    v
 Services (memory, embedding, relation, subscription)
@@ -42,6 +42,7 @@ Database (Drizzle ORM)
 | POST   | /api/memories              | Save a memory                 |
 | GET    | /api/memories/search       | Hybrid search memories        |
 | GET    | /api/memories/profile      | Pre-aggregated user context   |
+| GET    | /api/memories/graph        | Memory graph data             |
 | GET    | /api/memories              | List memories (paginated)     |
 | GET    | /api/memories/:id          | Get a single memory           |
 | GET    | /api/memories/:id/history  | Get memory version history    |
@@ -50,13 +51,28 @@ Database (Drizzle ORM)
 | POST   | /api/memories/:id/forget   | Soft-delete (forget) a memory |
 | POST   | /api/memories/:id/feedback | Submit feedback on a memory   |
 
-### API Keys
+Memory routes use either API key auth or dashboard session auth. `scope` is the hard isolation boundary for REST/SDK callers; `project` is only a soft grouping/filter inside the selected scope.
 
-| Method | Path              | Auth | Description       |
-| ------ | ----------------- | ---- | ----------------- |
-| POST   | /api/api-keys     | None | Create an API key |
-| GET    | /api/api-keys     | None | List all API keys |
-| DELETE | /api/api-keys/:id | None | Revoke an API key |
+### API Keys (Session auth)
+
+| Method | Path              | Auth    | Description       |
+| ------ | ----------------- | ------- | ----------------- |
+| POST   | /api/api-keys     | Session | Create an API key |
+| GET    | /api/api-keys     | Session | List all API keys |
+| DELETE | /api/api-keys/:id | Session | Revoke an API key |
+
+### User, Subscription, Admin, Waitlist
+
+| Method | Path                          | Auth    | Description                   |
+| ------ | ----------------------------- | ------- | ----------------------------- |
+| GET    | /api/user/profile             | Session | User profile                  |
+| GET    | /api/user/subscription        | Session | Plan and memory usage         |
+| GET    | /api/user/dashboard-stats     | Session | Dashboard stats               |
+| GET    | /api/user/memory-hierarchy    | Session | Scope-first project hierarchy |
+| GET    | /api/subscription/current     | Session | Current subscription          |
+| POST   | /api/subscription/change-plan | Session | Change plan via Dodo Payments |
+| GET    | /api/admin/\*                 | Admin   | User management and stats     |
+| POST   | /api/waitlist                 | None    | Join waitlist                 |
 
 ### Health
 
@@ -66,7 +82,7 @@ Database (Drizzle ORM)
 
 ## Authentication
 
-API endpoints are protected using the `X-API-Key` header. Keys are generated with a `mc_` prefix and stored as SHA-256 hashes. Valid keys are cached in Redis with a 7-day TTL.
+Public memory API endpoints support the `X-API-Key` header. Dashboard and admin endpoints use Better Auth sessions. Shared memory routes use either-auth: API key first, then session fallback. API keys use an `mc_` prefix, are stored as SHA-256 hashes, and valid keys are cached in Redis.
 
 ## Database Schema
 
@@ -78,6 +94,7 @@ Stores all user memories with vector embeddings.
 | ------------- | --------------------------------------- |
 | id            | Unique identifier                       |
 | user_id       | Owner of the memory                     |
+| scope         | Optional hard isolation boundary        |
 | content       | The memory text                         |
 | embedding     | 1536-dimension vector                   |
 | category      | preference, fact, decision, or context  |
@@ -139,6 +156,14 @@ Tracks user plans and memory usage.
 | user_id   | Who submitted the feedback               |
 | type      | helpful, not_helpful, outdated, or wrong |
 | context   | Optional context                         |
+
+### waitlist
+
+| Field    | Description               |
+| -------- | ------------------------- |
+| email    | Waitlist email            |
+| source   | Signup source             |
+| referrer | Optional referring source |
 
 ## Memory Processing
 

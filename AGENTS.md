@@ -10,7 +10,8 @@ memcontext/
 │   ├── dashboard/    # Next.js dashboard
 │   └── website/      # Landing page
 ├── packages/
-│   └── types/        # Shared TypeScript types
+│   ├── types/        # Shared TypeScript types
+│   └── sdk/          # Published TypeScript SDK
 ├── docs/             # Public Mintlify documentation
 ├── internal-docs/    # Internal planning docs (gitignored)
 ├── pnpm-workspace.yaml
@@ -45,6 +46,7 @@ pnpm lint                       # Lint all packages
 - `@memcontext/dashboard` - apps/dashboard
 - `@memcontext/website` - apps/website
 - `@memcontext/types` - packages/types
+- `memcontext-sdk` - packages/sdk
 
 ## Architecture Rules
 
@@ -91,17 +93,27 @@ Use Mintlify for MemContext public documentation. The docs site lives in `docs/`
 Use `docs/` only for public Mintlify documentation. Store internal planning, architecture notes, and implementation references in `internal-docs/`.
 
 <!-- Added: 2026-04-20 -->
+
 ## Website Security Headers
+
 Configure baseline security headers for the public website in `apps/website/next.config.ts`. Disable Next.js `X-Powered-By` with `poweredByHeader: false` and set `Strict-Transport-Security`, `X-Frame-Options`, and `X-Content-Type-Options` alongside the existing CSP.
 
 <!-- Added: 2026-04-22 -->
+
 ## Memory Isolation
+
 Use a first-class optional `scope` field as the hard isolation boundary for memory operations. When a request provides `scope`, all save, search, list, profile, get, update, delete, and history queries must only operate within that scope. Keep `project` as a soft grouping and filtering field, not a security boundary.
 
+MCP tools intentionally do not expose `scope`; they operate on unscoped assistant memory with optional `project` grouping. Use `scope` only through REST/API/dashboard/SDK surfaces where the caller can provide a real tenant/user isolation key.
+
 <!-- Added: 2026-04-25 -->
+
 ## Dashboard Memory Hierarchy
+
 Represent memories in the dashboard as a scope-first hierarchy: Global/unscoped memories first, then named scopes, with projects nested inside the selected scope. Treat `scope` as the hard isolation boundary and `project` as a soft grouping within that selected scope. Use a dedicated hierarchy endpoint rather than making global search mean all scopes.
 
 <!-- Added: 2026-04-25 -->
+
 ## SDK Type Synchronization
+
 The published `memcontext-sdk` package is self-contained and must not depend on workspace-only packages such as `@memcontext/types`. When changing public API request/response types in `packages/types` or API docs, also update the mirrored public SDK types in `packages/sdk/src/types.ts` and verify `pnpm --filter=memcontext-sdk check-types`, `pnpm --filter=memcontext-sdk build`, and `npm pack --dry-run` from `packages/sdk` before publishing.
