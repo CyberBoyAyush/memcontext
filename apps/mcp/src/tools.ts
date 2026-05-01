@@ -31,16 +31,6 @@ const saveMemorySchema = {
         "OMIT if unsure. Examples: 'memcontext', 'carq'. Avoid vague names like '123' or 'abc'. " +
         "Format: lowercase, no spaces.",
     ),
-  validUntil: z
-    .string()
-    .datetime()
-    .optional()
-    .describe(
-      "ISO 8601 UTC datetime when this memory should stop being used. " +
-        "Omit by default. Set only when an exact expiry/deadline is known, and convert the known date/time to ISO 8601 UTC. " +
-        "Do not set for durable preferences, project conventions, completed work, architecture decisions, or reusable context. " +
-        "If timing is fuzzy ('currently', 'for now', 'this quarter'), omit it; MemContext auto-TTL handles those cases.",
-    ),
 };
 
 const searchMemorySchema = {
@@ -110,7 +100,7 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
         "(6) A project convention or reusable pattern is established. " +
         "Do not defer or batch saves — save the moment the trigger occurs. " +
         "Do not save ephemeral task state, one-off debug info, or trivial details with no future value. " +
-        "Omit validUntil unless the information has an exact known expiry; auto-TTL handles normal and fuzzy timing. " +
+        "MCP memories use automatic TTL; use REST/SDK/dashboard for exact expiry. " +
         "The system handles duplicates and updates automatically — re-saving an already-known fact is safe, the system deduplicates automatically.",
       inputSchema: saveMemorySchema,
     },
@@ -123,7 +113,6 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
             category: args.category,
             project: normalizeProject(args.project),
             source: "mcp",
-            validUntil: args.validUntil,
           },
         );
 

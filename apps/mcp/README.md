@@ -21,7 +21,6 @@ Saves a memory that should be remembered across sessions.
 | content    | string | Yes      | Clear, atomic memory to save                     |
 | category   | string | No       | One of: preference, fact, decision, context      |
 | project    | string | No       | Project grouping; normalized before API requests |
-| validUntil | string | No       | Exact ISO 8601 expiry; omit for fuzzy timing     |
 
 Returns the memory ID and status (saved, updated, or extended).
 

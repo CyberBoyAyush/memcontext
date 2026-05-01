@@ -47,9 +47,7 @@ SAVE immediately (do not defer) when any of these happen:
 - Significant work completed → save_memory(category: "context")
 - MCP tools do not accept scope. Use the REST API or TypeScript SDK when an app needs hard per-user or per-tenant isolation.
 - Use project only when a clear project/app name is already known. Good: "memcontext", "carq". Omit if unsure. Never invent vague names like "123" or "abc".
-- Omit validUntil by default. MemContext has auto-TTL.
-- Use validUntil only when an exact expiry/deadline is known, and convert that date/time to ISO 8601 UTC.
-- Do not set validUntil for durable preferences, project conventions, completed work, architecture decisions, or reusable context. If timing is fuzzy ("currently", "for now", "this quarter"), omit it.
+- MCP memories use automatic TTL. Use the REST API, TypeScript SDK, or dashboard when exact expiry is required.
 After using search results, call memory_feedback to rate memories as helpful/not_helpful/outdated.
 Use delete_memory only when a memory was saved incorrectly and should be removed entirely.
 Duplicates are handled automatically — when in doubt, save.
