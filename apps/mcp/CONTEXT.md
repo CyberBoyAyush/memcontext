@@ -25,7 +25,6 @@ Save a memory to the user's account.
 | content | string | Yes | The memory (atomic fact) |
 | category | enum | No | preference / fact / decision / context |
 | project | string | No | Project name (lowercase) |
-| validUntil | string | No | ISO 8601 datetime when this expires |
 
 **Output:**
 

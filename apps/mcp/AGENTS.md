@@ -120,7 +120,7 @@ const saveMemorySchema = z.object({
 
 Do not expose `scope` in MCP tools. MCP is for unscoped assistant memory with optional `project` grouping; REST, SDK, and dashboard callers provide real tenant/user scopes when isolation is required.
 
-For `validUntil`, tell agents to set it only for exact known expiry/deadline times and omit it for fuzzy timing so API auto-TTL can classify it.
+Do not expose `validUntil` in MCP tool schemas. MCP memories use API auto-TTL; exact expiry belongs to REST, SDK, or dashboard surfaces.
 
 ## Environment Variables
 
