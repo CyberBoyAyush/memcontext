@@ -41,7 +41,14 @@ const envSchema = z.object({
   BETTER_AUTH_URL: z.string().url("BETTER_AUTH_URL must be a valid URL"),
   DASHBOARD_URL: z.string().url("DASHBOARD_URL must be a valid URL"),
 
-  // OAuth Providers (required - these are the only login methods)
+  // Email auth
+  RESEND_API_KEY: z.string().min(1, "RESEND_API_KEY is required"),
+  EMAIL_FROM: z.string().min(1, "EMAIL_FROM is required"),
+  TURNSTILE_SECRET_KEY: z
+    .string()
+    .min(1, "TURNSTILE_SECRET_KEY is required"),
+
+  // OAuth Providers
   GOOGLE_CLIENT_ID: z.string().min(1, "GOOGLE_CLIENT_ID is required"),
   GOOGLE_CLIENT_SECRET: z.string().min(1, "GOOGLE_CLIENT_SECRET is required"),
   GITHUB_CLIENT_ID: z.string().min(1, "GITHUB_CLIENT_ID is required"),

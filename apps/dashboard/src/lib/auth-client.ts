@@ -14,6 +14,7 @@ export const authClient = createAuthClient({
       user: {
         role: {
           type: "string",
+          required: false,
         },
       },
     }),
@@ -21,4 +22,11 @@ export const authClient = createAuthClient({
   ],
 });
 
-export const { signIn, signOut, signUp, useSession } = authClient;
+export const {
+  signIn,
+  signOut,
+  signUp,
+  useSession,
+  requestPasswordReset,
+  resetPassword,
+} = authClient;
