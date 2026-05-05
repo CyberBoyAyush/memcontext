@@ -117,3 +117,11 @@ Represent memories in the dashboard as a scope-first hierarchy: Global/unscoped 
 ## SDK Type Synchronization
 
 The published `memcontext-sdk` package is self-contained and must not depend on workspace-only packages such as `@memcontext/types`. When changing public API request/response types in `packages/types` or API docs, also update the mirrored public SDK types in `packages/sdk/src/types.ts` and verify `pnpm --filter=memcontext-sdk check-types`, `pnpm --filter=memcontext-sdk build`, and `npm pack --dry-run` from `packages/sdk` before publishing.
+
+<!-- Added: 2026-05-05 -->
+## Authentication
+Use Better Auth email/password alongside Google and GitHub OAuth. Keep dashboard auth flows on the single `apps/dashboard/src/app/(auth)/login/page.tsx` page, using modes for sign-in, sign-up, forgot password, and reset password. Verification and password reset emails are sent through Resend, and email auth endpoints use Cloudflare Turnstile CAPTCHA.
+
+<!-- Added: 2026-05-05 -->
+## Authentication Sessions
+Use a 30-day Better Auth session lifetime for dashboard users with a 1-day `updateAge`. This keeps returning users signed in while avoiding session database refreshes on every request.

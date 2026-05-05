@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import * as Dialog from "@radix-ui/react-dialog";
 import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
 import {
   User,
@@ -18,17 +19,56 @@ import {
   Moon,
   Desktop,
   Check,
+  Key,
+  PaperPlaneTilt,
+  CheckCircle,
+  WarningCircle,
+  X,
 } from "@phosphor-icons/react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { api } from "@/lib/api";
-import { signOut } from "@/lib/auth-client";
+import { requestPasswordReset, signOut } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
-import { useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+const TURNSTILE_SCRIPT_SRC =
+  "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+
+interface TurnstileRenderOptions {
+  sitekey: string;
+  theme?: "light" | "dark" | "auto";
+  size?: "normal" | "compact" | "flexible";
+  callback?: (token: string) => void;
+  "error-callback"?: () => void;
+  "expired-callback"?: () => void;
+}
+
+interface TurnstileApi {
+  render: (
+    container: HTMLElement,
+    options: TurnstileRenderOptions,
+  ) => string;
+  reset: (widgetId?: string) => void;
+  remove: (widgetId?: string) => void;
+}
+
+declare global {
+  interface Window {
+    turnstile?: TurnstileApi;
+  }
+}
 
 interface UserProfile {
   user: {
@@ -166,10 +206,308 @@ function ThemeOption({
   );
 }
 
+interface TurnstileWidgetProps {
+  onToken: (token: string | null) => void;
+  resetSignal: number;
+  theme: "light" | "dark";
+}
+
+function TurnstileWidget({ onToken, resetSignal, theme }: TurnstileWidgetProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const widgetIdRef = useRef<string | null>(null);
+
+  const renderWidget = useCallback(() => {
+    if (!TURNSTILE_SITE_KEY) return;
+    const api = window.turnstile;
+    const container = containerRef.current;
+    if (!api || !container) return;
+    if (widgetIdRef.current) return;
+    widgetIdRef.current = api.render(container, {
+      sitekey: TURNSTILE_SITE_KEY,
+      theme,
+      size: "flexible",
+      callback: (token) => onToken(token),
+      "error-callback": () => onToken(null),
+      "expired-callback": () => onToken(null),
+    });
+  }, [onToken, theme]);
+
+  // Load script once and render the widget when ready.
+  useEffect(() => {
+    if (!TURNSTILE_SITE_KEY) return;
+    if (window.turnstile) {
+      renderWidget();
+      return;
+    }
+    const existing = document.querySelector<HTMLScriptElement>(
+      `script[src="${TURNSTILE_SCRIPT_SRC}"]`,
+    );
+    if (existing) {
+      existing.addEventListener("load", renderWidget, { once: true });
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = TURNSTILE_SCRIPT_SRC;
+    script.async = true;
+    script.defer = true;
+    script.addEventListener("load", renderWidget, { once: true });
+    document.head.appendChild(script);
+  }, [renderWidget]);
+
+  // Reset widget when parent bumps the signal.
+  useEffect(() => {
+    if (resetSignal === 0) return;
+    const api = window.turnstile;
+    if (api && widgetIdRef.current) {
+      api.reset(widgetIdRef.current);
+      onToken(null);
+    }
+  }, [resetSignal, onToken]);
+
+  // Cleanup on unmount.
+  useEffect(() => {
+    return () => {
+      const api = window.turnstile;
+      if (api && widgetIdRef.current) {
+        api.remove(widgetIdRef.current);
+        widgetIdRef.current = null;
+      }
+    };
+  }, []);
+
+  if (!TURNSTILE_SITE_KEY) return null;
+
+  return (
+    <div
+      ref={containerRef}
+      className="w-full max-w-[300px]"
+      style={{ minHeight: 65 }}
+    />
+  );
+}
+
+interface PasswordSectionProps {
+  email: string | undefined;
+  resolvedTheme: string | undefined;
+}
+
+function PasswordSection({ email, resolvedTheme }: PasswordSectionProps) {
+  const [open, setOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [status, setStatus] = useState<
+    | { kind: "idle" }
+    | { kind: "success"; message: string }
+    | { kind: "error"; message: string }
+  >({ kind: "idle" });
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
+
+  const handleCaptchaToken = useCallback((token: string | null) => {
+    setCaptchaToken(token);
+  }, []);
+
+  const resetCaptcha = useCallback(() => {
+    setCaptchaResetSignal((n) => n + 1);
+    setCaptchaToken(null);
+  }, []);
+
+  const captchaConfigured = Boolean(TURNSTILE_SITE_KEY);
+  const widgetTheme: "light" | "dark" =
+    resolvedTheme === "light" ? "light" : "dark";
+
+  const handleSendLink = async () => {
+    if (!email || !captchaConfigured || !captchaToken || submitting) return;
+    setSubmitting(true);
+    setStatus({ kind: "idle" });
+    try {
+      const { error } = await requestPasswordReset(
+        {
+          email,
+          redirectTo: `${window.location.origin}/login`,
+        },
+        { headers: { "x-captcha-response": captchaToken } },
+      );
+      if (error) {
+        setStatus({
+          kind: "error",
+          message: error.message ?? "Failed to send password link",
+        });
+      } else {
+        setStatus({
+          kind: "success",
+          message:
+            "Password reset link sent. Check your inbox and spam folder.",
+        });
+      }
+    } catch {
+      setStatus({ kind: "error", message: "Failed to send password link" });
+    } finally {
+      setSubmitting(false);
+      resetCaptcha();
+    }
+  };
+
+  const disabled =
+    submitting || !email || !captchaConfigured || !captchaToken;
+
+  return (
+    <Card className="shadow-none">
+      <CardContent className="p-6">
+        <div className="space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="min-w-0 max-w-xl">
+              <h3 className="text-sm font-semibold">
+                Password
+              </h3>
+              <p className="text-sm text-foreground-muted mt-1 leading-relaxed">
+                Set or reset your password using a secure email link. This also
+                works if you signed up with Google or GitHub.
+              </p>
+            </div>
+            <Dialog.Root
+              open={open}
+              onOpenChange={(nextOpen) => {
+                setOpen(nextOpen);
+                if (nextOpen) {
+                  setStatus({ kind: "idle" });
+                  resetCaptcha();
+                }
+              }}
+            >
+              <Dialog.Trigger asChild>
+                <Button variant="secondary" className="w-full sm:w-auto">
+                  <Key className="h-4 w-4" weight="duotone" />
+                  Set or reset password
+                </Button>
+              </Dialog.Trigger>
+              <Dialog.Portal>
+                <Dialog.Overlay className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm animate-fade-in" />
+                <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-surface p-6 shadow-2xl animate-scale-in focus:outline-none">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <Dialog.Title className="text-lg font-semibold">
+                        Set or reset password
+                      </Dialog.Title>
+                      <Dialog.Description className="mt-2 text-sm leading-relaxed text-foreground-muted">
+                        We&apos;ll send a secure link to{" "}
+                        <span className="font-medium text-foreground">
+                          {email ?? "your account email"}
+                        </span>
+                        . Use it to create or update your password.
+                      </Dialog.Description>
+                    </div>
+                    <Dialog.Close asChild>
+                      <button
+                        type="button"
+                        aria-label="Close password dialog"
+                        className="rounded-lg p-1.5 text-foreground-subtle transition-colors hover:bg-surface-elevated hover:text-foreground"
+                      >
+                        <X className="h-4 w-4" weight="bold" />
+                      </button>
+                    </Dialog.Close>
+                  </div>
+
+                  <div className="mt-5 space-y-4">
+                    {!captchaConfigured && (
+                      <div className="flex items-start gap-2.5 p-3 rounded-xl border border-warning/20 bg-warning/[0.06]">
+                        <WarningCircle
+                          className="h-4 w-4 text-warning shrink-0 mt-0.5"
+                          weight="fill"
+                        />
+                        <p className="text-xs text-warning leading-relaxed">
+                          CAPTCHA is not configured. Add{" "}
+                          <code className="font-mono text-[11px]">
+                            NEXT_PUBLIC_TURNSTILE_SITE_KEY
+                          </code>{" "}
+                          to enable this action.
+                        </p>
+                      </div>
+                    )}
+
+                    {status.kind === "success" && (
+                      <div className="flex items-start gap-2.5 p-3 rounded-xl border border-success/20 bg-success/[0.06]">
+                        <CheckCircle
+                          className="h-4 w-4 text-success shrink-0 mt-0.5"
+                          weight="fill"
+                        />
+                        <p className="text-xs text-success leading-relaxed">
+                          {status.message}
+                        </p>
+                      </div>
+                    )}
+
+                    {status.kind === "error" && (
+                      <div className="flex items-start gap-2.5 p-3 rounded-xl border border-error/20 bg-error/[0.06]">
+                        <WarningCircle
+                          className="h-4 w-4 text-error shrink-0 mt-0.5"
+                          weight="fill"
+                        />
+                        <p className="text-xs text-error leading-relaxed">
+                          {status.message}
+                        </p>
+                      </div>
+                    )}
+
+                    {captchaConfigured && (
+                      <div className="rounded-xl border border-border bg-surface-elevated/50 p-3">
+                        <TurnstileWidget
+                          onToken={handleCaptchaToken}
+                          resetSignal={captchaResetSignal}
+                          theme={widgetTheme}
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1">
+                      <Dialog.Close asChild>
+                        <Button variant="outline" disabled={submitting}>
+                          Cancel
+                        </Button>
+                      </Dialog.Close>
+                      <Button onClick={handleSendLink} disabled={disabled}>
+                        {submitting ? (
+                          <>
+                            <SpinnerGap
+                              className="h-4 w-4 animate-spin"
+                              weight="bold"
+                            />
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <PaperPlaneTilt className="h-4 w-4" weight="duotone" />
+                            Send password link
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </Dialog.Content>
+              </Dialog.Portal>
+            </Dialog.Root>
+          </div>
+
+          {status.kind === "success" && (
+            <div className="flex items-start gap-2.5 p-3 rounded-xl border border-success/20 bg-success/[0.06]">
+              <CheckCircle
+                className="h-4 w-4 text-success shrink-0 mt-0.5"
+                weight="fill"
+              />
+              <p className="text-xs text-success leading-relaxed">
+                {status.message}
+              </p>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function SettingsPage() {
   const router = useRouter();
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -301,10 +639,23 @@ export default function SettingsPage() {
         </Card>
       </div>
 
-      {/* Subscription Section */}
+      {/* Account Security Section */}
       <div
         className="animate-fade-in-up"
         style={{ animationDelay: "120ms", animationFillMode: "backwards" }}
+      >
+        <SectionHeader
+          icon={Key}
+          title="Account security"
+          description="Set a password by email — works for OAuth accounts too"
+        />
+        <PasswordSection email={user?.email} resolvedTheme={resolvedTheme} />
+      </div>
+
+      {/* Subscription Section */}
+      <div
+        className="animate-fade-in-up"
+        style={{ animationDelay: "180ms", animationFillMode: "backwards" }}
       >
         <SectionHeader
           icon={CreditCard}
@@ -457,7 +808,7 @@ export default function SettingsPage() {
       {/* Appearance Section */}
       <div
         className="animate-fade-in-up"
-        style={{ animationDelay: "180ms", animationFillMode: "backwards" }}
+        style={{ animationDelay: "240ms", animationFillMode: "backwards" }}
       >
         <SectionHeader
           icon={PaintBrush}
@@ -560,7 +911,7 @@ export default function SettingsPage() {
       {/* Danger Zone */}
       <div
         className="animate-fade-in-up"
-        style={{ animationDelay: "240ms", animationFillMode: "backwards" }}
+        style={{ animationDelay: "300ms", animationFillMode: "backwards" }}
       >
         <SectionHeader
           icon={Warning}
