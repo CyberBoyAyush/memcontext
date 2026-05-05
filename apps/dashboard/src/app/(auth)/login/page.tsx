@@ -223,6 +223,11 @@ function PasswordInput({ id, ...props }: PasswordInputProps) {
   );
 }
 
+function safeRedirectPath(path: string | null) {
+  if (!path?.startsWith("/") || path.startsWith("//")) return "/dashboard";
+  return path;
+}
+
 interface AuthFlowProps {
   initialMode: Mode;
   resetToken: string | null;
@@ -298,6 +303,10 @@ function AuthFlow({
       setError("CAPTCHA is not configured. Add NEXT_PUBLIC_TURNSTILE_SITE_KEY.");
       return;
     }
+    if (captchaMissing) {
+      setError("Please complete the CAPTCHA before signing in.");
+      return;
+    }
     setError(null);
     setInfo(null);
     setSubmitting(true);
@@ -324,6 +333,10 @@ function AuthFlow({
     e.preventDefault();
     if (captchaNotConfigured) {
       setError("CAPTCHA is not configured. Add NEXT_PUBLIC_TURNSTILE_SITE_KEY.");
+      return;
+    }
+    if (captchaMissing) {
+      setError("Please complete the CAPTCHA before creating your account.");
       return;
     }
     setError(null);
@@ -354,6 +367,10 @@ function AuthFlow({
     e.preventDefault();
     if (captchaNotConfigured) {
       setError("CAPTCHA is not configured. Add NEXT_PUBLIC_TURNSTILE_SITE_KEY.");
+      return;
+    }
+    if (captchaMissing) {
+      setError("Please complete the CAPTCHA before requesting a reset link.");
       return;
     }
     setError(null);
@@ -861,7 +878,7 @@ function VerifiedSuccess() {
 
 function LoginInner() {
   const searchParams = useSearchParams();
-  const from = searchParams.get("from") || "/dashboard";
+  const from = safeRedirectPath(searchParams.get("from"));
   const token = searchParams.get("token");
   const verifiedParam = searchParams.get("verified");
   const isVerified = verifiedParam === "true" || verifiedParam === "1";
