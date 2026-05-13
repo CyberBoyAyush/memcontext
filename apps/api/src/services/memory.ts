@@ -703,6 +703,11 @@ async function processMemorySource(memorySource: MemorySourceRow) {
         skipLimitCheck: true,
       },
     );
+
+    await db
+      .update(memorySources)
+      .set({ updatedAt: new Date() })
+      .where(eq(memorySources.id, memorySource.id));
   }
 
   await db
@@ -744,11 +749,18 @@ async function drainPendingMemorySources() {
   memorySourceProcessorRunning = true;
 
   try {
+    let emptyClaims = 0;
     while (true) {
       const memorySource = await claimNextPendingMemorySource();
       if (!memorySource) {
-        break;
+        emptyClaims += 1;
+        if (emptyClaims >= 2) {
+          break;
+        }
+        continue;
       }
+
+      emptyClaims = 0;
 
       try {
         await processMemorySource(memorySource);

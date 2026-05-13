@@ -226,7 +226,7 @@ export interface ExpandMemoryResult {
 }
 
 const extractAtomicMemoriesSchema = z.object({
-  memories: z.array(z.string()).max(40),
+  memories: z.array(z.string()).max(100),
 });
 
 const expandMemorySchema = z.object({
