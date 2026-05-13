@@ -67,6 +67,7 @@ const LONG_CONTENT_THRESHOLD = 800;
 const ESTIMATED_CHARS_PER_MEMORY = 200;
 const MAX_RESERVED_MEMORY_SLOTS = 25;
 const MEMORY_SOURCE_POLL_INTERVAL_MS = 1500;
+const MEMORY_SOURCE_STALE_AFTER_MS = 60 * 60 * 1000;
 
 let memorySourceProcessorStarted = false;
 let memorySourceProcessorRunning = false;
@@ -618,10 +619,19 @@ async function enqueueLongMemorySource(
 }
 
 async function claimNextPendingMemorySource() {
+  const staleBefore = new Date(Date.now() - MEMORY_SOURCE_STALE_AFTER_MS);
   const [candidate] = await db
     .select({ id: memorySources.id })
     .from(memorySources)
-    .where(eq(memorySources.status, "pending"))
+    .where(
+      or(
+        eq(memorySources.status, "pending"),
+        and(
+          eq(memorySources.status, "processing"),
+          lt(memorySources.updatedAt, staleBefore),
+        ),
+      ),
+    )
     .orderBy(asc(memorySources.createdAt))
     .limit(1);
 
@@ -639,7 +649,13 @@ async function claimNextPendingMemorySource() {
     .where(
       and(
         eq(memorySources.id, candidate.id),
-        eq(memorySources.status, "pending"),
+        or(
+          eq(memorySources.status, "pending"),
+          and(
+            eq(memorySources.status, "processing"),
+            lt(memorySources.updatedAt, staleBefore),
+          ),
+        ),
       ),
     )
     .returning();
@@ -653,7 +669,21 @@ async function processMemorySource(memorySource: MemorySourceRow) {
   const candidateMemories = extractedMemories.slice(0, memorySource.reservedSlots);
 
   if (candidateMemories.length === 0) {
-    throw new Error("Long-content extraction returned no atomic memories");
+    await db
+      .update(memorySources)
+      .set({
+        status: "completed",
+        completedAt: new Date(),
+        updatedAt: new Date(),
+        error: null,
+        payload: {
+          contentLength: payload.content.length,
+          validUntil: payload.validUntil ?? null,
+          extractedCount: 0,
+        },
+      })
+      .where(eq(memorySources.id, memorySource.id));
+    return;
   }
 
   for (const candidate of candidateMemories) {
@@ -685,6 +715,7 @@ async function processMemorySource(memorySource: MemorySourceRow) {
       payload: {
         contentLength: payload.content.length,
         validUntil: payload.validUntil ?? null,
+        extractedCount: candidateMemories.length,
       },
     })
     .where(eq(memorySources.id, memorySource.id));
