@@ -1,7 +1,16 @@
-import { db, memories, memoryFeedback, memoryRelations } from "../db/index.js";
+import {
+  db,
+  memories,
+  memoryFeedback,
+  memoryRelations,
+  memorySources,
+  apiKeys,
+} from "../db/index.js";
+import type { MemorySourceRow } from "../db/index.js";
 import {
   generateEmbedding,
   expandMemory,
+  extractAtomicMemories,
   generateQueryVariants,
 } from "./embedding.js";
 import {
@@ -13,6 +22,7 @@ import {
   decrementMemoryCount,
   checkMemoryLimit,
 } from "./subscription.js";
+import { invalidateApiKey, invalidateCachedProfile } from "./cache.js";
 import { normalizeProjectName, normalizeScope } from "../utils/index.js";
 import { logger } from "../lib/logger.js";
 import {
@@ -53,6 +63,13 @@ const SIMILARITY_THRESHOLD = 0.3;
 const SEARCH_THRESHOLD = 0.6;
 const SIMILAR_MEMORIES_LIMIT = 5;
 const NO_PROJECT_FILTER_VALUE = "__memcontext_no_project__";
+const LONG_CONTENT_THRESHOLD = 800;
+const ESTIMATED_CHARS_PER_MEMORY = 200;
+const MAX_RESERVED_MEMORY_SLOTS = 25;
+const MEMORY_SOURCE_POLL_INTERVAL_MS = 1500;
+
+let memorySourceProcessorStarted = false;
+let memorySourceProcessorRunning = false;
 
 interface SaveMemoryParams {
   userId: string;
@@ -74,6 +91,17 @@ type SaveMemoryResult =
       limit?: number;
     };
 
+interface MemorySourcePayload {
+  content: string;
+  validUntil?: string | null;
+}
+
+interface AtomicSaveOptions {
+  scope?: string;
+  project?: string;
+  skipLimitCheck?: boolean;
+}
+
 interface SearchMemoriesParams {
   userId: string;
   query: string;
@@ -91,6 +119,40 @@ export async function saveMemory(
   const { userId, content, category, source, timing, validUntil } = params;
   const scope = normalizeScope(params.scope);
   const project = normalizeProjectName(params.project);
+
+  if (content.length > LONG_CONTENT_THRESHOLD) {
+    return enqueueLongMemorySource({
+      userId,
+      content,
+      category,
+      source,
+      scope,
+      project,
+      validUntil,
+    });
+  }
+
+  return saveAtomicMemory(
+    {
+      userId,
+      content,
+      category,
+      scope,
+      project,
+      source,
+      timing,
+      validUntil,
+    },
+    { scope, project },
+  );
+}
+
+async function saveAtomicMemory(
+  params: SaveMemoryParams,
+  options: AtomicSaveOptions,
+): Promise<SaveMemoryResult> {
+  const { userId, content, category, source, timing, validUntil } = params;
+  const { scope, project, skipLimitCheck = false } = options;
   const userValidUntil = validUntil ? new Date(validUntil) : undefined;
 
   const expandResult = await expandMemory(content, timing);
@@ -115,13 +177,18 @@ export async function saveMemory(
     const result = await (timing
       ? withTiming(timing, "db_insert", async () =>
           db.transaction(async (tx) => {
-            const limitCheck = await checkMemoryLimit(userId, tx);
-            if (!limitCheck.allowed) {
-              return {
-                limitExceeded: true,
-                current: limitCheck.current,
-                limit: limitCheck.limit,
-              };
+            if (!skipLimitCheck) {
+              const limitCheck = await checkMemoryLimit(userId, {
+                incrementBy: 1,
+                tx,
+              });
+              if (!limitCheck.allowed) {
+                return {
+                  limitExceeded: true,
+                  current: limitCheck.current,
+                  limit: limitCheck.limit,
+                };
+              }
             }
             const [newMemory] = await tx
               .insert(memories)
@@ -142,13 +209,18 @@ export async function saveMemory(
           }),
         )
       : db.transaction(async (tx) => {
-          const limitCheck = await checkMemoryLimit(userId, tx);
-          if (!limitCheck.allowed) {
-            return {
-              limitExceeded: true,
-              current: limitCheck.current,
-              limit: limitCheck.limit,
-            };
+          if (!skipLimitCheck) {
+            const limitCheck = await checkMemoryLimit(userId, {
+              incrementBy: 1,
+              tx,
+            });
+            if (!limitCheck.allowed) {
+              return {
+                limitExceeded: true,
+                current: limitCheck.current,
+                limit: limitCheck.limit,
+              };
+            }
           }
           const [newMemory] = await tx
             .insert(memories)
@@ -346,13 +418,18 @@ export async function saveMemory(
   const result = await (timing
     ? withTiming(timing, "db_insert_related", async () =>
         db.transaction(async (tx) => {
-          const limitCheck = await checkMemoryLimit(userId, tx);
-          if (!limitCheck.allowed) {
-            return {
-              limitExceeded: true,
-              current: limitCheck.current,
-              limit: limitCheck.limit,
-            };
+          if (!skipLimitCheck) {
+            const limitCheck = await checkMemoryLimit(userId, {
+              incrementBy: 1,
+              tx,
+            });
+            if (!limitCheck.allowed) {
+              return {
+                limitExceeded: true,
+                current: limitCheck.current,
+                limit: limitCheck.limit,
+              };
+            }
           }
           const [newMemory] = await tx
             .insert(memories)
@@ -379,13 +456,18 @@ export async function saveMemory(
         }),
       )
     : db.transaction(async (tx) => {
-        const limitCheck = await checkMemoryLimit(userId, tx);
-        if (!limitCheck.allowed) {
-          return {
-            limitExceeded: true,
-            current: limitCheck.current,
-            limit: limitCheck.limit,
-          };
+        if (!skipLimitCheck) {
+          const limitCheck = await checkMemoryLimit(userId, {
+            incrementBy: 1,
+            tx,
+          });
+          if (!limitCheck.allowed) {
+            return {
+              limitExceeded: true,
+              current: limitCheck.current,
+              limit: limitCheck.limit,
+            };
+          }
         }
         const [newMemory] = await tx
           .insert(memories)
@@ -443,6 +525,245 @@ export async function saveMemory(
     id: result.id!,
     status: classificationStatus,
   };
+}
+
+function estimateReservedMemorySlots(content: string): number {
+  return Math.min(
+    MAX_RESERVED_MEMORY_SLOTS,
+    Math.max(2, Math.ceil(content.length / ESTIMATED_CHARS_PER_MEMORY)),
+  );
+}
+
+async function enqueueLongMemorySource(
+  params: SaveMemoryParams & { scope?: string; project?: string },
+): Promise<SaveMemoryResult> {
+  const reservedSlots = estimateReservedMemorySlots(params.content);
+  const payload: MemorySourcePayload = {
+    content: params.content,
+    validUntil: params.validUntil ?? null,
+  };
+
+  const result = await db.transaction(async (tx) => {
+    const limitCheck = await checkMemoryLimit(params.userId, {
+      incrementBy: reservedSlots,
+      tx,
+    });
+    if (!limitCheck.allowed) {
+      return {
+        limitExceeded: true,
+        current: limitCheck.current,
+        limit: limitCheck.limit,
+      };
+    }
+
+    const [memorySource] = await tx
+      .insert(memorySources)
+      .values({
+        userId: params.userId,
+        scope: params.scope,
+        project: params.project,
+        category: params.category,
+        source: params.source,
+        sourceType: "text",
+        status: "pending",
+        reservedSlots,
+        payload,
+        updatedAt: new Date(),
+      })
+      .returning({ id: memorySources.id, reservedSlots: memorySources.reservedSlots });
+
+    return { limitExceeded: false, id: memorySource.id, reservedSlots: memorySource.reservedSlots };
+  });
+
+  if (result.limitExceeded) {
+    logger.warn(
+      {
+        userId: params.userId,
+        current: result.current,
+        limit: result.limit,
+        reservedSlots,
+      },
+      "memory limit exceeded for long-content save",
+    );
+    return {
+      id: "",
+      status: "limit_exceeded",
+      current: result.current,
+      limit: result.limit,
+    };
+  }
+
+  logger.info(
+    {
+      memorySourceId: result.id,
+      userId: params.userId,
+      scope: params.scope,
+      project: params.project,
+      contentLength: params.content.length,
+      reservedSlots: result.reservedSlots,
+      status: "accepted",
+    },
+    "long-content memory accepted for background processing",
+  );
+
+  kickMemorySourceProcessor();
+
+  return {
+    jobId: result.id!,
+    status: "accepted",
+    message:
+      "Memory accepted for processing. Large content will be extracted into atomic memories shortly.",
+    reservedSlots: result.reservedSlots,
+  };
+}
+
+async function claimNextPendingMemorySource() {
+  const [candidate] = await db
+    .select({ id: memorySources.id })
+    .from(memorySources)
+    .where(eq(memorySources.status, "pending"))
+    .orderBy(asc(memorySources.createdAt))
+    .limit(1);
+
+  if (!candidate) {
+    return null;
+  }
+
+  const [claimed] = await db
+    .update(memorySources)
+    .set({
+      status: "processing",
+      startedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(memorySources.id, candidate.id),
+        eq(memorySources.status, "pending"),
+      ),
+    )
+    .returning();
+
+  return claimed ?? null;
+}
+
+async function processMemorySource(memorySource: MemorySourceRow) {
+  const payload = memorySource.payload as MemorySourcePayload;
+  const extractedMemories = await extractAtomicMemories(payload.content);
+  const candidateMemories = extractedMemories.slice(0, memorySource.reservedSlots);
+
+  if (candidateMemories.length === 0) {
+    throw new Error("Long-content extraction returned no atomic memories");
+  }
+
+  for (const candidate of candidateMemories) {
+    await saveAtomicMemory(
+      {
+        userId: memorySource.userId,
+        content: candidate,
+        category: (memorySource.category as MemoryCategory | null) ?? undefined,
+        scope: memorySource.scope ?? undefined,
+        project: memorySource.project ?? undefined,
+        source: memorySource.source as MemorySource,
+        validUntil: payload.validUntil ?? undefined,
+      },
+      {
+        scope: memorySource.scope ?? undefined,
+        project: memorySource.project ?? undefined,
+        skipLimitCheck: true,
+      },
+    );
+  }
+
+  await db
+    .update(memorySources)
+    .set({
+      status: "completed",
+      completedAt: new Date(),
+      updatedAt: new Date(),
+      error: null,
+      payload: {
+        contentLength: payload.content.length,
+        validUntil: payload.validUntil ?? null,
+      },
+    })
+    .where(eq(memorySources.id, memorySource.id));
+
+  const userApiKeys = await db
+    .select({ keyHash: apiKeys.keyHash })
+    .from(apiKeys)
+    .where(eq(apiKeys.userId, memorySource.userId));
+
+  await Promise.all(
+    userApiKeys.map((apiKeyRow) => invalidateApiKey(apiKeyRow.keyHash)),
+  );
+
+  await invalidateCachedProfile(
+    memorySource.userId,
+    memorySource.scope ?? undefined,
+    memorySource.project ?? undefined,
+  ).catch(() => {});
+}
+
+async function drainPendingMemorySources() {
+  if (memorySourceProcessorRunning) {
+    return;
+  }
+
+  memorySourceProcessorRunning = true;
+
+  try {
+    while (true) {
+      const memorySource = await claimNextPendingMemorySource();
+      if (!memorySource) {
+        break;
+      }
+
+      try {
+        await processMemorySource(memorySource);
+      } catch (error) {
+        await db
+          .update(memorySources)
+          .set({
+            status: "failed",
+            completedAt: new Date(),
+            updatedAt: new Date(),
+            error: error instanceof Error ? error.message : String(error),
+          })
+          .where(eq(memorySources.id, memorySource.id));
+
+        logger.error(
+          {
+            memorySourceId: memorySource.id,
+            userId: memorySource.userId,
+            errorMessage: error instanceof Error ? error.message : String(error),
+          },
+          "background long-content memory processing failed",
+        );
+      }
+    }
+  } finally {
+    memorySourceProcessorRunning = false;
+  }
+}
+
+function kickMemorySourceProcessor() {
+  if (memorySourceProcessorStarted) {
+    void drainPendingMemorySources();
+  }
+}
+
+export function startMemorySourceProcessor() {
+  if (memorySourceProcessorStarted) {
+    return;
+  }
+
+  memorySourceProcessorStarted = true;
+  const timer = setInterval(() => {
+    void drainPendingMemorySources();
+  }, MEMORY_SOURCE_POLL_INTERVAL_MS);
+  timer.unref();
+  void drainPendingMemorySources();
 }
 
 interface SimilarMemoryResult {

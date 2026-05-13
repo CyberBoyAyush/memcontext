@@ -100,6 +100,7 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
         "(6) A project convention or reusable pattern is established. " +
         "Do not defer or batch saves — save the moment the trigger occurs. " +
         "Do not save ephemeral task state, one-off debug info, or trivial details with no future value. " +
+        "Long notes may be accepted for background extraction into multiple atomic memories while shorter notes are saved immediately. " +
         "MCP memories use automatic TTL; use REST/SDK/dashboard for exact expiry. " +
         "The system handles duplicates and updates automatically — re-saving an already-known fact is safe, the system deduplicates automatically.",
       inputSchema: saveMemorySchema,

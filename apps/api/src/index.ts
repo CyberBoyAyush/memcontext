@@ -22,6 +22,7 @@ import userRoutes from "./routes/user.js";
 import waitlistRoutes from "./routes/waitlist.js";
 import adminRoutes from "./routes/admin.js";
 import subscriptionRoutes from "./routes/subscription.js";
+import { startMemorySourceProcessor } from "./services/memory.js";
 import type { HealthResponse } from "@memcontext/types";
 
 const app = new Hono();
@@ -205,6 +206,8 @@ logger.info(
   },
   "starting server",
 );
+
+startMemorySourceProcessor();
 
 serve({
   fetch: app.fetch,

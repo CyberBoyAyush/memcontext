@@ -45,6 +45,7 @@ SAVE immediately (do not defer) when any of these happen:
 - User corrects you or says "remember" → save_memory(category: "fact")
 - Important project fact learned → save_memory(category: "fact", project: "<known-project-name>")
 - Significant work completed → save_memory(category: "context")
+- Long notes may be accepted for background extraction into multiple atomic memories while shorter notes are saved immediately.
 - MCP tools do not accept scope. Use the REST API or TypeScript SDK when an app needs hard per-user or per-tenant isolation.
 - Use project only when a clear project/app name is already known. Good: "memcontext", "carq". Omit if unsure. Never invent vague names like "123" or "abc".
 - MCP memories use automatic TTL. Use the REST API, TypeScript SDK, or dashboard when exact expiry is required.

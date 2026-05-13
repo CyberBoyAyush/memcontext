@@ -42,6 +42,8 @@ API keys are created from the [MemContext dashboard](https://app.memcontext.in).
 
 All successful responses return JSON. Error responses follow a consistent shape:
 
+For `POST /api/memories`, shorter memories usually return `201` with a final save result, while larger notes may return `202 Accepted` with a `jobId` and message. In that case, MemContext stores the submitted source note immediately and extracts atomic memories in the background.
+
 ```json
 {
   "error": "Human-readable error message",

@@ -38,6 +38,9 @@ The `status` field tells you what happened:
 | `updated`   | New memory superseded an existing one         |
 | `extended`  | New memory extends an existing one            |
 | `duplicate` | Content already exists, no new memory created |
+| `accepted`  | Large content accepted for background extraction |
+
+Longer notes may return `202 Accepted` with a `jobId` and message. In that case, MemContext stores the source note immediately and extracts atomic memories in the background.
 
 ## 3. Search memories
 

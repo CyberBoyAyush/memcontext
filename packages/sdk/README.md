@@ -36,6 +36,8 @@ const results = await projectMemory.search({
 console.log(results.memories);
 ```
 
+`save()` may return either a final synchronous result (`saved`, `updated`, `extended`, `duplicate`) or `accepted` for larger notes. When the status is `accepted`, the response includes a `jobId` and message because MemContext stored the source note and will extract atomic memories in the background.
+
 ## Scope And Projects
 
 Use `scope` as the hard isolation boundary when one API key serves multiple users or tenants. Use `project` as a grouping filter inside that scope.

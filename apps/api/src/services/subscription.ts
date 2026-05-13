@@ -1,8 +1,13 @@
-import { db, subscriptions, PLAN_LIMITS } from "../db/index.js";
+import { db, subscriptions, PLAN_LIMITS, memorySources } from "../db/index.js";
 import type { PlanType, SubscriptionStatus } from "../db/schema.js";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+interface CheckMemoryLimitOptions {
+  incrementBy?: number;
+  tx?: Transaction;
+}
 
 export interface MemoryLimitCheck {
   allowed: boolean;
@@ -47,13 +52,28 @@ export async function getOrCreateSubscription(
 
 export async function checkMemoryLimit(
   userId: string,
-  tx?: Transaction,
+  options: CheckMemoryLimitOptions = {},
 ): Promise<MemoryLimitCheck> {
+  const { incrementBy = 1, tx } = options;
+  const executor = tx ?? db;
   const sub = await getOrCreateSubscription(userId, tx);
+  const [reserved] = await executor
+    .select({
+      total: sql<number>`coalesce(sum(${memorySources.reservedSlots}), 0)::int`,
+    })
+    .from(memorySources)
+    .where(
+      and(
+        eq(memorySources.userId, userId),
+        inArray(memorySources.status, ["pending", "processing"]),
+      ),
+    );
+  const activeReserved = reserved?.total ?? 0;
+  const current = sub.memoryCount + activeReserved;
 
   return {
-    allowed: sub.memoryCount < sub.memoryLimit,
-    current: sub.memoryCount,
+    allowed: current + incrementBy <= sub.memoryLimit,
+    current,
     limit: sub.memoryLimit,
     plan: sub.plan as PlanType,
   };

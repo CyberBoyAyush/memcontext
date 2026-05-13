@@ -9,6 +9,7 @@ import {
   index,
   pgEnum,
   vector,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -112,6 +113,31 @@ export const memories = pgTable(
   ],
 );
 
+export const memorySources = pgTable(
+  "memory_sources",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull(),
+    scope: text("scope"),
+    project: text("project"),
+    category: text("category"),
+    source: text("source").notNull(),
+    sourceType: text("source_type").notNull().default("text"),
+    status: text("status").notNull().default("pending"),
+    reservedSlots: integer("reserved_slots").notNull().default(0),
+    payload: jsonb("payload").notNull(),
+    error: text("error"),
+    startedAt: timestamp("started_at"),
+    completedAt: timestamp("completed_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("memory_sources_user_status_idx").on(table.userId, table.status),
+    index("memory_sources_status_created_idx").on(table.status, table.createdAt),
+  ],
+);
+
 export const memoryRelations = pgTable(
   "memory_relations",
   {
@@ -152,6 +178,8 @@ export type ApiKeyRow = typeof apiKeys.$inferSelect;
 export type NewApiKeyRow = typeof apiKeys.$inferInsert;
 export type MemoryRow = typeof memories.$inferSelect;
 export type NewMemoryRow = typeof memories.$inferInsert;
+export type MemorySourceRow = typeof memorySources.$inferSelect;
+export type NewMemorySourceRow = typeof memorySources.$inferInsert;
 export type MemoryRelationRow = typeof memoryRelations.$inferSelect;
 export type NewMemoryRelationRow = typeof memoryRelations.$inferInsert;
 export type MemoryFeedbackRow = typeof memoryFeedback.$inferSelect;

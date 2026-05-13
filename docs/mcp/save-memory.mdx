@@ -5,7 +5,7 @@ description: "Persist durable user or project knowledge across sessions."
 
 ## Description
 
-`save_memory` stores a piece of knowledge that should be remembered across sessions. MemContext automatically handles deduplication, versioning, and relationship classification — you just provide the content.
+`save_memory` stores a piece of knowledge that should be remembered across sessions. MemContext automatically handles deduplication, versioning, and relationship classification. Short memories are saved immediately; larger notes may be accepted for background extraction into multiple atomic memories.
 
 ## Parameters
 
@@ -26,11 +26,20 @@ description: "Persist durable user or project knowledge across sessions."
 
 ## What happens on save
 
+For normal-size memories:
+
 1. Content is expanded into a more searchable form via LLM
 2. An embedding is generated
 3. Similar existing memories are found
 4. The relationship is classified (update, extend, similar, or duplicate)
 5. The memory is saved, supersedes an existing one, extends one, or is deduplicated
+
+For larger notes:
+
+1. The request is accepted quickly
+2. The source note is stored for background processing
+3. MemContext extracts atomic memories from the note
+4. Each extracted memory reuses the normal save pipeline above
 
 ## Timing guidance
 
@@ -46,8 +55,11 @@ The response includes a `status` field indicating what happened:
 | `updated`   | Superseded an existing memory (old one marked non-current) |
 | `extended`  | Created a relation to an existing memory                   |
 | `duplicate` | Content already exists, nothing saved                      |
+| `accepted`  | Large content accepted for background extraction           |
 
 Duplicates are handled automatically — re-saving an already-known fact is safe.
+
+When `status` is `accepted`, the response includes a `jobId` plus a message describing the background extraction.
 
 ## Example
 
