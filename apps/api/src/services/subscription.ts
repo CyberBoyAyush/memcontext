@@ -9,6 +9,23 @@ interface CheckMemoryLimitOptions {
   tx?: Transaction;
 }
 
+async function lockSubscriptionRow(
+  userId: string,
+  tx?: Transaction,
+): Promise<void> {
+  if (!tx) {
+    return;
+  }
+
+  // Transaction-only lock: serialize per-user reservation checks inside
+  // long-save transactions so concurrent requests cannot both over-allocate
+  // against the same plan limit. This no-op UPDATE is a row-lock workaround.
+  await tx
+    .update(subscriptions)
+    .set({ updatedAt: sql`${subscriptions.updatedAt}` })
+    .where(eq(subscriptions.userId, userId));
+}
+
 export interface MemoryLimitCheck {
   allowed: boolean;
   current: number;
@@ -56,7 +73,13 @@ export async function checkMemoryLimit(
 ): Promise<MemoryLimitCheck> {
   const { incrementBy = 1, tx } = options;
   const executor = tx ?? db;
-  const sub = await getOrCreateSubscription(userId, tx);
+  await getOrCreateSubscription(userId, tx);
+  await lockSubscriptionRow(userId, tx);
+  const [sub] = await executor
+    .select()
+    .from(subscriptions)
+    .where(eq(subscriptions.userId, userId))
+    .limit(1);
   const [reserved] = await executor
     .select({
       total: sql<number>`coalesce(sum(${memorySources.reservedSlots}), 0)::int`,
