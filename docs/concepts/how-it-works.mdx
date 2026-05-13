@@ -5,7 +5,9 @@ description: "How MemContext saves, classifies, and retrieves memory."
 
 ## Save flow
 
-When a memory is saved via `POST /api/memories` or `save_memory`, MemContext runs a multi-step pipeline:
+When a memory is saved via `POST /api/memories` or `save_memory`, MemContext takes one of two paths:
+
+### Short memories
 
 1. **Expand + classify** — the content is rewritten for searchability AND classified as permanent, short-term, medium-term, or long-term
 2. **Auto-TTL** — if no `validUntil` was explicitly provided, the system auto-sets expiry based on the temporal classification (short-term = 7 days, medium-term = 30 days, long-term = 90 days, permanent = no expiry)
@@ -13,6 +15,13 @@ When a memory is saved via `POST /api/memories` or `save_memory`, MemContext run
 4. **Find similar** — existing current memories are searched for semantic overlap
 5. **Classify** — if similar memories exist, an LLM classifies the relationship
 6. **Act** — based on the classification, the system saves, updates, extends, or deduplicates
+
+### Longer notes
+
+1. **Accept quickly** — the request returns `202 Accepted`
+2. **Store source** — the submitted note is stored for background processing
+3. **Extract atomic memories** — MemContext uses an LLM to split the note into distinct searchable memories
+4. **Reuse the normal save path** — each extracted memory goes through the short-memory flow above
 
 This means you do not need to manually manage deduplication, version chains, or expiry. Save freely — the system handles it. If you explicitly pass `validUntil`, the auto-TTL is skipped and your value is used.
 
@@ -77,3 +86,5 @@ Expired memories are automatically excluded from search results but not deleted.
 ## Memory limits
 
 Each plan has a memory limit. When the limit is reached, new save requests return `403` with the current count and limit. The check happens both before and during the save transaction to handle concurrent requests safely.
+
+For long-content saves, MemContext reserves an estimated number of memory slots while the background job is pending, then releases any unused slots after extraction completes.

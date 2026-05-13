@@ -14,7 +14,7 @@ The server exposes four tools to AI assistants:
 
 ### save_memory
 
-Saves a memory that should be remembered across sessions.
+Saves a memory that should be remembered across sessions. Short memories are saved immediately; larger notes may be accepted for background extraction into multiple atomic memories.
 
 | Parameter  | Type   | Required | Description                                      |
 | ---------- | ------ | -------- | ------------------------------------------------ |
@@ -22,7 +22,7 @@ Saves a memory that should be remembered across sessions.
 | category   | string | No       | One of: preference, fact, decision, context      |
 | project    | string | No       | Project grouping; normalized before API requests |
 
-Returns the memory ID and status (saved, updated, or extended).
+Returns a status such as `saved`, `updated`, `extended`, `duplicate`, or `accepted`. When the status is `accepted`, the response includes a `jobId` and message describing the background extraction.
 
 ### search_memory
 

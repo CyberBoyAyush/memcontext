@@ -176,7 +176,7 @@ app.post(
     ) {
       const persistedMemory = await getMemory(
         auth.userId,
-        result.id,
+        result.id!,
         body.scope,
       );
       await invalidateCachedProfile(
@@ -187,7 +187,7 @@ app.post(
       await invalidateCachedProfile(auth.userId, body.scope).catch(() => {});
     }
 
-    return c.json(result, 201);
+    return c.json(result, result.status === "accepted" ? 202 : 201);
   },
 );
 

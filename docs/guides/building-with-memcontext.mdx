@@ -18,6 +18,8 @@ A typical integration follows four steps:
 3. **Profile** (optional) — fetch broad context in one call via `GET /api/memories/profile`
 4. **Feedback** — record retrieval quality via `POST /api/memories/:id/feedback`
 
+For larger notes, `POST /api/memories` may return `202 Accepted`. This means the note has been stored and will be extracted into atomic memories in the background.
+
 For multi-user applications, always pass a stable end-user or tenant ID in `scope`. `project` remains a secondary grouping field inside that scope.
 
 ## Example: Support bot
@@ -101,6 +103,11 @@ async function saveMemory(
   return res.json();
 }
 ```
+
+If you submit a long note or transcript, check the returned `status`:
+
+- `saved`, `updated`, `extended`, `duplicate` → final synchronous result
+- `accepted` → source stored, background extraction in progress
 
 ## TypeScript SDK example
 

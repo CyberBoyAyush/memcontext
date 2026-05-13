@@ -43,6 +43,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SaveMemoryResponse"
+        "202":
+          description: Memory accepted for background extraction into atomic memories.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaveMemoryResponse"
         "403":
           description: Memory limit exceeded for the current plan.
           content:
@@ -510,20 +516,25 @@ components:
           description: ISO 8601 datetime when this memory expires. Omit for permanent memories.
     SaveMemoryResponse:
       type: object
-      required: [id, status]
+      required: [status]
       properties:
         id:
           type: string
           format: uuid
-          description: ID of the saved or matched memory.
+          description: ID of the saved or matched memory for synchronous results.
+        jobId:
+          type: string
+          format: uuid
+          description: Background job/source ID for accepted long-content processing.
         status:
           type: string
-          enum: [saved, updated, extended, duplicate]
+          enum: [saved, updated, extended, duplicate, accepted]
           description: |
             - `saved` - New memory created.
             - `updated` - New memory superseded an existing one.
             - `extended` - New memory extends an existing one (relation created).
             - `duplicate` - Content already exists; no new memory created.
+            - `accepted` - Large content was accepted for background extraction into atomic memories.
         superseded:
           type: string
           format: uuid
@@ -532,6 +543,13 @@ components:
           type: string
           format: uuid
           description: ID of the existing duplicate (when status is `duplicate`).
+        message:
+          type: string
+          description: Optional human-readable acknowledgement for async processing.
+        reservedSlots:
+          type: integer
+          minimum: 0
+          description: Number of memory slots reserved while a long-content job is pending.
     SearchMemoryResult:
       type: object
       required: [id, content, relevance, createdAt]

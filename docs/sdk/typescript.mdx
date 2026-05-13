@@ -76,7 +76,7 @@ const projectMemory = userMemory.withProject("memcontext");
 
 ### `save(request, options?)`
 
-Saves durable memory. MemContext automatically handles embeddings, deduplication, relationship classification, and versioning.
+Saves durable memory. MemContext automatically handles embeddings, deduplication, relationship classification, and versioning. Larger notes may be accepted for background extraction into atomic memories.
 
 ```typescript
 await client.save({
@@ -87,7 +87,9 @@ await client.save({
 });
 ```
 
-Returns a save result with `status` set to `saved`, `updated`, `extended`, or `duplicate`.
+Returns a save result with `status` set to `saved`, `updated`, `extended`, `duplicate`, or `accepted`.
+
+When `status` is `accepted`, the response includes a `jobId` and message. This means the note was stored and will be split into atomic memories in the background.
 
 ### `search(request)`
 

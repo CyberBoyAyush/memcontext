@@ -1,8 +1,30 @@
-import { db, subscriptions, PLAN_LIMITS } from "../db/index.js";
+import { db, subscriptions, PLAN_LIMITS, memorySources } from "../db/index.js";
 import type { PlanType, SubscriptionStatus } from "../db/schema.js";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+interface CheckMemoryLimitOptions {
+  incrementBy?: number;
+  tx?: Transaction;
+}
+
+async function lockSubscriptionRow(
+  userId: string,
+  tx?: Transaction,
+): Promise<void> {
+  if (!tx) {
+    return;
+  }
+
+  // Transaction-only lock: serialize per-user reservation checks inside
+  // long-save transactions so concurrent requests cannot both over-allocate
+  // against the same plan limit. This no-op UPDATE is a row-lock workaround.
+  await tx
+    .update(subscriptions)
+    .set({ updatedAt: sql`${subscriptions.updatedAt}` })
+    .where(eq(subscriptions.userId, userId));
+}
 
 export interface MemoryLimitCheck {
   allowed: boolean;
@@ -47,13 +69,34 @@ export async function getOrCreateSubscription(
 
 export async function checkMemoryLimit(
   userId: string,
-  tx?: Transaction,
+  options: CheckMemoryLimitOptions = {},
 ): Promise<MemoryLimitCheck> {
-  const sub = await getOrCreateSubscription(userId, tx);
+  const { incrementBy = 1, tx } = options;
+  const executor = tx ?? db;
+  await getOrCreateSubscription(userId, tx);
+  await lockSubscriptionRow(userId, tx);
+  const [sub] = await executor
+    .select()
+    .from(subscriptions)
+    .where(eq(subscriptions.userId, userId))
+    .limit(1);
+  const [reserved] = await executor
+    .select({
+      total: sql<number>`coalesce(sum(${memorySources.reservedSlots}), 0)::int`,
+    })
+    .from(memorySources)
+    .where(
+      and(
+        eq(memorySources.userId, userId),
+        inArray(memorySources.status, ["pending", "processing"]),
+      ),
+    );
+  const activeReserved = reserved?.total ?? 0;
+  const current = sub.memoryCount + activeReserved;
 
   return {
-    allowed: sub.memoryCount < sub.memoryLimit,
-    current: sub.memoryCount,
+    allowed: current + incrementBy <= sub.memoryLimit,
+    current,
     limit: sub.memoryLimit,
     plan: sub.plan as PlanType,
   };

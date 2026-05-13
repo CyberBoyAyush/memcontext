@@ -1,6 +1,7 @@
 import {
   generateEmbedding as openrouterGenerateEmbedding,
   expandMemory as openrouterExpandMemory,
+  extractAtomicMemories as openrouterExtractAtomicMemories,
   generateQueryVariants as openrouterGenerateQueryVariants,
 } from "../lib/openrouter.js";
 import type { ExpandMemoryResult } from "../lib/openrouter.js";
@@ -64,4 +65,21 @@ export async function generateQueryVariants(
   }
 
   return openrouterGenerateQueryVariants(query);
+}
+
+export async function extractAtomicMemories(
+  content: string,
+  timing?: TimingContext,
+): Promise<string[]> {
+  if (!content || content.trim().length === 0) {
+    return [];
+  }
+
+  if (timing) {
+    return withTiming(timing, "extract_atomic_memories", () =>
+      openrouterExtractAtomicMemories(content),
+    );
+  }
+
+  return openrouterExtractAtomicMemories(content);
 }

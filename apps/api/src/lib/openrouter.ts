@@ -225,6 +225,10 @@ export interface ExpandMemoryResult {
   suggestedTtlDays: number | null;
 }
 
+const extractAtomicMemoriesSchema = z.object({
+  memories: z.array(z.string()).max(100),
+});
+
 const expandMemorySchema = z.object({
   expandedContent: z.string(),
   temporalCategory: z.enum([
@@ -312,6 +316,118 @@ Memory: "${escapedContent}"`,
       temporalCategory: "permanent",
       suggestedTtlDays: null,
     };
+  }
+}
+
+export async function extractAtomicMemories(content: string): Promise<string[]> {
+  const start = performance.now();
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const escapedContent = escapeForPrompt(content);
+
+    try {
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          Authorization: `Bearer ${getApiKey()}`,
+          "Content-Type": "application/json",
+          ...APP_HEADERS,
+        },
+        body: JSON.stringify({
+          model: LLM_MODEL,
+          response_format: { type: "json_object" },
+          messages: [
+            {
+              role: "user",
+              content: `You are an expert memory extraction system.
+
+Extract the important atomic memories from this long note, transcript, or document.
+Return ONLY valid JSON with this exact shape:
+{"memories": ["memory 1", "memory 2"]}
+
+Rules:
+- Each memory must be self-contained and understandable on its own.
+- Extract preferences, facts, decisions, and durable context.
+- Preserve important names, dates, and concrete details.
+- Preserve durable personal facts such as names of people, pets, organizations, locations, roles, relationships, and recurring life context when explicitly stated.
+- Do not omit or anonymize proper names unless clearly incidental; keep names of pets, collaborators, projects, companies, products, and places exactly as written.
+- Preserve explicit comparisons, tradeoffs, and preferences exactly as stated, especially patterns like "X over Y because Z".
+- Always extract reasoned design choices as memories. If the content says "X over Y because Z", "use X instead of Y for Z", or "X is the source of truth while Y is only for caching/queueing/etc.", preserve all parts: chosen system, rejected or secondary system, reason, and role boundary.
+- Do not collapse technical roles into generic summaries; preserve exact labels such as "source of truth", "durable job truth", "cache", "queue", "hard isolation boundary", and "soft grouping".
+- Preserve hard-vs-soft distinctions explicitly. If one field or system is described as a hard boundary and another as a soft grouping or filter, extract that contrast in the same memory.
+- Do not generalize named technologies, tools, or systems into broader concepts; keep concrete names like Postgres, Redis, scope, project, and pnpm.
+- Split a paragraph into separate memories whenever it contains independently searchable facts, preferences, decisions, or context that could be useful on their own.
+- Cover the full note from beginning to end. Do not concentrate only on the earliest facts if later sections contain distinct technical decisions, constraints, or personal details.
+- When the note contains both background biography and explicit technical decisions, preserve some memories from each category rather than using all output slots on only one section.
+- When output slots are limited, prioritize explicit decisions, technical comparisons, hard constraints, and durable recurring personal entities over generic background details.
+- If the note clearly presents a named pet, family member, or other recurring personal entity as durable user context relevant to future assistance, preserve at most one non-sensitive memory for that entity and skip purely incidental mentions.
+- A memory should usually answer one durable question, such as "what does the user prefer?", "what decision was made?", "what project fact is true?", or "what convention should be followed?"
+- Keep tightly coupled details together when separating them would lose meaning, especially comparisons, rationale, dates, names, or constraints. "Use X over Y because Z" should remain one memory.
+- Do not merge distinct facts just because they share a topic; keep separate personal facts, preferences, decisions, and constraints as separate atomic memories.
+- Avoid duplicates and near-duplicates, but do not discard a memory as duplicate if it contains a distinct reason, tradeoff, boundary, or rejected alternative.
+- Keep each memory concise, ideally 1-2 sentences.
+- Return no more than 25 high-value memories.
+- If the content contains nothing worth remembering, return {"memories": []}.
+
+Content:
+"${escapedContent}"`,
+            },
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `OpenRouter extraction failed with status ${response.status}`,
+        );
+      }
+
+      const json = (await response.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+      };
+      const contentText = json.choices?.[0]?.message?.content ?? "";
+      const parsed = JSON.parse(contentText) as z.infer<
+        typeof extractAtomicMemoriesSchema
+      >;
+      const object = extractAtomicMemoriesSchema.parse(parsed);
+
+      const duration = Math.round(performance.now() - start);
+      const memories = object.memories
+        .map((memory) => memory.trim())
+        .filter((memory) => memory.length > 0)
+        .slice(0, 25);
+
+      logger.debug(
+        {
+          model: LLM_MODEL,
+          operation: "extract_atomic_memories",
+          inputLength: content.length,
+          extractedCount: memories.length,
+          duration,
+        },
+        "atomic memories extracted",
+      );
+
+      return memories;
+    } finally {
+      clearTimeout(timeout);
+    }
+  } catch (error) {
+    const duration = Math.round(performance.now() - start);
+    logger.error(
+      {
+        model: LLM_MODEL,
+        operation: "extract_atomic_memories",
+        inputLength: content.length,
+        duration,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      },
+      "atomic memory extraction failed",
+    );
+    throw error;
   }
 }
 

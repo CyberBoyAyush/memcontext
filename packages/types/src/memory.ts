@@ -55,10 +55,13 @@ export interface SaveMemoryRequest {
 }
 
 export interface SaveMemoryResponse {
-  id: string;
-  status: "saved" | "updated" | "extended" | "duplicate";
+  id?: string;
+  jobId?: string;
+  status: "saved" | "updated" | "extended" | "duplicate" | "accepted";
   superseded?: string;
   existingId?: string;
+  message?: string;
+  reservedSlots?: number;
 }
 
 export interface SearchMemoryRequest {
