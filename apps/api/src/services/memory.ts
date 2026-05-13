@@ -725,20 +725,31 @@ async function processMemorySource(memorySource: MemorySourceRow) {
     })
     .where(eq(memorySources.id, memorySource.id));
 
-  const userApiKeys = await db
-    .select({ keyHash: apiKeys.keyHash })
-    .from(apiKeys)
-    .where(eq(apiKeys.userId, memorySource.userId));
+  try {
+    const userApiKeys = await db
+      .select({ keyHash: apiKeys.keyHash })
+      .from(apiKeys)
+      .where(eq(apiKeys.userId, memorySource.userId));
 
-  await Promise.all(
-    userApiKeys.map((apiKeyRow) => invalidateApiKey(apiKeyRow.keyHash)),
-  );
+    await Promise.all(
+      userApiKeys.map((apiKeyRow) => invalidateApiKey(apiKeyRow.keyHash)),
+    );
 
-  await invalidateCachedProfile(
-    memorySource.userId,
-    memorySource.scope ?? undefined,
-    memorySource.project ?? undefined,
-  ).catch(() => {});
+    await invalidateCachedProfile(
+      memorySource.userId,
+      memorySource.scope ?? undefined,
+      memorySource.project ?? undefined,
+    );
+  } catch (error) {
+    logger.error(
+      {
+        memorySourceId: memorySource.id,
+        userId: memorySource.userId,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      },
+      "post-processing cache invalidation failed",
+    );
+  }
 }
 
 async function drainPendingMemorySources() {
@@ -790,9 +801,20 @@ async function drainPendingMemorySources() {
   }
 }
 
+function scheduleDrainPendingMemorySources() {
+  void drainPendingMemorySources().catch((error) => {
+    logger.error(
+      {
+        errorMessage: error instanceof Error ? error.message : String(error),
+      },
+      "memory source processor loop failed",
+    );
+  });
+}
+
 function kickMemorySourceProcessor() {
   if (memorySourceProcessorStarted) {
-    void drainPendingMemorySources();
+    scheduleDrainPendingMemorySources();
   }
 }
 
@@ -803,10 +825,10 @@ export function startMemorySourceProcessor() {
 
   memorySourceProcessorStarted = true;
   const timer = setInterval(() => {
-    void drainPendingMemorySources();
+    scheduleDrainPendingMemorySources();
   }, MEMORY_SOURCE_POLL_INTERVAL_MS);
   timer.unref();
-  void drainPendingMemorySources();
+  scheduleDrainPendingMemorySources();
 }
 
 interface SimilarMemoryResult {
