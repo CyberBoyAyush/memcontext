@@ -5,6 +5,7 @@ import { serve } from "@hono/node-server";
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
+import { oAuthDiscoveryMetadata } from "better-auth/plugins";
 import { checkDbConnection, closeDb } from "./db/index.js";
 import { rateLimitHealth, rateLimitGlobal } from "./middleware/rate-limit.js";
 import { requestLogger, getRequestId } from "./middleware/request-logger.js";
@@ -40,6 +41,7 @@ const ALLOWED_ORIGINS = [
 function isAllowedOrigin(origin: string): boolean {
   if (ALLOWED_ORIGINS.includes(origin)) return true;
   if (/^https?:\/\/([a-z0-9-]+\.)?memcontext\.in$/.test(origin)) return true;
+  if (/^https?:\/\/([a-z0-9-]+\.)?loclx\.io$/.test(origin)) return true;
   return false;
 }
 
@@ -94,6 +96,15 @@ app.get("/health", rateLimitHealth, async (c) => {
 // Mount Better Auth handler (BEFORE other /api routes)
 app.on(["POST", "GET"], "/api/auth/*", (c) => {
   return auth.handler(c.req.raw);
+});
+
+// Path-inserted RFC 8414 alias for issuers hosted under /api/auth.
+app.get("/.well-known/oauth-authorization-server", (c) => {
+  return oAuthDiscoveryMetadata(auth)(c.req.raw);
+});
+
+app.get("/.well-known/oauth-authorization-server/api/auth", (c) => {
+  return oAuthDiscoveryMetadata(auth)(c.req.raw);
 });
 
 app.route("/api/memories", memoriesRoutes);

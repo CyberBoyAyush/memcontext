@@ -1,6 +1,7 @@
 interface ApiClientConfig {
   apiBase: string;
-  apiKey: string;
+  apiKey?: string;
+  accessToken?: string;
 }
 
 interface ApiError {
@@ -30,7 +31,23 @@ async function parseErrorResponse(res: Response): Promise<string> {
 }
 
 export function createApiClient(config: ApiClientConfig): ApiClient {
-  const { apiBase, apiKey } = config;
+  const { apiBase, apiKey, accessToken } = config;
+
+  function getAuthHeaders(): Record<string, string> {
+    if (accessToken) {
+      return {
+        Authorization: `Bearer ${accessToken}`,
+      };
+    }
+
+    if (apiKey) {
+      return {
+        "X-API-Key": apiKey,
+      };
+    }
+
+    return {};
+  }
 
   return {
     async post<T>(path: string, body: unknown): Promise<T> {
@@ -38,7 +55,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-API-Key": apiKey,
+          ...getAuthHeaders(),
         },
         body: JSON.stringify(body),
       });
@@ -67,7 +84,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
 
       const res = await fetch(url, {
         headers: {
-          "X-API-Key": apiKey,
+          ...getAuthHeaders(),
         },
       });
 
@@ -83,7 +100,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       const res = await fetch(`${apiBase}${path}`, {
         method: "DELETE",
         headers: {
-          "X-API-Key": apiKey,
+          ...getAuthHeaders(),
         },
       });
 

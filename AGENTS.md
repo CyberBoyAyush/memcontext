@@ -125,3 +125,7 @@ Use Better Auth email/password alongside Google and GitHub OAuth. Keep dashboard
 <!-- Added: 2026-05-05 -->
 ## Authentication Sessions
 Use a 30-day Better Auth session lifetime for dashboard users with a 1-day `updateAge`. This keeps returning users signed in while avoiding session database refreshes on every request.
+
+<!-- Added: 2026-05-15 -->
+## Claude Remote MCP OAuth
+Use Better Auth's built-in `mcp` plugin in `apps/api` to power Claude remote MCP OAuth. Keep dual auth on `apps/mcp/src/http.ts`: existing API-key headers remain supported, and OAuth Bearer tokens are added for Claude. The dashboard consent UI lives at `/oauth/consent` and Better Auth MCP uses it via `oidcConfig.consentPage`.

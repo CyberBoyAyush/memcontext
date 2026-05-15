@@ -7,7 +7,7 @@ import { logger } from "../lib/logger.js";
 
 export interface EitherAuthContext {
   userId: string;
-  authType: "api_key" | "session";
+  authType: "api_key" | "oauth" | "session";
   // API key specific (present when authType is "api_key")
   keyId?: string;
   keyHash?: string;
@@ -49,6 +49,47 @@ export const eitherAuthMiddleware = createMiddleware<{
         memoryLimit: apiKeyAuth.memoryLimit,
       });
       return next();
+    }
+  }
+
+  // Try MCP OAuth Bearer token next
+  const authorizationHeader = c.req.header("Authorization");
+  if (authorizationHeader?.startsWith("Bearer ")) {
+    try {
+      const mcpSession = await auth.api.getMcpSession({ headers: c.req.raw.headers });
+
+      if (mcpSession?.userId) {
+        const scopes = mcpSession.scopes
+          .split(" ")
+          .map((scope: string) => scope.trim())
+          .filter(Boolean);
+
+        if (scopes.includes("mcp:memories")) {
+          const subData = await getSubscriptionData(mcpSession.userId);
+          const duration = Math.round(performance.now() - start);
+
+          logger.debug(
+            {
+              requestId,
+              userId: mcpSession.userId,
+              authType: "oauth",
+              duration,
+            },
+            "either auth success via oauth bearer",
+          );
+
+          c.set("auth", {
+            userId: mcpSession.userId,
+            authType: "oauth",
+            plan: subData.plan,
+            memoryCount: subData.memoryCount,
+            memoryLimit: subData.memoryLimit,
+          });
+          return next();
+        }
+      }
+    } catch {
+      // Fall through to session auth. Invalid bearer tokens should not crash the route.
     }
   }
 
