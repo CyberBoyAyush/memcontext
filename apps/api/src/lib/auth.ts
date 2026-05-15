@@ -57,6 +57,10 @@ function getSharedCookieDomain(): string | undefined {
       return undefined;
     }
 
+    if (["loclx.io"].includes(authBase)) {
+      return undefined;
+    }
+
     return `.${authBase}`;
   } catch {
     return undefined;

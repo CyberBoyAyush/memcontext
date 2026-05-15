@@ -81,4 +81,14 @@ if (!parsed.success) {
   process.exit(1);
 }
 
+if (
+  parsed.data.NODE_ENV === "production" &&
+  parsed.data.MCP_SERVER_URL === "http://localhost:3001/mcp"
+) {
+  console.error(
+    "Invalid environment variables:\n  - MCP_SERVER_URL: must be explicitly set in production",
+  );
+  process.exit(1);
+}
+
 export const env = parsed.data;

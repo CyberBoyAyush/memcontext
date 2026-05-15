@@ -59,7 +59,7 @@ export const eitherAuthMiddleware = createMiddleware<{
       const mcpSession = await auth.api.getMcpSession({ headers: c.req.raw.headers });
 
       if (mcpSession?.userId) {
-        const scopes = mcpSession.scopes
+        const scopes = (mcpSession.scopes ?? "")
           .split(" ")
           .map((scope: string) => scope.trim())
           .filter(Boolean);
