@@ -1,19 +1,58 @@
 ---
 title: "MCP Setup"
-description: "Connect MemContext to your AI coding assistant in minutes."
+description: "Connect MemContext to Claude.ai, Claude Desktop, or your AI coding assistant."
 ---
 
-MemContext provides a hosted MCP server — no local installation required. Add the connection URL and your API key to your client, then add the recommended agent instructions for the best experience.
+MemContext provides a hosted MCP server. You can connect it directly to Claude.ai or Claude Desktop with OAuth, or use an API key for coding agents like Claude Code, Cursor, OpenCode, and Codex CLI.
 
 ## Prerequisites
 
 - A MemContext account at [app.memcontext.in](https://app.memcontext.in)
-- An API key (create one under **Settings > API Keys**)
+- An API key if you are connecting a coding agent (create one under **Settings > API Keys**)
 
 <Tip>
   The [MCP page](https://app.memcontext.in/mcp) in your dashboard generates
   ready-to-paste configs with your API key pre-filled.
 </Tip>
+
+## Claude.ai & Claude Desktop
+
+Use this path when you want everyday Claude conversations to remember preferences, project context, and recurring details without editing config files.
+
+**Step 1 — Open Connectors**
+
+In Claude.ai or Claude Desktop, open **Settings → Connectors**.
+
+**Step 2 — Add a custom connector**
+
+Choose **Add custom connector**.
+
+**Step 3 — Enter the production URL**
+
+Use:
+
+```text
+https://mcp.memcontext.in/mcp
+```
+
+**Step 4 — Connect and approve access**
+
+Click **Connect**, sign in to MemContext if prompted, then approve the requested scopes on the consent screen.
+
+### Recommended instructions
+
+Paste this into **Claude → Settings → Profile → Instructions for Claude**:
+
+```text
+- Search MemContext before assuming my preferences, projects, or past decisions.
+- Save only stable preferences, recurring facts, and useful project context.
+- Do not save one-off questions, random searches, or temporary details unless I ask you to remember them.
+- Keep memory updates brief, accurate, and practical.
+```
+
+<Note>
+  Claude.ai and Claude Desktop use OAuth for this flow. You do not need to paste API keys, headers, or config files.
+</Note>
 
 ## Claude Code
 
@@ -167,7 +206,7 @@ See the [MCP Tools](/mcp/overview) section for parameter documentation.
 
 ## Verifying the connection
 
-After setup, ask your assistant:
+After setup, ask Claude or your coding assistant:
 
 > "Search your memory for any information about me."
 

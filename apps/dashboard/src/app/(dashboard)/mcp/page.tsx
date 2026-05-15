@@ -9,6 +9,10 @@ import {
   Wand2,
   Info,
   AlertCircle,
+  Copy,
+  Plug,
+  ShieldCheck,
+  ClipboardList,
 } from "lucide-react";
 import { Claude, Cursor, OpenAI } from "@lobehub/icons";
 import Link from "next/link";
@@ -622,6 +626,286 @@ function AgentConfigSection({
   );
 }
 
+function ConnectorUrlField({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+  const toast = useToast();
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      toast.success("Connector URL copied");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy URL");
+    }
+  }
+
+  return (
+    <div className="flex items-stretch gap-2 rounded-xl border border-border bg-surface-elevated p-1.5 shadow-sm">
+      <div className="flex items-center gap-2 flex-1 min-w-0 px-3">
+        <Plug className="h-4 w-4 text-accent shrink-0" />
+        <code className="font-mono text-sm text-foreground truncate">
+          {url}
+        </code>
+      </div>
+      <Button
+        onClick={handleCopy}
+        variant={copied ? "secondary" : "default"}
+        className="gap-2 shrink-0 cursor-pointer hover:translate-y-0 hover:shadow-none"
+      >
+        {copied ? (
+          <>
+            <Check className="h-4 w-4" />
+            Copied
+          </>
+        ) : (
+          <>
+            <Copy className="h-4 w-4" />
+            Copy URL
+          </>
+        )}
+      </Button>
+    </div>
+  );
+}
+
+const CONNECTOR_STEPS: {
+  title: string;
+  description: React.ReactNode;
+}[] = [
+  {
+    title: "Open Connectors",
+    description: (
+      <>
+        In Claude.ai or Claude Desktop, head to{" "}
+        <span className="font-medium text-foreground">
+          Settings → Connectors
+        </span>
+        .
+      </>
+    ),
+  },
+  {
+    title: "Add custom connector",
+    description: (
+      <>
+        Choose{" "}
+        <span className="font-medium text-foreground">
+          Add custom connector
+        </span>{" "}
+        at the bottom of the connectors list.
+      </>
+    ),
+  },
+  {
+    title: "Paste the MemContext URL",
+    description: (
+      <>
+        Enter{" "}
+        <code className="px-1.5 py-0.5 rounded bg-surface-elevated font-mono text-xs">
+          {MCP_SERVER_URL}
+        </code>{" "}
+        as the remote MCP server URL.
+      </>
+    ),
+  },
+  {
+    title: "Connect and approve access",
+    description: (
+      <>
+        Click <span className="font-medium text-foreground">Connect</span>,
+        sign in to MemContext, and approve the requested scopes on the consent
+        screen.
+      </>
+    ),
+  },
+];
+
+const CLAUDE_INSTRUCTIONS = `Search MemContext before assuming my preferences, projects, or past decisions.
+Save only stable preferences, recurring facts, and useful project context.
+Do not save one-off questions, random searches, or temporary details unless I ask you to remember them.
+Keep memory updates brief, accurate, and practical.`;
+
+function ClaudeInstructionsBlock() {
+  const [copied, setCopied] = useState(false);
+  const toast = useToast();
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(CLAUDE_INSTRUCTIONS);
+      setCopied(true);
+      toast.success("Instructions copied");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy instructions");
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface-elevated/60 overflow-hidden">
+      <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-border bg-surface">
+        <div className="flex items-center gap-2 min-w-0">
+          <ClipboardList className="h-3.5 w-3.5 text-accent shrink-0" />
+          <span className="text-xs font-medium text-foreground-muted truncate">
+            Paste into Claude → Settings → Profile → Instructions for Claude
+          </span>
+        </div>
+        <Button
+          onClick={handleCopy}
+          variant={copied ? "secondary" : "default"}
+          size="sm"
+          className="gap-1.5 shrink-0 h-7 px-2.5 text-xs cursor-pointer hover:translate-y-0 hover:shadow-none"
+        >
+          {copied ? (
+            <>
+              <Check className="h-3.5 w-3.5" />
+              Copied
+            </>
+          ) : (
+            <>
+              <Copy className="h-3.5 w-3.5" />
+              Copy
+            </>
+          )}
+        </Button>
+      </div>
+      <ul className="p-4 sm:p-5 space-y-2 text-sm text-foreground leading-relaxed">
+        {CLAUDE_INSTRUCTIONS.split("\n").map((line, i) => (
+          <li key={i} className="flex gap-2.5">
+            <span
+              className="mt-2 h-1 w-1 rounded-full bg-accent shrink-0"
+              aria-hidden
+            />
+            <span>{line}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function ClaudeConnectorSection() {
+  return (
+    <Card className="overflow-hidden shadow-none">
+      <CardContent className="p-6 sm:p-8 space-y-8">
+        {/* Hero */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/10 shrink-0">
+            <Claude.Color className="w-7 h-7" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-xl font-semibold tracking-tight">
+              Claude.ai & Claude Desktop
+            </h2>
+            <p className="text-sm text-foreground-muted">
+              Add MemContext as a remote connector — no API key, no config
+              files. Sign in once and Claude will remember.
+            </p>
+          </div>
+        </div>
+
+        {/* Connector URL */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium uppercase tracking-wide text-foreground-subtle">
+              Connector URL
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-xs text-foreground-muted">
+              <ShieldCheck className="h-3.5 w-3.5 text-accent" />
+              OAuth secured
+            </span>
+          </div>
+          <ConnectorUrlField url={MCP_SERVER_URL} />
+        </div>
+
+        {/* Steps */}
+        <div className="space-y-1">
+          {CONNECTOR_STEPS.map((step, idx) => {
+            const isLast = idx === CONNECTOR_STEPS.length - 1;
+            return (
+              <div key={step.title} className="flex gap-4">
+                <div className="flex flex-col items-center">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-foreground text-sm font-bold shrink-0">
+                    {idx + 1}
+                  </div>
+                  {!isLast && (
+                    <div className="w-px flex-1 border-l border-dashed border-border mt-2" />
+                  )}
+                </div>
+                <div className={cn("flex-1 min-w-0", isLast ? "pb-1" : "pb-6")}>
+                  <h3 className="font-semibold leading-tight">{step.title}</h3>
+                  <p className="text-sm text-foreground-muted mt-1 leading-relaxed">
+                    {step.description}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Consent note */}
+        <div className="rounded-xl border border-border bg-surface-elevated/60 p-4 flex items-start gap-3">
+          <Info className="h-4 w-4 text-foreground-muted mt-0.5 shrink-0" />
+          <p className="text-sm text-foreground-muted leading-relaxed">
+            The consent screen shows exactly which scopes Claude is requesting.
+            You can decline at any time during sign-in, and you can disconnect
+            the connector directly from Claude.ai or Claude Desktop.
+          </p>
+        </div>
+
+        {/* Recommended Instructions subsection */}
+        <div className="pt-2 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-xs font-medium uppercase tracking-wide text-foreground-subtle px-2">
+              Recommended instructions
+            </span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
+          <p className="text-sm text-foreground-muted max-w-2xl">
+            Paste this short instruction into Claude&apos;s{" "}
+            <span className="font-medium text-foreground">
+              Instructions for Claude
+            </span>{" "}
+            box so it uses MemContext deliberately — not on every random
+            message.
+          </p>
+
+          <ClaudeInstructionsBlock />
+
+          <p className="text-xs text-foreground-subtle leading-relaxed">
+            Claude will call <code className="font-mono">search_memory</code>{" "}
+            and <code className="font-mono">save_memory</code> on your behalf
+            when it&apos;s actually useful.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SectionHeader({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <span className="text-xs font-medium uppercase tracking-wider text-accent">
+        {eyebrow}
+      </span>
+      <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
+      <p className="text-sm text-foreground-muted max-w-2xl">{description}</p>
+    </div>
+  );
+}
+
 export default function McpPage() {
   const [selectedAgent, setSelectedAgent] = useState<AgentId>("claude-code");
   const [apiKey, setApiKey] = useState("");
@@ -637,30 +921,64 @@ export default function McpPage() {
           <div className="min-w-0">
             <h1 className="text-2xl font-bold tracking-tight">MCP Setup</h1>
             <p className="text-sm text-foreground-muted">
-              Connect MemContext to your AI coding agent
+              Connect MemContext to Claude.ai, Claude Desktop, or your AI
+              coding agent.
             </p>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="space-y-6 min-w-0 overflow-hidden">
-        {/* API Key Input */}
-        <ApiKeyInput value={apiKey} onChange={setApiKey} />
+      <div className="space-y-12 min-w-0 overflow-hidden">
+        {/* Claude.ai / Claude Desktop Section */}
+        <section className="space-y-5">
+          <SectionHeader
+            eyebrow="For everyday Claude"
+            title="Claude.ai & Claude Desktop"
+            description="The quickest way to get started. Add MemContext as a custom connector and let Claude remember across conversations."
+          />
+          <ClaudeConnectorSection />
+        </section>
 
-        {/* Agent Tabs */}
-        <AgentTabs
-          agents={agents}
-          selectedAgent={selectedAgent}
-          onSelect={setSelectedAgent}
-        />
+        {/* Divider */}
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-xs font-medium uppercase tracking-wider text-foreground-subtle">
+            or
+          </span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
 
-        {/* Agent Configuration */}
-        <Card className="overflow-hidden shadow-none">
-          <CardContent className="p-6 overflow-hidden">
-            <AgentConfigSection agent={currentAgent} apiKey={displayApiKey} />
-          </CardContent>
-        </Card>
+        {/* Coding Agents Section */}
+        <section className="space-y-5">
+          <SectionHeader
+            eyebrow="For coding agents"
+            title="CLI & editor integrations"
+            description="Wire MemContext into Claude Code, Cursor, OpenCode, or Codex CLI using an API key and a small config file."
+          />
+
+          <div className="space-y-6">
+            {/* API Key Input */}
+            <ApiKeyInput value={apiKey} onChange={setApiKey} />
+
+            {/* Agent Tabs */}
+            <AgentTabs
+              agents={agents}
+              selectedAgent={selectedAgent}
+              onSelect={setSelectedAgent}
+            />
+
+            {/* Agent Configuration */}
+            <Card className="overflow-hidden shadow-none">
+              <CardContent className="p-6 overflow-hidden">
+                <AgentConfigSection
+                  agent={currentAgent}
+                  apiKey={displayApiKey}
+                />
+              </CardContent>
+            </Card>
+          </div>
+        </section>
       </div>
     </div>
   );

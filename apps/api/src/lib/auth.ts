@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { captcha } from "better-auth/plugins";
+import { captcha, mcp } from "better-auth/plugins";
 import {
   dodopayments,
   checkout,
@@ -30,14 +30,97 @@ export const dodoClient = new DodoPayments({
   environment: env.DODO_PAYMENTS_ENVIRONMENT,
 });
 
-export const auth: ReturnType<typeof betterAuth> = betterAuth({
+function getSharedCookieDomain(): string | undefined {
+  try {
+    const authHost = new URL(env.BETTER_AUTH_URL).hostname;
+    const dashboardHost = new URL(env.DASHBOARD_URL).hostname;
+
+    if (
+      authHost === "localhost" ||
+      dashboardHost === "localhost" ||
+      authHost === dashboardHost
+    ) {
+      return undefined;
+    }
+
+    const authParts = authHost.split(".");
+    const dashboardParts = dashboardHost.split(".");
+
+    if (authParts.length < 2 || dashboardParts.length < 2) {
+      return undefined;
+    }
+
+    const authBase = authParts.slice(-2).join(".");
+    const dashboardBase = dashboardParts.slice(-2).join(".");
+
+    if (authBase !== dashboardBase) {
+      return undefined;
+    }
+
+    if (["loclx.io"].includes(authBase)) {
+      return undefined;
+    }
+
+    return `.${authBase}`;
+  } catch {
+    return undefined;
+  }
+}
+
+const sharedCookieDomain = getSharedCookieDomain();
+
+function getTrustedOrigins(): string[] {
+  const origins = new Set<string>([
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:3020",
+    "https://*.loclx.io",
+    "https://*.memcontext.in",
+  ]);
+
+  const urls = [env.BETTER_AUTH_URL, env.DASHBOARD_URL, env.MCP_SERVER_URL];
+
+  for (const value of urls) {
+    try {
+      origins.add(new URL(value).origin);
+    } catch {
+      // Skip invalid URLs here; env validation handles required fields upstream.
+    }
+  }
+
+  return [...origins];
+}
+
+const trustedOrigins = getTrustedOrigins();
+
+type BaseAuth = ReturnType<typeof betterAuth>;
+
+interface McpAccessSession {
+  accessToken?: string;
+  refreshToken?: string;
+  accessTokenExpiresAt?: string;
+  refreshTokenExpiresAt?: string;
+  clientId?: string;
+  userId?: string;
+  scopes: string;
+}
+
+type AuthWithMcp = BaseAuth & {
+  api: BaseAuth["api"] & {
+    getMcpSession(args: { headers: Headers }): Promise<McpAccessSession | null>;
+    getMcpOAuthConfig(...args: unknown[]): Promise<unknown>;
+    getMCPProtectedResource(...args: unknown[]): Promise<unknown>;
+  };
+};
+
+export const auth: AuthWithMcp = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
     schema: authSchema,
   }),
   baseURL: env.BETTER_AUTH_URL,
   secret: env.BETTER_AUTH_SECRET,
-  trustedOrigins: [env.DASHBOARD_URL],
+  trustedOrigins,
   socialProviders: {
     google: {
       clientId: env.GOOGLE_CLIENT_ID,
@@ -102,19 +185,30 @@ export const auth: ReturnType<typeof betterAuth> = betterAuth({
     },
   },
   advanced: {
-    // Cross-subdomain cookies for api.memcontext.in <-> app.memcontext.in
-    crossSubDomainCookies:
-      env.NODE_ENV === "production"
-        ? {
-            enabled: true,
-            domain: ".memcontext.in",
-          }
-        : undefined,
+    crossSubDomainCookies: sharedCookieDomain
+      ? {
+          enabled: true,
+          domain: sharedCookieDomain,
+        }
+      : undefined,
   },
   plugins: [
     captcha({
       provider: "cloudflare-turnstile",
       secretKey: env.TURNSTILE_SECRET_KEY,
+    }),
+    mcp({
+      loginPage: new URL("/login", env.DASHBOARD_URL).toString(),
+      resource: env.MCP_SERVER_URL,
+      oidcConfig: {
+        allowDynamicClientRegistration: true,
+        allowPlainCodeChallengeMethod: false,
+        consentPage: new URL("/oauth/consent", env.DASHBOARD_URL).toString(),
+        loginPage: new URL("/login", env.DASHBOARD_URL).toString(),
+        requirePKCE: true,
+        defaultScope: "openid offline_access mcp:memories",
+        scopes: ["mcp:memories"],
+      },
     }),
     dodopayments({
       client: dodoClient,
@@ -171,7 +265,7 @@ export const auth: ReturnType<typeof betterAuth> = betterAuth({
       },
     },
   },
-});
+}) as unknown as AuthWithMcp;
 
 export type Auth = typeof auth;
 

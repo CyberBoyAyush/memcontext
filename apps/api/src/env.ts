@@ -40,6 +40,11 @@ const envSchema = z.object({
     .min(32, "BETTER_AUTH_SECRET must be at least 32 characters"),
   BETTER_AUTH_URL: z.string().url("BETTER_AUTH_URL must be a valid URL"),
   DASHBOARD_URL: z.string().url("DASHBOARD_URL must be a valid URL"),
+  MCP_SERVER_URL: z
+    .string()
+    .url("MCP_SERVER_URL must be a valid URL")
+    .optional()
+    .default("http://localhost:3001/mcp"),
 
   // Email auth
   RESEND_API_KEY: z.string().min(1, "RESEND_API_KEY is required"),
@@ -73,6 +78,16 @@ if (!parsed.success) {
   for (const error of parsed.error.errors) {
     console.error(`  - ${error.path.join(".")}: ${error.message}`);
   }
+  process.exit(1);
+}
+
+if (
+  parsed.data.NODE_ENV === "production" &&
+  parsed.data.MCP_SERVER_URL === "http://localhost:3001/mcp"
+) {
+  console.error(
+    "Invalid environment variables:\n  - MCP_SERVER_URL: must be explicitly set in production",
+  );
   process.exit(1);
 }
 

@@ -33,6 +33,17 @@ The hosted MCP server at `https://mcp.memcontext.in/mcp` accepts the API key via
 
 See [MCP Setup](/guides/mcp-setup) for configs specific to Claude Code, Cursor, OpenCode, and Codex CLI.
 
+## Claude.ai / Claude Desktop connector authentication
+
+For Claude.ai and Claude Desktop custom connectors, MemContext uses OAuth instead of manual API-key entry.
+
+1. Open **Settings → Connectors** in Claude.
+2. Add a custom connector with `https://mcp.memcontext.in/mcp`.
+3. Click **Connect**.
+4. Sign in to MemContext and approve the requested scopes.
+
+This path is intended for everyday Claude usage. API-key headers and config files are only needed for coding-agent setups such as Claude Code, Cursor, OpenCode, and Codex CLI.
+
 ## Rate limits
 
 MemContext rate-limits requests per endpoint using a sliding window:

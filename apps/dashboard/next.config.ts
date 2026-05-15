@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: [
+    "apimemcontext.loclx.io",
+    "dashmemcontext.loclx.io",
+    "memcontext.loclx.io",
+  ],
   // Allow external images from OAuth providers
   images: {
     remotePatterns: [
