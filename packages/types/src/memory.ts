@@ -223,6 +223,10 @@ export interface CompanyBrainDocument {
   status: CompanyBrainDocumentStatus;
   chunkCount: number;
   extractedCount: number;
+  totalChunks: number;
+  processedChunks: number;
+  processingPhase: string | null;
+  heartbeatAt: Date | null;
   scope: string | null;
   project: string | null;
   createdAt: Date;

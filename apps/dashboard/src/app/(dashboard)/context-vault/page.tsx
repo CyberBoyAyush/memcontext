@@ -33,6 +33,7 @@ import {
   useUploadCompanyBrainDocument,
   workspacesQueryOptions,
   type CompanyBrainMemory,
+  type CompanyBrainDocument,
 } from "@/lib/queries/company-brain";
 import { VaultMemoryDetailPanel } from "@/components/vault-memory-detail-panel";
 import { WorkspaceSelect } from "@/components/workspace-select";
@@ -109,15 +110,22 @@ function urlDisplayName(parsed: URL): string {
 function DocumentIcon({
   sourceType,
   publicUrl,
+  processing = false,
 }: {
   sourceType: string;
   publicUrl: string | null;
+  processing?: boolean;
 }) {
   const parsed = sourceType === "url" ? parseUrl(publicUrl) : null;
   const [failed, setFailed] = useState(false);
 
   return (
-    <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-elevated border border-border">
+    <div
+      className={cn(
+        "relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-surface-elevated transition-colors",
+        processing ? "border-accent/30" : "border-border",
+      )}
+    >
       {parsed && !failed ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -125,33 +133,95 @@ function DocumentIcon({
           alt=""
           width={18}
           height={18}
-          className="h-[18px] w-[18px] rounded-sm"
+          className={cn(
+            "h-[18px] w-[18px] rounded-sm transition-opacity",
+            processing && "opacity-40",
+          )}
           onError={() => setFailed(true)}
         />
       ) : (
-        <FileText className="h-4 w-4 text-foreground-muted" weight="duotone" />
+        <FileText
+          className={cn(
+            "h-4 w-4 text-foreground-muted transition-opacity",
+            processing && "opacity-40",
+          )}
+          weight="duotone"
+        />
+      )}
+      {/* Smooth circular spinner overlay while processing */}
+      {processing && (
+        <SpinnerGap
+          className="absolute h-5 w-5 animate-spin text-accent"
+          weight="bold"
+        />
       )}
     </div>
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const tone =
-    status === "completed" || status === "ready"
-      ? "bg-success/10 text-success border-success/20"
-      : status === "failed" || status === "error"
-        ? "bg-error/10 text-error border-error/20"
-        : "bg-accent/10 text-accent border-accent/20";
+  const isDone = status === "completed" || status === "ready";
+  const isStopped = status === "cancelled";
+  const isError = status === "failed" || status === "error" || isStopped;
+  const isActive = !isDone && !isError; // pending / processing / retrying
+
+  const tone = isDone
+    ? "bg-success/10 text-success border-success/20"
+    : isError
+      ? "bg-error/10 text-error border-error/20"
+      : "bg-accent/10 text-accent border-accent/20";
+
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize",
+        "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize transition-colors",
         tone,
       )}
     >
+      {isActive ? (
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
+        </span>
+      ) : isDone ? (
+        <Check className="h-2.5 w-2.5" weight="bold" />
+      ) : (
+        <X className="h-2.5 w-2.5" weight="bold" />
+      )}
       {status}
     </span>
   );
+}
+
+function formatProcessingPhase(phase: string | null, status: string) {
+  const labels: Record<string, string> = {
+    queued: "Queued",
+    resolving_source: "Reading source",
+    chunking: "Chunking document",
+    embedding_chunks: "Embedding chunks",
+    extracting_memories: "Extracting memories",
+    completed: "Completed",
+  };
+
+  return labels[phase ?? ""] ?? (status === "retrying" ? "Retrying" : status);
+}
+
+function getProcessingSummary(document: CompanyBrainDocument) {
+  const total = document.totalChunks || document.chunkCount;
+  const processed = Math.min(
+    document.processedChunks ?? document.chunkCount,
+    total,
+  );
+  const remaining = Math.max(total - processed, 0);
+  const phase = formatProcessingPhase(
+    document.processingPhase,
+    document.status,
+  );
+  const chunkProgress =
+    total > 0 ? `${processed}/${total} chunks` : "Preparing chunks";
+  const remainingText = total > 0 ? ` · ${remaining} remaining` : "";
+
+  return `${phase} · ${chunkProgress}${remainingText} · ${document.extractedCount} memories`;
 }
 
 function StatCard({
@@ -603,7 +673,10 @@ export default function CompanyBrainPage() {
               >
                 {isProcessing ? (
                   <>
-                    <SpinnerGap className="h-4 w-4 animate-spin" weight="bold" />
+                    <SpinnerGap
+                      className="h-4 w-4 animate-spin"
+                      weight="bold"
+                    />
                     Queuing...
                   </>
                 ) : (
@@ -718,7 +791,10 @@ export default function CompanyBrainPage() {
                       className="group rounded-lg border border-accent/20 bg-accent/[0.04] p-3.5 transition-colors hover:border-accent/40"
                     >
                       <div className="flex items-center gap-1.5 text-xs font-medium text-accent">
-                        <Brain className="h-3.5 w-3.5 shrink-0" weight="duotone" />
+                        <Brain
+                          className="h-3.5 w-3.5 shrink-0"
+                          weight="duotone"
+                        />
                         Extracted memory
                       </div>
                       <p className="mt-2 line-clamp-6 break-words text-sm leading-6 text-foreground/90">
@@ -779,103 +855,125 @@ export default function CompanyBrainPage() {
                 </span>
               </div>
 
-              <div className="mt-4 divide-y divide-border">
-                {documents.map((document) => (
-                  <div
-                    key={document.id}
-                    className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <DocumentIcon
-                        sourceType={document.sourceType}
-                        publicUrl={document.publicUrl}
-                      />
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">
-                          {(() => {
-                            const parsed =
-                              document.sourceType === "url"
-                                ? parseUrl(document.publicUrl)
-                                : null;
-                            return (
-                              document.title ??
-                              (parsed
-                                ? urlDisplayName(parsed)
-                                : "Untitled document")
-                            );
-                          })()}
-                        </p>
-                        <p className="text-xs text-foreground-muted">
-                          {document.chunkCount} chunks ·{" "}
-                          {document.extractedCount > 0 ? (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setMemoriesDocument({
-                                  id: document.id,
-                                  title: document.title ?? "Untitled document",
-                                })
-                              }
-                              className="font-medium text-accent underline-offset-2 hover:underline"
-                            >
-                              {document.extractedCount} memories
-                            </button>
-                          ) : (
-                            `${document.extractedCount} memories`
+              <div className="mt-4 space-y-1">
+                {documents.map((document, index) => {
+                  const isProcessing = [
+                    "pending",
+                    "processing",
+                    "retrying",
+                  ].includes(document.status);
+                  return (
+                    <div
+                      key={document.id}
+                      style={{
+                        animationDelay: `${Math.min(index, 8) * 50}ms`,
+                        animationFillMode: "backwards",
+                      }}
+                      className={cn(
+                        "group relative flex items-center justify-between gap-4 rounded-xl border border-transparent px-3 py-3 transition-all duration-200 animate-fade-in-up",
+                        "hover:border-border hover:bg-surface-elevated/40",
+                        isProcessing && "border-accent/15 bg-accent/[0.03]",
+                      )}
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <DocumentIcon
+                          sourceType={document.sourceType}
+                          publicUrl={document.publicUrl}
+                          processing={isProcessing}
+                        />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {(() => {
+                              const parsed =
+                                document.sourceType === "url"
+                                  ? parseUrl(document.publicUrl)
+                                  : null;
+                              return (
+                                document.title ??
+                                (parsed
+                                  ? urlDisplayName(parsed)
+                                  : "Untitled document")
+                              );
+                            })()}
+                          </p>
+                          <p className="text-xs text-foreground-muted">
+                            {document.chunkCount} chunks ·{" "}
+                            {document.extractedCount > 0 ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setMemoriesDocument({
+                                    id: document.id,
+                                    title:
+                                      document.title ?? "Untitled document",
+                                  })
+                                }
+                                className="font-medium text-accent underline-offset-2 hover:underline"
+                              >
+                                {document.extractedCount} memories
+                              </button>
+                            ) : (
+                              `${document.extractedCount} memories`
+                            )}
+                          </p>
+                          {isProcessing && (
+                            <p className="mt-0.5 text-xs text-foreground-subtle">
+                              {getProcessingSummary(document)}
+                            </p>
                           )}
-                        </p>
-                        {document.publicUrl && (
-                          <a
-                            href={document.publicUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="mt-0.5 inline-block text-xs text-accent hover:underline"
+                          {document.publicUrl && (
+                            <a
+                              href={document.publicUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-0.5 inline-block text-xs text-accent hover:underline"
+                            >
+                              Open original
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-1.5">
+                        <StatusBadge status={document.status} />
+                        <span className="text-[10px] text-foreground-subtle">
+                          {document.sourceType}
+                        </span>
+                        {["pending", "processing", "retrying"].includes(
+                          document.status,
+                        ) && (
+                          <button
+                            type="button"
+                            onClick={() => handleCancelDocument(document.id)}
+                            disabled={cancelDocument.isPending}
+                            className="inline-flex h-7 items-center gap-1 rounded-md border border-border px-2 text-[11px] text-foreground-muted transition-all duration-150 hover:-translate-y-px hover:border-error/40 hover:text-error active:translate-y-0 disabled:opacity-50"
                           >
-                            Open original
-                          </a>
+                            <X className="h-3 w-3" weight="bold" />
+                            Stop
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDeleteTarget({
+                              id: document.id,
+                              title: document.title ?? "Untitled document",
+                            })
+                          }
+                          disabled={deleteDocument.isPending}
+                          className="inline-flex h-7 items-center gap-1 rounded-md border border-border px-2 text-[11px] text-foreground-muted transition-all duration-150 hover:-translate-y-px hover:border-error/40 hover:text-error active:translate-y-0 disabled:opacity-50"
+                        >
+                          <Trash className="h-3 w-3" weight="bold" />
+                          Delete
+                        </button>
+                        {document.error && (
+                          <span className="max-w-40 truncate text-right text-[10px] text-error">
+                            {document.error}
+                          </span>
                         )}
                       </div>
                     </div>
-                    <div className="flex shrink-0 flex-col items-end gap-1.5">
-                      <StatusBadge status={document.status} />
-                      <span className="text-[10px] text-foreground-subtle">
-                        {document.sourceType}
-                      </span>
-                      {["pending", "processing", "retrying"].includes(
-                        document.status,
-                      ) && (
-                        <button
-                          type="button"
-                          onClick={() => handleCancelDocument(document.id)}
-                          disabled={cancelDocument.isPending}
-                          className="inline-flex h-7 items-center gap-1 rounded-md border border-border px-2 text-[11px] text-foreground-muted transition-colors hover:border-error/40 hover:text-error disabled:opacity-50"
-                        >
-                          <X className="h-3 w-3" weight="bold" />
-                          Stop
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setDeleteTarget({
-                            id: document.id,
-                            title: document.title ?? "Untitled document",
-                          })
-                        }
-                        disabled={deleteDocument.isPending}
-                        className="inline-flex h-7 items-center gap-1 rounded-md border border-border px-2 text-[11px] text-foreground-muted transition-colors hover:border-error/40 hover:text-error disabled:opacity-50"
-                      >
-                        <Trash className="h-3 w-3" weight="bold" />
-                        Delete
-                      </button>
-                      {document.error && (
-                        <span className="max-w-40 truncate text-right text-[10px] text-error">
-                          {document.error}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {documents.length === 0 && (
                   <div className="py-10 text-center">
                     <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-surface-elevated border border-border">

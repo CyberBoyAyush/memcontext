@@ -7,6 +7,7 @@ The backend service for MemContext. Handles all business logic, database operati
 This is the core of MemContext. MCP, dashboard, website, and SDK clients call this API. The API is responsible for:
 
 - Storing and retrieving memories
+- Ingesting workspace documents into Context Vault
 - Generating vector embeddings for semantic search
 - Processing memory relationships using LLM
 - Managing API keys, subscriptions, waitlist, and admin views
@@ -21,10 +22,10 @@ Request
 Middleware (auth, rate-limit, logging)
    |
    v
-Routes (/api/auth, /api/memories, /api/api-keys, /api/user, /api/subscription, /api/admin, /api/waitlist)
+Routes (/api/auth, /api/memories, /api/company-brain, /api/api-keys, /api/user, /api/subscription, /api/admin, /api/waitlist)
    |
    v
-Services (memory, embedding, relation, subscription)
+Services (memory, company-brain, embedding, relation, subscription)
    |
    v
 Database (Drizzle ORM)
@@ -52,6 +53,26 @@ Database (Drizzle ORM)
 | POST   | /api/memories/:id/feedback | Submit feedback on a memory   |
 
 Memory routes use either API key auth or dashboard session auth. `scope` is the hard isolation boundary for REST/SDK callers; `project` is only a soft grouping/filter inside the selected scope.
+
+### Context Vault (API Key or Session auth)
+
+The public product name is Context Vault. The beta route prefix remains `/api/company-brain` for compatibility.
+
+| Method | Path                                      | Description                                                            |
+| ------ | ----------------------------------------- | ---------------------------------------------------------------------- |
+| POST   | /api/company-brain/documents              | Ingest extracted text, public file URLs, or documentation/web URLs     |
+| POST   | /api/company-brain/documents/upload       | Upload and ingest a document file                                      |
+| GET    | /api/company-brain/documents              | List workspace documents and processing state                          |
+| POST   | /api/company-brain/documents/:id/cancel   | Stop a pending, retrying, or active document job                       |
+| DELETE | /api/company-brain/documents/:id          | Delete a document, chunks, citations, and exclusive extracted memories |
+| GET    | /api/company-brain/documents/:id/memories | List extracted memories for a document                                 |
+| GET    | /api/company-brain/search                 | Search workspace knowledge in memories, documents, or hybrid mode      |
+| GET    | /api/company-brain/memories               | Browse workspace document memories                                     |
+| POST   | /api/company-brain/memories/:id/feedback  | Submit feedback on a workspace memory                                  |
+| GET    | /api/company-brain/memories/:id/evidence  | Load citations/source chunks for a workspace memory                    |
+| GET    | /api/company-brain/hierarchy              | Scope/project hierarchy for workspace memories                         |
+
+Context Vault requires workspace membership. Writers can ingest documents; viewers can search and browse. It supports multipart uploads, public file URLs, documentation/web URLs through Exa, and pre-extracted text/Markdown JSON.
 
 ### API Keys (Session auth)
 
@@ -88,24 +109,26 @@ Public memory API endpoints support the `X-API-Key` header. Dashboard and admin 
 
 ### memories
 
-Stores all user memories with vector embeddings.
+Stores user memories and Context Vault extracted document memories with vector embeddings.
 
-| Field         | Description                             |
-| ------------- | --------------------------------------- |
-| id            | Unique identifier                       |
-| user_id       | Owner of the memory                     |
-| scope         | Optional hard isolation boundary        |
-| content       | The memory text                         |
-| embedding     | 1536-dimension vector                   |
-| category      | preference, fact, decision, or context  |
-| project       | Optional project name                   |
-| source        | mcp, web, or api                        |
-| is_current    | Whether this is the latest version      |
-| supersedes_id | ID of memory this replaces              |
-| version       | Version number                          |
-| valid_from    | When this memory became true            |
-| valid_until   | When this memory expires (null=forever) |
-| content_tsv   | Auto-generated tsvector for FTS         |
+| Field         | Description                                                  |
+| ------------- | ------------------------------------------------------------ |
+| id            | Unique identifier                                            |
+| user_id       | Owner of the memory                                          |
+| workspace_id  | Workspace for Context Vault memory; null for personal memory |
+| scope         | Optional hard isolation boundary                             |
+| content       | The memory text                                              |
+| embedding     | 1536-dimension vector                                        |
+| category      | preference, fact, decision, or context                       |
+| project       | Optional project name                                        |
+| memory_type   | user, document, or company                                   |
+| source        | mcp, web, or api                                             |
+| is_current    | Whether this is the latest version                           |
+| supersedes_id | ID of memory this replaces                                   |
+| version       | Version number                                               |
+| valid_from    | When this memory became true                                 |
+| valid_until   | When this memory expires (null=forever)                      |
+| content_tsv   | Auto-generated tsvector for FTS                              |
 
 ### memory_relations
 
@@ -148,6 +171,31 @@ Tracks user plans and memory usage.
 | hobby | 2,000  |
 | pro   | 10,000 |
 
+These limits currently apply to personal/user memories. Context Vault extracted document memories use `memory_type = document` and are not incremented into `subscriptions.memory_count` during the beta.
+
+### memory_sources
+
+Tracks source notes and Context Vault document jobs.
+
+| Field            | Description                                                                          |
+| ---------------- | ------------------------------------------------------------------------------------ |
+| workspace_id     | Workspace for document sources; null for personal long-note jobs                     |
+| source_type      | text, markdown, pdf, docx, url, csv, image type                                      |
+| status           | pending, processing, retrying, completed, failed, or cancelled                       |
+| processing_phase | queued, resolving_source, chunking, embedding_chunks, extracting_memories, completed |
+| total_chunks     | Planned chunks for processing progress                                               |
+| processed_chunks | Chunks embedded/checkpointed so far                                                  |
+| storage_key      | R2 object key for uploaded/copied originals                                          |
+| payload          | Source metadata, public URL, OCR/scrape details                                      |
+
+### memory_source_chunks
+
+Stores Context Vault source chunks with contextual embeddings, content hashes, section paths, and extraction checkpoint metadata.
+
+### memory_evidence
+
+Links extracted document memories back to their source document and chunk for citations.
+
 ### memory_feedback
 
 | Field     | Description                              |
@@ -187,19 +235,42 @@ When searching:
 6. Apply feedback-based scoring: wrong (0.3x), outdated (0.5x), net-negative (0.7x), helpful (1.1x)
 7. Return top K sorted by adjusted relevance scores
 
+## Context Vault Processing
+
+When a document is ingested:
+
+1. Create a `memory_sources` row with pending status.
+2. Store uploaded or remote file bytes in Cloudflare R2 when applicable.
+3. Resolve text through local decoding, Exa Contents API, or Mistral OCR.
+4. Split Markdown/text into structure-aware chunks and embed each chunk.
+5. Checkpoint chunk progress in `memory_source_chunks` and `memory_sources`.
+6. Extract atomic facts from each chunk into `memories` as `memory_type = document`.
+7. Link facts back to chunks through `memory_evidence`.
+8. Retry stale/transient processing jobs from the last completed chunk where possible.
+
+Context Vault search supports `memories`, `documents`, and `hybrid` modes. The endpoint returns ranked retrieval results and citations, not a generated final answer.
+
 ## Environment Variables
 
-| Variable                 | Required | Description                                |
-| ------------------------ | -------- | ------------------------------------------ |
-| DATABASE_URL             | Yes      | PostgreSQL connection string with pgvector |
-| OPENROUTER_API_KEY       | Yes      | For embeddings and LLM calls               |
-| UPSTASH_REDIS_REST_URL   | Yes      | Redis for caching                          |
-| UPSTASH_REDIS_REST_TOKEN | Yes      | Redis auth token                           |
-| PORT                     | No       | Server port (default: 3000)                |
-| NODE_ENV                 | No       | dev, production, or test                   |
-| LOG_LEVEL                | No       | Logging verbosity                          |
-| LOGTAIL_SOURCE_TOKEN     | No       | Better Stack logging                       |
-| LOGTAIL_INGEST_ENDPOINT  | No       | Better Stack endpoint                      |
+| Variable                 | Required              | Description                                |
+| ------------------------ | --------------------- | ------------------------------------------ |
+| DATABASE_URL             | Yes                   | PostgreSQL connection string with pgvector |
+| OPENROUTER_API_KEY       | Yes                   | For embeddings and LLM calls               |
+| UPSTASH_REDIS_REST_URL   | Yes                   | Redis for caching                          |
+| UPSTASH_REDIS_REST_TOKEN | Yes                   | Redis auth token                           |
+| PORT                     | No                    | Server port (default: 3000)                |
+| NODE_ENV                 | No                    | dev, production, or test                   |
+| LOG_LEVEL                | No                    | Logging verbosity                          |
+| LOGTAIL_SOURCE_TOKEN     | No                    | Better Stack logging                       |
+| LOGTAIL_INGEST_ENDPOINT  | No                    | Better Stack endpoint                      |
+| R2_ACCOUNT_ID            | For uploads           | Cloudflare R2 account ID                   |
+| R2_ACCESS_KEY_ID         | For uploads           | Cloudflare R2 access key                   |
+| R2_SECRET_ACCESS_KEY     | For uploads           | Cloudflare R2 secret key                   |
+| R2_BUCKET_NAME           | For uploads           | Cloudflare R2 bucket name                  |
+| R2_PUBLIC_BASE_URL       | For OCR/open original | Public R2/custom domain                    |
+| EXA_API_KEY              | For URL ingestion     | Exa Contents API key                       |
+| MISTRAL_API_KEY          | For OCR               | Mistral OCR API key                        |
+| MISTRAL_OCR_MODEL        | No                    | OCR model, defaults to mistral-ocr-latest  |
 
 ## Development
 

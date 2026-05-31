@@ -31,6 +31,8 @@ AI assistants like Claude Desktop, Cursor, and Cline forget everything between s
 
 MemContext solves this by providing a persistent memory layer that AI agents can access via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/). Your preferences, facts, and decisions are stored as searchable memories that any connected AI assistant can retrieve automatically through hybrid search (vector similarity + full-text keyword search). Memories can evolve over time with versioning, temporal expiry, and feedback loops.
 
+For teams, Context Vault adds workspace knowledge ingestion for PDFs, Markdown, DOCX, images, CSV, and documentation URLs. It stores original files in Cloudflare R2, uses Mistral OCR for binary/scanned documents, uses Exa for clean web/docs scraping, chunks content structurally, extracts atomic facts, and keeps citations back to the original source chunks.
+
 ## Quick Start
 
 Get up and running in under 2 minutes:
@@ -331,6 +333,8 @@ Start free, scale as your AI memory grows. See [memcontext.in/pricing](https://m
 | **Support**          | Community | Priority  | Priority  |
 | **Early access**     | -         | -         | Yes       |
 
+These plan limits currently apply to personal/user memories. Context Vault is a beta workspace knowledge feature and its extracted document memories are tracked separately from the personal memory quota while document-specific limits are being finalized.
+
 ## Rate Limits
 
 | Operation          | Limit            |
@@ -346,33 +350,36 @@ Start free, scale as your AI memory grows. See [memcontext.in/pricing](https://m
 
 MemContext is open source and can be self-hosted. The project is a Turborepo monorepo with the following structure:
 
-| Package          | Description                                                           |
-| ---------------- | --------------------------------------------------------------------- |
-| `apps/api`       | Hono backend - all business logic, database access, and AI processing |
-| `apps/mcp`       | MCP server - thin wrapper that translates MCP calls into API requests |
-| `apps/dashboard` | Next.js dashboard - manage memories, API keys, subscriptions          |
-| `apps/website`   | Marketing landing page                                                |
-| `packages/types` | Shared TypeScript type definitions                                    |
-| `packages/sdk`   | Published TypeScript SDK (`memcontext-sdk`)                           |
-| `docs/`          | Public Mintlify documentation (docs.memcontext.in)                    |
+| Package          | Description                                                                 |
+| ---------------- | --------------------------------------------------------------------------- |
+| `apps/api`       | Hono backend - all business logic, database access, and AI processing       |
+| `apps/mcp`       | MCP server - thin wrapper that translates MCP calls into API requests       |
+| `apps/dashboard` | Next.js dashboard - manage memories, Context Vault, API keys, subscriptions |
+| `apps/website`   | Marketing landing page                                                      |
+| `packages/types` | Shared TypeScript type definitions                                          |
+| `packages/sdk`   | Published TypeScript SDK (`memcontext-sdk`)                                 |
+| `docs/`          | Public Mintlify documentation (docs.memcontext.in)                          |
 
 ### Tech Stack
 
-| Component       | Technology                             |
-| --------------- | -------------------------------------- |
-| Runtime         | Node.js 20.9+                          |
-| Package Manager | pnpm 9.0                               |
-| Build System    | Turborepo 2.7                          |
-| Language        | TypeScript 5.9.2                       |
-| API Framework   | Hono 4.7                               |
-| Frontend        | Next.js 16.1, React 19, Tailwind CSS 4 |
-| Database        | Neon (PostgreSQL with pgvector)        |
-| ORM             | Drizzle ORM 0.45                       |
-| Cache           | Upstash Redis                          |
-| Auth            | Better Auth (Google + GitHub OAuth)    |
-| Payments        | Dodo Payments                          |
-| AI/Embeddings   | OpenRouter, Vercel AI SDK              |
-| MCP             | Model Context Protocol SDK             |
+| Component        | Technology                             |
+| ---------------- | -------------------------------------- |
+| Runtime          | Node.js 20.9+                          |
+| Package Manager  | pnpm 9.0                               |
+| Build System     | Turborepo 2.7                          |
+| Language         | TypeScript 5.9.2                       |
+| API Framework    | Hono 4.7                               |
+| Frontend         | Next.js 16.1, React 19, Tailwind CSS 4 |
+| Database         | Neon (PostgreSQL with pgvector)        |
+| ORM              | Drizzle ORM 0.45                       |
+| Cache            | Upstash Redis                          |
+| Auth             | Better Auth (Google + GitHub OAuth)    |
+| Payments         | Dodo Payments                          |
+| AI/Embeddings    | OpenRouter, Vercel AI SDK              |
+| Document storage | Cloudflare R2                          |
+| OCR              | Mistral OCR                            |
+| Web scraping     | Exa Contents API                       |
+| MCP              | Model Context Protocol SDK             |
 
 ### Prerequisites
 
@@ -381,6 +388,9 @@ MemContext is open source and can be self-hosted. The project is a Turborepo mon
 - PostgreSQL database with pgvector extension (e.g. [Neon](https://neon.tech/))
 - [Upstash Redis](https://upstash.com/) account
 - [OpenRouter](https://openrouter.ai/) API key
+- Cloudflare R2 bucket for Context Vault uploads
+- Mistral API key for OCR on PDFs, DOCX, and image documents
+- Exa API key for documentation/web URL ingestion
 - Google and/or GitHub OAuth credentials
 
 ### Installation
@@ -395,17 +405,22 @@ Create `.env` files in `apps/api`, `apps/mcp`, `apps/dashboard`, and `apps/websi
 
 **API (`apps/api/.env`):**
 
-| Variable                                    | Description                                  |
-| ------------------------------------------- | -------------------------------------------- |
-| `DATABASE_URL`                              | PostgreSQL connection string (with pgvector) |
-| `OPENROUTER_API_KEY`                        | For embeddings and LLM classification        |
-| `UPSTASH_REDIS_REST_URL`                    | Redis for rate limiting and caching          |
-| `UPSTASH_REDIS_REST_TOKEN`                  | Redis auth token                             |
-| `BETTER_AUTH_SECRET`                        | Auth secret (min 32 chars)                   |
-| `BETTER_AUTH_URL`                           | API URL (e.g. `http://localhost:3000`)       |
-| `DASHBOARD_URL`                             | Dashboard URL (e.g. `http://localhost:3020`) |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth credentials                     |
-| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub OAuth credentials                     |
+| Variable                                                                         | Description                                  |
+| -------------------------------------------------------------------------------- | -------------------------------------------- |
+| `DATABASE_URL`                                                                   | PostgreSQL connection string (with pgvector) |
+| `OPENROUTER_API_KEY`                                                             | For embeddings and LLM classification        |
+| `UPSTASH_REDIS_REST_URL`                                                         | Redis for rate limiting and caching          |
+| `UPSTASH_REDIS_REST_TOKEN`                                                       | Redis auth token                             |
+| `BETTER_AUTH_SECRET`                                                             | Auth secret (min 32 chars)                   |
+| `BETTER_AUTH_URL`                                                                | API URL (e.g. `http://localhost:3000`)       |
+| `DASHBOARD_URL`                                                                  | Dashboard URL (e.g. `http://localhost:3020`) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`                                      | Google OAuth credentials                     |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`                                      | GitHub OAuth credentials                     |
+| `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET_NAME` | Cloudflare R2 document storage               |
+| `R2_PUBLIC_BASE_URL`                                                             | Public R2/custom domain for stored originals |
+| `EXA_API_KEY`                                                                    | URL scraping and documentation crawling      |
+| `MISTRAL_API_KEY`                                                                | OCR for PDFs, DOCX, and image documents      |
+| `MISTRAL_OCR_MODEL`                                                              | OCR model, defaults to `mistral-ocr-latest`  |
 
 **MCP (`apps/mcp/.env`):**
 
@@ -465,6 +480,24 @@ Full API docs: [docs.memcontext.in](https://docs.memcontext.in)
 | POST   | `/api/waitlist`                 | None         | Join waitlist            |
 
 REST and SDK clients can pass `scope` on memory operations for hard isolation. The dashboard renders memories as Global/unscoped first, then named scopes, with projects nested inside the selected scope. MCP tools intentionally omit `scope` to avoid agents inventing isolation IDs.
+
+### Context Vault Endpoints (API Key or Session auth)
+
+The public product name is Context Vault. The current beta API path remains `/api/company-brain/...` for compatibility.
+
+| Method | Path                                        | Description                                                             |
+| ------ | ------------------------------------------- | ----------------------------------------------------------------------- |
+| POST   | `/api/company-brain/documents`              | Ingest extracted text, public file URLs, or documentation/web URLs      |
+| POST   | `/api/company-brain/documents/upload`       | Upload and ingest a document file                                       |
+| GET    | `/api/company-brain/documents`              | List workspace documents and processing state                           |
+| POST   | `/api/company-brain/documents/:id/cancel`   | Stop a pending, retrying, or active document job                        |
+| DELETE | `/api/company-brain/documents/:id`          | Delete a document, chunks, citations, and exclusive extracted memories  |
+| GET    | `/api/company-brain/documents/:id/memories` | List extracted memories for a document                                  |
+| GET    | `/api/company-brain/search`                 | Search workspace knowledge in `memories`, `documents`, or `hybrid` mode |
+| GET    | `/api/company-brain/memories`               | Browse workspace document memories                                      |
+| POST   | `/api/company-brain/memories/:id/feedback`  | Submit feedback on a workspace memory                                   |
+| GET    | `/api/company-brain/memories/:id/evidence`  | Load citations/source chunks for a workspace memory                     |
+| GET    | `/api/company-brain/hierarchy`              | Scope/project hierarchy for workspace memories                          |
 
 ## Acknowledgments
 

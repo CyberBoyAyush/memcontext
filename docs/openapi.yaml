@@ -826,7 +826,17 @@ components:
           $ref: "#/components/schemas/MemoryCategory"
     CompanyBrainDocument:
       type: object
-      required: [id, sourceType, status, chunkCount, extractedCount, createdAt]
+      required:
+        [
+          id,
+          sourceType,
+          status,
+          chunkCount,
+          extractedCount,
+          totalChunks,
+          processedChunks,
+          createdAt,
+        ]
       properties:
         id:
           type: string
@@ -842,6 +852,17 @@ components:
           type: integer
         extractedCount:
           type: integer
+        totalChunks:
+          type: integer
+        processedChunks:
+          type: integer
+        processingPhase:
+          type: string
+          nullable: true
+        heartbeatAt:
+          type: string
+          format: date-time
+          nullable: true
         scope:
           type: string
           nullable: true

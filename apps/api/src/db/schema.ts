@@ -142,8 +142,12 @@ export const memorySources = pgTable(
     extractorVersion: text("extractor_version"),
     chunkCount: integer("chunk_count").notNull().default(0),
     extractedCount: integer("extracted_count").notNull().default(0),
+    totalChunks: integer("total_chunks").notNull().default(0),
+    processedChunks: integer("processed_chunks").notNull().default(0),
+    processingPhase: text("processing_phase"),
     attempts: integer("attempts").notNull().default(0),
     lockedAt: timestamp("locked_at"),
+    heartbeatAt: timestamp("heartbeat_at"),
     nextRunAt: timestamp("next_run_at"),
     payload: jsonb("payload").notNull(),
     error: text("error"),
@@ -158,10 +162,17 @@ export const memorySources = pgTable(
       table.workspaceId,
       table.status,
     ),
-    index("memory_sources_status_created_idx").on(table.status, table.createdAt),
+    index("memory_sources_status_created_idx").on(
+      table.status,
+      table.createdAt,
+    ),
     index("memory_sources_content_hash_idx").on(
       table.workspaceId,
       table.contentHash,
+    ),
+    index("memory_sources_workspace_phase_idx").on(
+      table.workspaceId,
+      table.processingPhase,
     ),
   ],
 );
@@ -370,7 +381,8 @@ export type NewWorkspaceRow = typeof workspaces.$inferInsert;
 export type WorkspaceMemberRow = typeof workspaceMembers.$inferSelect;
 export type NewWorkspaceMemberRow = typeof workspaceMembers.$inferInsert;
 export type WorkspaceInvitationRow = typeof workspaceInvitations.$inferSelect;
-export type NewWorkspaceInvitationRow = typeof workspaceInvitations.$inferInsert;
+export type NewWorkspaceInvitationRow =
+  typeof workspaceInvitations.$inferInsert;
 
 export const waitlist = pgTable("waitlist", {
   id: uuid("id").primaryKey().defaultRandom(),

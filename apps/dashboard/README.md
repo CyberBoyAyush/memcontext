@@ -1,10 +1,11 @@
 # MemContext Dashboard
 
-Next.js dashboard for managing memories, API keys, MCP setup, subscriptions, and account settings.
+Next.js dashboard for managing memories, Context Vault workspaces, API keys, MCP setup, subscriptions, and account settings.
 
 ## Features
 
 - Scope-first memory management with search, category/project filters, edit, delete, feedback, and version history
+- Context Vault workspace selection, document ingestion, processing progress, cancellation/deletion, document search, and extracted-memory browsing
 - Interactive memory graph with relation filters and focused/full graph modes
 - API key generation and management
 - MCP setup guides and auto-config prompts for supported agents

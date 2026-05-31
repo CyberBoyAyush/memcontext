@@ -119,18 +119,25 @@ Represent memories in the dashboard as a scope-first hierarchy: Global/unscoped 
 The published `memcontext-sdk` package is self-contained and must not depend on workspace-only packages such as `@memcontext/types`. When changing public API request/response types in `packages/types` or API docs, also update the mirrored public SDK types in `packages/sdk/src/types.ts` and verify `pnpm --filter=memcontext-sdk check-types`, `pnpm --filter=memcontext-sdk build`, and `npm pack --dry-run` from `packages/sdk` before publishing.
 
 <!-- Added: 2026-05-05 -->
+
 ## Authentication
+
 Use Better Auth email/password alongside Google and GitHub OAuth. Keep dashboard auth flows on the single `apps/dashboard/src/app/(auth)/login/page.tsx` page, using modes for sign-in, sign-up, forgot password, and reset password. Verification and password reset emails are sent through Resend, and email auth endpoints use Cloudflare Turnstile CAPTCHA.
 
 <!-- Added: 2026-05-05 -->
+
 ## Authentication Sessions
+
 Use a 30-day Better Auth session lifetime for dashboard users with a 1-day `updateAge`. This keeps returning users signed in while avoiding session database refreshes on every request.
 
 <!-- Added: 2026-05-15 -->
+
 ## Claude Remote MCP OAuth
+
 Use Better Auth's built-in `mcp` plugin in `apps/api` to power Claude remote MCP OAuth. Keep dual auth on `apps/mcp/src/http.ts`: existing API-key headers remain supported, and OAuth Bearer tokens are added for Claude. The dashboard consent UI lives at `/oauth/consent` and Better Auth MCP uses it via `oidcConfig.consentPage`.
 
 <!-- Added: 2026-05-31 -->
+
 ## Context Vault / Workspaces UI
 
 Workspace management (create workspace, invite members) lives in the Settings page via the `WorkspacesSection` component at `apps/dashboard/src/components/settings/workspaces-section.tsx`, NOT in the Context Vault (`/company-brain`) page. The Context Vault page stays focused on workspace selection, document ingestion, and search.
@@ -138,6 +145,7 @@ Workspace management (create workspace, invite members) lives in the Settings pa
 Workspace invite roles: the backend (`apps/api/src/routes/workspaces.ts`) only accepts `admin`, `member`, `viewer` for invites — `owner` is auto-assigned to the workspace creator and is NOT invitable. Only owners and admins can invite members.
 
 <!-- Added: 2026-05-31 -->
+
 ## Memories Page — Unified Source Switcher
 
 The Memories page (`apps/dashboard/src/app/(dashboard)/memories/page.tsx`) is the single place to view both personal and workspace memories. A `MemorySourceSwitcher` (`apps/dashboard/src/components/memory-source-switcher.tsx`) toggles between "My memories" (User icon, personal) and each Workspace (Buildings icon, Context Vault). Within a source, the existing ScopePicker (scope) and ProjectFilter (project) apply.
@@ -147,6 +155,7 @@ Workspace memories are READ-ONLY on this page (no edit/delete/feedback/detail pa
 Backend: `GET /api/company-brain/memories` (list, supports scope + `projects` comma-separated multi-filter + limit/offset) and `GET /api/company-brain/hierarchy` (scope/project counts) both gate on `requireWorkspaceMember(userId, workspaceId)`. They query `memories` where `workspaceId = ? AND memoryType IN ('document','company') AND isCurrent AND deletedAt IS NULL`. Vault list pagination orders by `createdAt DESC, id DESC` for stable offset paging. Only "Workspace not found" maps to 404; other errors log and return 500.
 
 <!-- Added: 2026-05-31 -->
+
 ## Context Vault Memory Detail + Feedback
 
 Workspace (Context Vault) memories support a read-only detail sidebar with feedback via the shared component `apps/dashboard/src/components/vault-memory-detail-panel.tsx` (`VaultMemoryDetailPanel`). It is used in two places: the Memories page (workspace mode — clicking a row) and the Context Vault document-memories modal (clicking a memory card). It renders at z-index 70/71 to sit above the document modal (z-60). It shows content/category/project/created/source document and Helpful/Not helpful/Outdated/Wrong feedback. No edit/delete (those stay in Context Vault management).
@@ -156,3 +165,9 @@ Feedback backend: `POST /api/company-brain/memories/:memoryId/feedback` (body: w
 The standalone "Extracted knowledge" browse panel was REMOVED from the Context Vault page. Instead, click a document's "N memories" count to open a spacious 2-column modal of that document's extracted memories (`GET /api/company-brain/documents/:documentId/memories`), and click any memory to open the detail sidebar.
 
 In the Memories page workspace mode, each memory row shows its source document (file icon + title) under the content, and the Actions column shows a CaretRight (clickable to open details) instead of a Lock.
+
+<!-- Added: 2026-06-01 -->
+
+## Context Vault Plan Limits
+
+Current Free/Hobby/Pro `PLAN_LIMITS` apply to personal/user memories. Context Vault extracted document memories are saved with `memoryType = "document"` and do not increment `subscriptions.memory_count` during the beta. Public docs and pricing copy should describe the 300 / 2,000 / 10,000 limits as personal memory limits until separate Context Vault limits for documents, storage, OCR/scraping, and extracted facts are implemented.

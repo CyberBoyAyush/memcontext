@@ -352,9 +352,9 @@ async function saveAtomicMemory(
 
   if (classification.action === "noop") {
     const targetMemory =
-      classification.targetIndex !== undefined
+      (classification.targetIndex !== undefined
         ? similarMemories[classification.targetIndex]
-        : similarMemories[0];
+        : undefined) ?? similarMemories[0];
 
     // Re-confirmation: only extend existing TTL-backed memories.
     // Duplicate saves should not introduce a TTL to permanent memories or shorten one.
@@ -399,9 +399,9 @@ async function saveAtomicMemory(
   }
 
   const targetMemory =
-    classification.targetIndex !== undefined
+    (classification.targetIndex !== undefined
       ? similarMemories[classification.targetIndex]
-      : similarMemories[0];
+      : undefined) ?? similarMemories[0];
 
   if (classification.action === "update") {
     const newMemoryId = await (timing
@@ -1418,9 +1418,9 @@ export async function updateMemory(
   );
 
   const targetMemory =
-    classification.targetIndex !== undefined
+    (classification.targetIndex !== undefined
       ? similarMemories[classification.targetIndex]
-      : similarMemories[0];
+      : undefined) ?? similarMemories[0];
 
   // 6. Handle based on classification
   if (classification.action === "noop") {

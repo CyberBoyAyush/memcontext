@@ -13,6 +13,17 @@ authentication.
 The public product name is Context Vault. The current beta API path remains
 `/api/company-brain/...` for compatibility with existing integrations.
 
+## Plan usage
+
+Current Free, Hobby, and Pro memory limits apply to personal/user memories. During
+the Context Vault beta, extracted document memories are stored as workspace
+document memories and are tracked separately from the personal memory quota.
+
+This keeps document ingestion usable while document-specific limits are being
+finalized. For production workspaces, plan around separate Context Vault limits
+for documents, storage, OCR/scraping volume, and extracted facts rather than
+treating a PDF as one personal memory.
+
 ## Ingestion
 
 The v1 endpoints support four ingestion paths:
@@ -113,13 +124,15 @@ MemContext then:
 3. Exa or Mistral OCR resolves source text when needed.
 4. The processor splits content into structure-aware chunks.
 5. Chunk embeddings are stored in `memory_source_chunks`.
-6. Durable atomic facts are saved into `memories`.
-7. Facts are linked back to source chunks through `memory_evidence`.
+6. Each chunk is checkpointed, so retries can reuse completed chunk embeddings.
+7. Durable atomic facts are saved into `memories` from each chunk.
+8. Facts are linked back to source chunks through `memory_evidence`.
 
 Use `POST /api/company-brain/documents/{documentId}/cancel` to stop a pending,
 retrying, or active document job. The dashboard polls the document list so users
 can see `pending`, `processing`, `retrying`, `completed`, `failed`, or
-`cancelled` states.
+`cancelled` states, plus the active processing phase, chunk progress, remaining
+chunks, and extracted memory count.
 
 Use `DELETE /api/company-brain/documents/{documentId}` to remove a document.
 This deletes the source, chunks, and citations. Extracted memories are

@@ -42,9 +42,18 @@ const CHUNK_TARGET_TOKENS = 650;
 const CHUNK_OVERLAP_TOKENS = 90;
 const CHUNK_MAX_CHARS = 6_000;
 const CHUNK_CHAR_OVERLAP = 600;
+const SEMANTIC_CHUNK_MIN_CHARS = 350;
+const SEMANTIC_CHUNK_SOFT_CHARS = 2_200;
+const SEMANTIC_CHUNK_HARD_CHARS = 4_500;
+const COMPANY_BRAIN_PARSER_VERSION = "company-brain-v1";
+const COMPANY_BRAIN_CHUNKER_VERSION = "structure-v2";
+const COMPANY_BRAIN_EXTRACTOR_VERSION = "atomic-v1";
 const MAX_DOCUMENT_CHARS = 250_000;
 const DOCUMENT_SEARCH_THRESHOLD = 0.75;
 const COMPANY_BRAIN_POLL_INTERVAL_MS = 2500;
+// Context Vault document processing can legitimately run for several minutes,
+// so stale-lock recovery should stay conservative to avoid reclaiming active
+// jobs mid-flight.
 const COMPANY_BRAIN_STALE_AFTER_MS = 20 * 60 * 1000;
 const COMPANY_BRAIN_MAX_ATTEMPTS = 3;
 const COMPANY_BRAIN_RERANK_CANDIDATES = 30;
@@ -167,6 +176,12 @@ interface CompanyBrainChunkResult {
   contextualContent: string;
   relevance: number;
   createdAt: Date;
+}
+
+interface PersistedDocumentChunk {
+  id: string;
+  content: string;
+  metadata: unknown;
 }
 
 function hashContent(content: string): string {
@@ -399,6 +414,85 @@ function parseBlocks(
       ];
 }
 
+function isIgnorableBlock(text: string) {
+  const trimmed = text.trim();
+  return /^[-*_]{3,}$/.test(trimmed) || /^notes:\s*$/i.test(trimmed);
+}
+
+function normalizeMergeSection(sectionPath: string) {
+  return sectionPath.replace(/\s+>\s+Table row \d+$/i, "");
+}
+
+function startsQuestionBlock(text: string) {
+  return /^Q\d+\s*[.—:-]/i.test(text.trim());
+}
+
+function containsQuestionBlock(text: string) {
+  return /(^|\n\n)Q\d+\s*[.—:-]/i.test(text.trim());
+}
+
+function isContinuationBlock(text: string) {
+  return /^(listen for|notes):/i.test(text.trim());
+}
+
+function mergeSemanticBlocks(blocks: ParsedBlock[]): ParsedBlock[] {
+  const merged: ParsedBlock[] = [];
+  let current: ParsedBlock | null = null;
+
+  function flush() {
+    if (current) {
+      merged.push(current);
+      current = null;
+    }
+  }
+
+  for (const block of blocks) {
+    const text = normalizeText(block.text);
+    if (!text || isIgnorableBlock(text)) continue;
+
+    const candidate: ParsedBlock = {
+      ...block,
+      text,
+      sectionPath: normalizeMergeSection(block.sectionPath),
+    };
+
+    if (!current) {
+      current = candidate;
+      continue;
+    }
+
+    const sameSection =
+      current.sectionPath === candidate.sectionPath &&
+      current.pageNumber === candidate.pageNumber;
+    const nextLength = current.text.length + candidate.text.length + 2;
+    const shouldStartNewQuestion =
+      startsQuestionBlock(candidate.text) &&
+      (containsQuestionBlock(current.text) ||
+        current.text.length >= SEMANTIC_CHUNK_MIN_CHARS);
+    const shouldFlush =
+      !sameSection ||
+      nextLength > SEMANTIC_CHUNK_HARD_CHARS ||
+      shouldStartNewQuestion ||
+      (current.text.length >= SEMANTIC_CHUNK_SOFT_CHARS &&
+        !isContinuationBlock(candidate.text));
+
+    if (shouldFlush) {
+      flush();
+      current = candidate;
+      continue;
+    }
+
+    current = {
+      ...current,
+      text: `${current.text}\n\n${candidate.text}`,
+      endOffset: candidate.endOffset,
+    };
+  }
+
+  flush();
+  return merged.length ? merged : blocks;
+}
+
 function chunkBlock(block: ParsedBlock) {
   const words = block.text.split(/\s+/).filter(Boolean);
   const targetWords = Math.floor(CHUNK_TARGET_TOKENS / 1.25);
@@ -460,35 +554,6 @@ function buildContextualContent(title: string, chunk: ParsedBlock): string {
     .join("\n");
 }
 
-function selectEvidenceChunk(
-  fact: string,
-  chunks: Array<{ content: string; id: string }>,
-) {
-  const factTerms = new Set(
-    fact
-      .toLowerCase()
-      .split(/[^a-z0-9]+/)
-      .filter((term) => term.length > 3),
-  );
-
-  let bestChunk = chunks[0];
-  let bestScore = -1;
-
-  for (const chunk of chunks) {
-    const chunkText = chunk.content.toLowerCase();
-    let score = 0;
-    for (const term of factTerms) {
-      if (chunkText.includes(term)) score += 1;
-    }
-    if (score > bestScore) {
-      bestScore = score;
-      bestChunk = chunk;
-    }
-  }
-
-  return bestChunk;
-}
-
 class CompanyBrainCancelledError extends Error {
   constructor() {
     super("Document processing was cancelled");
@@ -546,6 +611,25 @@ function getPayloadPublicUrl(payload: unknown) {
   return "publicUrl" in payload ? (payload.publicUrl as string | null) : null;
 }
 
+function getChunkExtractionCompleted(metadata: unknown) {
+  return (
+    typeof metadata === "object" &&
+    metadata !== null &&
+    "extractionStatus" in metadata &&
+    metadata.extractionStatus === "completed"
+  );
+}
+
+function mergeChunkMetadata(
+  metadata: unknown,
+  updates: Record<string, unknown>,
+) {
+  return {
+    ...(typeof metadata === "object" && metadata !== null ? metadata : {}),
+    ...updates,
+  };
+}
+
 function toCompanyBrainDocument(source: {
   id: string;
   title: string | null;
@@ -553,6 +637,10 @@ function toCompanyBrainDocument(source: {
   status: string;
   chunkCount: number | null;
   extractedCount: number | null;
+  totalChunks?: number | null;
+  processedChunks?: number | null;
+  processingPhase?: string | null;
+  heartbeatAt?: Date | null;
   scope: string | null;
   project: string | null;
   createdAt: Date;
@@ -567,6 +655,10 @@ function toCompanyBrainDocument(source: {
     status: source.status,
     chunkCount: source.chunkCount ?? 0,
     extractedCount: source.extractedCount ?? 0,
+    totalChunks: source.totalChunks ?? source.chunkCount ?? 0,
+    processedChunks: source.processedChunks ?? source.chunkCount ?? 0,
+    processingPhase: source.processingPhase,
+    heartbeatAt: source.heartbeatAt,
     scope: source.scope,
     project: source.project,
     createdAt: source.createdAt,
@@ -588,6 +680,83 @@ function isRetryableCompanyBrainError(error: unknown) {
     "Unsupported context vault payload",
     "Document processing was cancelled",
   ].some((nonRetryable) => message.includes(nonRetryable));
+}
+
+async function updateCompanyBrainProgress(
+  sourceId: string,
+  updates: {
+    processingPhase?: string | null;
+    totalChunks?: number;
+    processedChunks?: number;
+    chunkCount?: number;
+    extractedCount?: number;
+  },
+) {
+  await db
+    .update(memorySources)
+    .set({
+      ...updates,
+      heartbeatAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(memorySources.id, sourceId));
+}
+
+async function softDeleteExclusiveDocumentMemoriesForSource(params: {
+  sourceId: string;
+  workspaceId: string;
+}) {
+  const evidenceRows = await db
+    .select({ memoryId: memoryEvidence.memoryId })
+    .from(memoryEvidence)
+    .where(eq(memoryEvidence.sourceId, params.sourceId));
+  const memoryIds = Array.from(
+    new Set(evidenceRows.map((row) => row.memoryId)),
+  );
+
+  if (memoryIds.length === 0) {
+    return 0;
+  }
+
+  const sharedRows = await db
+    .select({ memoryId: memoryEvidence.memoryId })
+    .from(memoryEvidence)
+    .where(
+      and(
+        inArray(memoryEvidence.memoryId, memoryIds),
+        sql`${memoryEvidence.sourceId} <> ${params.sourceId}`,
+      ),
+    );
+  const sharedMemoryIds = new Set(sharedRows.map((row) => row.memoryId));
+  const exclusiveMemoryIds = memoryIds.filter(
+    (memoryId) => !sharedMemoryIds.has(memoryId),
+  );
+
+  if (exclusiveMemoryIds.length === 0) {
+    return 0;
+  }
+
+  await db
+    .delete(memoryRelations)
+    .where(
+      or(
+        inArray(memoryRelations.sourceId, exclusiveMemoryIds),
+        inArray(memoryRelations.targetId, exclusiveMemoryIds),
+      ),
+    );
+  await db
+    .update(memories)
+    .set({ deletedAt: sql`NOW()` })
+    .where(
+      and(
+        inArray(memories.id, exclusiveMemoryIds),
+        eq(memories.workspaceId, params.workspaceId),
+        eq(memories.memoryType, "document"),
+        isNull(memories.deletedAt),
+      ),
+    );
+
+  return exclusiveMemoryIds.length;
 }
 
 async function assertCompanyBrainNotCancelled(sourceId: string) {
@@ -636,10 +805,14 @@ export async function ingestCompanyBrainDocument(
       mimeType: params.mimeType,
       storageKey: params.storageKey,
       contentHash,
-      parserVersion: "company-brain-v1",
-      chunkerVersion: "structure-v1",
-      extractorVersion: "atomic-v1",
+      parserVersion: COMPANY_BRAIN_PARSER_VERSION,
+      chunkerVersion: COMPANY_BRAIN_CHUNKER_VERSION,
+      extractorVersion: COMPANY_BRAIN_EXTRACTOR_VERSION,
       payload,
+      processingPhase: "queued",
+      totalChunks: 0,
+      processedChunks: 0,
+      heartbeatAt: new Date(),
       updatedAt: new Date(),
     })
     .returning();
@@ -723,6 +896,9 @@ async function processCompanyBrainSource(source: MemorySourceRow) {
       throw new Error("Workspace document source is missing workspace ID");
     }
 
+    await updateCompanyBrainProgress(source.id, {
+      processingPhase: "resolving_source",
+    });
     await assertCompanyBrainNotCancelled(source.id);
     const resolved = await resolveCompanyBrainContent(source);
     await assertCompanyBrainNotCancelled(source.id);
@@ -736,34 +912,85 @@ async function processCompanyBrainSource(source: MemorySourceRow) {
     const sourceType = source.sourceType as DocumentSourceType;
     const scope = source.scope ?? undefined;
     const project = source.project ?? undefined;
+    const normalizedContentHash = hashContent(normalizedContent);
+    const contentChanged =
+      !!source.contentHash && source.contentHash !== normalizedContentHash;
+    const chunkerChanged =
+      source.chunkerVersion !== COMPANY_BRAIN_CHUNKER_VERSION;
 
-    await db
-      .delete(memorySourceChunks)
-      .where(eq(memorySourceChunks.sourceId, source.id));
+    if (contentChanged || chunkerChanged) {
+      await softDeleteExclusiveDocumentMemoriesForSource({
+        sourceId: source.id,
+        workspaceId: source.workspaceId,
+      });
+      await db
+        .delete(memorySourceChunks)
+        .where(eq(memorySourceChunks.sourceId, source.id));
+    }
 
     await db
       .update(memorySources)
       .set({
-        contentHash: hashContent(normalizedContent),
-        chunkCount: 0,
-        extractedCount: 0,
+        contentHash: normalizedContentHash,
         payload: {
           ...resolved.metadata,
           contentLength: normalizedContent.length,
           publicUrl: resolved.publicUrl,
         },
+        processingPhase: "chunking",
+        chunkerVersion: COMPANY_BRAIN_CHUNKER_VERSION,
+        extractorVersion: COMPANY_BRAIN_EXTRACTOR_VERSION,
+        heartbeatAt: new Date(),
         updatedAt: new Date(),
       })
       .where(eq(memorySources.id, source.id));
 
-    const blockChunks = parseBlocks(normalizedContent, sourceType).flatMap(
-      chunkBlock,
-    );
-    const persistedChunks = [];
+    const blockChunks = mergeSemanticBlocks(
+      parseBlocks(normalizedContent, sourceType),
+    ).flatMap(chunkBlock);
+    await updateCompanyBrainProgress(source.id, {
+      processingPhase: "embedding_chunks",
+      totalChunks: blockChunks.length,
+      processedChunks: 0,
+    });
+
+    const persistedChunks: PersistedDocumentChunk[] = [];
 
     for (const [index, chunk] of blockChunks.entries()) {
       await assertCompanyBrainNotCancelled(source.id);
       const contextualContent = buildContextualContent(title, chunk);
+      const chunkHash = hashContent(chunk.text);
+      const [existingChunk] = await db
+        .select({
+          id: memorySourceChunks.id,
+          content: memorySourceChunks.content,
+          contentHash: memorySourceChunks.contentHash,
+          metadata: memorySourceChunks.metadata,
+        })
+        .from(memorySourceChunks)
+        .where(
+          and(
+            eq(memorySourceChunks.sourceId, source.id),
+            eq(memorySourceChunks.chunkIndex, index),
+          ),
+        )
+        .limit(1);
+
+      if (existingChunk?.contentHash === chunkHash) {
+        persistedChunks.push(existingChunk);
+        await updateCompanyBrainProgress(source.id, {
+          chunkCount: persistedChunks.length,
+          processedChunks: persistedChunks.length,
+        });
+        continue;
+      }
+
+      if (existingChunk) {
+        await db
+          .delete(memorySourceChunks)
+          .where(eq(memorySourceChunks.id, existingChunk.id));
+      }
+
       const embedding = await generateEmbedding(contextualContent);
       await assertCompanyBrainNotCancelled(source.id);
       const [persistedChunk] = await db
@@ -782,7 +1009,7 @@ async function processCompanyBrainSource(source: MemorySourceRow) {
           contextualContent,
           embedding,
           tokenCount: estimateTokens(chunk.text),
-          contentHash: hashContent(chunk.text),
+          contentHash: chunkHash,
           sectionPath: chunk.sectionPath,
           startOffset: chunk.startOffset,
           endOffset: chunk.endOffset,
@@ -793,50 +1020,87 @@ async function processCompanyBrainSource(source: MemorySourceRow) {
         throw new Error("Failed to persist document chunk");
       }
       persistedChunks.push(persistedChunk);
+      await updateCompanyBrainProgress(source.id, {
+        chunkCount: persistedChunks.length,
+        processedChunks: persistedChunks.length,
+      });
     }
 
     await assertCompanyBrainNotCancelled(source.id);
-    const extracted = await extractAtomicMemories(
-      blockChunks
-        .map((chunk) => buildContextualContent(title, chunk))
-        .join("\n\n"),
-    );
-    const extractedCandidates = extracted.slice(
-      0,
-      Math.max(8, persistedChunks.length * 3),
-    );
+    await updateCompanyBrainProgress(source.id, {
+      processingPhase: "extracting_memories",
+      totalChunks: blockChunks.length,
+      processedChunks: persistedChunks.length,
+    });
+
     let extractedCount = 0;
 
-    for (const fact of extractedCandidates) {
+    for (const [index, chunk] of persistedChunks.entries()) {
       await assertCompanyBrainNotCancelled(source.id);
-      const saveResult = await saveExtractedDocumentMemory({
-        userId: source.userId,
-        workspaceId: source.workspaceId,
-        content: fact,
-        category: (source.category as MemoryCategory | null) ?? "fact",
-        scope,
-        project,
-      });
-      await assertCompanyBrainNotCancelled(source.id);
-      const memoryId = saveResult.id ?? saveResult.existingId;
-      const chunk = selectEvidenceChunk(fact, persistedChunks);
-      if (memoryId && chunk) {
-        await db
-          .insert(memoryEvidence)
-          .values({
-            memoryId,
-            sourceId: source.id,
-            chunkId: chunk.id,
-            userId: source.userId,
-            workspaceId: source.workspaceId,
-            scope,
-            quote: chunk.content.slice(0, 1000),
-            confidence: 0.7,
-            metadata: { extraction: "document-level" },
-          })
-          .onConflictDoNothing();
-        extractedCount += 1;
+      if (getChunkExtractionCompleted(chunk.metadata)) {
+        const [{ count = 0 } = { count: 0 }] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(memoryEvidence)
+          .where(eq(memoryEvidence.chunkId, chunk.id));
+        extractedCount += count;
+        await updateCompanyBrainProgress(source.id, { extractedCount });
+        continue;
       }
+
+      const parsedChunk = blockChunks[index];
+      const extractionInput = parsedChunk
+        ? buildContextualContent(title, parsedChunk)
+        : chunk.content;
+      const extractedCandidates = (await extractAtomicMemories(extractionInput))
+        .slice(0, 6)
+        .filter(Boolean);
+
+      for (const fact of extractedCandidates) {
+        await assertCompanyBrainNotCancelled(source.id);
+        const saveResult = await saveExtractedDocumentMemory({
+          userId: source.userId,
+          workspaceId: source.workspaceId,
+          content: fact,
+          category: (source.category as MemoryCategory | null) ?? "fact",
+          scope,
+          project,
+        });
+        await assertCompanyBrainNotCancelled(source.id);
+        const memoryId = saveResult.id ?? saveResult.existingId;
+        if (memoryId) {
+          await db
+            .insert(memoryEvidence)
+            .values({
+              memoryId,
+              sourceId: source.id,
+              chunkId: chunk.id,
+              userId: source.userId,
+              workspaceId: source.workspaceId,
+              scope,
+              quote: chunk.content.slice(0, 1000),
+              confidence: 0.7,
+              metadata: { extraction: "chunk-level" },
+            })
+            .onConflictDoNothing();
+        }
+      }
+
+      const [{ count: chunkExtractedCount = 0 } = { count: 0 }] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(memoryEvidence)
+        .where(eq(memoryEvidence.chunkId, chunk.id));
+      extractedCount += chunkExtractedCount;
+      const completedMetadata = mergeChunkMetadata(chunk.metadata, {
+        extractionStatus: "completed",
+        extractedCount: chunkExtractedCount,
+        extractedAt: new Date().toISOString(),
+      });
+      await db
+        .update(memorySourceChunks)
+        .set({ metadata: completedMetadata })
+        .where(eq(memorySourceChunks.id, chunk.id));
+      chunk.metadata = completedMetadata;
+      await updateCompanyBrainProgress(source.id, { extractedCount });
     }
 
     const [updatedSource] = await db
@@ -845,10 +1109,14 @@ async function processCompanyBrainSource(source: MemorySourceRow) {
         status: "completed",
         chunkCount: persistedChunks.length,
         extractedCount,
+        totalChunks: blockChunks.length,
+        processedChunks: persistedChunks.length,
+        processingPhase: "completed",
         completedAt: new Date(),
         updatedAt: new Date(),
         error: null,
         lockedAt: null,
+        heartbeatAt: new Date(),
         nextRunAt: null,
       })
       .where(eq(memorySources.id, source.id))
@@ -892,7 +1160,13 @@ async function claimNextCompanyBrainSource() {
           ),
           and(
             eq(memorySources.status, "processing"),
-            lt(memorySources.updatedAt, staleBefore),
+            or(
+              lt(memorySources.heartbeatAt, staleBefore),
+              and(
+                isNull(memorySources.heartbeatAt),
+                lt(memorySources.updatedAt, staleBefore),
+              ),
+            ),
           ),
         ),
       ),
@@ -908,6 +1182,7 @@ async function claimNextCompanyBrainSource() {
       status: "processing",
       attempts: sql`${memorySources.attempts} + 1`,
       lockedAt: now,
+      heartbeatAt: now,
       startedAt: now,
       updatedAt: now,
       error: null,
@@ -920,7 +1195,13 @@ async function claimNextCompanyBrainSource() {
           eq(memorySources.status, "retrying"),
           and(
             eq(memorySources.status, "processing"),
-            lt(memorySources.updatedAt, staleBefore),
+            or(
+              lt(memorySources.heartbeatAt, staleBefore),
+              and(
+                isNull(memorySources.heartbeatAt),
+                lt(memorySources.updatedAt, staleBefore),
+              ),
+            ),
           ),
         ),
       ),
@@ -949,6 +1230,7 @@ async function markCompanyBrainFailure(
       status: retryable ? "retrying" : "failed",
       error: message,
       lockedAt: null,
+      heartbeatAt: null,
       nextRunAt,
       completedAt: retryable ? null : new Date(),
       updatedAt: new Date(),
@@ -1042,6 +1324,7 @@ export async function cancelCompanyBrainDocument(params: {
       status: "cancelled",
       error: "Cancelled by user",
       lockedAt: null,
+      heartbeatAt: null,
       nextRunAt: null,
       completedAt: new Date(),
       updatedAt: new Date(),
@@ -1178,6 +1461,10 @@ export async function listCompanyBrainDocuments(
       status: memorySources.status,
       chunkCount: memorySources.chunkCount,
       extractedCount: memorySources.extractedCount,
+      totalChunks: memorySources.totalChunks,
+      processedChunks: memorySources.processedChunks,
+      processingPhase: memorySources.processingPhase,
+      heartbeatAt: memorySources.heartbeatAt,
       project: memorySources.project,
       scope: memorySources.scope,
       createdAt: memorySources.createdAt,
@@ -1665,6 +1952,86 @@ export async function searchCompanyBrain(params: SearchCompanyBrainParams) {
   };
 }
 
+function normalizeSearchText(value: string | null | undefined) {
+  return (value ?? "").toLowerCase();
+}
+
+function getSearchTerms(query: string) {
+  const stopWords = new Set([
+    "about",
+    "after",
+    "does",
+    "from",
+    "have",
+    "into",
+    "says",
+    "that",
+    "the",
+    "this",
+    "what",
+    "when",
+    "where",
+    "which",
+    "with",
+  ]);
+
+  return Array.from(
+    new Set(
+      query
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter((term) => term.length > 2 && !stopWords.has(term)),
+    ),
+  );
+}
+
+function getRequestedSectionNumbers(query: string) {
+  const matches = query
+    .toLowerCase()
+    .matchAll(/\b(?:section|clause|article)\s+(\d+(?:\.\d+)*)\b/g);
+  return Array.from(matches, (match) => match[1]);
+}
+
+function getDocumentChunkBoost(
+  query: string,
+  row: Pick<ChunkSearchRow, "content" | "sectionPath" | "title">,
+) {
+  const content = normalizeSearchText(row.content);
+  const sectionPath = normalizeSearchText(row.sectionPath);
+  const title = normalizeSearchText(row.title);
+  const terms = getSearchTerms(query);
+  const sectionNumbers = getRequestedSectionNumbers(query);
+  let boost = 0;
+
+  for (const sectionNumber of sectionNumbers) {
+    const escapedSection = sectionNumber.replace(/\./g, "\\.");
+    const sectionPattern = new RegExp(`(^|[^0-9])${escapedSection}(\\.|\\b)`);
+    if (sectionPattern.test(sectionPath)) boost += 0.02;
+    if (sectionPattern.test(content)) boost += 0.01;
+  }
+
+  if (terms.length > 0) {
+    const sectionMatches = terms.filter((term) =>
+      sectionPath.includes(term),
+    ).length;
+    const contentMatches = terms.filter((term) =>
+      content.includes(term),
+    ).length;
+    const titleMatches = terms.filter((term) => title.includes(term)).length;
+
+    boost += Math.min(0.025, sectionMatches * 0.008);
+    boost += Math.min(0.01, titleMatches * 0.004);
+    boost += Math.min(0.02, (contentMatches / terms.length) * 0.02);
+  }
+
+  const meaningfulQuery = terms.join(" ");
+  if (meaningfulQuery.length > 8 && content.includes(meaningfulQuery)) {
+    boost += 0.015;
+  }
+
+  return Math.min(boost, 0.06);
+}
+
 async function searchCompanyBrainChunks(params: {
   workspaceId: string;
   query: string;
@@ -1757,6 +2124,11 @@ async function searchCompanyBrainChunks(params: {
   }
 
   const candidates = Array.from(fusedChunks.values())
+    .map((candidate) => ({
+      ...candidate,
+      score:
+        candidate.score + getDocumentChunkBoost(params.query, candidate.row),
+    }))
     .sort((a, b) => b.score - a.score)
     .slice(0, Math.max(params.limit, COMPANY_BRAIN_RERANK_CANDIDATES))
     .map(({ row, score }) => ({
