@@ -1,4 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+export const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 export class ApiError extends Error {
   constructor(
@@ -14,11 +15,12 @@ async function fetchWithCredentials<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
+  const isFormData = options.body instanceof FormData;
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     credentials: "include",
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...options.headers,
     },
   });
@@ -60,4 +62,11 @@ export const api = {
 
   delete: <T>(path: string) =>
     fetchWithCredentials<T>(path, { method: "DELETE" }),
+
+  postForm: <T>(path: string, data: FormData) =>
+    fetchWithCredentials<T>(path, {
+      method: "POST",
+      body: data,
+      headers: {},
+    }),
 };

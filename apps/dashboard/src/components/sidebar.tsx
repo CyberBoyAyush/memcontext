@@ -73,6 +73,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: "Dashboard", href: "/dashboard", icon: SquaresFour },
       { label: "Memories", href: "/memories", icon: Brain },
+      { label: "Context Vault", href: "/context-vault", icon: Brain },
       { label: "Memory Graph", href: "/memories/graph", icon: ShareNetwork },
     ],
   },
