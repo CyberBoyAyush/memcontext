@@ -263,7 +263,14 @@ paths:
         Returns ranked retrieval results for workspace knowledge. The endpoint
         does not synthesize a single final answer; callers should use returned
         chunks, extracted memories, and evidence as grounded context for their
-        own answer-generation layer. Document candidates are reranked after
+        own answer-generation layer.
+
+        The response keeps document passages and extracted memories separate.
+        `documents` mode fills `chunks` and leaves `memories` empty. `memories`
+        mode fills `memories` and leaves `chunks` empty. `hybrid` mode can fill
+        both arrays without flattening them into one mixed list, so clients can
+        pass source chunks as document context and extracted facts as a separate
+        memory-context document. Document candidates are reranked after
         hybrid/vector/full-text retrieval.
       security:
         - ApiKeyAuth: []
@@ -933,10 +940,13 @@ components:
     SearchCompanyBrainResponse:
       type: object
       required: [mode, found, chunks, memories]
-      description: Ranked Context Vault retrieval results. `chunks` contains
-        source document passages; `memories` contains extracted atomic facts
-        with citation evidence. This response intentionally does not include a
-        synthesized answer.
+      description: >-
+        Ranked Context Vault retrieval results. `chunks` contains source
+        document passages; `memories` contains extracted atomic facts with
+        citation evidence. Hybrid mode returns these as separate arrays instead
+        of a single merged list so callers can build two downstream context
+        blocks: source documents and extracted memories. This response
+        intentionally does not include a synthesized answer.
       properties:
         mode:
           type: string
@@ -945,10 +955,15 @@ components:
           type: integer
         chunks:
           type: array
+          description: >-
+            Source document chunks/passages. Empty when mode is `memories`.
           items:
             type: object
         memories:
           type: array
+          description: >-
+            Extracted atomic memories with source evidence. Empty when mode is
+            `documents`.
           items:
             type: object
     Memory:

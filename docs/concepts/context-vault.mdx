@@ -155,15 +155,65 @@ curl "https://api.memcontext.in/api/company-brain/search?workspaceId=8b3b8f4c-..
 ```
 
 The search endpoint returns ranked retrieval results, not a generated final
-answer. `documents` mode returns source chunks, `memories` mode returns
-extracted atomic facts with evidence, and `hybrid` returns both. Document chunk
-results are reranked after hybrid/vector/full-text candidate generation so the
-most directly relevant source passages appear first.
+answer. It always keeps source document chunks and extracted memories in
+separate response arrays:
 
-For product chat or support flows, use the top returned chunks and memories as
-grounded context in your own answer-generation step. Keeping answer synthesis
-outside this endpoint makes the API predictable for dashboards, agents, and
-server-side applications that need citations or custom response formatting.
+- `chunks[]` contains source passages from uploaded files or crawled pages.
+- `memories[]` contains extracted atomic facts, each with citation evidence back
+  to the source chunks.
+
+`documents` mode returns `chunks[]` and an empty `memories[]` array. `memories`
+mode returns `memories[]` and an empty `chunks[]` array. `hybrid` mode returns
+both arrays, but does not flatten them into one mixed list. This keeps downstream
+payload processing simple: pass source passages as document context, and pass
+the extracted memories as a separate memory-context document.
+
+```json
+{
+  "mode": "hybrid",
+  "found": 2,
+  "chunks": [
+    {
+      "id": "8c8f0c9d-...",
+      "sourceId": "7ef2c9a0-...",
+      "title": "Employee Handbook",
+      "sourceType": "pdf",
+      "sectionPath": "Leave Policy",
+      "chunkIndex": 12,
+      "content": "Employees receive 18 paid leave days per year...",
+      "contextualContent": "Employee Handbook > Leave Policy\nEmployees receive 18 paid leave days per year...",
+      "relevance": 0.91
+    }
+  ],
+  "memories": [
+    {
+      "id": "9f1a2b3c-...",
+      "content": "Employees receive 18 paid leave days per year.",
+      "category": "fact",
+      "evidence": [
+        {
+          "sourceId": "7ef2c9a0-...",
+          "chunkId": "8c8f0c9d-...",
+          "title": "Employee Handbook",
+          "sectionPath": "Leave Policy",
+          "chunkIndex": 12,
+          "quote": "Employees receive 18 paid leave days per year..."
+        }
+      ]
+    }
+  ]
+}
+```
+
+For product chat or support flows, use the top `chunks[]` entries as the
+grounded source-document context. Then convert the top `memories[]` entries into
+a second synthetic document, for example `Context Vault extracted memories`,
+containing bullet facts and their evidence. Keeping answer synthesis outside
+this endpoint makes the API predictable for dashboards, agents, and server-side
+applications that need citations or custom response formatting.
+
+Document chunk results are reranked after hybrid/vector/full-text candidate
+generation so the most directly relevant source passages appear first.
 
 The retrieval path applies `workspace_id` and `scope` before search, so company
 documents do not appear in personal MCP memory retrieval.

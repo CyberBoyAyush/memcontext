@@ -287,7 +287,11 @@ app.get("/documents", zValidator("query", documentsQuerySchema), async (c) => {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to list documents";
-    throw new HTTPException(404, { message });
+    if (message === "Workspace not found") {
+      throw new HTTPException(404, { message });
+    }
+    logger.error({ userId, error: message }, "list vault documents failed");
+    throw new HTTPException(500, { message: "Failed to list documents" });
   }
 });
 

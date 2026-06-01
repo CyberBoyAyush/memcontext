@@ -709,7 +709,13 @@ async function softDeleteExclusiveDocumentMemoriesForSource(params: {
   const evidenceRows = await db
     .select({ memoryId: memoryEvidence.memoryId })
     .from(memoryEvidence)
-    .where(eq(memoryEvidence.sourceId, params.sourceId));
+    .innerJoin(memorySources, eq(memoryEvidence.sourceId, memorySources.id))
+    .where(
+      and(
+        eq(memoryEvidence.sourceId, params.sourceId),
+        eq(memorySources.workspaceId, params.workspaceId),
+      ),
+    );
   const memoryIds = Array.from(
     new Set(evidenceRows.map((row) => row.memoryId)),
   );
@@ -721,9 +727,11 @@ async function softDeleteExclusiveDocumentMemoriesForSource(params: {
   const sharedRows = await db
     .select({ memoryId: memoryEvidence.memoryId })
     .from(memoryEvidence)
+    .innerJoin(memorySources, eq(memoryEvidence.sourceId, memorySources.id))
     .where(
       and(
         inArray(memoryEvidence.memoryId, memoryIds),
+        eq(memorySources.workspaceId, params.workspaceId),
         sql`${memoryEvidence.sourceId} <> ${params.sourceId}`,
       ),
     );
@@ -1337,7 +1345,10 @@ export async function cancelCompanyBrainDocument(params: {
     )
     .returning();
 
-  return { document: updated ?? document };
+  return {
+    cancelled: !!updated,
+    documentId: params.documentId,
+  };
 }
 
 export async function deleteCompanyBrainDocument(params: {
@@ -1361,12 +1372,19 @@ export async function deleteCompanyBrainDocument(params: {
   if (membership.role === "viewer") {
     throw new Error("Viewers cannot delete workspace documents");
   }
+  const workspaceId = document.workspaceId;
 
   const result = await db.transaction(async (tx) => {
     const evidenceRows = await tx
       .select({ memoryId: memoryEvidence.memoryId })
       .from(memoryEvidence)
-      .where(eq(memoryEvidence.sourceId, params.documentId));
+      .innerJoin(memorySources, eq(memoryEvidence.sourceId, memorySources.id))
+      .where(
+        and(
+          eq(memoryEvidence.sourceId, params.documentId),
+          eq(memorySources.workspaceId, workspaceId),
+        ),
+      );
     const memoryIds = Array.from(
       new Set(evidenceRows.map((row) => row.memoryId)),
     );
@@ -1377,9 +1395,14 @@ export async function deleteCompanyBrainDocument(params: {
         : await tx
             .select({ memoryId: memoryEvidence.memoryId })
             .from(memoryEvidence)
+            .innerJoin(
+              memorySources,
+              eq(memoryEvidence.sourceId, memorySources.id),
+            )
             .where(
               and(
                 inArray(memoryEvidence.memoryId, memoryIds),
+                eq(memorySources.workspaceId, workspaceId),
                 sql`${memoryEvidence.sourceId} <> ${params.documentId}`,
               ),
             );
@@ -1792,7 +1815,14 @@ export async function listCompanyBrainMemoryEvidence(
       eq(memoryEvidence.chunkId, memorySourceChunks.id),
     )
     .innerJoin(memorySources, eq(memoryEvidence.sourceId, memorySources.id))
-    .where(eq(memoryEvidence.memoryId, params.memoryId))
+    .where(
+      and(
+        eq(memoryEvidence.memoryId, params.memoryId),
+        eq(memorySourceChunks.workspaceId, params.workspaceId),
+        eq(memorySources.workspaceId, params.workspaceId),
+        eq(memorySourceChunks.sourceId, memoryEvidence.sourceId),
+      ),
+    )
     .orderBy(asc(memorySourceChunks.chunkIndex), asc(memoryEvidence.createdAt));
 
   return { evidence: rows };

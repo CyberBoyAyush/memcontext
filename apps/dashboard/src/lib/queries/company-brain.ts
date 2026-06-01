@@ -53,6 +53,11 @@ export interface CompanyBrainDocument {
   publicUrl: string | null;
 }
 
+export interface CancelCompanyBrainDocumentResponse {
+  cancelled: boolean;
+  documentId: string;
+}
+
 export interface CompanyBrainSearchResponse {
   mode: "memories" | "documents" | "hybrid";
   found: number;
@@ -352,7 +357,10 @@ export function useCancelCompanyBrainDocument() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: { workspaceId: string; documentId: string }) =>
-      api.post(`/api/company-brain/documents/${data.documentId}/cancel`, {}),
+      api.post<CancelCompanyBrainDocumentResponse>(
+        `/api/company-brain/documents/${data.documentId}/cancel`,
+        {},
+      ),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["company-brain-documents", variables.workspaceId],

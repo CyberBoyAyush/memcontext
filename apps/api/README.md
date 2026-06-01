@@ -248,7 +248,7 @@ When a document is ingested:
 7. Link facts back to chunks through `memory_evidence`.
 8. Retry stale/transient processing jobs from the last completed chunk where possible.
 
-Context Vault search supports `memories`, `documents`, and `hybrid` modes. The endpoint returns ranked retrieval results and citations, not a generated final answer.
+Context Vault search supports `memories`, `documents`, and `hybrid` modes. The endpoint returns ranked retrieval results and citations, not a generated final answer. Hybrid search keeps source passages in `chunks[]` and extracted atomic facts in `memories[]`, so callers can pass document context and memory context as separate blocks to their AI layer.
 
 ## Environment Variables
 

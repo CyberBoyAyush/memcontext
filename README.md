@@ -485,19 +485,19 @@ REST and SDK clients can pass `scope` on memory operations for hard isolation. T
 
 The public product name is Context Vault. The current beta API path remains `/api/company-brain/...` for compatibility.
 
-| Method | Path                                        | Description                                                             |
-| ------ | ------------------------------------------- | ----------------------------------------------------------------------- |
-| POST   | `/api/company-brain/documents`              | Ingest extracted text, public file URLs, or documentation/web URLs      |
-| POST   | `/api/company-brain/documents/upload`       | Upload and ingest a document file                                       |
-| GET    | `/api/company-brain/documents`              | List workspace documents and processing state                           |
-| POST   | `/api/company-brain/documents/:id/cancel`   | Stop a pending, retrying, or active document job                        |
-| DELETE | `/api/company-brain/documents/:id`          | Delete a document, chunks, citations, and exclusive extracted memories  |
-| GET    | `/api/company-brain/documents/:id/memories` | List extracted memories for a document                                  |
-| GET    | `/api/company-brain/search`                 | Search workspace knowledge in `memories`, `documents`, or `hybrid` mode |
-| GET    | `/api/company-brain/memories`               | Browse workspace document memories                                      |
-| POST   | `/api/company-brain/memories/:id/feedback`  | Submit feedback on a workspace memory                                   |
-| GET    | `/api/company-brain/memories/:id/evidence`  | Load citations/source chunks for a workspace memory                     |
-| GET    | `/api/company-brain/hierarchy`              | Scope/project hierarchy for workspace memories                          |
+| Method | Path                                        | Description                                                                                                                         |
+| ------ | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/api/company-brain/documents`              | Ingest extracted text, public file URLs, or documentation/web URLs                                                                  |
+| POST   | `/api/company-brain/documents/upload`       | Upload and ingest a document file                                                                                                   |
+| GET    | `/api/company-brain/documents`              | List workspace documents and processing state                                                                                       |
+| POST   | `/api/company-brain/documents/:id/cancel`   | Stop a pending, retrying, or active document job                                                                                    |
+| DELETE | `/api/company-brain/documents/:id`          | Delete a document, chunks, citations, and exclusive extracted memories                                                              |
+| GET    | `/api/company-brain/documents/:id/memories` | List extracted memories for a document                                                                                              |
+| GET    | `/api/company-brain/search`                 | Search workspace knowledge in `memories`, `documents`, or `hybrid` mode; hybrid returns separate `chunks[]` and `memories[]` arrays |
+| GET    | `/api/company-brain/memories`               | Browse workspace document memories                                                                                                  |
+| POST   | `/api/company-brain/memories/:id/feedback`  | Submit feedback on a workspace memory                                                                                               |
+| GET    | `/api/company-brain/memories/:id/evidence`  | Load citations/source chunks for a workspace memory                                                                                 |
+| GET    | `/api/company-brain/hierarchy`              | Scope/project hierarchy for workspace memories                                                                                      |
 
 ## Acknowledgments
 

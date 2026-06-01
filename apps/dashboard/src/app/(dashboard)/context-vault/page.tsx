@@ -384,11 +384,15 @@ export default function CompanyBrainPage() {
   async function handleCancelDocument(documentId: string) {
     if (!activeWorkspaceId) return;
     try {
-      await cancelDocument.mutateAsync({
+      const result = await cancelDocument.mutateAsync({
         workspaceId: activeWorkspaceId,
         documentId,
       });
-      toast.success("Document processing stopped");
+      if (result.cancelled) {
+        toast.success("Document processing stopped");
+      } else {
+        toast.info("Document is no longer processing");
+      }
     } catch (error) {
       toast.error(getErrorMessage(error, "Could not stop processing"));
     }
