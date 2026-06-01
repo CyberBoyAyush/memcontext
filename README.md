@@ -29,9 +29,9 @@
 
 AI assistants like Claude Desktop, Cursor, and Cline forget everything between sessions. You end up repeating the same preferences, project context, and decisions over and over.
 
-MemContext solves this by providing a persistent memory layer that AI agents can access via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/). Your preferences, facts, and decisions are stored as searchable memories that any connected AI assistant can retrieve automatically through hybrid search (vector similarity + full-text keyword search). Memories can evolve over time with versioning, temporal expiry, and feedback loops.
+MemContext solves this by providing a persistent memory layer that AI agents can access via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/). Your preferences, facts, and decisions are stored as searchable memories that any connected AI assistant can retrieve automatically. Memories can evolve over time with versioning, temporal expiry, and feedback loops.
 
-For teams, Context Vault adds workspace knowledge ingestion for PDFs, Markdown, DOCX, images, CSV, and documentation URLs. It stores original files in Cloudflare R2, uses Mistral OCR for binary/scanned documents, uses Exa for clean web/docs scraping, chunks content structurally, extracts atomic facts, and keeps citations back to the original source chunks.
+For teams, Context Vault turns PDFs, Markdown, DOCX files, images, CSV files, and documentation URLs into searchable workspace knowledge. It supports OCR for scanned or image-based documents, clean documentation crawling, structure-aware chunks, extracted facts, and citations back to the original source.
 
 ## Quick Start
 
@@ -251,7 +251,7 @@ Omit validUntil by default. Only pass validUntil for an exact known expiry/deadl
 3. Next session, when relevant context is needed, the assistant searches MemContext
 4. Your stored memories are retrieved and used automatically
 
-The system uses hybrid search — vector embeddings (1536-dim) for semantic similarity combined with PostgreSQL full-text search for exact keyword matching, merged via Reciprocal Rank Fusion. Both vector search and full-text search run across the original query and the generated query variants, improving recall for wording-sensitive searches like "caching system" vs "Upstash Redis" or "frontend migration" vs "App Router". When saving, the system automatically detects similar existing memories and classifies the relationship as `saved`, `updated`, `extended`, or `duplicate`. Larger notes may be accepted for background extraction into atomic memories and return `accepted` with a `jobId`. Memories support temporal validity (`validUntil`) — either set explicitly or auto-detected by the system during save. Time-sensitive information is automatically excluded from search results when expired. Search results are also ranked using feedback signals — memories marked "wrong" or "outdated" are demoted, while "helpful" memories get a boost.
+MemContext search works with natural-language questions and exact terms like project names, tools, acronyms, and decisions. When saving, the system automatically detects similar existing memories and classifies the result as `saved`, `updated`, `extended`, or `duplicate`. Larger notes may be accepted for asynchronous extraction into atomic memories and return `accepted` with a `jobId`. Memories support temporal validity (`validUntil`) - either set explicitly or auto-detected during save. Time-sensitive information is automatically excluded from search results when expired. Search results can also improve from feedback signals - memories marked "wrong" or "outdated" are demoted, while "helpful" memories get a boost.
 
 ## MCP Tools
 
@@ -259,7 +259,7 @@ The MCP server exposes four tools to AI assistants:
 
 ### `save_memory`
 
-Save a memory with optional category, project grouping, and temporal expiry. Short memories are saved immediately; larger notes may be accepted for background extraction into atomic memories.
+Save a memory with optional category, project grouping, and temporal expiry. Short memories are saved immediately; larger notes may be accepted for asynchronous extraction into atomic memories.
 
 | Parameter    | Type   | Required | Description                                               |
 | ------------ | ------ | -------- | --------------------------------------------------------- |
@@ -272,7 +272,7 @@ MCP tools intentionally do not expose `scope`; they operate on unscoped assistan
 
 ### `search_memory`
 
-Search for relevant memories using hybrid search (vector + keyword).
+Search for relevant memories using natural-language questions.
 
 | Parameter   | Type   | Required | Description                                              |
 | ----------- | ------ | -------- | -------------------------------------------------------- |
@@ -498,6 +498,26 @@ The public product name is Context Vault. The current beta API path remains `/ap
 | POST   | `/api/company-brain/memories/:id/feedback`  | Submit feedback on a workspace memory                                                                                               |
 | GET    | `/api/company-brain/memories/:id/evidence`  | Load citations/source chunks for a workspace memory                                                                                 |
 | GET    | `/api/company-brain/hierarchy`              | Scope/project hierarchy for workspace memories                                                                                      |
+
+The TypeScript SDK exposes these through Context Vault methods:
+
+```ts
+const { workspace } = await client.createWorkspace({ name: "Acme Support" });
+
+await client.ingestContextVaultDocument({
+  workspaceId: workspace.id,
+  title: "Docs",
+  uri: "https://docs.example.com",
+  sourceType: "url",
+  crawlSubpages: true,
+});
+
+const results = await client.searchContextVault({
+  workspaceId: workspace.id,
+  query: "How do refunds work?",
+  mode: "hybrid",
+});
+```
 
 ## Acknowledgments
 

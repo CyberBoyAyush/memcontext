@@ -1,39 +1,33 @@
 ---
 title: "Versioning"
-description: "How MemContext preserves memory history while always returning current truth."
+description: "Let memory change over time without manually cleaning up old facts."
 ---
 
-## How version chains work
+MemContext is built for information that changes.
 
-Every memory has these version-tracking fields:
+If you save a newer fact that replaces an older one, search can return the newer
+memory while keeping the previous version available through the history endpoint.
 
-| Field          | Description                                                                                  |
-| -------------- | -------------------------------------------------------------------------------------------- |
-| `isCurrent`    | Whether this is the active version. Only current memories appear in search and list results. |
-| `supersedesId` | The ID of the memory this version replaced.                                                  |
-| `rootId`       | The ID of the original memory in the chain.                                                  |
-| `version`      | Incrementing version number starting at 1.                                                   |
+## Example
 
-When a new memory is classified as an `update` to an existing one:
+Earlier memory:
 
-1. A new memory row is inserted with incremented `version`, `supersedesId`, and `rootId`
-2. The old memory is marked `isCurrent = false`
-3. The old memory remains in the database — nothing is deleted
+```text
+User prefers long-form LinkedIn posts.
+```
 
-## Why this matters
+Later memory:
 
-This is what makes evolving memory possible without losing context.
+```text
+User now prefers short hook-first LinkedIn posts.
+```
 
-For example, a content strategy might evolve:
+When you search for the user's LinkedIn preference, MemContext should return the
+newer memory. You do not need to manually delete the older statement first.
 
-1. **v1:** "Long LinkedIn posts are performing well right now"
-2. **v2:** "Short hook-first posts are now outperforming long posts"
+## Inspect History
 
-Version 2 supersedes version 1. Search returns only v2, but the full history is preserved and accessible via the history endpoint.
-
-## Inspecting history
-
-Use `GET /api/memories/:id/history` to see how a memory evolved:
+Use the history endpoint when you need to see how a memory changed.
 
 ```bash
 curl https://api.memcontext.in/api/memories/a1b2c3d4-.../history \
@@ -46,31 +40,28 @@ Response:
 {
   "current": {
     "id": "e5f6g7h8-...",
-    "content": "Short hook-first posts are now outperforming long posts",
+    "content": "User now prefers short hook-first LinkedIn posts.",
     "version": 2,
-    "isCurrent": true,
-    "supersedesId": "a1b2c3d4-...",
     "createdAt": "2026-04-10T00:00:00Z"
   },
   "history": [
     {
       "id": "a1b2c3d4-...",
-      "content": "Long LinkedIn posts are performing well right now",
+      "content": "User prefers long-form LinkedIn posts.",
       "version": 1,
-      "isCurrent": false,
       "createdAt": "2026-03-15T00:00:00Z"
     }
   ]
 }
 ```
 
-## Delete semantics
+## Delete Memories
 
-MemContext uses soft delete for both removal endpoints:
+Use delete when a memory should no longer appear in search.
 
-| Method               | Endpoint                        | Behavior                                                               |
-| -------------------- | ------------------------------- | ---------------------------------------------------------------------- |
-| Forget (soft delete) | `POST /api/memories/:id/forget` | Sets `deletedAt` — memory is excluded from results but preserved in DB |
-| Delete (soft delete) | `DELETE /api/memories/:id`      | Sets `deletedAt` — memory is excluded from results but preserved in DB |
+```bash
+curl -X DELETE https://api.memcontext.in/api/memories/a1b2c3d4-... \
+  -H "X-API-Key: mc_your_key"
+```
 
-Use either endpoint when a memory should stop appearing in search and list results.
+Deleted memories are excluded from future retrieval.

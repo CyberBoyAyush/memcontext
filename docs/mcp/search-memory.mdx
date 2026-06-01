@@ -1,47 +1,41 @@
 ---
 title: "search_memory"
-description: "Retrieve relevant memories using hybrid search."
+description: "Retrieve relevant memories for the assistant's current task."
 ---
 
 ## Description
 
-`search_memory` finds relevant memories using hybrid retrieval — combining vector similarity and PostgreSQL full-text search, merged with Reciprocal Rank Fusion (RRF). Both semantic queries and exact-match lookups work well.
+`search_memory` finds memories that may help the assistant answer, code, plan, or
+make a decision. Use full natural-language questions for best results.
 
 ## Parameters
 
 | Parameter   | Type   | Required | Default | Description                                                                        |
 | ----------- | ------ | -------- | ------- | ---------------------------------------------------------------------------------- |
-| `query`     | string | Yes      | —       | Natural language description of what to find. Full sentences produce best results. |
-| `limit`     | number | No       | 5       | Number of results to return (1-10). Use higher values for broad topics.            |
-| `category`  | string | No       | all     | Filter to a single category: `preference`, `fact`, `decision`, or `context`.       |
+| `query`     | string | Yes      | -       | Natural language description of what to find. Full sentences produce best results. |
+| `limit`     | number | No       | 5       | Number of results to return. Use higher values for broad topics.                   |
+| `category`  | string | No       | all     | Filter to `preference`, `fact`, `decision`, or `context`.                          |
 | `project`   | string | No       | all     | Filter to a specific known project.                                                |
-| `threshold` | number | No       | 0.6     | Maximum vector distance (0-1). Higher values return more results.                  |
+| `threshold` | number | No       | 0.6     | Search strictness. Higher values return broader matches.                           |
 
-### Threshold guide
+## Example
 
-| Value         | Use case                                                            |
-| ------------- | ------------------------------------------------------------------- |
-| `0.2` - `0.4` | Strict, high-precision matching                                     |
-| `0.6`         | Default — good balance of precision and recall                      |
-| `0.7` - `0.8` | Broad recall — returns more results, including loosely related ones |
-
-## How search works
-
-1. Query variants are generated automatically to improve coverage
-2. Embeddings are created for the original query and all variants
-3. Vector search runs against all query forms
-4. PostgreSQL full-text search runs in parallel
-5. Results are merged with Reciprocal Rank Fusion (RRF)
+```
+search_memory({
+  query: "What package manager does the user prefer?",
+  project: "memcontext"
+})
+```
 
 ## Response
 
 ```json
 {
-  "found": 2,
+  "found": 1,
   "memories": [
     {
       "id": "a1b2c3d4-...",
-      "content": "User prefers TypeScript over JavaScript",
+      "content": "User prefers pnpm for JavaScript projects.",
       "category": "preference",
       "relevance": 0.92,
       "createdAt": "2026-04-11T12:00:00.000Z"
@@ -50,21 +44,28 @@ description: "Retrieve relevant memories using hybrid search."
 }
 ```
 
-Each result includes a `relevance` score from 0 (least relevant) to 1 (most relevant).
+Each result includes a `relevance` score from 0 to 1.
 
-## Example
+## Query Guidelines
 
+- Ask a complete question.
+- Include the project name when it matters.
+- Use `category` if you only need one type of memory.
+- Increase `limit` when preparing a larger answer.
+
+Good:
+
+```text
+What package manager does the user prefer?
 ```
-search_memory({
-  query: "What package manager does the user prefer?"
-})
+
+Less effective:
+
+```text
+package manager
 ```
 
 <Note>
-  MCP tools intentionally do not expose `scope`. Use the REST API or TypeScript SDK when your app needs hard per-user or per-tenant isolation.
+  MCP tools intentionally do not expose `scope`. Use the REST API or TypeScript
+  SDK when your app needs per-user or per-tenant isolation.
 </Note>
-
-### Query guidelines
-
-- **Good:** `"What package manager does the user prefer?"` (full sentence, clear intent)
-- **Bad:** `"package manager"` (keywords alone reduce match quality)

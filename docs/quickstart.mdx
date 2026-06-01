@@ -7,7 +7,7 @@ description: "Make your first MemContext API and MCP calls in under 2 minutes."
 
 Sign up at [app.memcontext.in](https://app.memcontext.in) and create an API key from **Settings > API Keys**.
 
-Your key will look like `mc_abc123...` and is shown only once — store it securely.
+Your key will look like `mc_abc123...` and is shown only once - store it securely.
 
 ## 2. Save a memory
 
@@ -32,15 +32,15 @@ curl -X POST https://api.memcontext.in/api/memories \
 
 The `status` field tells you what happened:
 
-| Status      | Meaning                                       |
-| ----------- | --------------------------------------------- |
-| `saved`     | New memory created                            |
-| `updated`   | New memory superseded an existing one         |
-| `extended`  | New memory extends an existing one            |
-| `duplicate` | Content already exists, no new memory created |
-| `accepted`  | Large content accepted for background extraction |
+| Status      | Meaning                                            |
+| ----------- | -------------------------------------------------- |
+| `saved`     | New memory created                                 |
+| `updated`   | New memory superseded an existing one              |
+| `extended`  | New memory extends an existing one                 |
+| `duplicate` | Content already exists, no new memory created      |
+| `accepted`  | Large content accepted for asynchronous extraction |
 
-Longer notes may return `202 Accepted` with a `jobId` and message. In that case, MemContext stores the source note immediately and extracts atomic memories in the background.
+Longer notes may return `202 Accepted` with a `jobId` and message for tracking extraction into atomic memories.
 
 ## 3. Search memories
 
@@ -59,8 +59,6 @@ curl "https://api.memcontext.in/api/memories/search?query=What%20language%20does
       "id": "a1b2c3d4-...",
       "content": "User prefers TypeScript over JavaScript for type safety",
       "category": "preference",
-      "scope": null,
-      "project": null,
       "relevance": 0.92,
       "createdAt": "2026-04-11T12:00:00.000Z"
     }
@@ -152,9 +150,9 @@ Use `withScope()` for the hard end-user or tenant boundary. Use `withProject()` 
 
 ## Recommended workflow
 
-1. **Search first** — check for existing context before making assumptions
-2. **Save when durable** — persist stable preferences, decisions, and project facts
-3. **Use categories** — tag memories so they can be filtered later
-4. **Use scope** — isolate each app user or tenant into its own memory container
-5. **Use projects** — group project-specific knowledge inside that scope
-6. **Give feedback** — mark retrieved memories as helpful or outdated to improve quality
+1. **Search first** - check for existing context before making assumptions
+2. **Save when durable** - persist stable preferences, decisions, and project facts
+3. **Use categories** - tag memories so they can be filtered later
+4. **Use scope** - isolate each app user or tenant into its own memory container
+5. **Use projects** - group project-specific knowledge inside that scope
+6. **Give feedback** - mark retrieved memories as helpful or outdated to improve quality

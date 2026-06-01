@@ -5,9 +5,11 @@ description: "How to integrate MemContext as a memory backend for your applicati
 
 ## Mental model
 
-MemContext is infrastructure, not an application feature. Treat it the same way you treat a database or auth provider — a service your application depends on for a specific capability.
+MemContext is the memory layer for your AI product. Your app sends durable
+context to MemContext, then retrieves relevant context before generation.
 
-Your application calls the MemContext API (or connects via MCP) to save and retrieve knowledge. It does not need to know about embeddings, classification, or version chains.
+Your application does not need to manage retrieval logic, duplicate memories, or
+memory updates manually.
 
 ## Integration pattern
 
@@ -15,10 +17,10 @@ A typical integration follows four steps:
 
 1. **Save** durable user or project context via `POST /api/memories`
 2. **Search** before generation or decision-making via `GET /api/memories/search`
-3. **Profile** (optional) — fetch broad context in one call via `GET /api/memories/profile`
-4. **Feedback** — record retrieval quality via `POST /api/memories/:id/feedback`
+3. **Profile** (optional) - fetch broad context in one call via `GET /api/memories/profile`
+4. **Feedback** - record retrieval quality via `POST /api/memories/:id/feedback`
 
-For larger notes, `POST /api/memories` may return `202 Accepted`. This means the note has been stored and will be extracted into atomic memories in the background.
+For larger notes, `POST /api/memories` may return `202 Accepted`. This means extraction has started and can be tracked with the returned `jobId`.
 
 For multi-user applications, always pass a stable end-user or tenant ID in `scope`. `project` remains a secondary grouping field inside that scope.
 
@@ -54,11 +56,10 @@ Keep your application logic outside MemContext.
 
 **MemContext owns:**
 
-- Storage and retrieval
-- Deduplication and classification
-- Version chains and history
-- Temporal filtering
-- Hybrid search
+- Saving and retrieving memory
+- Handling duplicates and updates
+- Memory history
+- Expiry and temporal filtering
 - MCP tool access
 
 **Your application owns:**
@@ -107,7 +108,7 @@ async function saveMemory(
 If you submit a long note or transcript, check the returned `status`:
 
 - `saved`, `updated`, `extended`, `duplicate` → final synchronous result
-- `accepted` → source stored, background extraction in progress
+- `accepted` → asynchronous extraction in progress
 
 ## TypeScript SDK example
 
@@ -140,8 +141,8 @@ const results = await client.search({
 
 ## Tips
 
-- **Search before saving** — avoid duplicates by checking if the knowledge already exists
+- **Search before saving** - avoid duplicates by checking if the knowledge already exists
 - **Use scope** for hard per-user or per-tenant isolation
 - **Use projects** only to group memories inside that scope
-- **Category matters** — `preference` and `fact` go into profile `static` context; everything goes into `dynamic`
-- **Do not save noise** — only persist information with long-term value
+- **Category matters** - `preference` and `fact` go into profile `static` context; everything goes into `dynamic`
+- **Do not save noise** - only persist information with long-term value

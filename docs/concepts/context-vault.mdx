@@ -1,68 +1,125 @@
 ---
 title: "Context Vault"
-description: "Workspace document memory with chunks, extracted facts, and citations."
+description: "Turn workspace documents, files, and URLs into searchable AI context."
 ---
 
-Context Vault stores shared company knowledge separately from personal MCP memory.
+Context Vault lets your app add company or project knowledge once, then retrieve
+the right source passages and extracted facts whenever your AI system needs
+context.
 
-Personal memory uses `workspace_id = null`. Context Vault memory uses a workspace
-ID and checks workspace membership before document ingestion or retrieval.
-Context Vault endpoints accept either dashboard session cookies or `X-API-Key`
-authentication.
+Use it for support bots, internal copilots, onboarding agents, sales assistants,
+or any workflow where an AI system needs to answer from trusted workspace
+documents.
 
-The public product name is Context Vault. The current beta API path remains
-`/api/company-brain/...` for compatibility with existing integrations.
+## Why Context Vault Exists
 
-## Plan usage
+Normal memory is best for short, durable facts like preferences, decisions, and
+project context. Company knowledge is different. It usually lives in PDFs,
+Markdown files, help centers, contracts, onboarding docs, tickets, and long
+internal notes.
 
-Current Free, Hobby, and Pro memory limits apply to personal/user memories. During
-the Context Vault beta, extracted document memories are stored as workspace
-document memories and are tracked separately from the personal memory quota.
+Context Vault is the AI context pipeline for that kind of knowledge. It lets you
+add long-form content, turn it into searchable context, and retrieve the right
+pieces when your AI application needs to answer.
 
-This keeps document ingestion usable while document-specific limits are being
-finalized. For production workspaces, plan around separate Context Vault limits
-for documents, storage, OCR/scraping volume, and extracted facts rather than
-treating a PDF as one personal memory.
+Use Context Vault when you want to:
 
-## Ingestion
+- Let a support bot answer from product documentation
+- Let an internal copilot search handbooks, policies, and SOPs
+- Let a legal or finance assistant retrieve exact clauses from PDFs
+- Let an AI workflow combine source passages with extracted facts
 
-The v1 endpoints support four ingestion paths:
+Do not use Context Vault for:
 
-- Multipart file upload, where callers send file bytes directly.
-- Remote file URL ingestion, where callers send a public file URL such as a PDF.
-- Documentation/web URL ingestion, where callers send a docs site or web page URL.
-- Extracted text JSON ingestion, where callers send already parsed text or Markdown.
+- Small user preferences that should be saved as personal memories
+- Temporary chat messages that do not need to be remembered
+- Private tenant data unless you put each tenant in its own workspace or scope
 
-Text-like files are decoded locally. PDFs, DOCX files, and scanned/image documents
-are converted to Markdown with Mistral OCR in the background before chunking.
-MemContext stores the original in R2 and sends the `R2_PUBLIC_BASE_URL` file URL
-to Mistral OCR.
+## What You Can Add
 
-### File upload
+Context Vault accepts:
 
-Use `POST /api/company-brain/documents/upload` when the client has the file
-bytes. The API stores the original file in Cloudflare R2 and queues processing.
+- PDFs
+- Markdown and text files
+- DOCX files
+- CSV files
+- Images and scanned documents
+- Public file URLs
+- Documentation or website URLs
+- Already extracted text or Markdown
+
+For files that need OCR, MemContext extracts readable text automatically. For
+documentation URLs, MemContext fetches clean page content that is easier to
+search than raw HTML.
+
+## How The AI Context Pipeline Works
+
+When you add a document, MemContext prepares it for retrieval in three layers:
+
+1. **Source document**: the original file, URL, or text stays connected to the
+   workspace document.
+2. **Document chunks**: the content is split into meaningful sections so your AI
+   can receive the exact source passage it needs.
+3. **Extracted memories**: important facts are saved separately as atomic
+   memories and linked back to the chunks they came from.
+
+This is why Context Vault can return both the original source context and the
+clean extracted knowledge. Your app can pass both to an LLM, show citations, or
+let users inspect the original document.
+
+## Add A Document With The SDK
+
+```typescript
+import { MemContextClient } from "memcontext-sdk";
+
+const client = new MemContextClient({
+  apiKey: process.env.MEMCONTEXT_API_KEY!,
+});
+
+await client.ingestContextVaultDocument({
+  workspaceId: "8b3b8f4c-...",
+  title: "Product docs",
+  uri: "https://docs.example.com",
+  sourceType: "url",
+  crawlSubpages: true,
+});
+```
+
+Upload a local file:
+
+```typescript
+await client.uploadContextVaultDocument({
+  workspaceId: "8b3b8f4c-...",
+  title: "Employee handbook",
+  file,
+  filename: "handbook.pdf",
+  sourceType: "pdf",
+});
+```
+
+## Add A Document With The API
+
+### Upload A File
+
+Use this when your client has the file bytes.
 
 ```bash
 curl -X POST https://api.memcontext.in/api/company-brain/documents/upload \
-  --cookie "better-auth.session_token=..." \
+  -H "X-API-Key: mc_your_key" \
   -F "workspaceId=8b3b8f4c-..." \
   -F "title=Employee Handbook" \
-  -F "sourceType=markdown" \
-  -F "file=@handbook.md"
+  -F "sourceType=pdf" \
+  -F "file=@handbook.pdf"
 ```
 
-### Remote file URL
+### Add A Public File URL
 
-Use `POST /api/company-brain/documents` with `uri` and a file `sourceType` when
-the file is already hosted publicly. The API downloads the file, validates the
-size, stores a copy in R2, and processes the stored R2 URL. Use this for public
-PDF, DOCX, Markdown, TXT, CSV, and image URLs.
+Use this when the file is already available at a public URL.
 
 ```bash
 curl -X POST https://api.memcontext.in/api/company-brain/documents \
   -H "Content-Type: application/json" \
-  --cookie "better-auth.session_token=..." \
+  -H "X-API-Key: mc_your_key" \
   -d '{
     "workspaceId": "8b3b8f4c-...",
     "title": "Security Whitepaper",
@@ -72,101 +129,93 @@ curl -X POST https://api.memcontext.in/api/company-brain/documents \
   }'
 ```
 
-### Documentation or web URL
+### Add A Documentation URL
 
-Use `POST /api/company-brain/documents` with `uri` and `sourceType: "url"` for
-documentation sites or web pages. If `sourceType` is omitted and the URL does not
-look like a file URL, MemContext treats it as a documentation/web URL. This path
-uses Exa to fetch clean Markdown instead of storing raw HTML.
+Use this for documentation sites, help centers, or public web pages.
 
 ```bash
 curl -X POST https://api.memcontext.in/api/company-brain/documents \
   -H "Content-Type: application/json" \
-  --cookie "better-auth.session_token=..." \
+  -H "X-API-Key: mc_your_key" \
   -d '{
     "workspaceId": "8b3b8f4c-...",
-    "title": "Employee Handbook",
+    "title": "Product Docs",
     "uri": "https://docs.example.com",
+    "sourceType": "url",
     "crawlSubpages": true,
-    "subpageTarget": ["docs", "api", "guides"],
-    "scope": "handbook"
+    "subpageTarget": ["api", "guides"]
   }'
 ```
 
-Documentation URL ingestion is powered by Exa's Contents API instead of raw
-server-side fetching. This lets users enter arbitrary documentation or website
-URLs without requiring host preconfiguration in MemContext.
+### Add Text Or Markdown Directly
 
-### Extracted text or Markdown
-
-Use `POST /api/company-brain/documents` with `content` when your app has already
-parsed the file or page. This skips file storage/OCR/scraping and queues the
-provided text directly.
+Use this when your app already has clean text.
 
 ```bash
 curl -X POST https://api.memcontext.in/api/company-brain/documents \
   -H "Content-Type: application/json" \
-  --cookie "better-auth.session_token=..." \
+  -H "X-API-Key: mc_your_key" \
   -d '{
     "workspaceId": "8b3b8f4c-...",
-    "title": "Employee Handbook",
+    "title": "Leave Policy",
     "sourceType": "markdown",
-    "scope": "handbook",
-    "project": "hr",
     "content": "# Leave Policy\nEmployees get 18 paid leave days..."
   }'
 ```
 
-MemContext then:
+## Check Document Status
 
-1. Creates a `memory_sources` row with `status = pending`.
-2. A background processor claims it, marks it `processing`, and retries transient failures.
-3. Exa or Mistral OCR resolves source text when needed.
-4. The processor splits content into structure-aware chunks.
-5. Chunk embeddings are stored in `memory_source_chunks`.
-6. Each chunk is checkpointed, so retries can reuse completed chunk embeddings.
-7. Durable atomic facts are saved into `memories` from each chunk.
-8. Facts are linked back to source chunks through `memory_evidence`.
+After a document is accepted, list documents to see its current status and
+progress.
 
-Use `POST /api/company-brain/documents/{documentId}/cancel` to stop a pending,
-retrying, or active document job. The dashboard polls the document list so users
-can see `pending`, `processing`, `retrying`, `completed`, `failed`, or
-`cancelled` states, plus the active processing phase, chunk progress, remaining
-chunks, and extracted memory count.
+```typescript
+const docs = await client.listContextVaultDocuments("8b3b8f4c-...");
+```
 
-Use `DELETE /api/company-brain/documents/{documentId}` to remove a document.
-This deletes the source, chunks, and citations. Extracted memories are
-soft-deleted only when that document is their only source; memories backed by
-other documents are preserved.
+```bash
+curl "https://api.memcontext.in/api/company-brain/documents?workspaceId=8b3b8f4c-..." \
+  -H "X-API-Key: mc_your_key"
+```
 
-## Search
+Common statuses are `pending`, `processing`, `retrying`, `completed`, `failed`,
+and `cancelled`.
 
-Context Vault search supports three modes:
+## Search Workspace Knowledge
 
-| Mode        | Searches                       |
-| ----------- | ------------------------------ |
-| `memories`  | Extracted atomic company facts |
-| `documents` | Source document chunks         |
-| `hybrid`    | Both facts and chunks          |
+Context Vault search has three modes:
+
+| Mode        | What it returns                                   |
+| ----------- | ------------------------------------------------- |
+| `documents` | Source passages from uploaded files and URLs      |
+| `memories`  | Extracted atomic facts with evidence              |
+| `hybrid`    | Both document passages and extracted memory facts |
+
+Use `documents` when your AI needs exact source text, such as contract clauses,
+policy language, or troubleshooting steps.
+
+Use `memories` when your AI needs concise facts, such as "the refund window is
+14 days" or "Scope is the tenant isolation key."
+
+Use `hybrid` for most production AI apps. It gives the model both precise source
+passages and distilled facts, which usually improves answer quality and makes
+citations easier to show.
+
+```typescript
+const results = await client.searchContextVault({
+  workspaceId: "8b3b8f4c-...",
+  query: "What is the leave policy?",
+  mode: "hybrid",
+});
+```
 
 ```bash
 curl "https://api.memcontext.in/api/company-brain/search?workspaceId=8b3b8f4c-...&query=leave%20policy&mode=hybrid" \
-  --cookie "better-auth.session_token=..."
+  -H "X-API-Key: mc_your_key"
 ```
 
-The search endpoint returns ranked retrieval results, not a generated final
-answer. It always keeps source document chunks and extracted memories in
-separate response arrays:
+## Response Shape
 
-- `chunks[]` contains source passages from uploaded files or crawled pages.
-- `memories[]` contains extracted atomic facts, each with citation evidence back
-  to the source chunks.
-
-`documents` mode returns `chunks[]` and an empty `memories[]` array. `memories`
-mode returns `memories[]` and an empty `chunks[]` array. `hybrid` mode returns
-both arrays, but does not flatten them into one mixed list. This keeps downstream
-payload processing simple: pass source passages as document context, and pass
-the extracted memories as a separate memory-context document.
+Hybrid search returns document chunks and extracted memories separately:
 
 ```json
 {
@@ -174,26 +223,25 @@ the extracted memories as a separate memory-context document.
   "found": 2,
   "chunks": [
     {
-      "id": "8c8f0c9d-...",
-      "sourceId": "7ef2c9a0-...",
+      "id": "chunk_...",
+      "sourceId": "doc_...",
       "title": "Employee Handbook",
       "sourceType": "pdf",
       "sectionPath": "Leave Policy",
       "chunkIndex": 12,
       "content": "Employees receive 18 paid leave days per year...",
-      "contextualContent": "Employee Handbook > Leave Policy\nEmployees receive 18 paid leave days per year...",
       "relevance": 0.91
     }
   ],
   "memories": [
     {
-      "id": "9f1a2b3c-...",
+      "id": "mem_...",
       "content": "Employees receive 18 paid leave days per year.",
       "category": "fact",
       "evidence": [
         {
-          "sourceId": "7ef2c9a0-...",
-          "chunkId": "8c8f0c9d-...",
+          "sourceId": "doc_...",
+          "chunkId": "chunk_...",
           "title": "Employee Handbook",
           "sectionPath": "Leave Policy",
           "chunkIndex": 12,
@@ -205,36 +253,86 @@ the extracted memories as a separate memory-context document.
 }
 ```
 
-For product chat or support flows, use the top `chunks[]` entries as the
-grounded source-document context. Then convert the top `memories[]` entries into
-a second synthetic document, for example `Context Vault extracted memories`,
-containing bullet facts and their evidence. Keeping answer synthesis outside
-this endpoint makes the API predictable for dashboards, agents, and server-side
-applications that need citations or custom response formatting.
+For AI answer generation, pass `chunks[]` as source-document context and
+`memories[]` as a separate memory-context block. This keeps citations and
+high-level facts easy to handle in your own app.
 
-Document chunk results are reranked after hybrid/vector/full-text candidate
-generation so the most directly relevant source passages appear first.
+## Why Search Quality Improves
 
-The retrieval path applies `workspace_id` and `scope` before search, so company
-documents do not appear in personal MCP memory retrieval.
+Context Vault does more than match keywords. It first gathers candidate results
+from document chunks and extracted memories. For document searches, MemContext
+then uses a re-ranking model on the top candidate passages, currently up to 30
+candidates, so the most useful source text appears higher.
 
-## Supported v1 Sources
+This helps with questions where the best answer is not an exact keyword match.
 
-Use v1 for extracted content from:
+| Query                                          | Good result should surface                              |
+| ---------------------------------------------- | ------------------------------------------------------- |
+| "What obligations continue after termination?" | Termination, return, payment, and confidentiality terms |
+| "Is the contractor an employee?"               | Independent contractor and liability sections           |
+| "How should I isolate tenants?"                | Scope and workspace isolation guidance                  |
+
+For best results, ask complete questions and include names, section numbers, or
+domain terms when they matter.
+
+## Browse Extracted Memories
+
+List all extracted workspace memories:
+
+```typescript
+const page = await client.listContextVaultMemories({
+  workspaceId: "8b3b8f4c-...",
+  limit: 20,
+});
+```
+
+List memories from one document:
+
+```typescript
+const extracted = await client.listContextVaultDocumentMemories(
+  "8b3b8f4c-...",
+  "document-id",
+);
+```
+
+Load citations for one extracted memory:
+
+```typescript
+const evidence = await client.listContextVaultMemoryEvidence(
+  "8b3b8f4c-...",
+  "memory-id",
+);
+```
+
+## Delete Or Cancel
+
+Cancel a document that is still running:
+
+```typescript
+await client.cancelContextVaultDocument("document-id");
+```
+
+Delete a document:
+
+```typescript
+await client.deleteContextVaultDocument("document-id");
+```
+
+When a document is deleted, memories that only came from that document are
+removed from future retrieval. Memories supported by other documents remain
+available.
+
+## Supported Sources
+
+Start with:
 
 - Markdown
 - TXT
-- PDFs through Mistral OCR
-- DOCX through Mistral OCR
-- PNG, JPG/JPEG, WebP, and TIFF through Mistral OCR
-- HTML or scraped URL text through Exa
-- CSV beta imports
+- PDF
+- DOCX
+- CSV
+- PNG, JPG/JPEG, WebP, and TIFF
+- Public documentation or website URLs
 
-Cloudflare R2 preserves the original uploaded file. The API stores the object key
-and public URL on the document source so Mistral OCR and the dashboard can open
-the full document later.
-
-Set `MISTRAL_API_KEY` and optionally `MISTRAL_OCR_MODEL` to enable OCR. Set
-`EXA_API_KEY` to enable URL scraping and documentation crawling. XLSX, PPTX, and
-external workspace connectors should be added after the core chunk/evidence
-pipeline is stable.
+XLSX, PPTX, and external workspace connectors should be added after the core
+document workflow is stable.

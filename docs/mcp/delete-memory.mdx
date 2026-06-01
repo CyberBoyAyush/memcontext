@@ -5,7 +5,9 @@ description: "Remove a memory by ID."
 
 ## Description
 
-`delete_memory` soft-deletes a memory by setting `deletedAt`. In most cases, you do not need to call this directly — when new information contradicts an old memory, MemContext supersedes it automatically. Use delete when explicit removal is desired.
+`delete_memory` removes a memory from future search results. In most cases, you
+do not need to call this directly. When new information replaces old
+information, save the new memory and MemContext can handle the update.
 
 ## Parameters
 
@@ -23,4 +25,5 @@ delete_memory({
 
 ## Response
 
-Returns `{ success: true }` on success, or a `404` error if the memory was not found. Deleted memories stop appearing in search and list results but remain in the database.
+Returns `{ success: true }` on success, or a `404` error if the memory was not
+found. Deleted memories stop appearing in search and list results.

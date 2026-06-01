@@ -19,15 +19,15 @@ MemContext provides a hosted MCP server. You can connect it directly to Claude.a
 
 Use this path when you want everyday Claude conversations to remember preferences, project context, and recurring details without editing config files.
 
-**Step 1 — Open Connectors**
+**Step 1 - Open Connectors**
 
 In Claude.ai or Claude Desktop, open **Settings → Connectors**.
 
-**Step 2 — Add a custom connector**
+**Step 2 - Add a custom connector**
 
 Choose **Add custom connector**.
 
-**Step 3 — Enter the production URL**
+**Step 3 - Enter the production URL**
 
 Use:
 
@@ -35,7 +35,7 @@ Use:
 https://mcp.memcontext.in/mcp
 ```
 
-**Step 4 — Connect and approve access**
+**Step 4 - Connect and approve access**
 
 Click **Connect**, sign in to MemContext if prompted, then approve the requested scopes on the consent screen.
 
@@ -51,12 +51,13 @@ Paste this into **Claude → Settings → Profile → Instructions for Claude**:
 ```
 
 <Note>
-  Claude.ai and Claude Desktop use OAuth for this flow. You do not need to paste API keys, headers, or config files.
+  Claude.ai and Claude Desktop use OAuth for this flow. You do not need to paste
+  API keys, headers, or config files.
 </Note>
 
 ## Claude Code
 
-**Step 1 — Add the MCP server via CLI:**
+**Step 1 - Add the MCP server via CLI:**
 
 ```bash
 claude mcp add memcontext --scope user --transport http https://mcp.memcontext.in/mcp \
@@ -78,12 +79,12 @@ Or add this to `~/.claude.json`:
 }
 ```
 
-**Step 2 — Add agent instructions to `~/.claude/CLAUDE.md`:**
+**Step 2 - Add agent instructions to `~/.claude/CLAUDE.md`:**
 
 ```markdown
 # MemContext
 
-At conversation start, ALWAYS call search_memory to load user context — do not skip.
+At conversation start, ALWAYS call search_memory to load user context - do not skip.
 Before making decisions or assumptions, search_memory to check for past context.
 SAVE immediately (do not defer) when any of these happen:
 
@@ -97,13 +98,13 @@ SAVE immediately (do not defer) when any of these happen:
 - MCP memories use automatic TTL. Use the REST API, TypeScript SDK, or dashboard when exact expiry is required.
 - After using search results, call memory_feedback to rate memories as helpful/not_helpful/outdated.
 - Use delete_memory only when a memory was saved incorrectly and should be removed entirely.
-- Duplicates are handled automatically — when in doubt, save.
+- Duplicates are handled automatically - when in doubt, save.
 - Memory persists across all sessions. Use project only for known project-specific context.
 ```
 
 ## Cursor
 
-**Step 1 — Add this to `~/.cursor/mcp.json`:**
+**Step 1 - Add this to `~/.cursor/mcp.json`:**
 
 ```json
 {
@@ -118,11 +119,11 @@ SAVE immediately (do not defer) when any of these happen:
 }
 ```
 
-**Step 2 — Add the [agent instructions](#agent-instructions) to Cursor Settings > Rules and commands > User Rules.**
+**Step 2 - Add the [agent instructions](#agent-instructions) to Cursor Settings > Rules and commands > User Rules.**
 
 ## OpenCode
 
-**Step 1 — Add the MCP server to `~/.config/opencode/opencode.json`:**
+**Step 1 - Add the MCP server to `~/.config/opencode/opencode.json`:**
 
 ```json
 {
@@ -143,11 +144,11 @@ SAVE immediately (do not defer) when any of these happen:
 }
 ```
 
-**Step 2 — Add the [agent instructions](#agent-instructions) to `~/.config/opencode/AGENTS.md`.**
+**Step 2 - Add the [agent instructions](#agent-instructions) to `~/.config/opencode/AGENTS.md`.**
 
 ## Codex CLI
 
-**Step 1 — Add the MCP server to `~/.codex/config.toml`:**
+**Step 1 - Add the MCP server to `~/.codex/config.toml`:**
 
 ```toml
 [mcp_servers.memcontext]
@@ -157,7 +158,7 @@ url = "https://mcp.memcontext.in/mcp"
 MEMCONTEXT-API-KEY = "mc_your_key"
 ```
 
-**Step 2 — Add the [agent instructions](#agent-instructions) to `~/.codex/instructions.md`.**
+**Step 2 - Add the [agent instructions](#agent-instructions) to `~/.codex/instructions.md`.**
 
 ## Agent instructions
 
@@ -166,7 +167,7 @@ These instructions tell your AI assistant how and when to use MemContext. Add th
 ```markdown
 # MemContext
 
-At conversation start, ALWAYS call search_memory to load user context — do not skip.
+At conversation start, ALWAYS call search_memory to load user context - do not skip.
 Before making decisions or assumptions, search_memory to check for past context.
 SAVE immediately (do not defer) when any of these happen:
 
@@ -180,7 +181,7 @@ SAVE immediately (do not defer) when any of these happen:
 - MCP memories use automatic TTL. Use the REST API, TypeScript SDK, or dashboard when exact expiry is required.
 - After using search results, call memory_feedback to rate memories as helpful/not_helpful/outdated.
 - Use delete_memory only when a memory was saved incorrectly and should be removed entirely.
-- Duplicates are handled automatically — when in doubt, save.
+- Duplicates are handled automatically - when in doubt, save.
 - Memory persists across all sessions. Use project only for known project-specific context.
 ```
 

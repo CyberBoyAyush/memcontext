@@ -36,7 +36,7 @@ const results = await projectMemory.search({
 console.log(results.memories);
 ```
 
-`save()` may return either a final synchronous result (`saved`, `updated`, `extended`, `duplicate`) or `accepted` for larger notes. When the status is `accepted`, the response includes a `jobId` and message because MemContext stored the source note and will extract atomic memories in the background.
+`save()` may return either a final synchronous result (`saved`, `updated`, `extended`, `duplicate`) or `accepted` for larger notes. When the status is `accepted`, the response includes a `jobId` and message so you can track extraction into atomic memories.
 
 ## Scope And Projects
 
@@ -57,6 +57,46 @@ await client.profile();
 await client.graph();
 await client.feedback("memory-id", { type: "helpful" });
 await client.delete("memory-id");
+```
+
+## Context Vault
+
+Use Context Vault methods for workspace document ingestion and RAG retrieval.
+Hybrid search returns separate `chunks[]` and `memories[]` arrays so your app can
+send source passages and extracted facts to the AI layer as separate context
+blocks.
+
+```typescript
+const { workspace } = await client.createWorkspace({ name: "Acme Support" });
+
+await client.ingestContextVaultDocument({
+  workspaceId: workspace.id,
+  title: "Public docs",
+  uri: "https://docs.example.com",
+  sourceType: "url",
+  crawlSubpages: true,
+});
+
+const results = await client.searchContextVault({
+  workspaceId: workspace.id,
+  query: "How do refunds work?",
+  mode: "hybrid",
+});
+
+console.log(results.chunks);
+console.log(results.memories);
+```
+
+File uploads are supported with `uploadContextVaultDocument()`:
+
+```typescript
+await client.uploadContextVaultDocument({
+  workspaceId: workspace.id,
+  title: "Employee handbook",
+  file,
+  filename: "handbook.pdf",
+  sourceType: "pdf",
+});
 ```
 
 See the full SDK reference at [docs.memcontext.in](https://docs.memcontext.in/sdk/typescript).

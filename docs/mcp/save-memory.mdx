@@ -5,15 +5,15 @@ description: "Persist durable user or project knowledge across sessions."
 
 ## Description
 
-`save_memory` stores a piece of knowledge that should be remembered across sessions. MemContext automatically handles deduplication, versioning, and relationship classification. Short memories are saved immediately; larger notes may be accepted for background extraction into multiple atomic memories.
+`save_memory` stores a piece of knowledge that should be remembered across sessions. MemContext automatically handles deduplication, versioning, and relationship classification. Short memories are saved immediately; larger notes may be accepted for asynchronous extraction into multiple atomic memories.
 
 ## Parameters
 
-| Parameter    | Type   | Required | Description                                                                                                                                           |
-| ------------ | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `content`    | string | Yes      | Clear, complete, searchable statement. Full sentences work best — not fragments or keywords.                                                          |
-| `category`   | string | No       | One of `preference`, `fact`, `decision`, or `context`. See below.                                                                                     |
-| `project`    | string | No       | Project grouping for known project/app context. Examples: `memcontext`, `carq`. Omit if unsure. Format: lowercase, no spaces.                         |
+| Parameter  | Type   | Required | Description                                                                                                                   |
+| ---------- | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `content`  | string | Yes      | Clear, complete, searchable statement. Full sentences work best - not fragments or keywords.                                  |
+| `category` | string | No       | One of `preference`, `fact`, `decision`, or `context`. See below.                                                             |
+| `project`  | string | No       | Project grouping for known project/app context. Examples: `memcontext`, `carq`. Omit if unsure. Format: lowercase, no spaces. |
 
 ### Categories
 
@@ -37,9 +37,9 @@ For normal-size memories:
 For larger notes:
 
 1. The request is accepted quickly
-2. The source note is stored for background processing
+2. The note is prepared for asynchronous extraction
 3. MemContext extracts atomic memories from the note
-4. Each extracted memory reuses the normal save pipeline above
+4. Each extracted item is saved as its own searchable memory
 
 ## Timing guidance
 
@@ -55,11 +55,11 @@ The response includes a `status` field indicating what happened:
 | `updated`   | Superseded an existing memory (old one marked non-current) |
 | `extended`  | Created a relation to an existing memory                   |
 | `duplicate` | Content already exists, nothing saved                      |
-| `accepted`  | Large content accepted for background extraction           |
+| `accepted`  | Large content accepted for asynchronous extraction         |
 
-Duplicates are handled automatically — re-saving an already-known fact is safe.
+Duplicates are handled automatically - re-saving an already-known fact is safe.
 
-When `status` is `accepted`, the response includes a `jobId` plus a message describing the background extraction.
+When `status` is `accepted`, the response includes a `jobId` plus a message for tracking extraction.
 
 ## Example
 
@@ -71,7 +71,9 @@ save_memory({
 ```
 
 <Note>
-  MCP tools do not accept `scope` because AI agents can hallucinate isolation IDs. Use the REST API or TypeScript SDK for app-user or tenant scoped integrations.
+  MCP tools do not accept `scope` because AI agents can hallucinate isolation
+  IDs. Use the REST API or TypeScript SDK for app-user or tenant scoped
+  integrations.
 </Note>
 
 ### Content guidelines
