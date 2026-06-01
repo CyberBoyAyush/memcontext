@@ -46,13 +46,13 @@ const client = new MemContextClient({
 });
 ```
 
-| Option    | Required | Description                                                |
-| --------- | -------- | ---------------------------------------------------------- |
-| `apiKey`  | Yes      | MemContext API key from the dashboard.                     |
-| `baseUrl` | No       | API base URL. Defaults to `https://api.memcontext.in`.     |
-| `scope`   | No       | Default hard isolation boundary for this client instance.  |
-| `project` | No       | Default project grouping inside the selected scope.        |
-| `fetch`   | No       | Custom fetch implementation for tests or custom runtimes.  |
+| Option    | Required | Description                                               |
+| --------- | -------- | --------------------------------------------------------- |
+| `apiKey`  | Yes      | MemContext API key from the dashboard.                    |
+| `baseUrl` | No       | API base URL. Defaults to `https://api.memcontext.in`.    |
+| `scope`   | No       | Default hard isolation boundary for this client instance. |
+| `project` | No       | Default project grouping inside the selected scope.       |
+| `fetch`   | No       | Custom fetch implementation for tests or custom runtimes. |
 
 ## Scope Helpers
 
@@ -76,7 +76,7 @@ const projectMemory = userMemory.withProject("memcontext");
 
 ### `save(request, options?)`
 
-Saves durable memory. MemContext automatically handles embeddings, deduplication, relationship classification, and versioning. Larger notes may be accepted for background extraction into atomic memories.
+Saves durable memory. MemContext automatically handles embeddings, deduplication, relationship classification, and versioning. Larger notes may be accepted for asynchronous extraction into atomic memories.
 
 ```typescript
 await client.save({
@@ -89,7 +89,7 @@ await client.save({
 
 Returns a save result with `status` set to `saved`, `updated`, `extended`, `duplicate`, or `accepted`.
 
-When `status` is `accepted`, the response includes a `jobId` and message. This means the note was stored and will be split into atomic memories in the background.
+When `status` is `accepted`, the response includes a `jobId` and message for tracking extraction into atomic memories.
 
 ### `search(request)`
 
@@ -144,7 +144,7 @@ await client.update(
 
 ### `delete(memoryId, options?)`
 
-Soft-deletes a memory so it no longer appears in search or list results.
+Removes a memory from future search and list results.
 
 ```typescript
 await client.delete("memory-id", {
@@ -154,7 +154,8 @@ await client.delete("memory-id", {
 
 ### `forget(memoryId, options?)`
 
-Endpoint-parity alias for soft delete. Prefer `delete()` unless you specifically want the `/forget` response shape.
+Endpoint-parity alias for `delete()`. Prefer `delete()` unless you specifically
+want the `/forget` response shape.
 
 ```typescript
 await client.forget("memory-id", {
@@ -220,6 +221,197 @@ Checks API health.
 
 ```typescript
 const health = await client.health();
+```
+
+## Workspace Methods
+
+Context Vault uses workspaces for shared knowledge. These methods require an API
+key or dashboard session that belongs to the user.
+
+### `listWorkspaces()`
+
+Lists workspaces the current user belongs to.
+
+```typescript
+const { workspaces } = await client.listWorkspaces();
+```
+
+### `createWorkspace(request)`
+
+Creates a workspace and assigns the current user as owner.
+
+```typescript
+const { workspace } = await client.createWorkspace({
+  name: "Acme Support",
+});
+```
+
+### `inviteWorkspaceMember(workspaceId, request)`
+
+Creates an invitation token for another workspace member. Roles can be `admin`,
+`member`, or `viewer`.
+
+```typescript
+const invite = await client.inviteWorkspaceMember(workspace.id, {
+  email: "teammate@example.com",
+  role: "member",
+});
+```
+
+### `acceptWorkspaceInvitation(request)`
+
+Accepts a workspace invitation token.
+
+```typescript
+await client.acceptWorkspaceInvitation({
+  token: "invitation-token",
+});
+```
+
+## Context Vault Methods
+
+Context Vault methods let you add documents, list processing status, search
+workspace knowledge, and collect feedback from your app.
+
+### `ingestContextVaultDocument(request, options?)`
+
+Adds extracted text, a public file URL, or a documentation URL to a workspace.
+
+```typescript
+await client.ingestContextVaultDocument({
+  workspaceId: workspace.id,
+  title: "Product docs",
+  uri: "https://docs.example.com",
+  sourceType: "url",
+  crawlSubpages: true,
+  subpageTarget: ["api", "guides"],
+});
+```
+
+For public file URLs, pass the file type so the document can be parsed correctly:
+
+```typescript
+await client.ingestContextVaultDocument({
+  workspaceId: workspace.id,
+  title: "Security report",
+  uri: "https://example.com/security-report.pdf",
+  sourceType: "pdf",
+});
+```
+
+### `uploadContextVaultDocument(request, options?)`
+
+Uploads a local file and adds it to Context Vault.
+
+```typescript
+await client.uploadContextVaultDocument({
+  workspaceId: workspace.id,
+  title: "Employee handbook",
+  file,
+  filename: "handbook.pdf",
+  sourceType: "pdf",
+});
+```
+
+### `listContextVaultDocuments(workspaceId, options?)`
+
+Lists workspace documents and their current status.
+
+```typescript
+const docs = await client.listContextVaultDocuments(workspace.id);
+```
+
+### `cancelContextVaultDocument(documentId, options?)`
+
+Stops a pending, retrying, or active document job.
+
+```typescript
+await client.cancelContextVaultDocument("document-id");
+```
+
+### `deleteContextVaultDocument(documentId, options?)`
+
+Deletes the document, chunks, citations, and any extracted memories that are
+only backed by that document.
+
+```typescript
+await client.deleteContextVaultDocument("document-id");
+```
+
+### `searchContextVault(request, options?)`
+
+Searches workspace knowledge in `documents`, `memories`, or `hybrid` mode.
+
+```typescript
+const results = await client.searchContextVault({
+  workspaceId: workspace.id,
+  query: "How do refunds work?",
+  mode: "hybrid",
+  limit: 8,
+});
+
+// Source passages from files/docs.
+console.log(results.chunks);
+
+// Extracted atomic facts with evidence back to source chunks.
+console.log(results.memories);
+```
+
+Hybrid mode keeps `chunks[]` and `memories[]` separate. For answer generation,
+pass `chunks[]` as source document context and convert `memories[]` into a
+second memory-context document.
+
+### `listContextVaultMemories(request, options?)`
+
+Browses extracted workspace memories.
+
+```typescript
+const page = await client.listContextVaultMemories({
+  workspaceId: workspace.id,
+  limit: 20,
+  search: "refund",
+});
+```
+
+### `listContextVaultDocumentMemories(workspaceId, documentId, options?)`
+
+Lists memories extracted from one document.
+
+```typescript
+const extracted = await client.listContextVaultDocumentMemories(
+  workspace.id,
+  "document-id",
+);
+```
+
+### `submitContextVaultMemoryFeedback(memoryId, request, options?)`
+
+Records feedback on an extracted workspace memory.
+
+```typescript
+await client.submitContextVaultMemoryFeedback("memory-id", {
+  workspaceId: workspace.id,
+  type: "helpful",
+});
+```
+
+### `listContextVaultMemoryEvidence(workspaceId, memoryId, options?)`
+
+Loads source chunks for an extracted memory.
+
+```typescript
+const evidence = await client.listContextVaultMemoryEvidence(
+  workspace.id,
+  "memory-id",
+);
+```
+
+### `getContextVaultHierarchy(workspaceId, options?)`
+
+Returns scope/project counts for workspace memories.
+
+```typescript
+const hierarchy = await client.getContextVaultHierarchy(workspace.id);
 ```
 
 ## Error Handling

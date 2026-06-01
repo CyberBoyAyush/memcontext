@@ -747,9 +747,12 @@ async function softDeleteExclusiveDocumentMemoriesForSource(params: {
   await db
     .delete(memoryRelations)
     .where(
-      or(
-        inArray(memoryRelations.sourceId, exclusiveMemoryIds),
-        inArray(memoryRelations.targetId, exclusiveMemoryIds),
+      and(
+        eq(memoryRelations.workspaceId, params.workspaceId),
+        or(
+          inArray(memoryRelations.sourceId, exclusiveMemoryIds),
+          inArray(memoryRelations.targetId, exclusiveMemoryIds),
+        ),
       ),
     );
   await db
@@ -1340,7 +1343,7 @@ export async function cancelCompanyBrainDocument(params: {
     .where(
       and(
         eq(memorySources.id, params.documentId),
-        sql`${memorySources.status} IN ('pending', 'processing', 'retrying')`,
+        inArray(memorySources.status, ["pending", "processing", "retrying"]),
       ),
     )
     .returning();
@@ -1415,9 +1418,12 @@ export async function deleteCompanyBrainDocument(params: {
       await tx
         .delete(memoryRelations)
         .where(
-          or(
-            inArray(memoryRelations.sourceId, exclusiveMemoryIds),
-            inArray(memoryRelations.targetId, exclusiveMemoryIds),
+          and(
+            eq(memoryRelations.workspaceId, workspaceId),
+            or(
+              inArray(memoryRelations.sourceId, exclusiveMemoryIds),
+              inArray(memoryRelations.targetId, exclusiveMemoryIds),
+            ),
           ),
         );
       await tx
@@ -1426,7 +1432,7 @@ export async function deleteCompanyBrainDocument(params: {
         .where(
           and(
             inArray(memories.id, exclusiveMemoryIds),
-            eq(memories.workspaceId, document.workspaceId!),
+            eq(memories.workspaceId, workspaceId),
             eq(memories.memoryType, "document"),
             isNull(memories.deletedAt),
           ),

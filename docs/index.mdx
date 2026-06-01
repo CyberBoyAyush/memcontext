@@ -1,6 +1,6 @@
 ---
 title: "Introduction"
-description: "MemContext is a memory layer for AI systems — persistent, evolving, and retrievable across sessions."
+description: "MemContext is a memory layer for AI systems that need persistent, evolving, and retrievable context."
 ---
 
 ## What is MemContext?
@@ -11,16 +11,32 @@ It provides a REST API and MCP server that allow AI systems to:
 
 - **Save** durable user and project knowledge across sessions
 - **Isolate** app users and tenants with hard memory containers via `scope`
-- **Search** memories using hybrid retrieval (vector + full-text)
+- **Search** memories with natural-language questions and exact terms
 - **Evolve** memories over time with automatic version chains
 - **Profile** users with pre-aggregated context from their memory
+- **Ingest** workspace documents through Context Vault for RAG-style AI context
 
 ## Who is it for?
 
-MemContext serves two primary use cases:
+MemContext serves three primary use cases:
 
 1. **Coding assistants** that need stable preferences, decisions, and project context across sessions
 2. **Product applications** that need evolving memory for content generation, support, onboarding, or personalization
+3. **Workspace AI tools** that need to retrieve source passages and extracted facts from files, docs, and URLs
+
+## The Three Retrieval Modes
+
+MemContext supports three ways to retrieve context:
+
+| Mode                 | Use it for                                | Returns                           |
+| -------------------- | ----------------------------------------- | --------------------------------- |
+| **Memories**         | Durable facts, preferences, and decisions | Atomic memories                   |
+| **Document chunks**  | RAG over PDFs, Markdown, docs, and URLs   | Source passages with citations    |
+| **Hybrid workspace** | Production AI tools that need both        | Document chunks plus memory facts |
+
+This gives your app a clear choice. Use memories when you need concise facts.
+Use document chunks when you need source text. Use hybrid when you want the AI
+layer to receive both precise passages and clean extracted knowledge.
 
 ## Core primitives
 
@@ -28,14 +44,14 @@ MemContext serves two primary use cases:
 | ------------------ | ---------------------------------------------------------------------------- |
 | **Scope**          | Hard isolation boundary for app users or tenants (e.g. `user_123`)           |
 | **Category**       | Broad memory type: `preference`, `fact`, `decision`, or `context`            |
-| **Project**        | Soft grouping/filter inside a scope or the global memory lane                |
+| **Project**        | Soft grouping/filter inside the selected scope or default memory area        |
 | **Version chains** | Memories can supersede old memories without losing history                   |
-| **Hybrid search**  | Vector similarity + keyword search merged with Reciprocal Rank Fusion        |
+| **Hybrid search**  | Natural-language search that also handles exact names, tools, and decisions  |
 | **MCP tools**      | AI assistants can save and search memory directly via Model Context Protocol |
 
 ## Why it exists
 
-Plain vector search is not enough for memory. Memory needs:
+Simple retrieval is not enough for memory. Memory needs:
 
 - **Updates** when reality changes
 - **History** when strategy evolves
@@ -49,7 +65,7 @@ Plain vector search is not enough for memory. Memory needs:
     Make your first API and MCP calls in under 2 minutes.
   </Card>
   <Card title="How It Works" icon="gear" href="/concepts/how-it-works">
-    Understand the save flow, classification, and search pipeline.
+    Understand how MemContext saves, updates, and retrieves memory.
   </Card>
   <Card title="API Reference" icon="code" href="/api-reference/overview">
     Full endpoint documentation with interactive examples.
