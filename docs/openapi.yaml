@@ -19,7 +19,305 @@ tags:
     description: Rate retrieval quality to improve future results.
   - name: Profiles
     description: Pre-aggregated user context from memory.
+  - name: Workspaces
+    description: Company/team containers for shared memory.
+  - name: Context Vault
+    description: Document ingestion and workspace RAG retrieval.
 paths:
+  /api/workspaces:
+    get:
+      tags: [Workspaces]
+      summary: List workspaces
+      operationId: listWorkspaces
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      responses:
+        "200":
+          description: Workspaces the signed-in user belongs to.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListWorkspacesResponse"
+    post:
+      tags: [Workspaces]
+      summary: Create workspace
+      operationId: createWorkspace
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWorkspaceRequest"
+      responses:
+        "201":
+          description: Workspace created.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [workspace]
+                properties:
+                  workspace:
+                    $ref: "#/components/schemas/Workspace"
+  /api/workspaces/{workspaceId}/invitations:
+    post:
+      tags: [Workspaces]
+      summary: Invite workspace member
+      operationId: inviteWorkspaceMember
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - in: path
+          name: workspaceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InviteWorkspaceMemberRequest"
+      responses:
+        "201":
+          description: Invitation created. The token is returned for the caller to deliver.
+  /api/workspaces/invitations/accept:
+    post:
+      tags: [Workspaces]
+      summary: Accept workspace invitation
+      operationId: acceptWorkspaceInvitation
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+      responses:
+        "200":
+          description: Invitation accepted and workspace membership created.
+  /api/company-brain/documents:
+    get:
+      tags: [Context Vault]
+      summary: List context vault documents
+      operationId: listCompanyBrainDocuments
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - in: query
+          name: workspaceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Uploaded document sources for a workspace.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListCompanyBrainDocumentsResponse"
+    post:
+      tags: [Context Vault]
+      summary: Ingest context vault document
+      operationId: ingestCompanyBrainDocument
+      description: |
+        Queues document text, a public remote file URL, or a public
+        documentation/web URL for workspace processing.
+
+        When `content` is provided, MemContext queues that extracted text
+        directly. When `uri` points to a file and `sourceType` is a file type
+        such as `pdf`, `docx`, `markdown`, `text`, `csv`, or an image type,
+        MemContext downloads the file, stores a copy in Cloudflare R2, and
+        processes the stored file. When `sourceType` is `url` or the URL does
+        not look like a file URL, MemContext uses Exa Contents to scrape/crawl
+        clean Markdown.
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IngestCompanyBrainDocumentRequest"
+      responses:
+        "202":
+          description: Document accepted for background processing.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestCompanyBrainDocumentResponse"
+  /api/company-brain/documents/upload:
+    post:
+      tags: [Context Vault]
+      summary: Upload and ingest context vault document
+      operationId: uploadCompanyBrainDocument
+      description: |
+        Uploads the original file to Cloudflare R2, stores the object key/public
+        URL on the document source, then queues background processing. Text-like
+        files are decoded before enqueueing; PDFs, DOCX files, and images use
+        Mistral OCR from the R2 public URL during processing.
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [workspaceId, title, file]
+              properties:
+                workspaceId:
+                  type: string
+                  format: uuid
+                title:
+                  type: string
+                file:
+                  type: string
+                  format: binary
+                sourceType:
+                  $ref: "#/components/schemas/DocumentSourceType"
+                scope:
+                  type: string
+                project:
+                  type: string
+                content:
+                  type: string
+                  description: Optional extracted text override for binary files.
+      responses:
+        "202":
+          description: File uploaded and document accepted for background processing.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestCompanyBrainDocumentResponse"
+  /api/company-brain/documents/{documentId}/cancel:
+    post:
+      tags: [Context Vault]
+      summary: Cancel context vault document processing
+      operationId: cancelCompanyBrainDocument
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - in: path
+          name: documentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Document processing was cancelled when still pending, retrying, or processing.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CancelCompanyBrainDocumentResponse"
+  /api/company-brain/documents/{documentId}:
+    delete:
+      tags: [Context Vault]
+      summary: Delete context vault document
+      operationId: deleteCompanyBrainDocument
+      description: |
+        Deletes the document source, chunks, and citations. Extracted document
+        memories are soft-deleted only when this document is their only source;
+        memories also supported by other documents are preserved.
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - in: path
+          name: documentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Document removed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteCompanyBrainDocumentResponse"
+  /api/company-brain/search:
+    get:
+      tags: [Context Vault]
+      summary: Search context vault
+      operationId: searchCompanyBrain
+      description: |
+        Returns ranked retrieval results for workspace knowledge. The endpoint
+        does not synthesize a single final answer; callers should use returned
+        chunks, extracted memories, and evidence as grounded context for their
+        own answer-generation layer.
+
+        The response keeps document passages and extracted memories separate.
+        `documents` mode fills `chunks` and leaves `memories` empty. `memories`
+        mode fills `memories` and leaves `chunks` empty. `hybrid` mode can fill
+        both arrays without flattening them into one mixed list, so clients can
+        pass source chunks as document context and extracted facts as a separate
+        memory-context document. Document candidates are reranked after
+        hybrid/vector/full-text retrieval.
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - in: query
+          name: workspaceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: query
+          required: true
+          schema:
+            type: string
+            maxLength: 1000
+        - in: query
+          name: mode
+          schema:
+            type: string
+            enum: [memories, documents, hybrid]
+            default: hybrid
+        - in: query
+          name: scope
+          schema:
+            type: string
+            maxLength: 200
+        - in: query
+          name: project
+          schema:
+            type: string
+            maxLength: 100
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 20
+            default: 8
+      responses:
+        "200":
+          description: Company brain search results.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchCompanyBrainResponse"
   /api/memories:
     post:
       tags: [Memories]
@@ -410,6 +708,11 @@ components:
       name: X-API-Key
       description: |
         API key created from the MemContext dashboard. Keys are prefixed with `mc_`.
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: better-auth.session_token
+      description: Dashboard session cookie used for workspace/company endpoints.
   parameters:
     MemoryId:
       in: path
@@ -437,6 +740,232 @@ components:
         - `web` - Saved from the dashboard.
         - `api` - Saved via REST API (default).
         - `openclaw` - Saved via OpenClaw integration.
+    Workspace:
+      type: object
+      required: [id, name, slug, role, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        role:
+          type: string
+          enum: [owner, admin, member, viewer]
+        createdAt:
+          type: string
+          format: date-time
+    ListWorkspacesResponse:
+      type: object
+      required: [workspaces]
+      properties:
+        workspaces:
+          type: array
+          items:
+            $ref: "#/components/schemas/Workspace"
+    CreateWorkspaceRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+    InviteWorkspaceMemberRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, member, viewer]
+          default: member
+    DocumentSourceType:
+      type: string
+      enum:
+        [pdf, markdown, text, docx, html, url, csv, png, jpg, jpeg, webp, tiff]
+    IngestCompanyBrainDocumentRequest:
+      type: object
+      required: [workspaceId, title]
+      properties:
+        workspaceId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 200
+        content:
+          type: string
+          maxLength: 250000
+          description: Extracted text/Markdown for v1 JSON ingestion. Required unless `uri` is provided.
+        sourceType:
+          $ref: "#/components/schemas/DocumentSourceType"
+        scope:
+          type: string
+          maxLength: 200
+        project:
+          type: string
+          maxLength: 100
+        mimeType:
+          type: string
+        originalFilename:
+          type: string
+        uri:
+          type: string
+          format: uri
+          description: Public documentation/web URL or public file URL. File URLs are fetched and copied to R2 when `sourceType` is a file type such as `pdf`, `docx`, `markdown`, `text`, `csv`, or an image type.
+        crawlSubpages:
+          type: boolean
+          default: true
+          description: Crawl linked subpages from a documentation/web URL through Exa. Ignored for remote file URL ingestion.
+        subpageTarget:
+          type: array
+          maxItems: 8
+          items:
+            type: string
+            maxLength: 100
+          description: Terms Exa should prioritize when crawling subpages.
+        category:
+          $ref: "#/components/schemas/MemoryCategory"
+    CompanyBrainDocument:
+      type: object
+      required:
+        [
+          id,
+          sourceType,
+          status,
+          chunkCount,
+          extractedCount,
+          totalChunks,
+          processedChunks,
+          createdAt,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          nullable: true
+        sourceType:
+          type: string
+        status:
+          $ref: "#/components/schemas/CompanyBrainDocumentStatus"
+        chunkCount:
+          type: integer
+        extractedCount:
+          type: integer
+        totalChunks:
+          type: integer
+        processedChunks:
+          type: integer
+        processingPhase:
+          type: string
+          nullable: true
+        heartbeatAt:
+          type: string
+          format: date-time
+          nullable: true
+        scope:
+          type: string
+          nullable: true
+        project:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        error:
+          type: string
+          nullable: true
+        publicUrl:
+          type: string
+          nullable: true
+    CompanyBrainDocumentStatus:
+      type: string
+      enum: [pending, processing, retrying, completed, failed, cancelled]
+    IngestCompanyBrainDocumentResponse:
+      type: object
+      required: [document, chunkCount, extractedCount, status, message]
+      properties:
+        document:
+          $ref: "#/components/schemas/CompanyBrainDocument"
+        chunkCount:
+          type: integer
+        extractedCount:
+          type: integer
+        status:
+          type: string
+          enum: [accepted]
+        message:
+          type: string
+    CancelCompanyBrainDocumentResponse:
+      type: object
+      required: [cancelled, documentId]
+      properties:
+        cancelled:
+          type: boolean
+        documentId:
+          type: string
+          format: uuid
+    DeleteCompanyBrainDocumentResponse:
+      type: object
+      required: [deleted, documentId, deletedMemoryCount, preservedMemoryCount]
+      properties:
+        deleted:
+          type: boolean
+        documentId:
+          type: string
+          format: uuid
+        deletedMemoryCount:
+          type: integer
+        preservedMemoryCount:
+          type: integer
+    ListCompanyBrainDocumentsResponse:
+      type: object
+      required: [documents]
+      properties:
+        documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompanyBrainDocument"
+    SearchCompanyBrainResponse:
+      type: object
+      required: [mode, found, chunks, memories]
+      description: >-
+        Ranked Context Vault retrieval results. `chunks` contains source
+        document passages; `memories` contains extracted atomic facts with
+        citation evidence. Hybrid mode returns these as separate arrays instead
+        of a single merged list so callers can build two downstream context
+        blocks: source documents and extracted memories. This response
+        intentionally does not include a synthesized answer.
+      properties:
+        mode:
+          type: string
+          enum: [memories, documents, hybrid]
+        found:
+          type: integer
+        chunks:
+          type: array
+          description: >-
+            Source document chunks/passages. Empty when mode is `memories`.
+          items:
+            type: object
+        memories:
+          type: array
+          description: >-
+            Extracted atomic memories with source evidence. Empty when mode is
+            `documents`.
+          items:
+            type: object
     Memory:
       type: object
       required: [id, userId, content, source, isCurrent, version, createdAt]

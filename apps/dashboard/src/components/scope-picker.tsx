@@ -76,7 +76,7 @@ export function ScopePicker({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-xl border border-border bg-surface-elevated shadow-lg animate-scale-in">
+          <div className="absolute right-0 top-full z-50 mt-2 w-64 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border bg-surface-elevated shadow-lg animate-scale-in">
             <div className="p-1.5">
               <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-foreground-subtle">
                 Memory scope

@@ -9,6 +9,7 @@ const protectedPrefixes = [
   "/settings",
   "/legend",
   "/mcp",
+  "/context-vault",
 ];
 
 export function middleware(request: NextRequest) {
