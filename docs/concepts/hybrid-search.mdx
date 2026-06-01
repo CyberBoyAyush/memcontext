@@ -1,52 +1,125 @@
 ---
 title: "Hybrid Search"
-description: "Why MemContext combines vector search and full-text search for better retrieval."
+description: "Search memories with natural-language questions and exact terms."
 ---
 
-## The problem with pure vector search
+Hybrid search is the default way to retrieve memories from MemContext. You ask a
+normal question, and MemContext returns the most relevant saved memories.
 
-Vector search excels at semantic similarity — understanding that "package manager" and "npm" are related.
+The goal is simple: your AI should get the context it needs without your app
+having to know whether the user used the exact same words when the memory was
+saved.
 
-It struggles with:
+It works well for:
 
-- Exact project names (e.g. "carq", "memcontext")
-- Company and product names
-- Acronyms (e.g. "PNPM", "JWT")
-- Concrete technical decisions (e.g. "chose PostgreSQL over MySQL")
+- Natural-language questions
+- Exact names, tools, acronyms, and project terms
+- User preferences
+- Decisions and facts
+- Broader context gathering before generation
 
-For memory retrieval, both semantic and exact-match queries need to work reliably.
+You do not need to choose or configure a retrieval algorithm. Start with clear
+queries and add filters only when your app needs them.
 
-## MemContext's approach
+## Why Hybrid Search Helps
 
-MemContext combines two retrieval methods and merges their results:
+AI memory has two common retrieval problems:
 
-| Method           | Strengths                                | Runs on                               |
-| ---------------- | ---------------------------------------- | ------------------------------------- |
-| Vector search    | Semantic similarity, paraphrased queries | pgvector embeddings (1536 dimensions) |
-| Full-text search | Exact matches, keywords, names           | PostgreSQL `tsvector` index           |
+- Exact text search can miss useful memories when the wording is different.
+- Semantic search can miss exact names, acronyms, product names, or short facts.
 
-Both searches run in parallel, so there is almost no added latency. Results are merged using **Reciprocal Rank Fusion (RRF)**, which combines rankings from both methods into a single ordered list.
+Hybrid search combines both signals. That means a query like "What package
+manager should I use?" can match "User prefers pnpm for JavaScript projects",
+while a query like "R2 upload" can still match exact technical terms.
 
-Search always runs inside the selected memory lane. If you pass `scope=user_123`, vector search and full-text search both operate only inside `user_123`. If you omit `scope`, search uses only unscoped/global memories.
+For Context Vault document retrieval, MemContext also uses a re-ranking model on
+the strongest candidate passages before returning results. This improves result
+order when several chunks are related but only one contains the best answer.
 
-## Query variants
+## Basic Search
 
-Before searching, MemContext generates alternative phrasings of your query using an LLM. For example:
+```bash
+curl "https://api.memcontext.in/api/memories/search?query=What%20package%20manager%20does%20the%20user%20prefer%3F" \
+  -H "X-API-Key: mc_your_key"
+```
 
-- Original: "What database does the project use?"
-- Variant: "database technology PostgreSQL MySQL choice"
-- Variant: "which database was selected for this project"
+```json
+{
+  "found": 1,
+  "memories": [
+    {
+      "id": "a1b2c3d4-...",
+      "content": "User prefers pnpm for JavaScript projects.",
+      "category": "preference",
+      "relevance": 0.92,
+      "createdAt": "2026-04-11T12:00:00.000Z"
+    }
+  ]
+}
+```
 
-All variants are embedded and searched in parallel, improving recall without degrading precision.
+## Search A Specific User Or Tenant
 
-## Configuring search precision
+Use `scope` when one API key serves multiple users, organizations, or tenants.
+Use the same `scope` value when saving and searching.
 
-The `threshold` parameter controls how strict the vector search is:
+```bash
+curl "https://api.memcontext.in/api/memories/search?query=What%20billing%20context%20do%20we%20know%3F&scope=user_123" \
+  -H "X-API-Key: mc_your_key"
+```
 
-| Threshold     | Behavior                       | Use case                                        |
-| ------------- | ------------------------------ | ----------------------------------------------- |
-| `0.2` - `0.4` | Strict matching, fewer results | High-precision lookups for specific facts       |
-| `0.6`         | Default balance                | General-purpose retrieval                       |
-| `0.7` - `0.8` | Broad matching, more results   | Exploratory searches, gathering related context |
+Use `project` to narrow results inside a scope:
 
-The threshold represents maximum vector distance — higher values include more distant (less similar) results.
+```bash
+curl "https://api.memcontext.in/api/memories/search?query=What%20package%20manager%20does%20this%20project%20use%3F&scope=user_123&project=memcontext" \
+  -H "X-API-Key: mc_your_key"
+```
+
+## Query Guidelines
+
+- Ask full questions instead of short keyword fragments.
+- Include names, tools, dates, or projects when they matter.
+- Use `category` to narrow results to `preference`, `fact`, `decision`, or
+  `context`.
+- Increase `limit` when your AI layer needs more context.
+
+Good:
+
+```text
+What package manager does this project use?
+```
+
+Less effective:
+
+```text
+package manager
+```
+
+## Precision Controls
+
+Most integrations should use the default settings. If you need more control, use
+`threshold`.
+
+| Threshold     | Behavior         | Use case                                 |
+| ------------- | ---------------- | ---------------------------------------- |
+| `0.2` - `0.4` | Broader results  | Gathering more context before generation |
+| `0.6`         | Default balance  | Most app and assistant retrieval         |
+| `0.7` - `0.8` | Stricter results | Exact or high-confidence lookups         |
+
+Start with the default and tune only after testing real user queries.
+
+## What It Can And Cannot Do
+
+Hybrid search can:
+
+- Find memories by meaning, even when the words differ.
+- Find exact terms like company names, project names, tools, and acronyms.
+- Improve over time when users submit feedback.
+- Return a ranked set of memories that your app can pass to an LLM.
+
+Hybrid search cannot:
+
+- Answer a question from information that was never saved.
+- Replace tenant isolation. Use `scope` or a workspace for isolation.
+- Guarantee a final natural-language answer. It returns context so your app or
+  AI layer can answer with the right evidence.

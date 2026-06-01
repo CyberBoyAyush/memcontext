@@ -185,11 +185,14 @@ export interface SearchMemoryResponse {
   memories: MemoryWithRelevance[];
 }
 
+export type WorkspaceRole = "owner" | "admin" | "member" | "viewer";
+export type InvitableWorkspaceRole = Exclude<WorkspaceRole, "owner">;
+
 export interface Workspace {
   id: string;
   name: string;
   slug: string;
-  role: string;
+  role: WorkspaceRole;
   createdAt: Date;
 }
 
@@ -199,6 +202,38 @@ export interface ListWorkspacesResponse {
 
 export interface CreateWorkspaceRequest {
   name: string;
+}
+
+export interface CreateWorkspaceResponse {
+  workspace: Workspace;
+}
+
+export interface InviteWorkspaceMemberRequest {
+  email: string;
+  role?: InvitableWorkspaceRole;
+}
+
+export interface WorkspaceInvitation {
+  id: string;
+  workspaceId: string;
+  email: string;
+  role: InvitableWorkspaceRole;
+  expiresAt: Date;
+  createdAt: Date;
+}
+
+export interface InviteWorkspaceMemberResponse {
+  invitation: WorkspaceInvitation;
+  token: string;
+}
+
+export interface AcceptWorkspaceInvitationRequest {
+  token: string;
+}
+
+export interface AcceptWorkspaceInvitationResponse {
+  success: boolean;
+  workspaceId: string;
 }
 
 export interface IngestCompanyBrainDocumentRequest {
@@ -259,6 +294,95 @@ export interface DeleteCompanyBrainDocumentResponse {
   preservedMemoryCount: number;
 }
 
+export interface ListCompanyBrainMemoriesRequest {
+  workspaceId: string;
+  scope?: string;
+  project?: string;
+  projects?: string[];
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface CompanyBrainMemory {
+  id: string;
+  content: string;
+  category: string | null;
+  scope: string | null;
+  project: string | null;
+  createdAt: Date;
+  sourceId: string | null;
+  sourceTitle: string | null;
+  sourceUrl: string | null;
+}
+
+export interface ListCompanyBrainMemoriesResponse {
+  memories: CompanyBrainMemory[];
+  total: number;
+  hasMore: boolean;
+}
+
+export interface ListCompanyBrainDocumentMemoriesResponse {
+  document: {
+    id: string;
+    title: string | null;
+    publicUrl: string | null;
+  };
+  memories: CompanyBrainMemory[];
+  total: number;
+}
+
+export interface CompanyBrainMemoryFeedbackRequest {
+  workspaceId: string;
+  type: FeedbackType;
+  context?: string;
+}
+
+export interface CompanyBrainMemoryEvidence {
+  chunkId: string;
+  sourceId: string;
+  chunkIndex: number;
+  sectionPath: string | null;
+  pageNumber: number | null;
+  content: string;
+  title: string | null;
+  quote: string | null;
+  confidence: number | null;
+}
+
+export interface ListCompanyBrainMemoryEvidenceResponse {
+  evidence: CompanyBrainMemoryEvidence[];
+}
+
+export interface CompanyBrainHierarchyProject {
+  name: string;
+  value: string;
+  count: number;
+}
+
+export interface CompanyBrainHierarchyScope {
+  name: string;
+  count: number;
+  projects: CompanyBrainHierarchyProject[];
+}
+
+export interface CompanyBrainHierarchyResponse {
+  global: {
+    count: number;
+    projects: CompanyBrainHierarchyProject[];
+  };
+  scopes: CompanyBrainHierarchyScope[];
+}
+
+export interface SearchCompanyBrainRequest {
+  workspaceId: string;
+  query: string;
+  mode?: CompanyBrainSearchMode;
+  scope?: string;
+  project?: string;
+  limit?: number;
+}
+
 export interface CompanyBrainSearchChunk {
   id: string;
   sourceId: string;
@@ -296,6 +420,31 @@ export interface SearchCompanyBrainResponse {
   chunks: CompanyBrainSearchChunk[];
   memories: CompanyBrainSearchMemory[];
 }
+
+export type ContextVaultDocument = CompanyBrainDocument;
+export type ListContextVaultDocumentsResponse =
+  ListCompanyBrainDocumentsResponse;
+export type IngestContextVaultDocumentRequest =
+  IngestCompanyBrainDocumentRequest;
+export type IngestContextVaultDocumentResponse =
+  IngestCompanyBrainDocumentResponse;
+export type CancelContextVaultDocumentResponse =
+  CancelCompanyBrainDocumentResponse;
+export type DeleteContextVaultDocumentResponse =
+  DeleteCompanyBrainDocumentResponse;
+export type ListContextVaultMemoriesRequest = ListCompanyBrainMemoriesRequest;
+export type ContextVaultMemory = CompanyBrainMemory;
+export type ListContextVaultMemoriesResponse = ListCompanyBrainMemoriesResponse;
+export type ListContextVaultDocumentMemoriesResponse =
+  ListCompanyBrainDocumentMemoriesResponse;
+export type ContextVaultMemoryFeedbackRequest =
+  CompanyBrainMemoryFeedbackRequest;
+export type ContextVaultMemoryEvidence = CompanyBrainMemoryEvidence;
+export type ListContextVaultMemoryEvidenceResponse =
+  ListCompanyBrainMemoryEvidenceResponse;
+export type ContextVaultHierarchyResponse = CompanyBrainHierarchyResponse;
+export type SearchContextVaultRequest = SearchCompanyBrainRequest;
+export type SearchContextVaultResponse = SearchCompanyBrainResponse;
 
 export interface MemoryGraphNode {
   id: string;

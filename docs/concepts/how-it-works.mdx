@@ -1,90 +1,117 @@
 ---
 title: "How It Works"
-description: "How MemContext saves, classifies, and retrieves memory."
+description: "How to save, retrieve, update, and isolate memory in your app."
 ---
 
-## Save flow
+MemContext gives your AI system a simple memory workflow:
 
-When a memory is saved via `POST /api/memories` or `save_memory`, MemContext takes one of two paths:
+1. Save durable context.
+2. Search for relevant context before generating an answer.
+3. Use scopes to isolate users or tenants.
+4. Send feedback when results are helpful or wrong.
 
-### Short memories
+You do not need to manage deduplication, evolving facts, or retrieval quality
+yourself.
 
-1. **Expand + classify** — the content is rewritten for searchability AND classified as permanent, short-term, medium-term, or long-term
-2. **Auto-TTL** — if no `validUntil` was explicitly provided, the system auto-sets expiry based on the temporal classification (short-term = 7 days, medium-term = 30 days, long-term = 90 days, permanent = no expiry)
-3. **Embed** — an embedding is generated from the expanded content
-4. **Find similar** — existing current memories are searched for semantic overlap
-5. **Classify** — if similar memories exist, an LLM classifies the relationship
-6. **Act** — based on the classification, the system saves, updates, extends, or deduplicates
+## Save Memories
 
-### Longer notes
+Use `POST /api/memories`, the TypeScript SDK, or MCP `save_memory`.
 
-1. **Accept quickly** — the request returns `202 Accepted`
-2. **Store source** — the submitted note is stored for background processing
-3. **Extract atomic memories** — MemContext uses an LLM to split the note into distinct searchable memories
-4. **Reuse the normal save path** — each extracted memory goes through the short-memory flow above
+```typescript
+await client.save({
+  content: "User prefers concise release notes.",
+  category: "preference",
+  scope: "user_123",
+  project: "docs",
+});
+```
 
-This means you do not need to manually manage deduplication, version chains, or expiry. Save freely — the system handles it. If you explicitly pass `validUntil`, the auto-TTL is skipped and your value is used.
+MemContext returns a status that tells you what happened:
 
-## Relationship classification
+| Status      | Meaning                                     |
+| ----------- | ------------------------------------------- |
+| `saved`     | A new memory was created                    |
+| `updated`   | A newer memory replaced an older one        |
+| `extended`  | The memory added detail to an existing fact |
+| `duplicate` | The same memory already exists              |
+| `accepted`  | A larger note was accepted for extraction   |
 
-When similar memories are found, the LLM classifies the relationship as one of:
+For large notes, use the returned `jobId` to track extraction.
 
-| Classification | What happens                                                                                                             |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `update`       | The new memory supersedes the old one. The old memory is marked `isCurrent = false` and a version chain link is created. |
-| `extend`       | The new memory adds detail to an existing one. A relation of type `extends` is created between them.                     |
-| `similar`      | The new memory is related but distinct. A relation of type `similar` is created.                                         |
-| `noop`         | The new content is a duplicate. Nothing is saved; the existing memory ID is returned.                                    |
+## Search Memories
 
-## Search flow
+Search before your app generates a response or makes a decision.
 
-Search via `GET /api/memories/search` or `search_memory` uses hybrid retrieval with feedback-based ranking:
+```typescript
+const results = await client.search({
+  query: "How should release notes be written?",
+  scope: "user_123",
+  project: "docs",
+});
+```
 
-1. **Generate query variants** — the original query is expanded into alternative phrasings
-2. **Embed** — embeddings are created for the original query and all variants
-3. **Vector search** — runs against all query embeddings to find semantically similar memories
-4. **Full-text search** — PostgreSQL `tsvector` search runs in parallel on the original query **and all generated query variants**
-5. **Merge** — results are combined using Reciprocal Rank Fusion (RRF) for a single ranked list
-6. **Feedback scoring** — results are re-ranked based on explicit user feedback:
-   - Memories marked "wrong" are heavily penalized (0.3x score)
-   - Memories marked "outdated" are moderately penalized (0.5x score)
-   - Memories with more "not helpful" than "helpful" are mildly penalized (0.7x)
-   - Memories with only "helpful" feedback get a small boost (1.1x)
+Each result includes memory content, optional category/project information, and
+a relevance score.
 
-This approach surfaces both semantic matches and exact matches reliably, while improving wording-sensitive recall. For example, a query like "What caching system do we use?" can match a memory that says "Upstash Redis is used for API key caching" even if the raw query never says "Redis".
+## Use Scopes For Isolation
 
-## Scope isolation
+Use `scope` as the hard boundary for your own users, tenants, accounts, or
+organizations.
 
-Every save, search, list, profile, graph, get, update, delete, feedback, and history operation runs inside one memory lane:
+```typescript
+const userMemory = client.withScope("user_123");
+```
 
-- If `scope` is provided, only memories in that scope are considered
-- If `scope` is omitted, only unscoped/global memories are considered
-- `project` filters inside the selected scope, but it is not the isolation boundary
+Only memories saved in that scope are searched when the same scope is provided.
+If you omit `scope`, MemContext searches only the unscoped memory lane.
 
-This lets one API key safely serve multiple app users or tenants without mixing their memories. See [Scopes and Projects](/concepts/scopes-and-projects) for the full model.
+Use `project` for grouping inside a scope:
 
-## Temporal awareness
+```typescript
+const projectMemory = userMemory.withProject("supportbot");
+```
 
-Memories can include a `validUntil` timestamp. This can be:
+## Handle Changing Information
 
-- **Explicitly set** by the user or AI agent via the `validUntil` parameter
-- **Auto-detected** by the system during save based on content analysis
+You can save updated information without manually deleting old memories.
 
-The system classifies memories into temporal categories:
+Example:
 
-| Category    | Examples                                          | Auto-TTL  |
-| ----------- | ------------------------------------------------- | --------- |
-| Permanent   | "User prefers TypeScript", "Company is CarQ"      | No expiry |
-| Short-term  | "Meeting tomorrow at 3pm", "Sprint ends Friday"   | 7 days    |
-| Medium-term | "LinkedIn algorithm favors short posts right now" | 30 days   |
-| Long-term   | "Q2 goal is to reach 10K users"                   | 90 days   |
+1. Save: `User prefers long-form LinkedIn posts.`
+2. Later save: `User now prefers short hook-first LinkedIn posts.`
 
-If you explicitly pass `validUntil`, auto-detection is skipped. When in doubt, the system defaults to permanent — it is always better to keep a memory too long than to lose it too early.
+MemContext can return the newer memory during search while preserving history
+for audit or debugging through the history endpoint.
 
-Expired memories are automatically excluded from search results but not deleted. They remain visible in the dashboard with an "Expired" badge and can be restored.
+## Use Categories
 
-## Memory limits
+Categories help you filter and reason about memory:
 
-Each plan has a memory limit. When the limit is reached, new save requests return `403` with the current count and limit. The check happens both before and during the save transaction to handle concurrent requests safely.
+| Category     | Use for                      |
+| ------------ | ---------------------------- |
+| `preference` | Likes, dislikes, style rules |
+| `fact`       | Objective information        |
+| `decision`   | Choices that were made       |
+| `context`    | General background or state  |
 
-For long-content saves, MemContext reserves an estimated number of memory slots while the background job is pending, then releases any unused slots after extraction completes.
+## Use Expiry For Temporary Facts
+
+Set `validUntil` when a memory should stop being used after a specific time.
+
+```typescript
+await client.save({
+  content: "Sprint demo is on Friday.",
+  category: "fact",
+  validUntil: "2026-06-05T23:59:59Z",
+});
+```
+
+Expired memories are excluded from search.
+
+## Recommended App Flow
+
+1. Search MemContext with the current user or workspace context.
+2. Add the returned memories to your AI prompt.
+3. Generate the answer in your own app.
+4. Save any durable new preference, fact, or decision.
+5. Send feedback when retrieved memories were useful or wrong.

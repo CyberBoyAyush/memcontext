@@ -135,16 +135,13 @@ paths:
       summary: Ingest context vault document
       operationId: ingestCompanyBrainDocument
       description: |
-        Queues document text, a public remote file URL, or a public
-        documentation/web URL for workspace processing.
+        Adds workspace knowledge from extracted text, a public file URL, or a
+        documentation/web URL.
 
-        When `content` is provided, MemContext queues that extracted text
-        directly. When `uri` points to a file and `sourceType` is a file type
-        such as `pdf`, `docx`, `markdown`, `text`, `csv`, or an image type,
-        MemContext downloads the file, stores a copy in Cloudflare R2, and
-        processes the stored file. When `sourceType` is `url` or the URL does
-        not look like a file URL, MemContext uses Exa Contents to scrape/crawl
-        clean Markdown.
+        Use `content` when your app already has clean text or Markdown. Use
+        `uri` with a file `sourceType` for public PDF, DOCX, Markdown, TXT, CSV,
+        or image URLs. Use `sourceType: url` for documentation sites and web
+        pages.
       security:
         - ApiKeyAuth: []
         - CookieAuth: []
@@ -156,7 +153,7 @@ paths:
               $ref: "#/components/schemas/IngestCompanyBrainDocumentRequest"
       responses:
         "202":
-          description: Document accepted for background processing.
+          description: Document accepted and added to the workspace document list.
           content:
             application/json:
               schema:
@@ -167,10 +164,9 @@ paths:
       summary: Upload and ingest context vault document
       operationId: uploadCompanyBrainDocument
       description: |
-        Uploads the original file to Cloudflare R2, stores the object key/public
-        URL on the document source, then queues background processing. Text-like
-        files are decoded before enqueueing; PDFs, DOCX files, and images use
-        Mistral OCR from the R2 public URL during processing.
+        Uploads a local file and adds it to Context Vault. Supports PDFs,
+        Markdown, TXT, DOCX, CSV, and image files. OCR is available for formats
+        that need text extraction.
       security:
         - ApiKeyAuth: []
         - CookieAuth: []
@@ -201,7 +197,7 @@ paths:
                   description: Optional extracted text override for binary files.
       responses:
         "202":
-          description: File uploaded and document accepted for background processing.
+          description: File uploaded and added to the workspace document list.
           content:
             application/json:
               schema:
@@ -228,15 +224,43 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CancelCompanyBrainDocumentResponse"
+  /api/company-brain/documents/{documentId}/memories:
+    get:
+      tags: [Context Vault]
+      summary: List memories extracted from one context vault document
+      operationId: listCompanyBrainDocumentMemories
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - in: path
+          name: documentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: workspaceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Extracted memories for this document.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListCompanyBrainDocumentMemoriesResponse"
   /api/company-brain/documents/{documentId}:
     delete:
       tags: [Context Vault]
       summary: Delete context vault document
       operationId: deleteCompanyBrainDocument
       description: |
-        Deletes the document source, chunks, and citations. Extracted document
-        memories are soft-deleted only when this document is their only source;
-        memories also supported by other documents are preserved.
+        Deletes the document and its citations. Extracted memories stop
+        appearing only when this document is their only source; memories also
+        supported by other documents are preserved.
       security:
         - ApiKeyAuth: []
         - CookieAuth: []
@@ -270,8 +294,7 @@ paths:
         mode fills `memories` and leaves `chunks` empty. `hybrid` mode can fill
         both arrays without flattening them into one mixed list, so clients can
         pass source chunks as document context and extracted facts as a separate
-        memory-context document. Document candidates are reranked after
-        hybrid/vector/full-text retrieval.
+        memory-context document.
       security:
         - ApiKeyAuth: []
         - CookieAuth: []
@@ -318,16 +341,148 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SearchCompanyBrainResponse"
+  /api/company-brain/memories:
+    get:
+      tags: [Context Vault]
+      summary: Browse context vault memories
+      operationId: listCompanyBrainMemories
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - in: query
+          name: workspaceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: scope
+          schema:
+            type: string
+            maxLength: 200
+        - in: query
+          name: project
+          schema:
+            type: string
+            maxLength: 100
+        - in: query
+          name: projects
+          schema:
+            type: string
+          description: Comma-separated project filter. Use `__memcontext_no_project__` for memories without a project.
+        - in: query
+          name: search
+          schema:
+            type: string
+            maxLength: 200
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        "200":
+          description: Paginated workspace memories.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListCompanyBrainMemoriesResponse"
+  /api/company-brain/memories/{memoryId}/feedback:
+    post:
+      tags: [Context Vault]
+      summary: Submit feedback on a context vault memory
+      operationId: submitCompanyBrainMemoryFeedback
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - in: path
+          name: memoryId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyBrainMemoryFeedbackRequest"
+      responses:
+        "200":
+          description: Feedback recorded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemoryFeedbackResponse"
+  /api/company-brain/memories/{memoryId}/evidence:
+    get:
+      tags: [Context Vault]
+      summary: List source evidence for a context vault memory
+      operationId: listCompanyBrainMemoryEvidence
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - in: path
+          name: memoryId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: workspaceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Source chunks for this extracted memory.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListCompanyBrainMemoryEvidenceResponse"
+  /api/company-brain/hierarchy:
+    get:
+      tags: [Context Vault]
+      summary: Context vault scope/project hierarchy
+      operationId: getCompanyBrainHierarchy
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - in: query
+          name: workspaceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Scope and project counts for workspace memories.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyBrainHierarchyResponse"
   /api/memories:
     post:
       tags: [Memories]
       summary: Save a memory
       operationId: saveMemory
       description: |
-        Persist a memory. MemContext automatically expands content for searchability,
-        generates embeddings, checks for duplicates, and classifies relationships
-        with existing memories. If similar content exists, it may update, extend,
-        or deduplicate instead of creating a new record.
+        Save a durable preference, fact, decision, or piece of context. If
+        similar content already exists, MemContext may update, extend, or
+        deduplicate it instead of creating a separate memory.
       requestBody:
         required: true
         content:
@@ -342,7 +497,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/SaveMemoryResponse"
         "202":
-          description: Memory accepted for background extraction into atomic memories.
+          description: Memory accepted for asynchronous extraction into atomic memories.
           content:
             application/json:
               schema:
@@ -412,9 +567,8 @@ paths:
       summary: Search memories
       operationId: searchMemories
       description: |
-        Hybrid search combining vector similarity and PostgreSQL full-text search,
-        merged with Reciprocal Rank Fusion (RRF). Query variants are generated
-        automatically to improve recall.
+        Search saved memories with a natural-language query. Use filters such
+        as scope, project, and category when your app needs narrower results.
       parameters:
         - in: query
           name: query
@@ -454,8 +608,8 @@ paths:
             minimum: 0
             maximum: 1
           description: |
-            Maximum vector distance. Higher values return more results (broader search).
-            Use `0.2`-`0.4` for strict matching, `0.6` as default, `0.7`-`0.8` for broad recall.
+            Search strictness. Higher values return broader matches. Use `0.6`
+            as the default unless you have tested a different value.
       responses:
         "200":
           description: Ranked search results.
@@ -575,9 +729,9 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
     delete:
       tags: [Memories]
-      summary: Delete a memory (soft delete)
+      summary: Delete a memory
       operationId: deleteMemory
-      description: Soft-deletes a memory by setting `deletedAt`. Deleted memories are excluded from search and list results but remain in the database.
+      description: Deletes a memory from future search and list results.
       parameters:
         - $ref: "#/components/parameters/MemoryId"
         - in: query
@@ -631,11 +785,10 @@ paths:
   /api/memories/{id}/forget:
     post:
       tags: [Memories]
-      summary: Forget a memory (soft delete)
+      summary: Forget a memory
       operationId: forgetMemory
       description: |
-        Soft-deletes a memory by setting `deletedAt`. The memory is excluded from
-        search and list results but preserved in the database for audit purposes.
+        Removes a memory from future search and list results.
       parameters:
         - $ref: "#/components/parameters/MemoryId"
         - in: query
@@ -729,7 +882,7 @@ components:
       description: |
         - `preference` - User likes or dislikes (e.g. "prefers dark mode").
         - `fact` - Objective information (e.g. "uses macOS").
-        - `decision` - Choices made (e.g. "chose PostgreSQL for DB").
+        - `decision` - Choices made (e.g. "chose the new billing provider").
         - `context` - Background information (e.g. "working on e-commerce app").
     MemorySource:
       type: string
@@ -817,18 +970,18 @@ components:
         uri:
           type: string
           format: uri
-          description: Public documentation/web URL or public file URL. File URLs are fetched and copied to R2 when `sourceType` is a file type such as `pdf`, `docx`, `markdown`, `text`, `csv`, or an image type.
+          description: Public documentation/web URL or public file URL. Set `sourceType` for file URLs such as `pdf`, `docx`, `markdown`, `text`, `csv`, or an image type.
         crawlSubpages:
           type: boolean
           default: true
-          description: Crawl linked subpages from a documentation/web URL through Exa. Ignored for remote file URL ingestion.
+          description: Crawl linked subpages from a documentation/web URL. Ignored for remote file URL ingestion.
         subpageTarget:
           type: array
           maxItems: 8
           items:
             type: string
             maxLength: 100
-          description: Terms Exa should prioritize when crawling subpages.
+          description: Terms to prioritize when crawling subpages.
         category:
           $ref: "#/components/schemas/MemoryCategory"
     CompanyBrainDocument:
@@ -929,6 +1082,166 @@ components:
           type: integer
         preservedMemoryCount:
           type: integer
+    CompanyBrainMemory:
+      type: object
+      required: [id, content, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        content:
+          type: string
+        category:
+          type: string
+          nullable: true
+        scope:
+          type: string
+          nullable: true
+        project:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        sourceId:
+          type: string
+          format: uuid
+          nullable: true
+        sourceTitle:
+          type: string
+          nullable: true
+        sourceUrl:
+          type: string
+          nullable: true
+    ListCompanyBrainMemoriesResponse:
+      type: object
+      required: [memories, total, hasMore]
+      properties:
+        memories:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompanyBrainMemory"
+        total:
+          type: integer
+        hasMore:
+          type: boolean
+    ListCompanyBrainDocumentMemoriesResponse:
+      type: object
+      required: [document, memories, total]
+      properties:
+        document:
+          type: object
+          required: [id]
+          properties:
+            id:
+              type: string
+              format: uuid
+            title:
+              type: string
+              nullable: true
+            publicUrl:
+              type: string
+              nullable: true
+        memories:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompanyBrainMemory"
+        total:
+          type: integer
+    CompanyBrainMemoryFeedbackRequest:
+      type: object
+      required: [workspaceId, type]
+      properties:
+        workspaceId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [helpful, not_helpful, outdated, wrong]
+        context:
+          type: string
+          maxLength: 1000
+    CompanyBrainMemoryEvidence:
+      type: object
+      required: [chunkId, sourceId, chunkIndex, content]
+      properties:
+        chunkId:
+          type: string
+          format: uuid
+        sourceId:
+          type: string
+          format: uuid
+        chunkIndex:
+          type: integer
+        sectionPath:
+          type: string
+          nullable: true
+        pageNumber:
+          type: integer
+          nullable: true
+        content:
+          type: string
+        title:
+          type: string
+          nullable: true
+        quote:
+          type: string
+          nullable: true
+        confidence:
+          type: number
+          nullable: true
+    ListCompanyBrainMemoryEvidenceResponse:
+      type: object
+      required: [evidence]
+      properties:
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompanyBrainMemoryEvidence"
+    CompanyBrainHierarchyResponse:
+      type: object
+      required: [global, scopes]
+      properties:
+        global:
+          type: object
+          required: [count, projects]
+          properties:
+            count:
+              type: integer
+            projects:
+              type: array
+              items:
+                type: object
+                required: [name, value, count]
+                properties:
+                  name:
+                    type: string
+                  value:
+                    type: string
+                  count:
+                    type: integer
+        scopes:
+          type: array
+          items:
+            type: object
+            required: [name, count, projects]
+            properties:
+              name:
+                type: string
+              count:
+                type: integer
+              projects:
+                type: array
+                items:
+                  type: object
+                  required: [name, value, count]
+                  properties:
+                    name:
+                      type: string
+                    value:
+                      type: string
+                    count:
+                      type: integer
     ListCompanyBrainDocumentsResponse:
       type: object
       required: [documents]
@@ -1012,10 +1325,6 @@ components:
           format: date-time
           nullable: true
           description: ISO 8601 datetime after which this memory is considered expired.
-        deletedAt:
-          type: string
-          format: date-time
-          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -1054,7 +1363,7 @@ components:
         jobId:
           type: string
           format: uuid
-          description: Background job/source ID for accepted long-content processing.
+          description: Job/source ID for tracking accepted long-content extraction.
         status:
           type: string
           enum: [saved, updated, extended, duplicate, accepted]
@@ -1063,7 +1372,7 @@ components:
             - `updated` - New memory superseded an existing one.
             - `extended` - New memory extends an existing one (relation created).
             - `duplicate` - Content already exists; no new memory created.
-            - `accepted` - Large content was accepted for background extraction into atomic memories.
+            - `accepted` - Large content was accepted for asynchronous extraction into atomic memories.
         superseded:
           type: string
           format: uuid
@@ -1074,7 +1383,7 @@ components:
           description: ID of the existing duplicate (when status is `duplicate`).
         message:
           type: string
-          description: Optional human-readable acknowledgement for async processing.
+          description: Optional human-readable acknowledgement for asynchronous extraction.
         reservedSlots:
           type: integer
           minimum: 0
