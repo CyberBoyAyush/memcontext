@@ -23,10 +23,14 @@ import userRoutes from "./routes/user.js";
 import waitlistRoutes from "./routes/waitlist.js";
 import adminRoutes from "./routes/admin.js";
 import subscriptionRoutes from "./routes/subscription.js";
+import workspacesRoutes from "./routes/workspaces.js";
+import companyBrainRoutes from "./routes/company-brain.js";
 import { startMemorySourceProcessor } from "./services/memory.js";
+import { startCompanyBrainProcessor } from "./services/company-brain.js";
 import type { HealthResponse } from "@memcontext/types";
 
 const app = new Hono();
+const defaultBodyLimit = bodyLimit({ maxSize: 50 * 1024 });
 
 app.use("*", requestLogger);
 
@@ -64,7 +68,15 @@ app.use(
   }),
 );
 
-app.use("*", bodyLimit({ maxSize: 50 * 1024 }));
+app.use("*", (c, next) => {
+  if (
+    c.req.path === "/api/company-brain/documents" ||
+    c.req.path === "/api/company-brain/documents/upload"
+  ) {
+    return next();
+  }
+  return defaultBodyLimit(c, next);
+});
 
 app.use("/api/*", rateLimitGlobal);
 
@@ -113,6 +125,8 @@ app.route("/api/user", userRoutes);
 app.route("/api/waitlist", waitlistRoutes);
 app.route("/api/admin", adminRoutes);
 app.route("/api/subscription", subscriptionRoutes);
+app.route("/api/workspaces", workspacesRoutes);
+app.route("/api/company-brain", companyBrainRoutes);
 
 app.onError((err, c) => {
   const requestId = getRequestId(c);
@@ -219,6 +233,7 @@ logger.info(
 );
 
 startMemorySourceProcessor();
+startCompanyBrainProcessor();
 
 serve({
   fetch: app.fetch,

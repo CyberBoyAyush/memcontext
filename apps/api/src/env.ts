@@ -10,6 +10,11 @@ const envPath = resolve(__dirname, "../.env");
 
 config({ path: envPath });
 
+const optionalUrl = z.preprocess(
+  (value) => (value === "" ? undefined : value),
+  z.string().url().optional(),
+);
+
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   OPENROUTER_API_KEY: z.string().min(1, "OPENROUTER_API_KEY is required"),
@@ -69,6 +74,18 @@ const envSchema = z.object({
     .default("test_mode"),
   DODO_PRODUCT_HOBBY: z.string().min(1, "DODO_PRODUCT_HOBBY is required"),
   DODO_PRODUCT_PRO: z.string().min(1, "DODO_PRODUCT_PRO is required"),
+
+  // Cloudflare R2 document storage
+  R2_ACCOUNT_ID: z.string().optional(),
+  R2_ACCESS_KEY_ID: z.string().optional(),
+  R2_SECRET_ACCESS_KEY: z.string().optional(),
+  R2_BUCKET_NAME: z.string().optional(),
+  R2_PUBLIC_BASE_URL: optionalUrl,
+  EXA_API_KEY: z.string().optional(),
+
+  // OCR provider for scanned PDFs/images and binary document extraction
+  MISTRAL_API_KEY: z.string().optional(),
+  MISTRAL_OCR_MODEL: z.string().optional().default("mistral-ocr-latest"),
 });
 
 const parsed = envSchema.safeParse(process.env);

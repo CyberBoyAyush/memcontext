@@ -64,6 +64,8 @@ app.get("/dashboard-stats", async (c) => {
       .where(
         and(
           eq(memories.userId, userId),
+          isNull(memories.workspaceId),
+          eq(memories.memoryType, "user"),
           eq(memories.isCurrent, true),
           isNull(memories.deletedAt),
         ),
@@ -80,6 +82,8 @@ app.get("/dashboard-stats", async (c) => {
       .where(
         and(
           eq(memories.userId, userId),
+          isNull(memories.workspaceId),
+          eq(memories.memoryType, "user"),
           eq(memories.isCurrent, true),
           isNull(memories.deletedAt),
         ),
@@ -100,6 +104,8 @@ app.get("/dashboard-stats", async (c) => {
       .where(
         and(
           eq(memories.userId, userId),
+          isNull(memories.workspaceId),
+          eq(memories.memoryType, "user"),
           eq(memories.isCurrent, true),
           isNull(memories.deletedAt),
         ),
@@ -159,6 +165,8 @@ app.get("/memory-hierarchy", async (c) => {
     .where(
       and(
         eq(memories.userId, userId),
+        isNull(memories.workspaceId),
+        eq(memories.memoryType, "user"),
         eq(memories.isCurrent, true),
         isNull(memories.deletedAt),
       ),

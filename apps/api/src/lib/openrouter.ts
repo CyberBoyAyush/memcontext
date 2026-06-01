@@ -8,7 +8,9 @@ import { logger } from "./logger.js";
 
 const EMBEDDING_MODEL = "openai/text-embedding-3-large";
 const LLM_MODEL = "google/gemini-2.5-flash";
+const RERANK_MODEL = "cohere/rerank-v3.5";
 const REQUEST_TIMEOUT_MS = 30_000;
+const RERANK_TIMEOUT_MS = 10_000;
 
 function getApiKey(): string {
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -108,6 +110,65 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export async function rerankDocuments(params: {
+  query: string;
+  documents: string[];
+  topN: number;
+}): Promise<Array<{ index: number; relevanceScore: number }>> {
+  if (params.documents.length === 0) return [];
+
+  const start = performance.now();
+  const response = await fetch("https://openrouter.ai/api/v1/rerank", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${getApiKey()}`,
+      "Content-Type": "application/json",
+      ...APP_HEADERS,
+    },
+    body: JSON.stringify({
+      model: RERANK_MODEL,
+      query: params.query,
+      documents: params.documents,
+      top_n: Math.min(params.topN, params.documents.length),
+    }),
+    signal: AbortSignal.timeout(RERANK_TIMEOUT_MS),
+  });
+
+  const payload = (await response.json().catch(async () => ({
+    error: await response.text().catch(() => ""),
+  }))) as {
+    results?: Array<{ index: number; relevance_score: number }>;
+    usage?: { cost?: number; search_units?: number };
+    error?: { message?: string } | string;
+  };
+
+  if (!response.ok) {
+    const message =
+      typeof payload.error === "object" ? payload.error.message : payload.error;
+    throw new Error(
+      `OpenRouter rerank failed (${response.status})${message ? `: ${message}` : ""}`,
+    );
+  }
+
+  const duration = Math.round(performance.now() - start);
+  logger.debug(
+    {
+      model: RERANK_MODEL,
+      documentCount: params.documents.length,
+      topN: params.topN,
+      duration,
+      cost: payload.usage?.cost,
+      searchUnits: payload.usage?.search_units,
+    },
+    "documents reranked",
+  );
+
+  return (payload.results ?? []).map((result) => ({
+    index: result.index,
+    relevanceScore: result.relevance_score,
+  }));
 }
 
 export interface SimilarMemoryForClassification {
@@ -319,7 +380,9 @@ Memory: "${escapedContent}"`,
   }
 }
 
-export async function extractAtomicMemories(content: string): Promise<string[]> {
+export async function extractAtomicMemories(
+  content: string,
+): Promise<string[]> {
   const start = performance.now();
 
   try {
@@ -328,21 +391,23 @@ export async function extractAtomicMemories(content: string): Promise<string[]> 
     const escapedContent = escapeForPrompt(content);
 
     try {
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        signal: controller.signal,
-        headers: {
-          Authorization: `Bearer ${getApiKey()}`,
-          "Content-Type": "application/json",
-          ...APP_HEADERS,
-        },
-        body: JSON.stringify({
-          model: LLM_MODEL,
-          response_format: { type: "json_object" },
-          messages: [
-            {
-              role: "user",
-              content: `You are an expert memory extraction system.
+      const response = await fetch(
+        "https://openrouter.ai/api/v1/chat/completions",
+        {
+          method: "POST",
+          signal: controller.signal,
+          headers: {
+            Authorization: `Bearer ${getApiKey()}`,
+            "Content-Type": "application/json",
+            ...APP_HEADERS,
+          },
+          body: JSON.stringify({
+            model: LLM_MODEL,
+            response_format: { type: "json_object" },
+            messages: [
+              {
+                role: "user",
+                content: `You are an expert memory extraction system.
 
 Extract the important atomic memories from this long note, transcript, or document.
 Return ONLY valid JSON with this exact shape:
@@ -374,10 +439,11 @@ Rules:
 
 Content:
 "${escapedContent}"`,
-            },
-          ],
-        }),
-      });
+              },
+            ],
+          }),
+        },
+      );
 
       if (!response.ok) {
         throw new Error(

@@ -46,6 +46,7 @@
         "pages": [
           "concepts/how-it-works",
           "concepts/scopes-and-projects",
+          "concepts/context-vault",
           "concepts/versioning",
           "concepts/hybrid-search",
           "concepts/user-profiles"

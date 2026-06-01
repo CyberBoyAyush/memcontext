@@ -24,10 +24,12 @@ import {
   CheckCircle,
   WarningCircle,
   X,
+  Buildings,
 } from "@phosphor-icons/react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { WorkspacesSection } from "@/components/settings/workspaces-section";
 import { api } from "@/lib/api";
 import { requestPasswordReset, signOut } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
@@ -652,10 +654,23 @@ export default function SettingsPage() {
         <PasswordSection email={user?.email} resolvedTheme={resolvedTheme} />
       </div>
 
-      {/* Subscription Section */}
+      {/* Workspaces Section */}
       <div
         className="animate-fade-in-up"
         style={{ animationDelay: "180ms", animationFillMode: "backwards" }}
+      >
+        <SectionHeader
+          icon={Buildings}
+          title="Workspaces"
+          description="Create team workspaces and invite members to your Context Vault"
+        />
+        <WorkspacesSection />
+      </div>
+
+      {/* Subscription Section */}
+      <div
+        className="animate-fade-in-up"
+        style={{ animationDelay: "240ms", animationFillMode: "backwards" }}
       >
         <SectionHeader
           icon={CreditCard}
@@ -808,7 +823,7 @@ export default function SettingsPage() {
       {/* Appearance Section */}
       <div
         className="animate-fade-in-up"
-        style={{ animationDelay: "240ms", animationFillMode: "backwards" }}
+        style={{ animationDelay: "300ms", animationFillMode: "backwards" }}
       >
         <SectionHeader
           icon={PaintBrush}
@@ -911,7 +926,7 @@ export default function SettingsPage() {
       {/* Danger Zone */}
       <div
         className="animate-fade-in-up"
-        style={{ animationDelay: "300ms", animationFillMode: "backwards" }}
+        style={{ animationDelay: "360ms", animationFillMode: "backwards" }}
       >
         <SectionHeader
           icon={Warning}

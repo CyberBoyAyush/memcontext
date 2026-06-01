@@ -1,0 +1,240 @@
+---
+title: "Context Vault"
+description: "Workspace document memory with chunks, extracted facts, and citations."
+---
+
+Context Vault stores shared company knowledge separately from personal MCP memory.
+
+Personal memory uses `workspace_id = null`. Context Vault memory uses a workspace
+ID and checks workspace membership before document ingestion or retrieval.
+Context Vault endpoints accept either dashboard session cookies or `X-API-Key`
+authentication.
+
+The public product name is Context Vault. The current beta API path remains
+`/api/company-brain/...` for compatibility with existing integrations.
+
+## Plan usage
+
+Current Free, Hobby, and Pro memory limits apply to personal/user memories. During
+the Context Vault beta, extracted document memories are stored as workspace
+document memories and are tracked separately from the personal memory quota.
+
+This keeps document ingestion usable while document-specific limits are being
+finalized. For production workspaces, plan around separate Context Vault limits
+for documents, storage, OCR/scraping volume, and extracted facts rather than
+treating a PDF as one personal memory.
+
+## Ingestion
+
+The v1 endpoints support four ingestion paths:
+
+- Multipart file upload, where callers send file bytes directly.
+- Remote file URL ingestion, where callers send a public file URL such as a PDF.
+- Documentation/web URL ingestion, where callers send a docs site or web page URL.
+- Extracted text JSON ingestion, where callers send already parsed text or Markdown.
+
+Text-like files are decoded locally. PDFs, DOCX files, and scanned/image documents
+are converted to Markdown with Mistral OCR in the background before chunking.
+MemContext stores the original in R2 and sends the `R2_PUBLIC_BASE_URL` file URL
+to Mistral OCR.
+
+### File upload
+
+Use `POST /api/company-brain/documents/upload` when the client has the file
+bytes. The API stores the original file in Cloudflare R2 and queues processing.
+
+```bash
+curl -X POST https://api.memcontext.in/api/company-brain/documents/upload \
+  --cookie "better-auth.session_token=..." \
+  -F "workspaceId=8b3b8f4c-..." \
+  -F "title=Employee Handbook" \
+  -F "sourceType=markdown" \
+  -F "file=@handbook.md"
+```
+
+### Remote file URL
+
+Use `POST /api/company-brain/documents` with `uri` and a file `sourceType` when
+the file is already hosted publicly. The API downloads the file, validates the
+size, stores a copy in R2, and processes the stored R2 URL. Use this for public
+PDF, DOCX, Markdown, TXT, CSV, and image URLs.
+
+```bash
+curl -X POST https://api.memcontext.in/api/company-brain/documents \
+  -H "Content-Type: application/json" \
+  --cookie "better-auth.session_token=..." \
+  -d '{
+    "workspaceId": "8b3b8f4c-...",
+    "title": "Security Whitepaper",
+    "sourceType": "pdf",
+    "uri": "https://example.com/security-whitepaper.pdf",
+    "scope": "security"
+  }'
+```
+
+### Documentation or web URL
+
+Use `POST /api/company-brain/documents` with `uri` and `sourceType: "url"` for
+documentation sites or web pages. If `sourceType` is omitted and the URL does not
+look like a file URL, MemContext treats it as a documentation/web URL. This path
+uses Exa to fetch clean Markdown instead of storing raw HTML.
+
+```bash
+curl -X POST https://api.memcontext.in/api/company-brain/documents \
+  -H "Content-Type: application/json" \
+  --cookie "better-auth.session_token=..." \
+  -d '{
+    "workspaceId": "8b3b8f4c-...",
+    "title": "Employee Handbook",
+    "uri": "https://docs.example.com",
+    "crawlSubpages": true,
+    "subpageTarget": ["docs", "api", "guides"],
+    "scope": "handbook"
+  }'
+```
+
+Documentation URL ingestion is powered by Exa's Contents API instead of raw
+server-side fetching. This lets users enter arbitrary documentation or website
+URLs without requiring host preconfiguration in MemContext.
+
+### Extracted text or Markdown
+
+Use `POST /api/company-brain/documents` with `content` when your app has already
+parsed the file or page. This skips file storage/OCR/scraping and queues the
+provided text directly.
+
+```bash
+curl -X POST https://api.memcontext.in/api/company-brain/documents \
+  -H "Content-Type: application/json" \
+  --cookie "better-auth.session_token=..." \
+  -d '{
+    "workspaceId": "8b3b8f4c-...",
+    "title": "Employee Handbook",
+    "sourceType": "markdown",
+    "scope": "handbook",
+    "project": "hr",
+    "content": "# Leave Policy\nEmployees get 18 paid leave days..."
+  }'
+```
+
+MemContext then:
+
+1. Creates a `memory_sources` row with `status = pending`.
+2. A background processor claims it, marks it `processing`, and retries transient failures.
+3. Exa or Mistral OCR resolves source text when needed.
+4. The processor splits content into structure-aware chunks.
+5. Chunk embeddings are stored in `memory_source_chunks`.
+6. Each chunk is checkpointed, so retries can reuse completed chunk embeddings.
+7. Durable atomic facts are saved into `memories` from each chunk.
+8. Facts are linked back to source chunks through `memory_evidence`.
+
+Use `POST /api/company-brain/documents/{documentId}/cancel` to stop a pending,
+retrying, or active document job. The dashboard polls the document list so users
+can see `pending`, `processing`, `retrying`, `completed`, `failed`, or
+`cancelled` states, plus the active processing phase, chunk progress, remaining
+chunks, and extracted memory count.
+
+Use `DELETE /api/company-brain/documents/{documentId}` to remove a document.
+This deletes the source, chunks, and citations. Extracted memories are
+soft-deleted only when that document is their only source; memories backed by
+other documents are preserved.
+
+## Search
+
+Context Vault search supports three modes:
+
+| Mode        | Searches                       |
+| ----------- | ------------------------------ |
+| `memories`  | Extracted atomic company facts |
+| `documents` | Source document chunks         |
+| `hybrid`    | Both facts and chunks          |
+
+```bash
+curl "https://api.memcontext.in/api/company-brain/search?workspaceId=8b3b8f4c-...&query=leave%20policy&mode=hybrid" \
+  --cookie "better-auth.session_token=..."
+```
+
+The search endpoint returns ranked retrieval results, not a generated final
+answer. It always keeps source document chunks and extracted memories in
+separate response arrays:
+
+- `chunks[]` contains source passages from uploaded files or crawled pages.
+- `memories[]` contains extracted atomic facts, each with citation evidence back
+  to the source chunks.
+
+`documents` mode returns `chunks[]` and an empty `memories[]` array. `memories`
+mode returns `memories[]` and an empty `chunks[]` array. `hybrid` mode returns
+both arrays, but does not flatten them into one mixed list. This keeps downstream
+payload processing simple: pass source passages as document context, and pass
+the extracted memories as a separate memory-context document.
+
+```json
+{
+  "mode": "hybrid",
+  "found": 2,
+  "chunks": [
+    {
+      "id": "8c8f0c9d-...",
+      "sourceId": "7ef2c9a0-...",
+      "title": "Employee Handbook",
+      "sourceType": "pdf",
+      "sectionPath": "Leave Policy",
+      "chunkIndex": 12,
+      "content": "Employees receive 18 paid leave days per year...",
+      "contextualContent": "Employee Handbook > Leave Policy\nEmployees receive 18 paid leave days per year...",
+      "relevance": 0.91
+    }
+  ],
+  "memories": [
+    {
+      "id": "9f1a2b3c-...",
+      "content": "Employees receive 18 paid leave days per year.",
+      "category": "fact",
+      "evidence": [
+        {
+          "sourceId": "7ef2c9a0-...",
+          "chunkId": "8c8f0c9d-...",
+          "title": "Employee Handbook",
+          "sectionPath": "Leave Policy",
+          "chunkIndex": 12,
+          "quote": "Employees receive 18 paid leave days per year..."
+        }
+      ]
+    }
+  ]
+}
+```
+
+For product chat or support flows, use the top `chunks[]` entries as the
+grounded source-document context. Then convert the top `memories[]` entries into
+a second synthetic document, for example `Context Vault extracted memories`,
+containing bullet facts and their evidence. Keeping answer synthesis outside
+this endpoint makes the API predictable for dashboards, agents, and server-side
+applications that need citations or custom response formatting.
+
+Document chunk results are reranked after hybrid/vector/full-text candidate
+generation so the most directly relevant source passages appear first.
+
+The retrieval path applies `workspace_id` and `scope` before search, so company
+documents do not appear in personal MCP memory retrieval.
+
+## Supported v1 Sources
+
+Use v1 for extracted content from:
+
+- Markdown
+- TXT
+- PDFs through Mistral OCR
+- DOCX through Mistral OCR
+- PNG, JPG/JPEG, WebP, and TIFF through Mistral OCR
+- HTML or scraped URL text through Exa
+- CSV beta imports
+
+Cloudflare R2 preserves the original uploaded file. The API stores the object key
+and public URL on the document source so Mistral OCR and the dashboard can open
+the full document later.
+
+Set `MISTRAL_API_KEY` and optionally `MISTRAL_OCR_MODEL` to enable OCR. Set
+`EXA_API_KEY` to enable URL scraping and documentation crawling. XLSX, PPTX, and
+external workspace connectors should be added after the core chunk/evidence
+pipeline is stable.

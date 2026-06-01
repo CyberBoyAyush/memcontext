@@ -34,9 +34,19 @@ import {
   useSubmitFeedback,
   type MemoryHierarchyProject,
 } from "@/lib/queries/memories";
+import {
+  companyBrainHierarchyQueryOptions,
+  companyBrainMemoriesQueryOptions,
+  type CompanyBrainMemory,
+} from "@/lib/queries/company-brain";
 import { formatDateTime, cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
 import { ScopePicker } from "@/components/scope-picker";
+import {
+  MemorySourceSwitcher,
+  type MemorySource as MemoryViewSource,
+} from "@/components/memory-source-switcher";
+import { VaultMemoryDetailPanel } from "@/components/vault-memory-detail-panel";
 
 interface Memory {
   id: string;
@@ -1057,6 +1067,7 @@ function ProjectFilter({
 }
 
 export default function MemoriesPage() {
+  const [source, setSource] = useState<MemoryViewSource>({ type: "user" });
   const [selectedScope, setSelectedScope] = useState<string | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
@@ -1064,16 +1075,48 @@ export default function MemoriesPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
+  const [selectedVaultMemory, setSelectedVaultMemory] =
+    useState<CompanyBrainMemory | null>(null);
   const [deletingMemory, setDeletingMemory] = useState<Memory | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const toast = useToast();
   const queryClient = useQueryClient();
   const offset = page * ITEMS_PER_PAGE;
+  const isWorkspace = source.type === "workspace";
+  const workspaceId = source.type === "workspace" ? source.id : undefined;
 
-  const { data: hierarchy, isLoading: hierarchyLoading } = useQuery(
+  const { data: userHierarchy, isLoading: userHierarchyLoading } = useQuery(
     memoryHierarchyQueryOptions(),
   );
+  const { data: workspaceHierarchy, isLoading: workspaceHierarchyLoading } =
+    useQuery(companyBrainHierarchyQueryOptions(workspaceId));
+
+  const hierarchy = isWorkspace ? workspaceHierarchy : userHierarchy;
+  const hierarchyLoading = isWorkspace
+    ? workspaceHierarchyLoading
+    : userHierarchyLoading;
+
+  function handleSourceChange(next: MemoryViewSource) {
+    if (
+      next.type === source.type &&
+      (next.type === "user" ||
+        (next.type === "workspace" &&
+          source.type === "workspace" &&
+          next.id === source.id))
+    ) {
+      return;
+    }
+    setSource(next);
+    setSelectedScope(null);
+    setSelectedProjects([]);
+    setSelectedCategories([]);
+    setSearchInput("");
+    setSearch("");
+    setPage(0);
+    setSelectedMemory(null);
+    setSelectedVaultMemory(null);
+  }
 
   // Projects shown in the project filter depend on the selected scope.
   const scopeProjects: MemoryHierarchyProject[] =
@@ -1106,8 +1149,8 @@ export default function MemoriesPage() {
   const apiProjects =
     selectedProjects.length > 0 ? selectedProjects : undefined;
 
-  const { data, isLoading, error, isFetching } = useQuery(
-    memoriesQueryOptions({
+  const userMemories = useQuery({
+    ...memoriesQueryOptions({
       limit: ITEMS_PER_PAGE,
       offset,
       categories: apiCategories,
@@ -1115,7 +1158,24 @@ export default function MemoriesPage() {
       search: search || undefined,
       scope: selectedScope ?? undefined,
     }),
+    enabled: !isWorkspace,
+  });
+
+  // Workspace memories are read-only; scope + (multi) project + search apply.
+  const workspaceMemories = useQuery(
+    companyBrainMemoriesQueryOptions({
+      workspaceId,
+      scope: selectedScope ?? undefined,
+      projects: apiProjects,
+      search: search || undefined,
+      limit: ITEMS_PER_PAGE,
+      offset,
+    }),
   );
+
+  const { data, isLoading, error, isFetching } = isWorkspace
+    ? workspaceMemories
+    : userMemories;
 
   const deleteMutation = useDeleteMemory();
 
@@ -1152,13 +1212,18 @@ export default function MemoriesPage() {
   const shouldShowResetFilters = hasActiveFilters && totalMemoriesCount > 0;
 
   function handleRefresh() {
-    queryClient.invalidateQueries({ queryKey: ["memories"] });
+    if (isWorkspace) {
+      queryClient.invalidateQueries({ queryKey: ["company-brain-memories"] });
+      queryClient.invalidateQueries({ queryKey: ["company-brain-hierarchy"] });
+    } else {
+      queryClient.invalidateQueries({ queryKey: ["memories"] });
+    }
   }
 
   return (
     <div className="h-full flex flex-col animate-fade-in overflow-hidden">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-6 shrink-0">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-1 pt-1 pb-6 shrink-0">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-3">
@@ -1177,7 +1242,8 @@ export default function MemoriesPage() {
         </div>
 
         {/* Search and Filters */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <MemorySourceSwitcher value={source} onChange={handleSourceChange} />
           <ScopePicker
             value={selectedScope}
             onChange={handleScopeChange}
@@ -1255,8 +1321,9 @@ export default function MemoriesPage() {
               <>
                 <h3 className="text-xl font-semibold mb-2">No memories yet</h3>
                 <p className="text-foreground-muted max-w-sm mx-auto">
-                  Start saving memories through your AI assistant and
-                  they&apos;ll appear here
+                  {isWorkspace
+                    ? "Process documents in the Context Vault and the extracted memories will appear here."
+                    : "Start saving memories through your AI assistant and they'll appear here"}
                 </p>
               </>
             )}
@@ -1266,24 +1333,30 @@ export default function MemoriesPage() {
         <div className="flex flex-col flex-1 min-h-0 gap-4">
           {/* Table */}
           <Card className="overflow-hidden flex-1 min-h-0 flex flex-col">
-            <div className="overflow-auto flex-1 scrollbar-hide flex flex-col">
-              <table className="w-full min-w-[780px] flex-1 flex flex-col">
+            <div className="overflow-x-auto overflow-y-auto flex-1 scrollbar-hide flex flex-col">
+              <table className="w-full min-w-[760px] flex-1 flex flex-col">
                 <thead className="sticky top-0 z-10 border-b border-border shrink-0">
                   <tr className="flex bg-surface-elevated w-full">
-                    <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 shrink-0 border-r border-border flex items-center justify-center">
+                    <th className="text-center px-2 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 shrink-0 border-r border-border flex items-center justify-center">
                       #
                     </th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-48 md:flex-1 md:w-auto border-r border-border flex items-center">
                       Content
                     </th>
                     <th className="text-left px-4 py-3 w-40 shrink-0 border-r border-border flex items-center">
-                      <CategoryFilter
-                        values={selectedCategories}
-                        onChange={(values) => {
-                          setSelectedCategories(values);
-                          setPage(0);
-                        }}
-                      />
+                      {isWorkspace ? (
+                        <span className="text-xs font-semibold uppercase tracking-wider text-foreground-muted">
+                          Category
+                        </span>
+                      ) : (
+                        <CategoryFilter
+                          values={selectedCategories}
+                          onChange={(values) => {
+                            setSelectedCategories(values);
+                            setPage(0);
+                          }}
+                        />
+                      )}
                     </th>
                     <th className="text-left px-4 py-3 w-44 shrink-0 border-r border-border flex items-center">
                       <ProjectFilter
@@ -1314,10 +1387,20 @@ export default function MemoriesPage() {
                       <tr
                         key={memory.id}
                         className={cn(
-                          "group hover:bg-surface/50 transition-colors cursor-pointer border-b border-border flex flex-1 w-full",
-                          selectedMemory?.id === memory.id && "bg-surface/50",
+                          "group transition-colors border-b border-border flex flex-1 w-full cursor-pointer hover:bg-surface/50",
+                          (isWorkspace
+                            ? selectedVaultMemory?.id === memory.id
+                            : selectedMemory?.id === memory.id) &&
+                            "bg-surface/50",
                         )}
-                        onClick={() => setSelectedMemory(memory)}
+                        onClick={
+                          isWorkspace
+                            ? () =>
+                                setSelectedVaultMemory(
+                                  memory as CompanyBrainMemory,
+                                )
+                            : () => setSelectedMemory(memory as Memory)
+                        }
                       >
                         {/* Serial Number */}
                         <td className="py-3 text-center text-sm text-foreground-muted font-medium w-12 shrink-0 border-r border-border flex items-center justify-center">
@@ -1326,11 +1409,26 @@ export default function MemoriesPage() {
 
                         {/* Content */}
                         <td className="px-4 py-3 w-48 md:flex-1 md:w-auto border-r border-border flex items-center gap-2">
-                          <p className="text-sm leading-relaxed line-clamp-2 flex-1">
-                            {memory.content}
-                          </p>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm leading-relaxed line-clamp-2">
+                              {memory.content}
+                            </p>
+                            {isWorkspace &&
+                              "sourceTitle" in memory &&
+                              memory.sourceTitle && (
+                                <span className="mt-1 inline-flex max-w-full items-center gap-1 text-[11px] text-foreground-subtle">
+                                  <FileText
+                                    className="h-3 w-3 shrink-0"
+                                    weight="duotone"
+                                  />
+                                  <span className="truncate">
+                                    {memory.sourceTitle}
+                                  </span>
+                                </span>
+                              )}
+                          </div>
                           {(() => {
-                            const ts = getTemporalStatus(memory);
+                            const ts = getTemporalStatus(memory as Memory);
                             return ts ? (
                               <span
                                 className={cn(
@@ -1380,12 +1478,19 @@ export default function MemoriesPage() {
 
                         {/* Actions */}
                         <td className="py-3 w-12 shrink-0 flex items-center justify-center">
-                          <DeleteButton
-                            onDelete={() => setDeletingMemory(memory)}
-                            isDeleting={
-                              isDeleting && deletingMemory?.id === memory.id
-                            }
-                          />
+                          {isWorkspace ? (
+                            <CaretRight
+                              className="h-3.5 w-3.5 text-foreground-subtle transition-colors group-hover:text-foreground-muted"
+                              weight="bold"
+                            />
+                          ) : (
+                            <DeleteButton
+                              onDelete={() => setDeletingMemory(memory as Memory)}
+                              isDeleting={
+                                isDeleting && deletingMemory?.id === memory.id
+                              }
+                            />
+                          )}
                         </td>
                       </tr>
                     );
@@ -1515,7 +1620,7 @@ export default function MemoriesPage() {
         </div>
       )}
 
-      {/* Memory Detail Side Panel */}
+      {/* Memory Detail Side Panel (personal) */}
       {selectedMemory && (
         <MemoryDetailPanel
           key={selectedMemory.id}
@@ -1525,6 +1630,16 @@ export default function MemoriesPage() {
           onSuccess={(message) => toast.success(message)}
           onError={(message) => toast.error(message)}
           onDelete={() => setDeletingMemory(selectedMemory)}
+        />
+      )}
+
+      {/* Vault Memory Detail Side Panel (workspace, read-only + feedback) */}
+      {selectedVaultMemory && workspaceId && (
+        <VaultMemoryDetailPanel
+          key={selectedVaultMemory.id}
+          memory={selectedVaultMemory}
+          workspaceId={workspaceId}
+          onClose={() => setSelectedVaultMemory(null)}
         />
       )}
 
