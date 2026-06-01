@@ -957,11 +957,12 @@ export async function findSimilarMemories(
     isNull(memories.deletedAt),
     sql`(${memories.validUntil} IS NULL OR ${memories.validUntil} > NOW())`,
     lt(distance, SIMILARITY_THRESHOLD),
-    namespace?.workspaceId
-      ? eq(memories.workspaceId, namespace.workspaceId)
-      : isNull(memories.workspaceId),
     eq(memories.memoryType, namespace?.memoryType ?? "user"),
   ];
+
+  if (!namespace?.workspaceId) {
+    conditions.push(isNull(memories.workspaceId));
+  }
 
   conditions.push(
     normalizedScope
@@ -1036,9 +1037,9 @@ export async function searchMemories(
       isNull(memories.deletedAt),
       activeMemoryCondition,
       lt(distance, threshold),
-      workspaceId ? eq(memories.workspaceId, workspaceId) : isNull(memories.workspaceId),
       scope ? eq(memories.scope, scope) : isNull(memories.scope),
     ];
+    if (!workspaceId) conditions.push(isNull(memories.workspaceId));
     conditions.push(
       memoryTypes.length === 1
         ? eq(memories.memoryType, memoryTypes[0])
@@ -1072,9 +1073,9 @@ export async function searchMemories(
       isNull(memories.deletedAt),
       activeMemoryCondition,
       sql`content_tsv @@ plainto_tsquery('english', ${queryText})`,
-      workspaceId ? eq(memories.workspaceId, workspaceId) : isNull(memories.workspaceId),
       scope ? eq(memories.scope, scope) : isNull(memories.scope),
     ];
+    if (!workspaceId) conditions.push(isNull(memories.workspaceId));
     conditions.push(
       memoryTypes.length === 1
         ? eq(memories.memoryType, memoryTypes[0])
