@@ -238,6 +238,9 @@ SAVE immediately (do not defer) when any of these happen:
 - User corrects you or says "remember" -> save_memory(category: "fact")
 - Important project fact learned -> save_memory(category: "fact", project: "<name>")
 - Significant work completed that creates useful future context -> save_memory(category: "context")
+- After using search results, call memory_feedback to rate memories as helpful/not_helpful/outdated/wrong.
+- If a retrieved memory is wrong or outdated and you know the corrected fact, call update_memory with the corrected content. Feedback alone only changes retrieval ranking; update_memory changes the saved memory.
+- Use delete_memory only when a memory was saved incorrectly and should be removed entirely.
 
 Duplicates are handled automatically - when in doubt, save useful durable context.
 Memory persists across all sessions - use project param for project-specific context only.
@@ -255,7 +258,7 @@ MemContext search works with natural-language questions and exact terms like pro
 
 ## MCP Tools
 
-The MCP server exposes four tools to AI assistants:
+The MCP server exposes five tools to AI assistants:
 
 ### `save_memory`
 
@@ -291,6 +294,19 @@ Rate a retrieved memory to improve future retrieval quality.
 | `memoryId` | string | Yes      | The memory ID (from search results)              |
 | `type`     | enum   | Yes      | `helpful`, `not_helpful`, `outdated`, or `wrong` |
 | `context`  | string | No       | Why this feedback                                |
+
+Feedback affects ranking only. If a memory is wrong or outdated and the corrected content is known, use `update_memory` to change the saved memory.
+
+### `update_memory`
+
+Correct or refine an existing saved memory.
+
+| Parameter  | Type   | Required | Description                                      |
+| ---------- | ------ | -------- | ------------------------------------------------ |
+| `memoryId` | string | Yes      | The memory ID (from search results)              |
+| `content`  | string | Yes      | Correct replacement memory text                  |
+| `category` | enum   | No       | `preference`, `fact`, `decision`, or `context`   |
+| `project`  | string | No       | Project grouping. Omit when unsure               |
 
 ### `delete_memory`
 

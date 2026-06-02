@@ -1,0 +1,39 @@
+---
+title: "update_memory"
+description: "Correct or refine an existing saved memory."
+---
+
+## Description
+
+`update_memory` changes an existing saved memory. Use it when `search_memory`
+returns a memory that is wrong, outdated, incomplete, or poorly worded and you
+know the corrected content.
+
+Use `memory_feedback` separately to rate retrieval quality. Feedback affects
+ranking; `update_memory` changes the saved memory and refreshes its retrieval
+embedding.
+
+## Parameters
+
+| Parameter  | Type   | Required | Description                                                                   |
+| ---------- | ------ | -------- | ----------------------------------------------------------------------------- |
+| `memoryId` | string | Yes      | The memory ID to update. Use the `id` returned by `search_memory`.            |
+| `content`  | string | Yes      | Correct replacement memory text. Use a complete, searchable statement.        |
+| `category` | string | No       | Updated category: `preference`, `fact`, `decision`, or `context`.             |
+| `project`  | string | No       | Updated project grouping. Only set when a clear project or app name is known. |
+
+## Example
+
+```
+update_memory({
+  memoryId: "a1b2c3d4-...",
+  content: "User prefers Zustand for client state in new React projects.",
+  category: "preference",
+  project: "memcontext"
+})
+```
+
+## Response
+
+Returns the updated memory result on success, or a `404` error if the memory was
+not found.

@@ -4,6 +4,7 @@ import type { ApiClient } from "./lib/api-client.js";
 import type {
   SaveMemoryResponse,
   SearchMemoryResponse,
+  UpdateMemoryResponse,
 } from "@memcontext/types";
 
 const saveMemorySchema = {
@@ -72,8 +73,30 @@ const searchMemorySchema = {
     ),
 };
 
+const updateMemorySchema = {
+  memoryId: z
+    .string()
+    .describe("The memory ID to update. Use the ID returned by search_memory."),
+  content: z
+    .string()
+    .describe(
+      "Correct replacement memory text. Use a complete, searchable statement.",
+    ),
+  category: z
+    .enum(["preference", "fact", "decision", "context"])
+    .optional()
+    .describe("Updated memory category, if it should change."),
+  project: z
+    .string()
+    .optional()
+    .describe(
+      "Updated project grouping. ONLY set when a clear project/app name is known.",
+    ),
+};
+
 type SaveMemoryInput = z.infer<z.ZodObject<typeof saveMemorySchema>>;
 type SearchMemoryInput = z.infer<z.ZodObject<typeof searchMemorySchema>>;
+type UpdateMemoryInput = z.infer<z.ZodObject<typeof updateMemorySchema>>;
 
 function normalizeProject(project: string | undefined): string | undefined {
   if (!project) return undefined;
@@ -220,7 +243,8 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
       title: "Memory Feedback",
       description:
         "Rate a memory as helpful or not helpful to improve future retrieval quality. " +
-        "Use after search results when a memory was particularly useful, irrelevant, outdated, or wrong.",
+        "Use after search results when a memory was particularly useful, irrelevant, outdated, or wrong. " +
+        "If feedback is outdated or wrong and you know the corrected fact, call update_memory with the corrected content; feedback alone does not edit memory content.",
       inputSchema: {
         memoryId: z
           .string()
@@ -261,6 +285,50 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
             {
               type: "text" as const,
               text: `Error submitting feedback: ${message}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "update_memory",
+    {
+      title: "Update Memory",
+      description:
+        "Correct or refine an existing saved memory. Use when search_memory returns a memory that is outdated, wrong, incomplete, or needs better wording, and you know the corrected content. " +
+        "This updates the saved memory and refreshes retrieval embeddings. Use memory_feedback separately to rate retrieval quality.",
+      inputSchema: updateMemorySchema,
+    },
+    async (args: UpdateMemoryInput) => {
+      try {
+        const response = await apiClient.patch<UpdateMemoryResponse>(
+          `/api/memories/${args.memoryId}`,
+          {
+            content: args.content,
+            category: args.category,
+            project: normalizeProject(args.project),
+          },
+        );
+
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify(response, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unknown error";
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Error updating memory: ${message}`,
             },
           ],
           isError: true,

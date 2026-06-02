@@ -13,7 +13,7 @@ Thin MCP wrapper that connects Claude Desktop to apps/api. No business logic her
 }
 ```
 
-## Tools (4)
+## Tools (5)
 
 ### save_memory
 
@@ -76,6 +76,20 @@ Rate a retrieved memory.
 | memoryId | string | Yes | Memory ID from search results |
 | type | enum | Yes | helpful / not_helpful / outdated / wrong |
 | context | string | No | Why this feedback |
+
+Feedback affects ranking only. If a memory is wrong or outdated and the corrected content is known, use `update_memory`.
+
+### update_memory
+
+Correct or refine an existing saved memory.
+
+**Input:**
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| memoryId | string | Yes | Memory ID from search results |
+| content | string | Yes | Correct replacement memory text |
+| category | enum | No | preference / fact / decision / context |
+| project | string | No | Project name (lowercase) |
 
 ### delete_memory
 

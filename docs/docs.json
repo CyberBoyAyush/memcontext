@@ -89,6 +89,7 @@
           "mcp/save-memory",
           "mcp/search-memory",
           "mcp/memory-feedback",
+          "mcp/update-memory",
           "mcp/delete-memory"
         ]
       }
