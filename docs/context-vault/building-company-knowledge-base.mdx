@@ -1,0 +1,44 @@
+---
+title: "Building a Company Knowledge Base"
+description: "Recommended patterns for production Context Vault deployments."
+---
+
+Start by modeling the knowledge boundary before uploading documents.
+
+## Recommended setup
+
+1. Create one workspace per company, customer, or tenant.
+2. Pick scopes for hard knowledge lanes.
+3. Pick projects for document collections inside those scopes.
+4. Ingest documents with consistent scope and project values.
+5. Search with `hybrid` mode while evaluating retrieval quality.
+6. Show evidence citations in your product UI.
+7. Let users submit feedback and corrections.
+
+## Example model
+
+| Workspace | Scope | Project | Documents |
+| --- | --- | --- | --- |
+| `acme` | `hr` | `onboarding` | handbook, benefits, PTO |
+| `acme` | `engineering` | `api-platform` | API docs, runbooks |
+| `acme` | `billing` | `pricing` | plans, trials, refunds |
+| `acme` | `support` | `playbooks` | escalation guides |
+
+## Retrieval pattern
+
+Use `hybrid` mode for most assistant experiences. Pass source chunks and
+extracted memories into your answer-generation layer as separate context blocks.
+
+Use `documents` mode when the answer needs source wording. Use `memories` mode
+when the answer needs short extracted facts.
+
+## Correction pattern
+
+When a user flags a retrieved memory as wrong, ask for:
+
+- the corrected memory text
+- the reason for correction
+- whether the source chunk should also be updated
+
+Send the correction endpoint with `correctedChunkContent` when the cited chunk
+should be updated too.

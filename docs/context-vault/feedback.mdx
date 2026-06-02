@@ -1,0 +1,40 @@
+---
+title: "Context Vault Feedback"
+description: "Rate and correct extracted workspace memories."
+---
+
+Feedback gives your application a way to record whether a retrieved memory was
+useful.
+
+Use `POST /api/company-brain/memories/{memoryId}/feedback` for lightweight
+signals:
+
+- `helpful`
+- `not_helpful`
+- `outdated`
+- `wrong`
+
+Use `POST /api/company-brain/memories/{memoryId}/correction` when the caller
+knows the corrected content.
+
+## Correction workflow
+
+Corrections update the extracted memory. If `correctedChunkContent` is provided,
+the cited source chunk is updated as well so future document retrieval does not
+drift away from the corrected memory.
+
+```bash
+curl -X POST "https://api.memcontext.in/api/company-brain/memories/MEMORY_ID/correction" \
+  -H "X-API-Key: $MEMCONTEXT_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "workspaceId": "WORKSPACE_ID",
+    "type": "wrong",
+    "reason": "The trial period changed after the latest pricing update.",
+    "correctedContent": "The free trial lasts 30 days.",
+    "correctedChunkContent": "The free trial lasts 30 days."
+  }'
+```
+
+Viewers can submit regular feedback but cannot directly correct workspace
+memories. Correction is available to owners, admins, and members.

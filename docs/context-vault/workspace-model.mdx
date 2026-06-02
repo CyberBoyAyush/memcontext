@@ -1,0 +1,28 @@
+---
+title: "Workspace Model"
+description: "How Context Vault organizes team knowledge."
+---
+
+A workspace is the top-level Context Vault boundary. Members can only ingest,
+search, browse, correct, or review knowledge for workspaces they belong to.
+
+## Roles
+
+| Role | Can search | Can ingest | Can correct | Can invite |
+| --- | --- | --- | --- | --- |
+| `owner` | Yes | Yes | Yes | Yes |
+| `admin` | Yes | Yes | Yes | Yes |
+| `member` | Yes | Yes | Yes | No |
+| `viewer` | Yes | No | No | No |
+
+Workspace creators become `owner`. Invitations can assign `admin`, `member`, or
+`viewer`; `owner` is not an invitable role.
+
+## Workspace isolation
+
+Every Context Vault document, chunk, memory, citation, feedback item, and
+correction is checked against `workspaceId`. A query for one workspace never
+returns another workspace's knowledge.
+
+Use separate workspaces when the data belongs to different companies, customers,
+tenants, or legal entities.

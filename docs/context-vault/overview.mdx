@@ -1,0 +1,41 @@
+---
+title: "Context Vault Overview"
+description: "Workspace document memory for shared company knowledge."
+---
+
+Context Vault is MemContext's workspace knowledge system. It stores shared
+company documents separately from personal assistant memory, extracts durable
+facts from those documents, and keeps citations back to the original source
+chunks.
+
+Use Context Vault when your application needs a shared knowledge base for a
+team, customer, department, or organization. Use personal memory when the
+knowledge belongs to one user or assistant.
+
+The current API path is `/api/company-brain/...` for compatibility. The product
+surface and docs use the name Context Vault.
+
+## Core model
+
+- `workspaceId` is the hard team boundary.
+- `scope` is a hard lane inside a workspace, such as `hr`, `engineering`, or
+  `billing`.
+- `project` is a soft grouping inside a scope, such as `onboarding`,
+  `api-platform`, or `q3-pricing`.
+- Documents are stored as `memory_sources`.
+- Source passages are stored as `memory_source_chunks`.
+- Extracted company facts are stored as document memories.
+- Citations are stored through `memory_evidence`.
+
+## Main capabilities
+
+- Upload PDFs, DOCX files, images, CSV, Markdown, HTML, and text.
+- Ingest public file URLs and documentation URLs.
+- Search source chunks, extracted memories, or both.
+- Browse extracted memories by workspace, scope, and project.
+- Submit feedback and corrections.
+- Load evidence chunks for any extracted memory.
+
+Context Vault does not synthesize a final answer by itself. The search endpoint
+returns ranked chunks and memories so your application can build its own
+grounded answer layer.

@@ -1,0 +1,29 @@
+---
+title: "Evidence and Citations"
+description: "Load source chunks behind extracted memories."
+---
+
+Each extracted Context Vault memory can have one or more evidence rows. Evidence
+links the memory to the document source and chunk it came from.
+
+Use `GET /api/company-brain/memories/{memoryId}/evidence` to load citations.
+
+```bash
+curl "https://api.memcontext.in/api/company-brain/memories/MEMORY_ID/evidence?workspaceId=WORKSPACE_ID" \
+  -H "X-API-Key: $MEMCONTEXT_API_KEY"
+```
+
+Evidence includes:
+
+- `sourceId`
+- `chunkId`
+- `chunkIndex`
+- `sectionPath`
+- `pageNumber`
+- source chunk `content`
+- extraction `quote`
+- `confidence`
+
+Use evidence to show citations in your UI, inspect the original passage, and
+decide whether a correction should update only the extracted memory or also the
+source chunk.

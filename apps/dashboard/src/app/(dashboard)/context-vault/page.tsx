@@ -71,6 +71,16 @@ function normalizeDocumentationUrl(value: string) {
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
+function parseScopeSearch(value: string) {
+  const scopes = value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return scopes.length > 1
+    ? { scopes, scope: undefined }
+    : { scopes: undefined, scope: scopes[0] };
+}
+
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
@@ -285,13 +295,15 @@ export default function CompanyBrainPage() {
   const { data: documentsData } = useQuery(
     companyBrainDocumentsQueryOptions(activeWorkspaceId),
   );
+  const searchScope = parseScopeSearch(scope);
 
   const { data: searchData, isFetching: searchLoading } = useQuery(
     companyBrainSearchQueryOptions({
       workspaceId: activeWorkspaceId,
       query,
       mode,
-      scope: scope || undefined,
+      scope: searchScope.scope,
+      scopes: searchScope.scopes,
       project: project || undefined,
     }),
   );
@@ -318,6 +330,11 @@ export default function CompanyBrainPage() {
 
   async function handleIngestDocument() {
     if (!canSubmitIngest) return;
+    if (scope.includes(",")) {
+      toast.error("Use one scope when ingesting a document");
+      return;
+    }
+
     try {
       if (ingestMode === "upload" && file) {
         await uploadDocument.mutateAsync({
@@ -657,7 +674,7 @@ export default function CompanyBrainPage() {
                     <input
                       value={scope}
                       onChange={(event) => setScope(event.target.value)}
-                      placeholder="scope"
+                      placeholder="scope or scope-a, scope-b for search"
                       className="h-9 rounded-lg border border-border bg-surface px-3 text-sm transition-colors placeholder:text-foreground-subtle focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20"
                     />
                     <input
