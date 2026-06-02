@@ -10,7 +10,11 @@ import {
   acceptWorkspaceInvitation,
   createWorkspace,
   inviteWorkspaceMember,
+  listWorkspaceTeam,
   listWorkspaces,
+  removeWorkspaceMember,
+  revokeWorkspaceInvitation,
+  updateWorkspaceMemberRole,
 } from "../services/workspace.js";
 
 const app = new Hono<{
@@ -36,6 +40,14 @@ const acceptInviteSchema = z.object({
 
 const workspaceIdParamSchema = z.object({
   workspaceId: z.string().uuid(),
+});
+
+const memberIdParamSchema = workspaceIdParamSchema.extend({
+  memberId: z.string().uuid(),
+});
+
+const invitationIdParamSchema = workspaceIdParamSchema.extend({
+  invitationId: z.string().uuid(),
 });
 
 app.get("/", async (c) => {
@@ -70,9 +82,116 @@ app.post(
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to create invitation";
-      throw new HTTPException(message === "Workspace not found" ? 404 : 403, {
+      if (message === "Workspace not found") {
+        throw new HTTPException(404, { message });
+      }
+      if (
+        message === "User is already a workspace member" ||
+        message === "Invitation already pending"
+      ) {
+        throw new HTTPException(400, { message });
+      }
+      if (message === "Failed to send auth email") {
+        throw new HTTPException(500, { message: "Failed to send invitation" });
+      }
+      throw new HTTPException(403, { message });
+    }
+  },
+);
+
+app.get(
+  "/:workspaceId/team",
+  zValidator("param", workspaceIdParamSchema),
+  async (c) => {
+    const { userId } = c.get("auth");
+    const { workspaceId } = c.req.valid("param");
+
+    try {
+      return c.json(await listWorkspaceTeam({ userId, workspaceId }));
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to list workspace team";
+      throw new HTTPException(message === "Workspace not found" ? 404 : 500, {
         message,
       });
+    }
+  },
+);
+
+app.patch(
+  "/:workspaceId/members/:memberId",
+  zValidator("param", memberIdParamSchema),
+  zValidator("json", z.object({ role: z.enum(["admin", "member", "viewer"]) })),
+  async (c) => {
+    const { userId } = c.get("auth");
+    const { workspaceId, memberId } = c.req.valid("param");
+    const { role } = c.req.valid("json");
+
+    try {
+      return c.json(
+        await updateWorkspaceMemberRole({
+          userId,
+          workspaceId,
+          memberId,
+          role,
+        }),
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to update member";
+      if (message === "Workspace not found" || message === "Member not found") {
+        throw new HTTPException(404, { message });
+      }
+      throw new HTTPException(403, { message });
+    }
+  },
+);
+
+app.delete(
+  "/:workspaceId/members/:memberId",
+  zValidator("param", memberIdParamSchema),
+  async (c) => {
+    const { userId } = c.get("auth");
+    const { workspaceId, memberId } = c.req.valid("param");
+
+    try {
+      return c.json(
+        await removeWorkspaceMember({ userId, workspaceId, memberId }),
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to remove member";
+      if (message === "Workspace not found" || message === "Member not found") {
+        throw new HTTPException(404, { message });
+      }
+      throw new HTTPException(403, { message });
+    }
+  },
+);
+
+app.delete(
+  "/:workspaceId/invitations/:invitationId",
+  zValidator("param", invitationIdParamSchema),
+  async (c) => {
+    const { userId } = c.get("auth");
+    const { workspaceId, invitationId } = c.req.valid("param");
+
+    try {
+      return c.json(
+        await revokeWorkspaceInvitation({ userId, workspaceId, invitationId }),
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to revoke invitation";
+      if (
+        message === "Workspace not found" ||
+        message === "Invitation not found"
+      ) {
+        throw new HTTPException(404, { message });
+      }
+      throw new HTTPException(403, { message });
     }
   },
 );
@@ -85,7 +204,9 @@ app.post(
     const body = c.req.valid("json");
 
     try {
-      return c.json(await acceptWorkspaceInvitation({ userId, token: body.token }));
+      return c.json(
+        await acceptWorkspaceInvitation({ userId, token: body.token }),
+      );
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to accept invitation";

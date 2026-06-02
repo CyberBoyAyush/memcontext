@@ -73,6 +73,19 @@ The public product name is Context Vault. The beta route prefix remains `/api/co
 | GET    | /api/company-brain/memories/:id/evidence  | Load citations/source chunks for a workspace memory                    |
 | GET    | /api/company-brain/hierarchy              | Scope/project hierarchy for workspace memories                         |
 
+Workspace management routes:
+
+| Method | Path                                           | Description                                      |
+| ------ | ---------------------------------------------- | ------------------------------------------------ |
+| GET    | /api/workspaces                                | List workspaces the current user belongs to      |
+| POST   | /api/workspaces                                | Create a workspace and make the caller owner     |
+| POST   | /api/workspaces/:id/invitations                | Email an invitation; membership waits for accept |
+| POST   | /api/workspaces/invitations/accept             | Accept an invitation token                       |
+| GET    | /api/workspaces/:id/team                       | List members and pending invitations             |
+| PATCH  | /api/workspaces/:id/members/:memberId          | Update a non-owner member role                   |
+| DELETE | /api/workspaces/:id/members/:memberId          | Remove a non-owner member                        |
+| DELETE | /api/workspaces/:id/invitations/:invitationId  | Revoke a pending invitation                      |
+
 Context Vault requires workspace membership. Writers can ingest documents; viewers can search and browse. It supports multipart uploads, public file URLs, documentation/web URLs through Exa, and pre-extracted text/Markdown JSON.
 
 Use `workspaceId` as the hard team/tenant boundary. Use `scope` for hard lanes inside a workspace, such as `hr`, `engineering`, or `billing`. Use `project` as a soft grouping/filter inside the selected scope. Search accepts either one `scope` or comma-separated `scopes` for multi-scope retrieval, for example `scopes=dev,billing`.

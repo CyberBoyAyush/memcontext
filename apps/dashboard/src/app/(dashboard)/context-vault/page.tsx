@@ -26,6 +26,7 @@ import { useToast } from "@/providers/toast-provider";
 import {
   companyBrainDocumentMemoriesQueryOptions,
   companyBrainDocumentsQueryOptions,
+  companyBrainHierarchyQueryOptions,
   companyBrainSearchQueryOptions,
   useCancelCompanyBrainDocument,
   useDeleteCompanyBrainDocument,
@@ -71,14 +72,20 @@ function normalizeDocumentationUrl(value: string) {
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
-function parseScopeSearch(value: string) {
-  const scopes = value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-  return scopes.length > 1
-    ? { scopes, scope: undefined }
-    : { scopes: undefined, scope: scopes[0] };
+function uniqueProjects(
+  projects: Array<{ name: string; value: string; count: number }>,
+) {
+  const map = new Map<string, { name: string; value: string; count: number }>();
+  for (const project of projects) {
+    const existing = map.get(project.value);
+    map.set(project.value, {
+      ...project,
+      count: (existing?.count ?? 0) + project.count,
+    });
+  }
+  return Array.from(map.values()).sort((left, right) =>
+    left.name.localeCompare(right.name),
+  );
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -272,6 +279,8 @@ export default function CompanyBrainPage() {
   const [project, setProject] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [query, setQuery] = useState("");
+  const [searchScopes, setSearchScopes] = useState<string[]>([]);
+  const [searchProject, setSearchProject] = useState("");
   const [mode, setMode] = useState<SearchMode>("hybrid");
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [memoriesDocument, setMemoriesDocument] = useState<DocumentRef | null>(
@@ -295,20 +304,29 @@ export default function CompanyBrainPage() {
   const { data: documentsData } = useQuery(
     companyBrainDocumentsQueryOptions(activeWorkspaceId),
   );
-  const searchScope = parseScopeSearch(scope);
+  const { data: hierarchyData } = useQuery(
+    companyBrainHierarchyQueryOptions(activeWorkspaceId),
+  );
 
   const { data: searchData, isFetching: searchLoading } = useQuery(
     companyBrainSearchQueryOptions({
       workspaceId: activeWorkspaceId,
       query,
       mode,
-      scope: searchScope.scope,
-      scopes: searchScope.scopes,
-      project: project || undefined,
+      scopes: searchScopes.length > 0 ? searchScopes : undefined,
+      project: searchProject || undefined,
     }),
   );
 
   const documents = documentsData?.documents ?? [];
+  const availableScopes = hierarchyData?.scopes ?? [];
+  const selectedScopeProjects =
+    searchScopes.length === 0
+      ? (hierarchyData?.global.projects ?? [])
+      : availableScopes
+          .filter((item) => searchScopes.includes(item.name))
+          .flatMap((item) => item.projects);
+  const availableSearchProjects = uniqueProjects(selectedScopeProjects);
   const totalChunks = documents.reduce(
     (sum, d) => sum + (d.chunkCount ?? 0),
     0,
@@ -326,6 +344,15 @@ export default function CompanyBrainPage() {
     setContent("");
     setUri("");
     setFile(null);
+  }
+
+  function toggleSearchScope(nextScope: string) {
+    setSearchScopes((current) =>
+      current.includes(nextScope)
+        ? current.filter((item) => item !== nextScope)
+        : [...current, nextScope],
+    );
+    setSearchProject("");
   }
 
   async function handleIngestDocument() {
@@ -674,7 +701,7 @@ export default function CompanyBrainPage() {
                     <input
                       value={scope}
                       onChange={(event) => setScope(event.target.value)}
-                      placeholder="scope or scope-a, scope-b for search"
+                      placeholder="scope"
                       className="h-9 rounded-lg border border-border bg-surface px-3 text-sm transition-colors placeholder:text-foreground-subtle focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20"
                     />
                     <input
@@ -756,6 +783,84 @@ export default function CompanyBrainPage() {
                 />
               </div>
 
+              <div className="mt-3 space-y-3 rounded-lg border border-border bg-surface-elevated/30 p-3">
+                <div>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <label className="text-xs font-medium text-foreground-muted">
+                      Search scopes
+                    </label>
+                    {searchScopes.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchScopes([]);
+                          setSearchProject("");
+                        }}
+                        className="text-xs font-medium text-foreground-subtle transition-colors hover:text-foreground"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchScopes([]);
+                        setSearchProject("");
+                      }}
+                      className={cn(
+                        "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                        searchScopes.length === 0
+                          ? "border-accent bg-accent/10 text-accent"
+                          : "border-border bg-surface text-foreground-muted hover:border-border-hover hover:text-foreground",
+                      )}
+                    >
+                      Global
+                      {hierarchyData?.global.count
+                        ? ` (${hierarchyData.global.count})`
+                        : ""}
+                    </button>
+                    {availableScopes.map((item) => {
+                      const selected = searchScopes.includes(item.name);
+                      return (
+                        <button
+                          type="button"
+                          key={item.name}
+                          onClick={() => toggleSearchScope(item.name)}
+                          className={cn(
+                            "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                            selected
+                              ? "border-accent bg-accent/10 text-accent"
+                              : "border-border bg-surface text-foreground-muted hover:border-border-hover hover:text-foreground",
+                          )}
+                        >
+                          {item.name} ({item.count})
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-foreground-muted">
+                    Search project
+                  </label>
+                  <select
+                    value={searchProject}
+                    onChange={(event) => setSearchProject(event.target.value)}
+                    className="h-9 w-full rounded-lg border border-border bg-surface px-3 text-sm transition-colors focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20"
+                  >
+                    <option value="">All projects</option>
+                    {availableSearchProjects.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.name} ({item.count})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               {hasSearched && !searchLoading && (
                 <p className="mt-3 text-xs text-foreground-muted">
                   {resultCount} result{resultCount === 1 ? "" : "s"} for{" "}
@@ -799,6 +904,8 @@ export default function CompanyBrainPage() {
                         {chunk.content}
                       </p>
                       <p className="mt-2 truncate text-xs text-foreground-subtle">
+                        {chunk.scope ?? "Global"}{" "}
+                        {chunk.project ? `· ${chunk.project}` : ""} ·{" "}
                         {chunk.sectionPath ?? "Document"} · chunk{" "}
                         {chunk.chunkIndex}
                       </p>
@@ -820,6 +927,10 @@ export default function CompanyBrainPage() {
                       </div>
                       <p className="mt-2 line-clamp-6 break-words text-sm leading-6 text-foreground/90">
                         {memory.content}
+                      </p>
+                      <p className="mt-2 truncate text-xs text-foreground-subtle">
+                        {memory.scope ?? "Global"}
+                        {memory.project ? ` · ${memory.project}` : ""}
                       </p>
                       {memory.evidence[0] && (
                         <p className="mt-2 truncate text-xs text-foreground-subtle">

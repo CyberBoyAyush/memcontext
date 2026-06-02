@@ -128,7 +128,8 @@ export async function saveMemory(
 ): Promise<SaveMemoryResult> {
   const { userId, content, category, source, timing, validUntil } = params;
   const scope = normalizeScope(params.scope);
-  const project = normalizeProjectName(params.project);
+  const noProject = params.project === NO_PROJECT_FILTER_VALUE;
+  const project = noProject ? undefined : normalizeProjectName(params.project);
   const workspaceId = params.workspaceId;
   const memoryType = params.memoryType ?? "user";
 
@@ -173,7 +174,8 @@ export async function saveExtractedDocumentMemory(params: {
   validUntil?: string;
 }): Promise<SaveMemoryResult> {
   const scope = normalizeScope(params.scope);
-  const project = normalizeProjectName(params.project);
+  const noProject = params.project === NO_PROJECT_FILTER_VALUE;
+  const project = noProject ? undefined : normalizeProjectName(params.project);
 
   return saveAtomicMemory(
     {
@@ -1021,7 +1023,8 @@ export async function searchMemories(
   const scopes = params.scopes
     ?.map((value) => normalizeScope(value))
     .filter((value): value is string => !!value);
-  const project = normalizeProjectName(params.project);
+  const noProject = params.project === NO_PROJECT_FILTER_VALUE;
+  const project = noProject ? undefined : normalizeProjectName(params.project);
   const threshold = params.threshold ?? SEARCH_THRESHOLD;
   const memoryTypes = params.memoryTypes?.length ? params.memoryTypes : ["user"];
   const activeMemoryCondition = sql`(${memories.validUntil} IS NULL OR ${memories.validUntil} > NOW())`;
@@ -1057,7 +1060,8 @@ export async function searchMemories(
           )})`,
     );
     if (category) conditions.push(eq(memories.category, category));
-    if (project) conditions.push(eq(memories.project, project));
+    if (noProject) conditions.push(isNull(memories.project));
+    else if (project) conditions.push(eq(memories.project, project));
 
     return db
       .select({
@@ -1097,7 +1101,8 @@ export async function searchMemories(
           )})`,
     );
     if (category) conditions.push(eq(memories.category, category));
-    if (project) conditions.push(eq(memories.project, project));
+    if (noProject) conditions.push(isNull(memories.project));
+    else if (project) conditions.push(eq(memories.project, project));
 
     const tsRank = sql<number>`ts_rank(content_tsv, plainto_tsquery('english', ${queryText}))`;
 

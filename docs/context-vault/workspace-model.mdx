@@ -8,15 +8,17 @@ search, browse, correct, or review knowledge for workspaces they belong to.
 
 ## Roles
 
-| Role | Can search | Can ingest | Can correct | Can invite |
-| --- | --- | --- | --- | --- |
-| `owner` | Yes | Yes | Yes | Yes |
-| `admin` | Yes | Yes | Yes | Yes |
-| `member` | Yes | Yes | Yes | No |
-| `viewer` | Yes | No | No | No |
+| Role | Can search | Can ingest | Can correct | Can invite | Can manage members |
+| --- | --- | --- | --- | --- | --- |
+| `owner` | Yes | Yes | Yes | Yes | Yes |
+| `admin` | Yes | Yes | Yes | Yes | Yes, except owners/admins |
+| `member` | Yes | Yes | Yes | No | No |
+| `viewer` | Yes | No | No | No | No |
 
 Workspace creators become `owner`. Invitations can assign `admin`, `member`, or
-`viewer`; `owner` is not an invitable role.
+`viewer`; `owner` is not an invitable role. Invitations are emailed to the
+teammate and do not create membership until that user accepts the invite from
+the same email address.
 
 ## Workspace isolation
 

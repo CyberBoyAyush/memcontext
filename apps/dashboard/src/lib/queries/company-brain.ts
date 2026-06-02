@@ -34,6 +34,34 @@ export interface Workspace {
   createdAt: string;
 }
 
+export type WorkspaceRole = "owner" | "admin" | "member" | "viewer";
+export type InvitableWorkspaceRole = "admin" | "member" | "viewer";
+
+export interface WorkspaceMember {
+  id: string;
+  userId: string;
+  role: WorkspaceRole;
+  createdAt: string;
+  name: string | null;
+  email: string;
+  image: string | null;
+}
+
+export interface WorkspaceInvitation {
+  id: string;
+  workspaceId: string;
+  email: string;
+  role: InvitableWorkspaceRole;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface WorkspaceTeamResponse {
+  currentUserRole: WorkspaceRole;
+  members: WorkspaceMember[];
+  invitations: WorkspaceInvitation[];
+}
+
 export interface CompanyBrainDocument {
   id: string;
   title: string | null;
@@ -67,6 +95,8 @@ export interface CompanyBrainSearchResponse {
     title: string | null;
     sourceType: string;
     sectionPath: string | null;
+    scope: string | null;
+    project: string | null;
     chunkIndex: number;
     content: string;
     contextualContent: string;
@@ -435,23 +465,101 @@ export function useDeleteCompanyBrainDocument() {
 }
 
 export function useInviteWorkspaceMember() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (data: {
       workspaceId: string;
       email: string;
-      role: "admin" | "member" | "viewer";
+      role: InvitableWorkspaceRole;
     }) =>
       api.post<{
-        invitation: {
-          id: string;
-          email: string;
-          role: string;
-          expiresAt: string;
-        };
-        token: string;
+        invitation: WorkspaceInvitation;
       }>(`/api/workspaces/${data.workspaceId}/invitations`, {
         email: data.email,
         role: data.role,
       }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["workspace-team", variables.workspaceId],
+      });
+    },
+  });
+}
+
+export const workspaceTeamQueryOptions = (workspaceId?: string) =>
+  queryOptions({
+    queryKey: ["workspace-team", workspaceId] as const,
+    queryFn: () =>
+      api.get<WorkspaceTeamResponse>(`/api/workspaces/${workspaceId}/team`),
+    enabled: !!workspaceId,
+  });
+
+export function useUpdateWorkspaceMember() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      workspaceId: string;
+      memberId: string;
+      role: InvitableWorkspaceRole;
+    }) =>
+      api.patch<{ member: WorkspaceMember }>(
+        `/api/workspaces/${data.workspaceId}/members/${data.memberId}`,
+        { role: data.role },
+      ),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["workspace-team", variables.workspaceId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+    },
+  });
+}
+
+export function useRemoveWorkspaceMember() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { workspaceId: string; memberId: string }) =>
+      api.delete<{ success: boolean }>(
+        `/api/workspaces/${data.workspaceId}/members/${data.memberId}`,
+      ),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["workspace-team", variables.workspaceId],
+      });
+    },
+  });
+}
+
+export function useRevokeWorkspaceInvitation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { workspaceId: string; invitationId: string }) =>
+      api.delete<{ success: boolean }>(
+        `/api/workspaces/${data.workspaceId}/invitations/${data.invitationId}`,
+      ),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["workspace-team", variables.workspaceId],
+      });
+    },
+  });
+}
+
+export function useAcceptWorkspaceInvitation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (token: string) =>
+      api.post<{ success: boolean; workspaceId: string }>(
+        "/api/workspaces/invitations/accept",
+        { token },
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+    },
   });
 }

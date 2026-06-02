@@ -29,7 +29,7 @@ async function fetchWithCredentials<T>(
     // Handle 401 by redirecting to login with return path
     if (res.status === 401) {
       if (typeof window !== "undefined") {
-        const currentPath = window.location.pathname;
+        const currentPath = `${window.location.pathname}${window.location.search}`;
         window.location.href = `/login?from=${encodeURIComponent(currentPath)}`;
       }
       throw new ApiError(401, "Session expired");

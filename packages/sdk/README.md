@@ -69,6 +69,13 @@ blocks.
 ```typescript
 const { workspace } = await client.createWorkspace({ name: "Acme Support" });
 
+await client.inviteWorkspaceMember(workspace.id, {
+  email: "teammate@example.com",
+  role: "member",
+});
+
+const team = await client.listWorkspaceTeam(workspace.id);
+
 await client.ingestContextVaultDocument({
   workspaceId: workspace.id,
   title: "Public docs",
