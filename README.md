@@ -496,8 +496,11 @@ The public product name is Context Vault. The current beta API path remains `/ap
 | GET    | `/api/company-brain/search`                 | Search workspace knowledge in `memories`, `documents`, or `hybrid` mode; hybrid returns separate `chunks[]` and `memories[]` arrays |
 | GET    | `/api/company-brain/memories`               | Browse workspace document memories                                                                                                  |
 | POST   | `/api/company-brain/memories/:id/feedback`  | Submit feedback on a workspace memory                                                                                               |
+| POST   | `/api/company-brain/memories/:id/correction` | Correct a workspace memory and optionally its cited source chunk                                                                    |
 | GET    | `/api/company-brain/memories/:id/evidence`  | Load citations/source chunks for a workspace memory                                                                                 |
 | GET    | `/api/company-brain/hierarchy`              | Scope/project hierarchy for workspace memories                                                                                      |
+
+For Context Vault, `workspaceId` is the hard company/team boundary, `scope` is a hard lane inside the workspace, and `project` is a soft grouping filter inside a scope. Search accepts a single `scope` or comma-separated `scopes` such as `scopes=dev,billing` for multi-scope retrieval. Corrections update extracted memories and can also update cited chunks when `correctedChunkContent` is provided.
 
 The TypeScript SDK exposes these through Context Vault methods:
 
@@ -516,6 +519,7 @@ const results = await client.searchContextVault({
   workspaceId: workspace.id,
   query: "How do refunds work?",
   mode: "hybrid",
+  scopes: ["support", "billing"],
 });
 ```
 
