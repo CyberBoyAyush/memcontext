@@ -87,10 +87,12 @@ app.post(
       }
       if (
         message === "User is already a workspace member" ||
-        message === "Invitation already pending" ||
-        message === "Failed to send auth email"
+        message === "Invitation already pending"
       ) {
         throw new HTTPException(400, { message });
+      }
+      if (message === "Failed to send auth email") {
+        throw new HTTPException(500, { message: "Failed to send invitation" });
       }
       throw new HTTPException(403, { message });
     }

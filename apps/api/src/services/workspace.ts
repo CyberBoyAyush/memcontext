@@ -132,7 +132,7 @@ export async function inviteWorkspaceMember(params: {
     .where(
       and(
         eq(workspaceMembers.workspaceId, params.workspaceId),
-        eq(userTable.email, email),
+        sql`lower(${userTable.email}) = ${email}`,
       ),
     )
     .limit(1);

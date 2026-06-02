@@ -170,6 +170,10 @@ paths:
       responses:
         "200":
           description: Member removed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
   /api/workspaces/{workspaceId}/invitations/{invitationId}:
     delete:
       tags: [Workspaces]
@@ -194,6 +198,10 @@ paths:
       responses:
         "200":
           description: Invitation revoked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
   /api/workspaces/invitations/accept:
     post:
       tags: [Workspaces]
