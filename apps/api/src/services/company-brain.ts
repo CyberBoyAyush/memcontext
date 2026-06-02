@@ -171,6 +171,8 @@ interface ChunkSearchRow {
   content: string;
   contextualContent: string;
   sectionPath: string | null;
+  scope: string | null;
+  project: string | null;
   chunkIndex: number;
   createdAt: Date;
   title: string | null;
@@ -183,6 +185,8 @@ interface CompanyBrainChunkResult {
   title: string | null;
   sourceType: string;
   sectionPath: string | null;
+  scope: string | null;
+  project: string | null;
   chunkIndex: number;
   content: string;
   contextualContent: string;
@@ -806,7 +810,8 @@ export async function ingestCompanyBrainDocument(
   }
 
   const scope = normalizeScope(params.scope);
-  const project = normalizeProjectName(params.project);
+  const noProject = params.project === NO_PROJECT_FILTER_VALUE;
+  const project = noProject ? undefined : normalizeProjectName(params.project);
   const payload = buildQueuedPayload(params);
   const contentHash =
     payload.ingestionKind === "content"
@@ -2119,8 +2124,6 @@ export async function searchCompanyBrain(params: SearchCompanyBrainParams) {
   const scopes = params.scopes
     ?.map((value) => normalizeScope(value))
     .filter((value): value is string => !!value);
-  const project = normalizeProjectName(params.project);
-
   const chunks =
     params.mode === "memories"
       ? []
@@ -2129,7 +2132,7 @@ export async function searchCompanyBrain(params: SearchCompanyBrainParams) {
           query: params.query,
           scope,
           scopes,
-          project,
+          project: params.project,
           limit: params.limit,
         });
 
@@ -2144,7 +2147,7 @@ export async function searchCompanyBrain(params: SearchCompanyBrainParams) {
             limit: params.limit,
             scope,
             scopes,
-            project,
+            project: params.project,
             memoryTypes: ["document", "company"],
           })
         ).memories;
@@ -2291,6 +2294,8 @@ async function searchCompanyBrainChunks(params: {
   project?: string;
   limit: number;
 }) {
+  const noProject = params.project === NO_PROJECT_FILTER_VALUE;
+  const project = noProject ? undefined : normalizeProjectName(params.project);
   const queryVariants = await generateQueryVariants(params.query);
   const queryTexts = [params.query, ...queryVariants].filter(Boolean);
   const queryEmbedding = await generateEmbedding(params.query);
@@ -2303,8 +2308,10 @@ async function searchCompanyBrainChunks(params: {
         ? eq(memorySourceChunks.scope, params.scope)
         : isNull(memorySourceChunks.scope),
   ];
-  if (params.project) {
-    baseChunkConditions.push(eq(memorySourceChunks.project, params.project));
+  if (noProject) {
+    baseChunkConditions.push(isNull(memorySourceChunks.project));
+  } else if (project) {
+    baseChunkConditions.push(eq(memorySourceChunks.project, project));
   }
 
   const vectorRows = await db
@@ -2314,6 +2321,8 @@ async function searchCompanyBrainChunks(params: {
       content: memorySourceChunks.content,
       contextualContent: memorySourceChunks.contextualContent,
       sectionPath: memorySourceChunks.sectionPath,
+      scope: memorySourceChunks.scope,
+      project: memorySourceChunks.project,
       chunkIndex: memorySourceChunks.chunkIndex,
       createdAt: memorySourceChunks.createdAt,
       title: memorySources.title,
@@ -2342,6 +2351,8 @@ async function searchCompanyBrainChunks(params: {
           content: memorySourceChunks.content,
           contextualContent: memorySourceChunks.contextualContent,
           sectionPath: memorySourceChunks.sectionPath,
+          scope: memorySourceChunks.scope,
+          project: memorySourceChunks.project,
           chunkIndex: memorySourceChunks.chunkIndex,
           createdAt: memorySourceChunks.createdAt,
           title: memorySources.title,
@@ -2391,6 +2402,8 @@ async function searchCompanyBrainChunks(params: {
       title: row.title,
       sourceType: row.sourceType,
       sectionPath: row.sectionPath,
+      scope: row.scope,
+      project: row.project,
       chunkIndex: row.chunkIndex,
       content: row.content,
       contextualContent: row.contextualContent,

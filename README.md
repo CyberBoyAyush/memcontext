@@ -262,14 +262,13 @@ The MCP server exposes five tools to AI assistants:
 
 ### `save_memory`
 
-Save a memory with optional category, project grouping, and temporal expiry. Short memories are saved immediately; larger notes may be accepted for asynchronous extraction into atomic memories.
+Save a memory with optional category and project grouping. Short memories are saved immediately; larger notes may be accepted for asynchronous extraction into atomic memories.
 
-| Parameter    | Type   | Required | Description                                               |
-| ------------ | ------ | -------- | --------------------------------------------------------- |
-| `content`    | string | Yes      | Clear, atomic memory to save (1-10,000 chars)             |
-| `category`   | enum   | No       | `preference`, `fact`, `decision`, or `context`            |
-| `project`    | string | No       | Project grouping (lowercase, no spaces). Omit when unsure |
-| `validUntil` | string | No       | Exact ISO 8601 expiry. Omit by default for auto-TTL       |
+| Parameter  | Type   | Required | Description                                               |
+| ---------- | ------ | -------- | --------------------------------------------------------- |
+| `content`  | string | Yes      | Clear, atomic memory to save (1-10,000 chars)             |
+| `category` | enum   | No       | `preference`, `fact`, `decision`, or `context`            |
+| `project`  | string | No       | Project grouping (lowercase, no spaces). Omit when unsure |
 
 MCP tools intentionally do not expose `scope`; they operate on unscoped assistant memory with optional `project` grouping. Use the REST API or SDK `scope` field when building multi-user or multi-tenant apps that need hard isolation.
 
@@ -301,12 +300,12 @@ Feedback affects ranking only. If a memory is wrong or outdated and the correcte
 
 Correct or refine an existing saved memory.
 
-| Parameter  | Type   | Required | Description                                      |
-| ---------- | ------ | -------- | ------------------------------------------------ |
-| `memoryId` | string | Yes      | The memory ID (from search results)              |
-| `content`  | string | Yes      | Correct replacement memory text                  |
-| `category` | enum   | No       | `preference`, `fact`, `decision`, or `context`   |
-| `project`  | string | No       | Project grouping. Omit when unsure               |
+| Parameter  | Type   | Required | Description                                    |
+| ---------- | ------ | -------- | ---------------------------------------------- |
+| `memoryId` | string | Yes      | The memory ID (from search results)            |
+| `content`  | string | Yes      | Correct replacement memory text                |
+| `category` | enum   | No       | `preference`, `fact`, `decision`, or `context` |
+| `project`  | string | No       | Project grouping. Omit when unsure             |
 
 ### `delete_memory`
 
@@ -501,20 +500,20 @@ REST and SDK clients can pass `scope` on memory operations for hard isolation. T
 
 The public product name is Context Vault. The current beta API path remains `/api/company-brain/...` for compatibility.
 
-| Method | Path                                        | Description                                                                                                                         |
-| ------ | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| POST   | `/api/company-brain/documents`              | Ingest extracted text, public file URLs, or documentation/web URLs                                                                  |
-| POST   | `/api/company-brain/documents/upload`       | Upload and ingest a document file                                                                                                   |
-| GET    | `/api/company-brain/documents`              | List workspace documents and processing state                                                                                       |
-| POST   | `/api/company-brain/documents/:id/cancel`   | Stop a pending, retrying, or active document job                                                                                    |
-| DELETE | `/api/company-brain/documents/:id`          | Delete a document, chunks, citations, and exclusive extracted memories                                                              |
-| GET    | `/api/company-brain/documents/:id/memories` | List extracted memories for a document                                                                                              |
-| GET    | `/api/company-brain/search`                 | Search workspace knowledge in `memories`, `documents`, or `hybrid` mode; hybrid returns separate `chunks[]` and `memories[]` arrays |
-| GET    | `/api/company-brain/memories`               | Browse workspace document memories                                                                                                  |
-| POST   | `/api/company-brain/memories/:id/feedback`  | Submit feedback on a workspace memory                                                                                               |
+| Method | Path                                         | Description                                                                                                                         |
+| ------ | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/api/company-brain/documents`               | Ingest extracted text, public file URLs, or documentation/web URLs                                                                  |
+| POST   | `/api/company-brain/documents/upload`        | Upload and ingest a document file                                                                                                   |
+| GET    | `/api/company-brain/documents`               | List workspace documents and processing state                                                                                       |
+| POST   | `/api/company-brain/documents/:id/cancel`    | Stop a pending, retrying, or active document job                                                                                    |
+| DELETE | `/api/company-brain/documents/:id`           | Delete a document, chunks, citations, and exclusive extracted memories                                                              |
+| GET    | `/api/company-brain/documents/:id/memories`  | List extracted memories for a document                                                                                              |
+| GET    | `/api/company-brain/search`                  | Search workspace knowledge in `memories`, `documents`, or `hybrid` mode; hybrid returns separate `chunks[]` and `memories[]` arrays |
+| GET    | `/api/company-brain/memories`                | Browse workspace document memories                                                                                                  |
+| POST   | `/api/company-brain/memories/:id/feedback`   | Submit feedback on a workspace memory                                                                                               |
 | POST   | `/api/company-brain/memories/:id/correction` | Correct a workspace memory and optionally its cited source chunk                                                                    |
-| GET    | `/api/company-brain/memories/:id/evidence`  | Load citations/source chunks for a workspace memory                                                                                 |
-| GET    | `/api/company-brain/hierarchy`              | Scope/project hierarchy for workspace memories                                                                                      |
+| GET    | `/api/company-brain/memories/:id/evidence`   | Load citations/source chunks for a workspace memory                                                                                 |
+| GET    | `/api/company-brain/hierarchy`               | Scope/project hierarchy for workspace memories                                                                                      |
 
 For Context Vault, `workspaceId` is the hard company/team boundary, `scope` is a hard lane inside the workspace, and `project` is a soft grouping filter inside a scope. Search accepts a single `scope` or comma-separated `scopes` such as `scopes=dev,billing` for multi-scope retrieval. Corrections update extracted memories and can also update cited chunks when `correctedChunkContent` is provided.
 
@@ -522,6 +521,13 @@ The TypeScript SDK exposes these through Context Vault methods:
 
 ```ts
 const { workspace } = await client.createWorkspace({ name: "Acme Support" });
+
+await client.inviteWorkspaceMember(workspace.id, {
+  email: "teammate@example.com",
+  role: "member",
+});
+
+const team = await client.listWorkspaceTeam(workspace.id);
 
 await client.ingestContextVaultDocument({
   workspaceId: workspace.id,

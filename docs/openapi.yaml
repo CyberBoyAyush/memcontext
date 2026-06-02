@@ -86,7 +86,114 @@ paths:
               $ref: "#/components/schemas/InviteWorkspaceMemberRequest"
       responses:
         "201":
-          description: Invitation created. The token is returned for the caller to deliver.
+          description: Invitation email sent. Membership is created only after the invited user accepts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteWorkspaceMemberResponse"
+  /api/workspaces/{workspaceId}/team:
+    get:
+      tags: [Workspaces]
+      summary: List workspace team
+      operationId: listWorkspaceTeam
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - in: path
+          name: workspaceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Current members and pending invitations for a workspace.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListWorkspaceTeamResponse"
+  /api/workspaces/{workspaceId}/members/{memberId}:
+    patch:
+      tags: [Workspaces]
+      summary: Update workspace member role
+      operationId: updateWorkspaceMemberRole
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - in: path
+          name: workspaceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: memberId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateWorkspaceMemberRequest"
+      responses:
+        "200":
+          description: Member role updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateWorkspaceMemberResponse"
+    delete:
+      tags: [Workspaces]
+      summary: Remove workspace member
+      operationId: removeWorkspaceMember
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - in: path
+          name: workspaceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: memberId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Member removed.
+  /api/workspaces/{workspaceId}/invitations/{invitationId}:
+    delete:
+      tags: [Workspaces]
+      summary: Revoke workspace invitation
+      operationId: revokeWorkspaceInvitation
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - in: path
+          name: workspaceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: invitationId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Invitation revoked.
   /api/workspaces/invitations/accept:
     post:
       tags: [Workspaces]
@@ -977,6 +1084,99 @@ components:
           type: string
           enum: [admin, member, viewer]
           default: member
+    WorkspaceInvitation:
+      type: object
+      required: [id, workspaceId, email, role, expiresAt, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceId:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, member, viewer]
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    InviteWorkspaceMemberResponse:
+      type: object
+      required: [invitation]
+      properties:
+        invitation:
+          $ref: "#/components/schemas/WorkspaceInvitation"
+    WorkspaceMember:
+      type: object
+      required: [id, userId, role, createdAt, email]
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+        role:
+          type: string
+          enum: [owner, admin, member, viewer]
+        createdAt:
+          type: string
+          format: date-time
+        name:
+          type: string
+          nullable: true
+        email:
+          type: string
+          format: email
+        image:
+          type: string
+          nullable: true
+    ListWorkspaceTeamResponse:
+      type: object
+      required: [currentUserRole, members, invitations]
+      properties:
+        currentUserRole:
+          type: string
+          enum: [owner, admin, member, viewer]
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkspaceMember"
+        invitations:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkspaceInvitation"
+    UpdateWorkspaceMemberRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          type: string
+          enum: [admin, member, viewer]
+    UpdateWorkspaceMemberResponse:
+      type: object
+      required: [member]
+      properties:
+        member:
+          type: object
+          required: [id, userId, role, createdAt]
+          properties:
+            id:
+              type: string
+              format: uuid
+            userId:
+              type: string
+            role:
+              type: string
+              enum: [owner, admin, member, viewer]
+            createdAt:
+              type: string
+              format: date-time
     DocumentSourceType:
       type: string
       enum:
@@ -1328,6 +1528,111 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CompanyBrainDocument"
+    CompanyBrainSearchChunk:
+      type: object
+      required:
+        [
+          id,
+          sourceId,
+          title,
+          sourceType,
+          sectionPath,
+          scope,
+          project,
+          chunkIndex,
+          content,
+          contextualContent,
+          relevance,
+          createdAt,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        sourceId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          nullable: true
+        sourceType:
+          type: string
+        sectionPath:
+          type: string
+          nullable: true
+        scope:
+          type: string
+          nullable: true
+        project:
+          type: string
+          nullable: true
+        chunkIndex:
+          type: integer
+        content:
+          type: string
+        contextualContent:
+          type: string
+        relevance:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+    CompanyBrainSearchMemory:
+      type: object
+      required: [id, content, category, scope, project, createdAt, evidence]
+      properties:
+        id:
+          type: string
+          format: uuid
+        content:
+          type: string
+        category:
+          type: string
+          nullable: true
+        scope:
+          type: string
+          nullable: true
+        project:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        evidence:
+          type: array
+          items:
+            type: object
+            required:
+              [
+                sourceId,
+                chunkId,
+                quote,
+                confidence,
+                title,
+                sectionPath,
+                chunkIndex,
+              ]
+            properties:
+              sourceId:
+                type: string
+                format: uuid
+              chunkId:
+                type: string
+                format: uuid
+              quote:
+                type: string
+                nullable: true
+              confidence:
+                type: number
+                nullable: true
+              title:
+                type: string
+                nullable: true
+              sectionPath:
+                type: string
+                nullable: true
+              chunkIndex:
+                type: integer
     SearchCompanyBrainResponse:
       type: object
       required: [mode, found, chunks, memories]
@@ -1349,14 +1654,14 @@ components:
           description: >-
             Source document chunks/passages. Empty when mode is `memories`.
           items:
-            type: object
+            $ref: "#/components/schemas/CompanyBrainSearchChunk"
         memories:
           type: array
           description: >-
             Extracted atomic memories with source evidence. Empty when mode is
             `documents`.
           items:
-            type: object
+            $ref: "#/components/schemas/CompanyBrainSearchMemory"
     Memory:
       type: object
       required: [id, userId, content, source, isCurrent, version, createdAt]

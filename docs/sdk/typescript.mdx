@@ -248,14 +248,48 @@ const { workspace } = await client.createWorkspace({
 
 ### `inviteWorkspaceMember(workspaceId, request)`
 
-Creates an invitation token for another workspace member. Roles can be `admin`,
-`member`, or `viewer`.
+Sends an email invitation for another workspace member. Roles can be `admin`,
+`member`, or `viewer`. The user is added only after accepting the invite.
 
 ```typescript
 const invite = await client.inviteWorkspaceMember(workspace.id, {
   email: "teammate@example.com",
   role: "member",
 });
+```
+
+### `listWorkspaceTeam(workspaceId)`
+
+Lists current members and pending invitations.
+
+```typescript
+const team = await client.listWorkspaceTeam(workspace.id);
+```
+
+### `updateWorkspaceMember(workspaceId, memberId, request)`
+
+Updates a member role. Owners cannot be changed through this method.
+
+```typescript
+await client.updateWorkspaceMember(workspace.id, memberId, {
+  role: "viewer",
+});
+```
+
+### `removeWorkspaceMember(workspaceId, memberId)`
+
+Removes a non-owner member from the workspace.
+
+```typescript
+await client.removeWorkspaceMember(workspace.id, memberId);
+```
+
+### `revokeWorkspaceInvitation(workspaceId, invitationId)`
+
+Revokes a pending invitation before it is accepted.
+
+```typescript
+await client.revokeWorkspaceInvitation(workspace.id, invitationId);
 ```
 
 ### `acceptWorkspaceInvitation(request)`

@@ -26,6 +26,7 @@ import type {
   ListCompanyBrainMemoryEvidenceResponse,
   ListMemoriesRequest,
   ListMemoriesResponse,
+  ListWorkspaceTeamResponse,
   ListWorkspacesResponse,
   MemoryFeedbackRequest,
   MemoryFeedbackResponse,
@@ -41,6 +42,8 @@ import type {
   SuccessResponse,
   UpdateMemoryRequest,
   UpdateMemoryResponse,
+  UpdateWorkspaceMemberRequest,
+  UpdateWorkspaceMemberResponse,
   UploadCompanyBrainDocumentRequest,
   Memory,
   ListMemoryItem,
@@ -166,6 +169,26 @@ type JsonInviteWorkspaceMemberResponse = Omit<
     expiresAt: string;
     createdAt: string;
   };
+};
+
+type JsonListWorkspaceTeamResponse = Omit<
+  ListWorkspaceTeamResponse,
+  "members" | "invitations"
+> & {
+  members: Array<
+    Omit<ListWorkspaceTeamResponse["members"][number], "createdAt"> & {
+      createdAt: string;
+    }
+  >;
+  invitations: Array<
+    Omit<
+      ListWorkspaceTeamResponse["invitations"][number],
+      "expiresAt" | "createdAt"
+    > & {
+      expiresAt: string;
+      createdAt: string;
+    }
+  >;
 };
 
 type JsonCompanyBrainDocument = Omit<
@@ -556,6 +579,75 @@ export class MemContextClient {
         createdAt: new Date(response.invitation.createdAt),
       },
     };
+  }
+
+  async listWorkspaceTeam(
+    workspaceId: string,
+  ): Promise<ListWorkspaceTeamResponse> {
+    const response = await this.request<JsonListWorkspaceTeamResponse>(
+      `/api/workspaces/${workspaceId}/team`,
+      { method: "GET" },
+    );
+
+    return {
+      ...response,
+      members: response.members.map((member) => ({
+        ...member,
+        createdAt: new Date(member.createdAt),
+      })),
+      invitations: response.invitations.map((invitation) => ({
+        ...invitation,
+        expiresAt: new Date(invitation.expiresAt),
+        createdAt: new Date(invitation.createdAt),
+      })),
+    };
+  }
+
+  async updateWorkspaceMember(
+    workspaceId: string,
+    memberId: string,
+    request: UpdateWorkspaceMemberRequest,
+  ): Promise<UpdateWorkspaceMemberResponse> {
+    const response = await this.request<
+      Omit<UpdateWorkspaceMemberResponse, "member"> & {
+        member: Omit<
+          UpdateWorkspaceMemberResponse["member"],
+          "createdAt"
+        > & {
+          createdAt: string;
+        };
+      }
+    >(`/api/workspaces/${workspaceId}/members/${memberId}`, {
+      method: "PATCH",
+      body: request,
+    });
+
+    return {
+      member: {
+        ...response.member,
+        createdAt: new Date(response.member.createdAt),
+      },
+    };
+  }
+
+  async removeWorkspaceMember(
+    workspaceId: string,
+    memberId: string,
+  ): Promise<SuccessResponse> {
+    return this.request<SuccessResponse>(
+      `/api/workspaces/${workspaceId}/members/${memberId}`,
+      { method: "DELETE" },
+    );
+  }
+
+  async revokeWorkspaceInvitation(
+    workspaceId: string,
+    invitationId: string,
+  ): Promise<SuccessResponse> {
+    return this.request<SuccessResponse>(
+      `/api/workspaces/${workspaceId}/invitations/${invitationId}`,
+      { method: "DELETE" },
+    );
   }
 
   async acceptWorkspaceInvitation(

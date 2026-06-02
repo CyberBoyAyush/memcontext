@@ -252,7 +252,35 @@ export interface WorkspaceInvitation {
 
 export interface InviteWorkspaceMemberResponse {
   invitation: WorkspaceInvitation;
-  token: string;
+}
+
+export interface WorkspaceMember {
+  id: string;
+  userId: string;
+  role: WorkspaceRole;
+  createdAt: Date;
+  name: string | null;
+  email: string;
+  image: string | null;
+}
+
+export interface ListWorkspaceTeamResponse {
+  currentUserRole: WorkspaceRole;
+  members: WorkspaceMember[];
+  invitations: WorkspaceInvitation[];
+}
+
+export interface UpdateWorkspaceMemberRequest {
+  role: InvitableWorkspaceRole;
+}
+
+export interface UpdateWorkspaceMemberResponse {
+  member: {
+    id: string;
+    userId: string;
+    role: WorkspaceRole;
+    createdAt: Date;
+  };
 }
 
 export interface AcceptWorkspaceInvitationRequest {
@@ -444,6 +472,8 @@ export interface CompanyBrainSearchChunk {
   title: string | null;
   sourceType: string;
   sectionPath: string | null;
+  scope: string | null;
+  project: string | null;
   chunkIndex: number;
   content: string;
   contextualContent: string;
