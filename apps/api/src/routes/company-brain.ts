@@ -417,8 +417,14 @@ app.post(
       if (message === "Workspace not found" || message === "Memory not found") {
         throw new HTTPException(404, { message });
       }
+      if (message === "Viewers cannot correct workspace memories") {
+        throw new HTTPException(403, { message });
+      }
+      if (message === "Corrected content is required") {
+        throw new HTTPException(400, { message });
+      }
       logger.error({ userId, memoryId, error: message }, "vault correction failed");
-      throw new HTTPException(400, { message });
+      throw new HTTPException(500, { message: "Failed to correct memory" });
     }
   },
 );

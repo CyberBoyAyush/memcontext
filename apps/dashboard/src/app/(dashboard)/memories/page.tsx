@@ -1636,7 +1636,7 @@ export default function MemoriesPage() {
       {/* Vault Memory Detail Side Panel (workspace, read-only + feedback) */}
       {selectedVaultMemory && workspaceId && (
         <VaultMemoryDetailPanel
-          key={selectedVaultMemory.id}
+          key={`${selectedVaultMemory.id}:${selectedVaultMemory.content}`}
           memory={selectedVaultMemory}
           workspaceId={workspaceId}
           onClose={() => setSelectedVaultMemory(null)}

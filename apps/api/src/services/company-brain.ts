@@ -1848,7 +1848,15 @@ export async function correctCompanyBrainMemory(
         content: correctedContent,
         embedding: correctedEmbedding,
       })
-      .where(eq(memories.id, params.memoryId))
+      .where(
+        and(
+          eq(memories.id, params.memoryId),
+          eq(memories.workspaceId, params.workspaceId),
+          inArray(memories.memoryType, ["document", "company"]),
+          eq(memories.isCurrent, true),
+          isNull(memories.deletedAt),
+        ),
+      )
       .returning({
         id: memories.id,
         content: memories.content,
@@ -1922,7 +1930,6 @@ export async function correctCompanyBrainMemory(
           .set({
             quote: correctedChunkContent.slice(0, 1000),
             confidence: 1,
-            metadata: correctionMetadata,
           })
           .where(
             and(
@@ -1930,6 +1937,30 @@ export async function correctCompanyBrainMemory(
               inArray(memoryEvidence.chunkId, chunkIds),
             ),
           );
+
+        const evidenceRows = await tx
+          .select({
+            id: memoryEvidence.id,
+            metadata: memoryEvidence.metadata,
+          })
+          .from(memoryEvidence)
+          .where(
+            and(
+              eq(memoryEvidence.memoryId, params.memoryId),
+              inArray(memoryEvidence.chunkId, chunkIds),
+            ),
+          );
+
+        for (const evidence of evidenceRows) {
+          await tx
+            .update(memoryEvidence)
+            .set({
+              metadata: mergeChunkMetadata(evidence.metadata, {
+                correction: correctionMetadata,
+              }),
+            })
+            .where(eq(memoryEvidence.id, evidence.id));
+        }
       }
 
       updatedChunkCount = chunkIds.length;

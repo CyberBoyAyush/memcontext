@@ -1198,7 +1198,7 @@ function DocumentMemoriesDialog({
 
       {detailMemory && (
         <VaultMemoryDetailPanel
-          key={detailMemory.id}
+          key={`${detailMemory.id}:${detailMemory.content}`}
           memory={detailMemory}
           workspaceId={workspaceId}
           onClose={() => setDetailMemory(null)}
