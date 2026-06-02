@@ -12,6 +12,7 @@ interface ApiError {
 
 export interface ApiClient {
   post<T>(path: string, body: unknown): Promise<T>;
+  patch<T>(path: string, body: unknown): Promise<T>;
   get<T>(
     path: string,
     params?: Record<string, string | number | undefined>,
@@ -53,6 +54,24 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     async post<T>(path: string, body: unknown): Promise<T> {
       const res = await fetch(`${apiBase}${path}`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const message = await parseErrorResponse(res);
+        throw new Error(message);
+      }
+
+      return res.json() as Promise<T>;
+    },
+
+    async patch<T>(path: string, body: unknown): Promise<T> {
+      const res = await fetch(`${apiBase}${path}`, {
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           ...getAuthHeaders(),

@@ -322,6 +322,13 @@ paths:
           schema:
             type: string
             maxLength: 200
+          description: Search one hard lane inside the workspace. Omit when using `scopes`.
+        - in: query
+          name: scopes
+          schema:
+            type: string
+            maxLength: 1000
+          description: Comma-separated scopes for multi-scope retrieval, for example `dev,billing`. Takes precedence over `scope`.
         - in: query
           name: project
           schema:
@@ -424,6 +431,39 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MemoryFeedbackResponse"
+  /api/company-brain/memories/{memoryId}/correction:
+    post:
+      tags: [Context Vault]
+      summary: Correct a context vault memory
+      operationId: correctCompanyBrainMemory
+      description: |
+        Applies a correction to an extracted workspace memory. When
+        `correctedChunkContent` is provided, the cited source chunk is updated
+        too so future document retrieval stays aligned with the corrected
+        memory.
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - in: path
+          name: memoryId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CorrectCompanyBrainMemoryRequest"
+      responses:
+        "200":
+          description: Memory corrected.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CorrectCompanyBrainMemoryResponse"
   /api/company-brain/memories/{memoryId}/evidence:
     get:
       tags: [Context Vault]
@@ -1161,6 +1201,44 @@ components:
         context:
           type: string
           maxLength: 1000
+    CorrectCompanyBrainMemoryRequest:
+      type: object
+      required: [workspaceId, correctedContent]
+      properties:
+        workspaceId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [wrong, outdated, incomplete]
+          default: wrong
+        correctedContent:
+          type: string
+          maxLength: 10000
+          description: Corrected extracted memory text.
+        reason:
+          type: string
+          maxLength: 1000
+          description: Reviewer note explaining why the correction is needed.
+        correctedChunkContent:
+          type: string
+          maxLength: 20000
+          description: Optional corrected source chunk text. Send this to keep document-chunk retrieval aligned with the corrected memory.
+        evidenceChunkId:
+          type: string
+          format: uuid
+          description: Optional evidence chunk to update. Omit to update all cited chunks when `correctedChunkContent` is supplied.
+    CorrectCompanyBrainMemoryResponse:
+      type: object
+      required: [success, memory, updatedChunkCount]
+      properties:
+        success:
+          type: boolean
+        memory:
+          $ref: "#/components/schemas/CompanyBrainMemory"
+        updatedChunkCount:
+          type: integer
+          description: Number of source chunks updated by the correction.
     CompanyBrainMemoryEvidence:
       type: object
       required: [chunkId, sourceId, chunkIndex, content]

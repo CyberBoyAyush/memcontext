@@ -96,7 +96,8 @@ SAVE immediately (do not defer) when any of these happen:
 - MCP tools do not accept scope. Use the REST API or TypeScript SDK when an app needs hard per-user or per-tenant isolation.
 - Use project only when a clear project/app name is already known. Good: "memcontext", "carq". Omit if unsure. Never invent vague names like "123" or "abc".
 - MCP memories use automatic TTL. Use the REST API, TypeScript SDK, or dashboard when exact expiry is required.
-- After using search results, call memory_feedback to rate memories as helpful/not_helpful/outdated.
+- After using search results, call memory_feedback to rate memories as helpful/not_helpful/outdated/wrong.
+- If a retrieved memory is wrong or outdated and you know the corrected fact, call update_memory with the corrected content. Feedback alone only changes retrieval ranking; update_memory changes the saved memory.
 - Use delete_memory only when a memory was saved incorrectly and should be removed entirely.
 - Duplicates are handled automatically - when in doubt, save.
 - Memory persists across all sessions. Use project only for known project-specific context.
@@ -179,7 +180,8 @@ SAVE immediately (do not defer) when any of these happen:
 - MCP tools do not accept scope. Use the REST API or TypeScript SDK when an app needs hard per-user or per-tenant isolation.
 - Use project only when a clear project/app name is already known. Good: "memcontext", "carq". Omit if unsure. Never invent vague names like "123" or "abc".
 - MCP memories use automatic TTL. Use the REST API, TypeScript SDK, or dashboard when exact expiry is required.
-- After using search results, call memory_feedback to rate memories as helpful/not_helpful/outdated.
+- After using search results, call memory_feedback to rate memories as helpful/not_helpful/outdated/wrong.
+- If a retrieved memory is wrong or outdated and you know the corrected fact, call update_memory with the corrected content. Feedback alone only changes retrieval ranking; update_memory changes the saved memory.
 - Use delete_memory only when a memory was saved incorrectly and should be removed entirely.
 - Duplicates are handled automatically - when in doubt, save.
 - Memory persists across all sessions. Use project only for known project-specific context.
@@ -194,13 +196,14 @@ SAVE immediately (do not defer) when any of these happen:
 
 ## Available tools
 
-Once connected, your assistant has access to four tools:
+Once connected, your assistant has access to five tools:
 
 | Tool              | Purpose                                            |
 | ----------------- | -------------------------------------------------- |
 | `save_memory`     | Persist preferences, facts, decisions, and context |
 | `search_memory`   | Find relevant memories before responding           |
 | `memory_feedback` | Rate memory quality after retrieval                |
+| `update_memory`   | Correct or refine an existing saved memory         |
 | `delete_memory`   | Remove a memory by ID                              |
 
 See the [MCP Tools](/mcp/overview) section for parameter documentation.

@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
 import {
   companyBrainMemoryEvidenceQueryOptions,
+  useCorrectVaultMemory,
   useSubmitVaultMemoryFeedback,
   type CompanyBrainMemory,
   type VaultFeedbackType,
@@ -70,11 +71,21 @@ export function VaultMemoryDetailPanel({
 }: VaultMemoryDetailPanelProps) {
   const toast = useToast();
   const feedbackMutation = useSubmitVaultMemoryFeedback();
+  const correctionMutation = useCorrectVaultMemory();
   const [feedbackSent, setFeedbackSent] = useState<VaultFeedbackType | null>(
     null,
   );
   const [isClosing, setIsClosing] = useState(false);
   const [expandedChunk, setExpandedChunk] = useState<string | null>(null);
+  const [correctionOpen, setCorrectionOpen] = useState(false);
+  const [correctionType, setCorrectionType] = useState<
+    "wrong" | "outdated" | "incomplete"
+  >("wrong");
+  const [displayContent, setDisplayContent] = useState(memory.content);
+  const [correctionReason, setCorrectionReason] = useState("");
+  const [correctedContent, setCorrectedContent] = useState(memory.content);
+  const [correctedChunkContent, setCorrectedChunkContent] = useState("");
+  const [evidenceChunkId, setEvidenceChunkId] = useState("");
   const created = formatDate(memory.createdAt);
 
   const { data: evidenceData, isLoading: evidenceLoading } = useQuery(
@@ -101,6 +112,36 @@ export function VaultMemoryDetailPanel({
       toast.success(`Marked as ${type.replace("_", " ")}`);
     } catch {
       toast.error("Failed to submit feedback");
+    }
+  }
+
+  async function handleCorrection() {
+    if (!correctedContent.trim()) {
+      toast.error("Corrected memory is required");
+      return;
+    }
+
+    try {
+      const result = await correctionMutation.mutateAsync({
+        workspaceId,
+        memoryId: memory.id,
+        type: correctionType,
+        correctedContent: correctedContent.trim(),
+        reason: correctionReason.trim() || undefined,
+        correctedChunkContent: correctedChunkContent.trim() || undefined,
+        evidenceChunkId: evidenceChunkId || undefined,
+      });
+      setDisplayContent(result.memory.content);
+      setCorrectedContent(result.memory.content);
+      setFeedbackSent(correctionType === "outdated" ? "outdated" : "wrong");
+      setCorrectionOpen(false);
+      toast.success(
+        result.updatedChunkCount > 0
+          ? "Memory and source chunk corrected"
+          : "Memory corrected",
+      );
+    } catch {
+      toast.error("Failed to correct memory");
     }
   }
 
@@ -149,7 +190,7 @@ export function VaultMemoryDetailPanel({
               Content
             </div>
             <p className="whitespace-pre-wrap text-sm leading-relaxed">
-              {memory.content}
+              {displayContent}
             </p>
           </div>
 
@@ -259,9 +300,103 @@ export function VaultMemoryDetailPanel({
                     {fb.label}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => setCorrectionOpen((open) => !open)}
+                  className="cursor-pointer rounded-lg border border-accent/30 px-2.5 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent/10"
+                >
+                  Suggest correction
+                </button>
               </div>
             )}
           </div>
+
+          {correctionOpen && (
+            <div className="space-y-3 rounded-lg border border-border bg-surface-elevated/30 p-3">
+              <div className="grid grid-cols-3 gap-1 rounded-md border border-border bg-surface p-1">
+                {(["wrong", "outdated", "incomplete"] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setCorrectionType(type)}
+                    className={cn(
+                      "h-8 rounded text-[11px] font-medium capitalize transition-colors",
+                      correctionType === type
+                        ? "bg-accent text-white"
+                        : "text-foreground-muted hover:text-foreground",
+                    )}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+
+              <textarea
+                value={correctedContent}
+                onChange={(event) => setCorrectedContent(event.target.value)}
+                className="min-h-28 w-full resize-y rounded-md border border-border bg-surface p-2 text-sm focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20"
+              />
+
+              <textarea
+                value={correctionReason}
+                onChange={(event) => setCorrectionReason(event.target.value)}
+                placeholder="Reason or reviewer note"
+                className="min-h-16 w-full resize-y rounded-md border border-border bg-surface p-2 text-sm placeholder:text-foreground-subtle focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20"
+              />
+
+              {evidence.length > 0 && (
+                <div className="space-y-2">
+                  <select
+                    value={evidenceChunkId}
+                    onChange={(event) => {
+                      const chunkId = event.target.value;
+                      setEvidenceChunkId(chunkId);
+                      const chunk = evidence.find(
+                        (item) => item.chunkId === chunkId,
+                      );
+                      setCorrectedChunkContent(chunk?.content ?? "");
+                    }}
+                    className="h-9 w-full rounded-md border border-border bg-surface px-2 text-xs text-foreground-muted focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20"
+                  >
+                    <option value="">Do not update source chunk</option>
+                    {evidence.map((item) => (
+                      <option key={item.chunkId} value={item.chunkId}>
+                        Update chunk #{item.chunkIndex}
+                      </option>
+                    ))}
+                  </select>
+                  {evidenceChunkId && (
+                    <textarea
+                      value={correctedChunkContent}
+                      onChange={(event) =>
+                        setCorrectedChunkContent(event.target.value)
+                      }
+                      placeholder="Corrected source chunk text"
+                      className="min-h-24 w-full resize-y rounded-md border border-border bg-surface p-2 text-sm placeholder:text-foreground-subtle focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20"
+                    />
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCorrectionOpen(false)}
+                  className="rounded-md border border-border px-3 py-1.5 text-xs text-foreground-muted transition-colors hover:bg-surface"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCorrection}
+                  disabled={correctionMutation.isPending}
+                  className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white transition-opacity disabled:opacity-50"
+                >
+                  Apply correction
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Extracted from (source chunks) */}
           {(evidenceLoading || evidence.length > 0) && (

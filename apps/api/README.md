@@ -69,10 +69,13 @@ The public product name is Context Vault. The beta route prefix remains `/api/co
 | GET    | /api/company-brain/search                 | Search workspace knowledge in memories, documents, or hybrid mode      |
 | GET    | /api/company-brain/memories               | Browse workspace document memories                                     |
 | POST   | /api/company-brain/memories/:id/feedback  | Submit feedback on a workspace memory                                  |
+| POST   | /api/company-brain/memories/:id/correction | Correct a workspace memory and optionally its cited source chunk       |
 | GET    | /api/company-brain/memories/:id/evidence  | Load citations/source chunks for a workspace memory                    |
 | GET    | /api/company-brain/hierarchy              | Scope/project hierarchy for workspace memories                         |
 
 Context Vault requires workspace membership. Writers can ingest documents; viewers can search and browse. It supports multipart uploads, public file URLs, documentation/web URLs through Exa, and pre-extracted text/Markdown JSON.
+
+Use `workspaceId` as the hard team/tenant boundary. Use `scope` for hard lanes inside a workspace, such as `hr`, `engineering`, or `billing`. Use `project` as a soft grouping/filter inside the selected scope. Search accepts either one `scope` or comma-separated `scopes` for multi-scope retrieval, for example `scopes=dev,billing`.
 
 ### API Keys (Session auth)
 
@@ -248,7 +251,9 @@ When a document is ingested:
 7. Link facts back to chunks through `memory_evidence`.
 8. Retry stale/transient processing jobs from the last completed chunk where possible.
 
-Context Vault search supports `memories`, `documents`, and `hybrid` modes. The endpoint returns ranked retrieval results and citations, not a generated final answer. Hybrid search keeps source passages in `chunks[]` and extracted atomic facts in `memories[]`, so callers can pass document context and memory context as separate blocks to their AI layer.
+Context Vault search supports `memories`, `documents`, and `hybrid` modes. The endpoint returns ranked retrieval results and citations, not a generated final answer. Hybrid search keeps source passages in `chunks[]` and extracted atomic facts in `memories[]`, so callers can pass document context and memory context as separate blocks to their AI layer. Pass `scopes=dev,billing` to retrieve from multiple lanes inside the same workspace.
+
+Corrections use `POST /api/company-brain/memories/:id/correction`. The endpoint updates the extracted memory and, when `correctedChunkContent` is provided, updates the cited source chunk and evidence quote to prevent memory/chunk drift.
 
 ## Environment Variables
 

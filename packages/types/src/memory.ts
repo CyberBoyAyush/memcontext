@@ -338,6 +338,21 @@ export interface CompanyBrainMemoryFeedbackRequest {
   context?: string;
 }
 
+export interface CorrectCompanyBrainMemoryRequest {
+  workspaceId: string;
+  type?: "wrong" | "outdated" | "incomplete";
+  correctedContent: string;
+  reason?: string;
+  correctedChunkContent?: string;
+  evidenceChunkId?: string;
+}
+
+export interface CorrectCompanyBrainMemoryResponse {
+  success: boolean;
+  memory: CompanyBrainMemory;
+  updatedChunkCount: number;
+}
+
 export interface CompanyBrainMemoryEvidence {
   chunkId: string;
   sourceId: string;
@@ -379,6 +394,7 @@ export interface SearchCompanyBrainRequest {
   query: string;
   mode?: CompanyBrainSearchMode;
   scope?: string;
+  scopes?: string[];
   project?: string;
   limit?: number;
 }
@@ -439,6 +455,10 @@ export type ListContextVaultDocumentMemoriesResponse =
   ListCompanyBrainDocumentMemoriesResponse;
 export type ContextVaultMemoryFeedbackRequest =
   CompanyBrainMemoryFeedbackRequest;
+export type CorrectContextVaultMemoryRequest =
+  CorrectCompanyBrainMemoryRequest;
+export type CorrectContextVaultMemoryResponse =
+  CorrectCompanyBrainMemoryResponse;
 export type ContextVaultMemoryEvidence = CompanyBrainMemoryEvidence;
 export type ListContextVaultMemoryEvidenceResponse =
   ListCompanyBrainMemoryEvidenceResponse;

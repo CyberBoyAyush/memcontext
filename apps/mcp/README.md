@@ -10,7 +10,7 @@ The MCP server contains no business logic. All memory processing, storage, and s
 
 ## Tools
 
-The server exposes four tools to AI assistants:
+The server exposes five tools to AI assistants:
 
 ### save_memory
 
@@ -47,6 +47,19 @@ Rates a retrieved memory to improve future retrieval quality.
 | memoryId  | string | Yes      | The memory ID (from search results)      |
 | type      | string | Yes      | helpful, not_helpful, outdated, or wrong |
 | context   | string | No       | Why this feedback                        |
+
+Feedback affects ranking only. If a memory is wrong or outdated and the corrected content is known, use `update_memory`.
+
+### update_memory
+
+Corrects or refines an existing saved memory.
+
+| Parameter | Type   | Required | Description                         |
+| --------- | ------ | -------- | ----------------------------------- |
+| memoryId  | string | Yes      | The memory ID (from search results) |
+| content   | string | Yes      | Correct replacement memory text     |
+| category  | string | No       | preference, fact, decision, context |
+| project   | string | No       | Project grouping                    |
 
 ### delete_memory
 
@@ -131,7 +144,7 @@ npx @modelcontextprotocol/inspector
 
 ## How It Works
 
-1. AI assistant calls an MCP tool (save_memory or search_memory)
+1. AI assistant calls an MCP tool such as save_memory, search_memory, or update_memory
 2. MCP server receives the tool call via stdio or HTTP
 3. Server validates parameters using Zod schemas
 4. Server makes HTTP request to MemContext API

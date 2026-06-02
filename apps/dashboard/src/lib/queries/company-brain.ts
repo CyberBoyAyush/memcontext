@@ -128,6 +128,12 @@ export interface CompanyBrainEvidence {
   confidence: number | null;
 }
 
+export interface CorrectCompanyBrainMemoryResponse {
+  success: boolean;
+  memory: CompanyBrainMemory;
+  updatedChunkCount: number;
+}
+
 export interface CompanyBrainEvidenceResponse {
   evidence: CompanyBrainEvidence[];
 }
@@ -244,6 +250,7 @@ export const companyBrainSearchQueryOptions = (params: {
   query: string;
   mode: "memories" | "documents" | "hybrid";
   scope?: string;
+  scopes?: string[];
   project?: string;
 }) =>
   queryOptions({
@@ -255,6 +262,9 @@ export const companyBrainSearchQueryOptions = (params: {
         mode: params.mode,
       });
       if (params.scope) searchParams.set("scope", params.scope);
+      if (params.scopes && params.scopes.length > 0) {
+        searchParams.set("scopes", params.scopes.join(","));
+      }
       if (params.project) searchParams.set("project", params.project);
       return api.get<CompanyBrainSearchResponse>(
         `/api/company-brain/search?${searchParams.toString()}`,
@@ -296,6 +306,46 @@ export function useSubmitVaultMemoryFeedback() {
           context: data.context,
         },
       ),
+  });
+}
+
+export function useCorrectVaultMemory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      workspaceId: string;
+      memoryId: string;
+      type?: "wrong" | "outdated" | "incomplete";
+      correctedContent: string;
+      reason?: string;
+      correctedChunkContent?: string;
+      evidenceChunkId?: string;
+    }) =>
+      api.post<CorrectCompanyBrainMemoryResponse>(
+        `/api/company-brain/memories/${data.memoryId}/correction`,
+        {
+          workspaceId: data.workspaceId,
+          type: data.type,
+          correctedContent: data.correctedContent,
+          reason: data.reason,
+          correctedChunkContent: data.correctedChunkContent,
+          evidenceChunkId: data.evidenceChunkId,
+        },
+      ),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["company-brain-memories"] });
+      queryClient.invalidateQueries({
+        queryKey: ["company-brain-document-memories"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["company-brain-search"] });
+      queryClient.invalidateQueries({
+        queryKey: [
+          "company-brain-memory-evidence",
+          variables.workspaceId,
+          variables.memoryId,
+        ],
+      });
+    },
   });
 }
 

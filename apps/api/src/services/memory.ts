@@ -117,6 +117,7 @@ interface SearchMemoriesParams {
   limit?: number;
   category?: MemoryCategory;
   scope?: string;
+  scopes?: string[];
   project?: string;
   timing?: TimingContext;
   threshold?: number;
@@ -1017,6 +1018,9 @@ export async function searchMemories(
 ): Promise<SearchMemoryResponse> {
   const { userId, workspaceId, query, limit = 5, category, timing } = params;
   const scope = normalizeScope(params.scope);
+  const scopes = params.scopes
+    ?.map((value) => normalizeScope(value))
+    .filter((value): value is string => !!value);
   const project = normalizeProjectName(params.project);
   const threshold = params.threshold ?? SEARCH_THRESHOLD;
   const memoryTypes = params.memoryTypes?.length ? params.memoryTypes : ["user"];
@@ -1037,7 +1041,11 @@ export async function searchMemories(
       isNull(memories.deletedAt),
       activeMemoryCondition,
       lt(distance, threshold),
-      scope ? eq(memories.scope, scope) : isNull(memories.scope),
+      scopes && scopes.length > 0
+        ? inArray(memories.scope, scopes)
+        : scope
+          ? eq(memories.scope, scope)
+          : isNull(memories.scope),
     ];
     if (!workspaceId) conditions.push(isNull(memories.workspaceId));
     conditions.push(
@@ -1073,7 +1081,11 @@ export async function searchMemories(
       isNull(memories.deletedAt),
       activeMemoryCondition,
       sql`content_tsv @@ plainto_tsquery('english', ${queryText})`,
-      scope ? eq(memories.scope, scope) : isNull(memories.scope),
+      scopes && scopes.length > 0
+        ? inArray(memories.scope, scopes)
+        : scope
+          ? eq(memories.scope, scope)
+          : isNull(memories.scope),
     ];
     if (!workspaceId) conditions.push(isNull(memories.workspaceId));
     conditions.push(
@@ -1195,6 +1207,7 @@ export async function searchMemories(
             sql`, `,
           )})`,
           eq(memoryFeedback.userId, userId),
+          sql`(${memoryFeedback.context} IS NULL OR ${memoryFeedback.context} NOT LIKE '%"correction":true%')`,
         ),
       )
       .groupBy(memoryFeedback.memoryId, memoryFeedback.type);

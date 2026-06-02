@@ -1,0 +1,54 @@
+---
+title: "Access Control With Workspace, Scope, and Project"
+description: "How Context Vault isolates and filters company knowledge."
+---
+
+Context Vault uses three levels of organization.
+
+## Workspace
+
+`workspaceId` is the hard tenant boundary. Use it for companies, customers,
+teams, or legal entities.
+
+Example:
+
+- `acme`
+- `globex`
+- `customer_123`
+
+## Scope
+
+`scope` is a hard lane inside a workspace. Use it when retrieval should stay
+inside a domain unless the caller explicitly asks for more scopes.
+
+Examples:
+
+- `hr`
+- `engineering`
+- `billing`
+- `legal`
+- `support`
+
+If wrong cross-domain retrieval would be risky, use a scope.
+
+## Project
+
+`project` is a soft grouping inside a scope. Use it for initiatives,
+collections, products, or document groups.
+
+Examples:
+
+- `onboarding`
+- `api-platform`
+- `q3-pricing`
+- `refund-policy`
+
+If the field is mainly for filtering or organization, use a project.
+
+## Multi-scope retrieval
+
+Use `scopes=hr,legal` when a query should search more than one hard lane. This
+is useful for answers that need policy plus legal context, or support plus
+billing context.
+
+Multi-scope search never crosses workspace boundaries.

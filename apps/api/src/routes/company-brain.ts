@@ -9,6 +9,7 @@ import {
 } from "../middleware/either-auth.js";
 import {
   cancelCompanyBrainDocument,
+  correctCompanyBrainMemory,
   deleteCompanyBrainDocument,
   getCompanyBrainHierarchy,
   ingestCompanyBrainDocument,
@@ -98,10 +99,28 @@ function parseProjectsParam(value: string | undefined): string[] | undefined {
   return items.length > 0 ? items : undefined;
 }
 
+function parseScopesParam(value: string | undefined): string[] | undefined {
+  if (!value) return undefined;
+  const items = value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return items.length > 0 ? items : undefined;
+}
+
 const memoryFeedbackSchema = z.object({
   workspaceId: z.string().uuid(),
   type: z.enum(["helpful", "not_helpful", "outdated", "wrong"]),
   context: z.string().max(1000).optional(),
+});
+
+const memoryCorrectionSchema = z.object({
+  workspaceId: z.string().uuid(),
+  type: z.enum(["wrong", "outdated", "incomplete"]).default("wrong"),
+  correctedContent: z.string().trim().min(1).max(10_000),
+  reason: z.string().trim().max(1000).optional(),
+  correctedChunkContent: z.string().trim().min(1).max(20_000).optional(),
+  evidenceChunkId: z.string().uuid().optional(),
 });
 
 const searchSchema = z.object({
@@ -109,6 +128,7 @@ const searchSchema = z.object({
   query: z.string().trim().min(1).max(1000),
   mode: z.enum(["memories", "documents", "hybrid"]).default("hybrid"),
   scope: z.string().trim().min(1).max(200).optional(),
+  scopes: z.string().trim().min(1).max(1000).optional(),
   project: z.string().max(100).optional(),
   limit: z.coerce.number().min(1).max(20).default(8),
 });
@@ -364,6 +384,47 @@ app.post(
       }
       logger.error({ userId, memoryId, error: message }, "vault feedback failed");
       throw new HTTPException(500, { message: "Failed to submit feedback" });
+    }
+  },
+);
+
+app.post(
+  "/memories/:memoryId/correction",
+  rateLimitFeedback,
+  zValidator("param", z.object({ memoryId: z.string().uuid() })),
+  zValidator("json", memoryCorrectionSchema),
+  async (c) => {
+    const { userId } = c.get("auth");
+    const { memoryId } = c.req.valid("param");
+    const body = c.req.valid("json");
+
+    try {
+      return c.json(
+        await correctCompanyBrainMemory({
+          userId,
+          workspaceId: body.workspaceId,
+          memoryId,
+          type: body.type,
+          correctedContent: body.correctedContent,
+          reason: body.reason,
+          correctedChunkContent: body.correctedChunkContent,
+          evidenceChunkId: body.evidenceChunkId,
+        }),
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to correct memory";
+      if (message === "Workspace not found" || message === "Memory not found") {
+        throw new HTTPException(404, { message });
+      }
+      if (message === "Viewers cannot correct workspace memories") {
+        throw new HTTPException(403, { message });
+      }
+      if (message === "Corrected content is required") {
+        throw new HTTPException(400, { message });
+      }
+      logger.error({ userId, memoryId, error: message }, "vault correction failed");
+      throw new HTTPException(500, { message: "Failed to correct memory" });
     }
   },
 );
@@ -639,9 +700,10 @@ app.delete(
 app.get("/search", zValidator("query", searchSchema), async (c) => {
   const { userId } = c.get("auth");
   const query = c.req.valid("query");
+  const scopes = parseScopesParam(c.req.query("scopes"));
 
   try {
-    return c.json(await searchCompanyBrain({ userId, ...query }));
+    return c.json(await searchCompanyBrain({ userId, ...query, scopes }));
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to search context vault";

@@ -141,8 +141,20 @@ interface SearchCompanyBrainParams {
   query: string;
   mode: SearchMode;
   scope?: string;
+  scopes?: string[];
   project?: string;
   limit: number;
+}
+
+interface CorrectCompanyBrainMemoryParams {
+  userId: string;
+  workspaceId: string;
+  memoryId: string;
+  type: "wrong" | "outdated" | "incomplete";
+  correctedContent: string;
+  reason?: string;
+  correctedChunkContent?: string;
+  evidenceChunkId?: string;
 }
 
 interface ParsedBlock {
@@ -1770,6 +1782,204 @@ export async function submitCompanyBrainMemoryFeedback(
   return { success: true };
 }
 
+export async function correctCompanyBrainMemory(
+  params: CorrectCompanyBrainMemoryParams,
+) {
+  const membership = await requireWorkspaceMember(
+    params.userId,
+    params.workspaceId,
+  );
+  if (membership.role === "viewer") {
+    throw new Error("Viewers cannot correct workspace memories");
+  }
+
+  const correctedContent = normalizeText(params.correctedContent);
+  if (!correctedContent) {
+    throw new Error("Corrected content is required");
+  }
+
+  const [memory] = await db
+    .select({
+      id: memories.id,
+      category: memories.category,
+      scope: memories.scope,
+      project: memories.project,
+    })
+    .from(memories)
+    .where(
+      and(
+        eq(memories.id, params.memoryId),
+        eq(memories.workspaceId, params.workspaceId),
+        inArray(memories.memoryType, ["document", "company"]),
+        eq(memories.isCurrent, true),
+        isNull(memories.deletedAt),
+      ),
+    )
+    .limit(1);
+
+  if (!memory) {
+    throw new Error("Memory not found");
+  }
+
+  const feedbackType: FeedbackType =
+    params.type === "outdated" ? "outdated" : "wrong";
+  const correctedEmbedding = await generateEmbedding(correctedContent);
+  const correctedChunkContent = params.correctedChunkContent
+    ? normalizeText(params.correctedChunkContent)
+    : undefined;
+  const correctedChunkEmbedding = correctedChunkContent
+    ? await generateEmbedding(correctedChunkContent)
+    : undefined;
+
+  const correctionMetadata = {
+    correction: true,
+    type: params.type,
+    reason: params.reason,
+    correctedContent,
+    correctedChunkContent,
+    evidenceChunkId: params.evidenceChunkId,
+    correctedAt: new Date().toISOString(),
+  };
+
+  const result = await db.transaction(async (tx) => {
+    const [updatedMemory] = await tx
+      .update(memories)
+      .set({
+        content: correctedContent,
+        embedding: correctedEmbedding,
+      })
+      .where(
+        and(
+          eq(memories.id, params.memoryId),
+          eq(memories.workspaceId, params.workspaceId),
+          inArray(memories.memoryType, ["document", "company"]),
+          eq(memories.isCurrent, true),
+          isNull(memories.deletedAt),
+        ),
+      )
+      .returning({
+        id: memories.id,
+        content: memories.content,
+        category: memories.category,
+        scope: memories.scope,
+        project: memories.project,
+        createdAt: memories.createdAt,
+      });
+
+    await tx
+      .delete(memoryFeedback)
+      .where(
+        and(
+          eq(memoryFeedback.memoryId, params.memoryId),
+          inArray(memoryFeedback.type, ["wrong", "outdated", "not_helpful"]),
+        ),
+      );
+
+    await tx.insert(memoryFeedback).values({
+      memoryId: params.memoryId,
+      userId: params.userId,
+      type: feedbackType,
+      context: JSON.stringify(correctionMetadata).slice(0, 4000),
+    });
+
+    let updatedChunkCount = 0;
+    if (correctedChunkContent && correctedChunkEmbedding) {
+      const evidenceConditions = [
+        eq(memoryEvidence.memoryId, params.memoryId),
+        eq(memorySources.workspaceId, params.workspaceId),
+        eq(memorySourceChunks.workspaceId, params.workspaceId),
+        eq(memorySourceChunks.sourceId, memoryEvidence.sourceId),
+      ];
+      if (params.evidenceChunkId) {
+        evidenceConditions.push(eq(memorySourceChunks.id, params.evidenceChunkId));
+      }
+
+      const chunks = await tx
+        .select({
+          id: memorySourceChunks.id,
+          metadata: memorySourceChunks.metadata,
+        })
+        .from(memoryEvidence)
+        .innerJoin(
+          memorySourceChunks,
+          eq(memoryEvidence.chunkId, memorySourceChunks.id),
+        )
+        .innerJoin(memorySources, eq(memoryEvidence.sourceId, memorySources.id))
+        .where(and(...evidenceConditions));
+
+      for (const chunk of chunks) {
+        await tx
+          .update(memorySourceChunks)
+          .set({
+            content: correctedChunkContent,
+            contextualContent: correctedChunkContent,
+            embedding: correctedChunkEmbedding,
+            tokenCount: estimateTokens(correctedChunkContent),
+            contentHash: hashContent(correctedChunkContent),
+            metadata: mergeChunkMetadata(chunk.metadata, {
+              correction: correctionMetadata,
+            }),
+          })
+          .where(eq(memorySourceChunks.id, chunk.id));
+      }
+
+      const chunkIds = chunks.map((chunk) => chunk.id);
+      if (chunkIds.length > 0) {
+        await tx
+          .update(memoryEvidence)
+          .set({
+            quote: correctedChunkContent.slice(0, 1000),
+            confidence: 1,
+          })
+          .where(
+            and(
+              eq(memoryEvidence.memoryId, params.memoryId),
+              inArray(memoryEvidence.chunkId, chunkIds),
+            ),
+          );
+
+        const evidenceRows = await tx
+          .select({
+            id: memoryEvidence.id,
+            metadata: memoryEvidence.metadata,
+          })
+          .from(memoryEvidence)
+          .where(
+            and(
+              eq(memoryEvidence.memoryId, params.memoryId),
+              inArray(memoryEvidence.chunkId, chunkIds),
+            ),
+          );
+
+        for (const evidence of evidenceRows) {
+          await tx
+            .update(memoryEvidence)
+            .set({
+              metadata: mergeChunkMetadata(evidence.metadata, {
+                correction: correctionMetadata,
+              }),
+            })
+            .where(eq(memoryEvidence.id, evidence.id));
+        }
+      }
+
+      updatedChunkCount = chunkIds.length;
+    }
+
+    return { updatedMemory, updatedChunkCount };
+  });
+
+  if (!result.updatedMemory) {
+    throw new Error("Memory not found");
+  }
+
+  return {
+    success: true,
+    memory: result.updatedMemory,
+    updatedChunkCount: result.updatedChunkCount,
+  };
+}
+
 interface ListMemoryEvidenceParams {
   userId: string;
   workspaceId: string;
@@ -1906,6 +2116,9 @@ export async function searchCompanyBrain(params: SearchCompanyBrainParams) {
   await requireWorkspaceMember(params.userId, params.workspaceId);
 
   const scope = normalizeScope(params.scope);
+  const scopes = params.scopes
+    ?.map((value) => normalizeScope(value))
+    .filter((value): value is string => !!value);
   const project = normalizeProjectName(params.project);
 
   const chunks =
@@ -1915,6 +2128,7 @@ export async function searchCompanyBrain(params: SearchCompanyBrainParams) {
           workspaceId: params.workspaceId,
           query: params.query,
           scope,
+          scopes,
           project,
           limit: params.limit,
         });
@@ -1929,6 +2143,7 @@ export async function searchCompanyBrain(params: SearchCompanyBrainParams) {
             query: params.query,
             limit: params.limit,
             scope,
+            scopes,
             project,
             memoryTypes: ["document", "company"],
           })
@@ -2072,6 +2287,7 @@ async function searchCompanyBrainChunks(params: {
   workspaceId: string;
   query: string;
   scope?: string;
+  scopes?: string[];
   project?: string;
   limit: number;
 }) {
@@ -2081,9 +2297,11 @@ async function searchCompanyBrainChunks(params: {
   const distance = cosineDistance(memorySourceChunks.embedding, queryEmbedding);
   const baseChunkConditions = [
     eq(memorySourceChunks.workspaceId, params.workspaceId),
-    params.scope
-      ? eq(memorySourceChunks.scope, params.scope)
-      : isNull(memorySourceChunks.scope),
+    params.scopes && params.scopes.length > 0
+      ? inArray(memorySourceChunks.scope, params.scopes)
+      : params.scope
+        ? eq(memorySourceChunks.scope, params.scope)
+        : isNull(memorySourceChunks.scope),
   ];
   if (params.project) {
     baseChunkConditions.push(eq(memorySourceChunks.project, params.project));

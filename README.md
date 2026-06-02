@@ -238,6 +238,9 @@ SAVE immediately (do not defer) when any of these happen:
 - User corrects you or says "remember" -> save_memory(category: "fact")
 - Important project fact learned -> save_memory(category: "fact", project: "<name>")
 - Significant work completed that creates useful future context -> save_memory(category: "context")
+- After using search results, call memory_feedback to rate memories as helpful/not_helpful/outdated/wrong.
+- If a retrieved memory is wrong or outdated and you know the corrected fact, call update_memory with the corrected content. Feedback alone only changes retrieval ranking; update_memory changes the saved memory.
+- Use delete_memory only when a memory was saved incorrectly and should be removed entirely.
 
 Duplicates are handled automatically - when in doubt, save useful durable context.
 Memory persists across all sessions - use project param for project-specific context only.
@@ -255,7 +258,7 @@ MemContext search works with natural-language questions and exact terms like pro
 
 ## MCP Tools
 
-The MCP server exposes four tools to AI assistants:
+The MCP server exposes five tools to AI assistants:
 
 ### `save_memory`
 
@@ -291,6 +294,19 @@ Rate a retrieved memory to improve future retrieval quality.
 | `memoryId` | string | Yes      | The memory ID (from search results)              |
 | `type`     | enum   | Yes      | `helpful`, `not_helpful`, `outdated`, or `wrong` |
 | `context`  | string | No       | Why this feedback                                |
+
+Feedback affects ranking only. If a memory is wrong or outdated and the corrected content is known, use `update_memory` to change the saved memory.
+
+### `update_memory`
+
+Correct or refine an existing saved memory.
+
+| Parameter  | Type   | Required | Description                                      |
+| ---------- | ------ | -------- | ------------------------------------------------ |
+| `memoryId` | string | Yes      | The memory ID (from search results)              |
+| `content`  | string | Yes      | Correct replacement memory text                  |
+| `category` | enum   | No       | `preference`, `fact`, `decision`, or `context`   |
+| `project`  | string | No       | Project grouping. Omit when unsure               |
 
 ### `delete_memory`
 
@@ -496,8 +512,11 @@ The public product name is Context Vault. The current beta API path remains `/ap
 | GET    | `/api/company-brain/search`                 | Search workspace knowledge in `memories`, `documents`, or `hybrid` mode; hybrid returns separate `chunks[]` and `memories[]` arrays |
 | GET    | `/api/company-brain/memories`               | Browse workspace document memories                                                                                                  |
 | POST   | `/api/company-brain/memories/:id/feedback`  | Submit feedback on a workspace memory                                                                                               |
+| POST   | `/api/company-brain/memories/:id/correction` | Correct a workspace memory and optionally its cited source chunk                                                                    |
 | GET    | `/api/company-brain/memories/:id/evidence`  | Load citations/source chunks for a workspace memory                                                                                 |
 | GET    | `/api/company-brain/hierarchy`              | Scope/project hierarchy for workspace memories                                                                                      |
+
+For Context Vault, `workspaceId` is the hard company/team boundary, `scope` is a hard lane inside the workspace, and `project` is a soft grouping filter inside a scope. Search accepts a single `scope` or comma-separated `scopes` such as `scopes=dev,billing` for multi-scope retrieval. Corrections update extracted memories and can also update cited chunks when `correctedChunkContent` is provided.
 
 The TypeScript SDK exposes these through Context Vault methods:
 
@@ -516,6 +535,7 @@ const results = await client.searchContextVault({
   workspaceId: workspace.id,
   query: "How do refunds work?",
   mode: "hybrid",
+  scopes: ["support", "billing"],
 });
 ```
 

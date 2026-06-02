@@ -81,10 +81,29 @@ const results = await client.searchContextVault({
   workspaceId: workspace.id,
   query: "How do refunds work?",
   mode: "hybrid",
+  scopes: ["support", "billing"],
 });
 
 console.log(results.chunks);
 console.log(results.memories);
+```
+
+Use `scope` for one hard lane inside a workspace, or `scopes` for multi-scope
+retrieval inside the same workspace. Use `project` as a soft grouping filter
+inside the selected scope or scopes.
+
+Corrections update extracted workspace memories. When you also provide
+`correctedChunkContent`, MemContext updates the cited source chunk so document
+retrieval stays aligned with the corrected memory.
+
+```typescript
+await client.correctContextVaultMemory("memory-id", {
+  workspaceId: workspace.id,
+  type: "wrong",
+  reason: "The trial period changed.",
+  correctedContent: "The free trial lasts 30 days.",
+  correctedChunkContent: "The free trial lasts 30 days.",
+});
 ```
 
 File uploads are supported with `uploadContextVaultDocument()`:

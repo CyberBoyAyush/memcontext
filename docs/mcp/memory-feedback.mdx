@@ -7,6 +7,10 @@ description: "Rate a retrieved memory to improve future retrieval quality."
 
 `memory_feedback` records whether a retrieved memory was useful, irrelevant, outdated, or wrong. **This feedback directly affects search ranking** - memories marked "wrong" are heavily penalized (0.3x score), "outdated" moderately (0.5x), while "helpful" gets a small boost (1.1x).
 
+Feedback does not edit memory content. If the memory is wrong or outdated and
+you know the corrected fact, call [`update_memory`](/mcp/update-memory) with the
+corrected content after recording feedback.
+
 ## Parameters
 
 | Parameter  | Type   | Required | Description                                                                         |

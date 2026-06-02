@@ -7,6 +7,8 @@ import type {
   CompanyBrainHierarchyResponse,
   CompanyBrainMemory,
   CompanyBrainMemoryFeedbackRequest,
+  CorrectCompanyBrainMemoryRequest,
+  CorrectCompanyBrainMemoryResponse,
   CompanyBrainSearchChunk,
   CompanyBrainSearchMemory,
   CreateWorkspaceRequest,
@@ -723,6 +725,27 @@ export class MemContextClient {
     );
   }
 
+  async correctContextVaultMemory(
+    memoryId: string,
+    request: CorrectCompanyBrainMemoryRequest,
+    options?: SaveOptions,
+  ): Promise<CorrectCompanyBrainMemoryResponse> {
+    const response = await this.request<
+      Omit<CorrectCompanyBrainMemoryResponse, "memory"> & {
+        memory: JsonCompanyBrainMemory;
+      }
+    >(`/api/company-brain/memories/${memoryId}/correction`, {
+      method: "POST",
+      body: request,
+      signal: options?.signal,
+    });
+
+    return {
+      ...response,
+      memory: hydrateCompanyBrainMemory(response.memory),
+    };
+  }
+
   async listContextVaultMemoryEvidence(
     workspaceId: string,
     memoryId: string,
@@ -750,6 +773,9 @@ export class MemContextClient {
     request: SearchCompanyBrainRequest,
     options?: SaveOptions,
   ): Promise<SearchCompanyBrainResponse> {
+    const scopes = request.scopes
+      ?.map(normalizeScope)
+      .filter((scope): scope is string => !!scope);
     const response = await this.request<
       Omit<SearchCompanyBrainResponse, "chunks" | "memories"> & {
         chunks: JsonCompanyBrainSearchChunk[];
@@ -761,6 +787,7 @@ export class MemContextClient {
         query: request.query,
         mode: request.mode,
         scope: normalizeScope(request.scope) ?? this.defaultScope,
+        scopes,
         project: normalizeProject(request.project) ?? this.defaultProject,
         limit: request.limit,
       })}`,

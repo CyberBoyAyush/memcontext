@@ -1,0 +1,42 @@
+---
+title: "Document Ingestion"
+description: "Upload or queue documents for Context Vault processing."
+---
+
+Use `POST /api/company-brain/documents` for text, Markdown, public URLs, and
+remote file URLs. Use `POST /api/company-brain/documents/upload` when the client
+has a local file.
+
+## Supported sources
+
+- Plain text and Markdown
+- HTML and documentation URLs
+- CSV
+- PDF
+- DOCX
+- Images such as PNG, JPG, WebP, and TIFF
+
+Text-like sources are decoded directly. PDFs, DOCX files, and images can be
+stored and processed through OCR. Documentation URLs can be crawled when
+`crawlSubpages` is enabled.
+
+## Processing lifecycle
+
+1. The API validates workspace membership.
+2. The document is queued as a source.
+3. The processor resolves the source content.
+4. Content is normalized and split into chunks.
+5. Chunk embeddings are generated.
+6. Atomic memories are extracted from each chunk.
+7. Evidence links each memory to its source chunk.
+
+The ingest endpoint returns `202 Accepted`; processing continues in the
+background.
+
+## Scope and project on ingestion
+
+Set `scope` when the document should only appear in a specific hard lane, such
+as `hr`, `engineering`, or `billing`.
+
+Set `project` when the document is part of a softer collection inside that
+scope, such as `onboarding`, `api-platform`, or `q3-invoices`.

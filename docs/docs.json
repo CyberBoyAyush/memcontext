@@ -53,6 +53,19 @@
         ]
       },
       {
+        "group": "Context Vault",
+        "pages": [
+          "context-vault/overview",
+          "context-vault/workspace-model",
+          "context-vault/document-ingestion",
+          "context-vault/search",
+          "context-vault/feedback",
+          "context-vault/evidence-citations",
+          "context-vault/access-control",
+          "context-vault/building-company-knowledge-base"
+        ]
+      },
+      {
         "group": "Guides",
         "pages": [
           "guides/mcp-setup",
@@ -76,6 +89,7 @@
           "mcp/save-memory",
           "mcp/search-memory",
           "mcp/memory-feedback",
+          "mcp/update-memory",
           "mcp/delete-memory"
         ]
       }

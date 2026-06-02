@@ -53,7 +53,8 @@ SAVE immediately (do not defer) when any of these happen:
 - MCP tools do not accept scope. Use the REST API or TypeScript SDK when an app needs hard per-user or per-tenant isolation.
 - Use project only when a clear project/app name is already known. Good: "memcontext", "carq". Omit if unsure. Never invent vague names like "123" or "abc".
 - MCP memories use automatic TTL. Use the REST API, TypeScript SDK, or dashboard when exact expiry is required.
-After using search results, call memory_feedback to rate memories as helpful/not_helpful/outdated.
+After using search results, call memory_feedback to rate memories as helpful/not_helpful/outdated/wrong.
+If a retrieved memory is wrong or outdated and you know the corrected fact, call update_memory with the corrected content. Feedback alone only changes retrieval ranking; update_memory changes the saved memory.
 Use delete_memory only when a memory was saved incorrectly and should be removed entirely.
 Duplicates are handled automatically — when in doubt, save.
 Memory persists across all sessions - use project param for project-specific context only.`;
@@ -876,8 +877,9 @@ function ClaudeConnectorSection() {
           <ClaudeInstructionsBlock />
 
           <p className="text-xs text-foreground-subtle leading-relaxed">
-            Claude will call <code className="font-mono">search_memory</code>{" "}
-            and <code className="font-mono">save_memory</code> on your behalf
+            Claude will call <code className="font-mono">search_memory</code>,{" "}
+            <code className="font-mono">save_memory</code>, and{" "}
+            <code className="font-mono">update_memory</code> on your behalf
             when it&apos;s actually useful.
           </p>
         </div>
