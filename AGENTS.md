@@ -146,6 +146,13 @@ Workspace invite roles: the backend (`apps/api/src/routes/workspaces.ts`) only a
 
 <!-- Added: 2026-05-31 -->
 
+<!-- Added: 2026-06-03 -->
+## Workspace Management Location
+
+Workspace management (create workspace, invite members) lives ONLY in the Context Vault (`apps/dashboard/src/app/(dashboard)/context-vault/page.tsx`), NOT in the Settings page. The Context Vault header has an explicit "Manage workspace" button (GearSix icon) next to the WorkspaceSelect; both open the `ManageWorkspacesDialog`, which embeds the `WorkspacesSection` component (`apps/dashboard/src/components/settings/workspaces-section.tsx`). The Settings page must not import or render `WorkspacesSection`.
+
+In the Context Vault "Search knowledge" filters, both the scope filter and the project filter use the same rounded-full pill button style (active: `border-accent bg-accent/10 text-accent`; inactive: `border-border bg-surface text-foreground-muted hover:border-border-hover hover:text-foreground`) — do not use a native `<select>` for the project filter.
+
 ## Memories Page — Unified Source Switcher
 
 The Memories page (`apps/dashboard/src/app/(dashboard)/memories/page.tsx`) is the single place to view both personal and workspace memories. A `MemorySourceSwitcher` (`apps/dashboard/src/components/memory-source-switcher.tsx`) toggles between "My memories" (User icon, personal) and each Workspace (Buildings icon, Context Vault). Within a source, the existing ScopePicker (scope) and ProjectFilter (project) apply.

@@ -2,14 +2,15 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
 import {
   Brain,
   Buildings,
   CaretDown,
+  ChatCircleDots,
   Check,
   FileText,
   Gear,
+  GearSix,
   Link as LinkIcon,
   MagnifyingGlass,
   Sparkle,
@@ -273,6 +274,7 @@ export default function CompanyBrainPage() {
   const [file, setFile] = useState<File | null>(null);
   const [uri, setUri] = useState("");
   const [crawlSubpages, setCrawlSubpages] = useState(true);
+  const [priorityPageLimit, setPriorityPageLimit] = useState(15);
   const [subpageTarget, setSubpageTarget] = useState("docs, api, guides");
   const [ingestMode, setIngestMode] = useState<IngestMode>("upload");
   const [scope, setScope] = useState("");
@@ -344,6 +346,7 @@ export default function CompanyBrainPage() {
     setContent("");
     setUri("");
     setFile(null);
+    setPriorityPageLimit(15);
   }
 
   function toggleSearchScope(nextScope: string) {
@@ -396,6 +399,7 @@ export default function CompanyBrainPage() {
           title: title.trim(),
           uri: normalizedUri,
           crawlSubpages,
+          priorityPageLimit: crawlSubpages ? priorityPageLimit : undefined,
           subpageTarget:
             crawlSubpages && subpageTarget.trim()
               ? subpageTarget
@@ -484,13 +488,23 @@ export default function CompanyBrainPage() {
           </p>
         </div>
 
-        <WorkspaceSelect
-          workspaces={workspaces}
-          value={activeWorkspaceId}
-          onChange={setSelectedWorkspaceId}
-          onAdd={() => setManageOpen(true)}
-          onManage={() => setManageOpen(true)}
-        />
+        <div className="flex items-center gap-2">
+          <WorkspaceSelect
+            workspaces={workspaces}
+            value={activeWorkspaceId}
+            onChange={setSelectedWorkspaceId}
+            onAdd={() => setManageOpen(true)}
+            onManage={() => setManageOpen(true)}
+          />
+          <Button
+            variant="secondary"
+            onClick={() => setManageOpen(true)}
+            className="shrink-0"
+          >
+            <GearSix className="h-4 w-4" weight="duotone" />
+            Manage workspace
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -516,11 +530,13 @@ export default function CompanyBrainPage() {
               <p className="mt-1 text-xs text-foreground-muted">
                 Ingesting and searching knowledge needs an active workspace.
               </p>
-              <Button asChild variant="secondary" className="mt-4">
-                <Link href="/settings">
-                  <Gear className="h-4 w-4" weight="duotone" />
-                  Create one in Settings
-                </Link>
+              <Button
+                variant="secondary"
+                className="mt-4"
+                onClick={() => setManageOpen(true)}
+              >
+                <Gear className="h-4 w-4" weight="duotone" />
+                Create a workspace
               </Button>
             </div>
           </div>
@@ -653,12 +669,32 @@ export default function CompanyBrainPage() {
                     Crawl linked sub-pages
                   </label>
                   {crawlSubpages && (
-                    <input
-                      value={subpageTarget}
-                      onChange={(event) => setSubpageTarget(event.target.value)}
-                      placeholder="Path hints: docs, api, guides"
-                      className={inputClass}
-                    />
+                    <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_8rem]">
+                      <input
+                        value={subpageTarget}
+                        onChange={(event) =>
+                          setSubpageTarget(event.target.value)
+                        }
+                        placeholder="Path hints: docs, api, guides"
+                        className={inputClass}
+                      />
+                      <input
+                        type="number"
+                        min={1}
+                        max={25}
+                        value={priorityPageLimit}
+                        onChange={(event) =>
+                          setPriorityPageLimit(
+                            Math.min(
+                              25,
+                              Math.max(1, Number(event.target.value) || 15),
+                            ),
+                          )
+                        }
+                        aria-label="Priority page limit"
+                        className={inputClass}
+                      />
+                    </div>
                   )}
                 </div>
               )}
@@ -843,21 +879,41 @@ export default function CompanyBrainPage() {
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-xs font-medium text-foreground-muted">
+                  <label className="mb-2 block text-xs font-medium text-foreground-muted">
                     Search project
                   </label>
-                  <select
-                    value={searchProject}
-                    onChange={(event) => setSearchProject(event.target.value)}
-                    className="h-9 w-full rounded-lg border border-border bg-surface px-3 text-sm transition-colors focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20"
-                  >
-                    <option value="">All projects</option>
-                    {availableSearchProjects.map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.name} ({item.count})
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSearchProject("")}
+                      className={cn(
+                        "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                        searchProject === ""
+                          ? "border-accent bg-accent/10 text-accent"
+                          : "border-border bg-surface text-foreground-muted hover:border-border-hover hover:text-foreground",
+                      )}
+                    >
+                      All projects
+                    </button>
+                    {availableSearchProjects.map((item) => {
+                      const selected = searchProject === item.value;
+                      return (
+                        <button
+                          type="button"
+                          key={item.value}
+                          onClick={() => setSearchProject(item.value)}
+                          className={cn(
+                            "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                            selected
+                              ? "border-accent bg-accent/10 text-accent"
+                              : "border-border bg-surface text-foreground-muted hover:border-border-hover hover:text-foreground",
+                          )}
+                        >
+                          {item.name} ({item.count})
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
@@ -960,7 +1016,7 @@ export default function CompanyBrainPage() {
                 {!hasSearched && !searchLoading && (
                   <div className="py-10 text-center">
                     <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-surface-elevated border border-border">
-                      <Sparkle
+                      <ChatCircleDots
                         size={22}
                         className="text-foreground-muted"
                         weight="duotone"

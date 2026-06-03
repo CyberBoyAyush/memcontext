@@ -318,9 +318,14 @@ await client.ingestContextVaultDocument({
   uri: "https://docs.example.com",
   sourceType: "url",
   crawlSubpages: true,
+  priorityPageLimit: 15,
   subpageTarget: ["api", "guides"],
 });
 ```
+
+For docs sites with `llms.txt`, MemContext uses the page map and ingests only
+the top-priority pages. `priorityPageLimit` defaults to `15` and is capped at
+`25`.
 
 For public file URLs, pass the file type so the document can be parsed correctly:
 

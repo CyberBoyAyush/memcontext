@@ -535,6 +535,7 @@ await client.ingestContextVaultDocument({
   uri: "https://docs.example.com",
   sourceType: "url",
   crawlSubpages: true,
+  priorityPageLimit: 15,
 });
 
 const results = await client.searchContextVault({

@@ -1222,7 +1222,13 @@ components:
         crawlSubpages:
           type: boolean
           default: true
-          description: Crawl linked subpages from a documentation/web URL. Ignored for remote file URL ingestion.
+          description: Crawl linked subpages from a documentation/web URL. For docs sites with `llms.txt`, MemContext discovers canonical pages first and ingests only priority pages. Ignored for remote file URL ingestion.
+        priorityPageLimit:
+          type: integer
+          minimum: 1
+          maximum: 25
+          default: 15
+          description: Maximum priority pages to fetch from a discovered docs index such as `llms.txt`.
         subpageTarget:
           type: array
           maxItems: 8

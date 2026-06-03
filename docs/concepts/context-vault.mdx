@@ -143,9 +143,14 @@ curl -X POST https://api.memcontext.in/api/company-brain/documents \
     "uri": "https://docs.example.com",
     "sourceType": "url",
     "crawlSubpages": true,
+    "priorityPageLimit": 15,
     "subpageTarget": ["api", "guides"]
   }'
 ```
+
+For docs sites that expose `llms.txt`, MemContext discovers the canonical page
+map first and ingests only the top-priority pages. `priorityPageLimit` defaults
+to `15` and is capped at `25`.
 
 ### Add Text Or Markdown Directly
 

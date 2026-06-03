@@ -102,6 +102,7 @@ interface IngestDocumentParams {
   publicUrl?: string | null;
   metadata?: Record<string, unknown>;
   category?: MemoryCategory;
+  priorityPageLimit?: number;
 }
 
 type CompanyBrainPayload =
@@ -118,6 +119,7 @@ type CompanyBrainPayload =
       uri: string;
       crawlSubpages: boolean;
       subpageTarget?: string[];
+      priorityPageLimit?: number;
       publicUrl?: string | null;
       [key: string]: unknown;
     }
@@ -576,8 +578,10 @@ class CompanyBrainCancelledError extends Error {
   }
 }
 
+const COMPANY_BRAIN_PROCESSOR_CONCURRENCY = 2;
+
 let companyBrainProcessorStarted = false;
-let companyBrainProcessorRunning = false;
+let companyBrainProcessorActiveCount = 0;
 
 function buildQueuedPayload(
   params: CreateDocumentJobParams,
@@ -605,6 +609,7 @@ function buildQueuedPayload(
       uri: params.uri,
       crawlSubpages: params.crawlSubpages ?? true,
       subpageTarget: params.subpageTarget,
+      priorityPageLimit: params.priorityPageLimit,
       publicUrl: params.publicUrl ?? params.uri,
       ...metadata,
     };
@@ -634,6 +639,18 @@ function getChunkExtractionCompleted(metadata: unknown) {
     "extractionStatus" in metadata &&
     metadata.extractionStatus === "completed"
   );
+}
+
+function getExtractionLimitPerChunk(payload: CompanyBrainPayload) {
+  if (
+    payload.ingestionKind === "exa-url" &&
+    payload.scraper === "exa" &&
+    payload.crawlMode === "docs-priority"
+  ) {
+    return 3;
+  }
+
+  return 6;
 }
 
 function mergeChunkMetadata(
@@ -876,6 +893,7 @@ async function resolveCompanyBrainContent(source: MemorySourceRow) {
       url: payload.uri,
       crawlSubpages: payload.crawlSubpages,
       subpageTarget: payload.subpageTarget,
+      priorityPageLimit: payload.priorityPageLimit,
     });
 
     return {
@@ -885,7 +903,12 @@ async function resolveCompanyBrainContent(source: MemorySourceRow) {
         ...payload,
         scraper: "exa",
         exaRequestId: scraped.requestId,
+        crawlMode: scraped.crawlMode,
         pageCount: scraped.pageCount,
+        discoveredPageCount: scraped.discoveredPageCount,
+        selectedPageCount: scraped.selectedPageCount,
+        failedPageCount: scraped.failedPageCount,
+        selectedPages: scraped.selectedPages,
         statuses: scraped.statuses,
       },
     };
@@ -940,6 +963,9 @@ async function processCompanyBrainSource(source: MemorySourceRow) {
     const sourceType = source.sourceType as DocumentSourceType;
     const scope = source.scope ?? undefined;
     const project = source.project ?? undefined;
+    const extractionLimitPerChunk = getExtractionLimitPerChunk(
+      resolved.metadata as CompanyBrainPayload,
+    );
     const normalizedContentHash = hashContent(normalizedContent);
     const contentChanged =
       !!source.contentHash && source.contentHash !== normalizedContentHash;
@@ -1080,7 +1106,7 @@ async function processCompanyBrainSource(source: MemorySourceRow) {
         ? buildContextualContent(title, parsedChunk)
         : chunk.content;
       const extractedCandidates = (await extractAtomicMemories(extractionInput))
-        .slice(0, 6)
+        .slice(0, extractionLimitPerChunk)
         .filter(Boolean);
 
       for (const fact of extractedCandidates) {
@@ -1278,10 +1304,8 @@ async function markCompanyBrainFailure(
   );
 }
 
-async function drainPendingCompanyBrainSources() {
-  if (companyBrainProcessorRunning) return;
-  companyBrainProcessorRunning = true;
-
+async function runCompanyBrainProcessorWorker() {
+  companyBrainProcessorActiveCount += 1;
   try {
     while (true) {
       const source = await claimNextCompanyBrainSource();
@@ -1294,8 +1318,20 @@ async function drainPendingCompanyBrainSources() {
       }
     }
   } finally {
-    companyBrainProcessorRunning = false;
+    companyBrainProcessorActiveCount -= 1;
   }
+}
+
+async function drainPendingCompanyBrainSources() {
+  const availableSlots =
+    COMPANY_BRAIN_PROCESSOR_CONCURRENCY - companyBrainProcessorActiveCount;
+  if (availableSlots <= 0) return;
+
+  await Promise.all(
+    Array.from({ length: availableSlots }, () =>
+      runCompanyBrainProcessorWorker(),
+    ),
+  );
 }
 
 function scheduleDrainCompanyBrainSources() {
@@ -1896,7 +1932,9 @@ export async function correctCompanyBrainMemory(
         eq(memorySourceChunks.sourceId, memoryEvidence.sourceId),
       ];
       if (params.evidenceChunkId) {
-        evidenceConditions.push(eq(memorySourceChunks.id, params.evidenceChunkId));
+        evidenceConditions.push(
+          eq(memorySourceChunks.id, params.evidenceChunkId),
+        );
       }
 
       const chunks = await tx

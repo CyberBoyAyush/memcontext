@@ -65,6 +65,7 @@ const ingestDocumentSchema = z
     originalFilename: z.string().max(300).optional(),
     uri: z.string().url().max(1000).optional(),
     crawlSubpages: z.boolean().optional(),
+    priorityPageLimit: z.coerce.number().int().min(1).max(25).optional(),
     subpageTarget: z.array(z.string().trim().min(1).max(100)).max(8).optional(),
     category: z.enum(["preference", "fact", "decision", "context"]).optional(),
   })
@@ -356,10 +357,7 @@ app.get("/memories", zValidator("query", memoriesQuerySchema), async (c) => {
 app.post(
   "/memories/:memoryId/feedback",
   rateLimitFeedback,
-  zValidator(
-    "param",
-    z.object({ memoryId: z.string().uuid() }),
-  ),
+  zValidator("param", z.object({ memoryId: z.string().uuid() })),
   zValidator("json", memoryFeedbackSchema),
   async (c) => {
     const { userId } = c.get("auth");
@@ -382,7 +380,10 @@ app.post(
       if (message === "Workspace not found" || message === "Memory not found") {
         throw new HTTPException(404, { message });
       }
-      logger.error({ userId, memoryId, error: message }, "vault feedback failed");
+      logger.error(
+        { userId, memoryId, error: message },
+        "vault feedback failed",
+      );
       throw new HTTPException(500, { message: "Failed to submit feedback" });
     }
   },
@@ -423,7 +424,10 @@ app.post(
       if (message === "Corrected content is required") {
         throw new HTTPException(400, { message });
       }
-      logger.error({ userId, memoryId, error: message }, "vault correction failed");
+      logger.error(
+        { userId, memoryId, error: message },
+        "vault correction failed",
+      );
       throw new HTTPException(500, { message: "Failed to correct memory" });
     }
   },
@@ -448,7 +452,10 @@ app.get(
       if (message === "Workspace not found" || message === "Memory not found") {
         throw new HTTPException(404, { message });
       }
-      logger.error({ userId, memoryId, error: message }, "vault evidence failed");
+      logger.error(
+        { userId, memoryId, error: message },
+        "vault evidence failed",
+      );
       throw new HTTPException(500, { message: "Failed to load evidence" });
     }
   },
@@ -540,6 +547,7 @@ app.post("/documents", zValidator("json", ingestDocumentSchema), async (c) => {
       publicUrl: normalizedUri,
       mimeType: isUrlOnlyIngestion ? "text/markdown" : body.mimeType,
       crawlSubpages: body.crawlSubpages,
+      priorityPageLimit: body.priorityPageLimit,
       subpageTarget: body.subpageTarget,
       metadata: normalizedUri ? { originalUrl: normalizedUri } : undefined,
     });
@@ -647,7 +655,10 @@ app.get(
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to list memories";
-      if (message === "Workspace not found" || message === "Document not found") {
+      if (
+        message === "Workspace not found" ||
+        message === "Document not found"
+      ) {
         throw new HTTPException(404, { message });
       }
       logger.error(

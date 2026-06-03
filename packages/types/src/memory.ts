@@ -275,6 +275,7 @@ export interface IngestCompanyBrainDocumentRequest {
   originalFilename?: string;
   uri?: string;
   crawlSubpages?: boolean;
+  priorityPageLimit?: number;
   subpageTarget?: string[];
   category?: MemoryCategory;
 }
@@ -485,8 +486,7 @@ export type ListContextVaultDocumentMemoriesResponse =
   ListCompanyBrainDocumentMemoriesResponse;
 export type ContextVaultMemoryFeedbackRequest =
   CompanyBrainMemoryFeedbackRequest;
-export type CorrectContextVaultMemoryRequest =
-  CorrectCompanyBrainMemoryRequest;
+export type CorrectContextVaultMemoryRequest = CorrectCompanyBrainMemoryRequest;
 export type CorrectContextVaultMemoryResponse =
   CorrectCompanyBrainMemoryResponse;
 export type ContextVaultMemoryEvidence = CompanyBrainMemoryEvidence;
