@@ -20,6 +20,20 @@ Text-like sources are decoded directly. PDFs, DOCX files, and images can be
 stored and processed through OCR. Documentation URLs can be crawled when
 `crawlSubpages` is enabled.
 
+## Documentation URLs
+
+For documentation sites, MemContext works best when the site exposes an
+`llms.txt` file, such as `https://docs.example.com/llms.txt`.
+
+When you submit a documentation URL with `crawlSubpages: true`, MemContext first
+checks for a docs index like `llms.txt`, discovers the listed pages, ranks the
+most useful pages, and ingests only the selected priority pages. This keeps the
+surface area smaller while giving retrieval more relevant context.
+
+If you want a URL to be scraped well, make sure the documentation URL is public,
+uses normal HTTP/HTTPS links, and exposes a clean `llms.txt` page map whenever
+possible.
+
 ## Processing lifecycle
 
 1. The API validates workspace membership.
