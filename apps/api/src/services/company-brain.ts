@@ -2324,6 +2324,42 @@ function getDocumentChunkBoost(
   return Math.min(boost, 0.06);
 }
 
+function getDocumentChunkQueryCoverage(
+  query: string,
+  chunk: Pick<CompanyBrainChunkResult, "content" | "sectionPath" | "title">,
+) {
+  const terms = getSearchTerms(query);
+  if (terms.length === 0) return 0;
+
+  const searchableText = [chunk.title, chunk.sectionPath, chunk.content]
+    .map((value) => normalizeSearchText(value))
+    .join(" ");
+  const matchedTerms = terms.filter((term) => searchableText.includes(term));
+
+  return matchedTerms.length / terms.length;
+}
+
+function shouldRerankCompanyBrainChunks(
+  query: string,
+  candidates: CompanyBrainChunkResult[],
+  limit: number,
+) {
+  if (candidates.length <= 1) return false;
+  if (candidates.length < Math.max(10, limit * 2)) return false;
+
+  const topCandidate = candidates[0];
+  if (!topCandidate) return false;
+
+  return getDocumentChunkQueryCoverage(query, topCandidate) < 0.55;
+}
+
+function shouldExpandCompanyBrainQuery(
+  candidates: CompanyBrainChunkResult[],
+  limit: number,
+) {
+  return candidates.length < Math.min(limit, 3);
+}
+
 async function searchCompanyBrainChunks(params: {
   workspaceId: string;
   query: string;
@@ -2334,8 +2370,6 @@ async function searchCompanyBrainChunks(params: {
 }) {
   const noProject = params.project === NO_PROJECT_FILTER_VALUE;
   const project = noProject ? undefined : normalizeProjectName(params.project);
-  const queryVariants = await generateQueryVariants(params.query);
-  const queryTexts = [params.query, ...queryVariants].filter(Boolean);
   const queryEmbedding = await generateEmbedding(params.query);
   const distance = cosineDistance(memorySourceChunks.embedding, queryEmbedding);
   const baseChunkConditions = [
@@ -2379,75 +2413,104 @@ async function searchCompanyBrainChunks(params: {
     .orderBy(asc(distance))
     .limit(Math.max(params.limit * 8, 40));
 
-  const ftsResultSets = await Promise.all(
-    queryTexts.map((queryText) => {
-      const rank = sql<number>`ts_rank_cd(memory_source_chunks_content_tsv, websearch_to_tsquery('english', ${queryText}))`;
-      return db
-        .select({
-          id: memorySourceChunks.id,
-          sourceId: memorySourceChunks.sourceId,
-          content: memorySourceChunks.content,
-          contextualContent: memorySourceChunks.contextualContent,
-          sectionPath: memorySourceChunks.sectionPath,
-          scope: memorySourceChunks.scope,
-          project: memorySourceChunks.project,
-          chunkIndex: memorySourceChunks.chunkIndex,
-          createdAt: memorySourceChunks.createdAt,
-          title: memorySources.title,
-          sourceType: memorySources.sourceType,
-          rank,
-        })
-        .from(memorySourceChunks)
-        .innerJoin(
-          memorySources,
-          eq(memorySourceChunks.sourceId, memorySources.id),
-        )
-        .where(
-          and(
-            ...baseChunkConditions,
-            eq(memorySources.status, "completed"),
-            sql`memory_source_chunks_content_tsv @@ websearch_to_tsquery('english', ${queryText})`,
-          ),
-        )
-        .orderBy(desc(rank))
-        .limit(Math.max(params.limit * 8, 40));
-    }),
-  );
+  const runFtsSearch = (queryText: string) => {
+    const rank = sql<number>`ts_rank_cd(memory_source_chunks_content_tsv, websearch_to_tsquery('english', ${queryText}))`;
+    return db
+      .select({
+        id: memorySourceChunks.id,
+        sourceId: memorySourceChunks.sourceId,
+        content: memorySourceChunks.content,
+        contextualContent: memorySourceChunks.contextualContent,
+        sectionPath: memorySourceChunks.sectionPath,
+        scope: memorySourceChunks.scope,
+        project: memorySourceChunks.project,
+        chunkIndex: memorySourceChunks.chunkIndex,
+        createdAt: memorySourceChunks.createdAt,
+        title: memorySources.title,
+        sourceType: memorySources.sourceType,
+        rank,
+      })
+      .from(memorySourceChunks)
+      .innerJoin(
+        memorySources,
+        eq(memorySourceChunks.sourceId, memorySources.id),
+      )
+      .where(
+        and(
+          ...baseChunkConditions,
+          eq(memorySources.status, "completed"),
+          sql`memory_source_chunks_content_tsv @@ websearch_to_tsquery('english', ${queryText})`,
+        ),
+      )
+      .orderBy(desc(rank))
+      .limit(Math.max(params.limit * 8, 40));
+  };
 
-  const fusedChunks = new Map<string, { score: number; row: ChunkSearchRow }>();
-  const rrfK = 60;
-  for (const resultSet of [vectorRows, ...ftsResultSets]) {
-    resultSet.forEach((row, index) => {
-      const existing = fusedChunks.get(row.id);
-      fusedChunks.set(row.id, {
-        score: (existing?.score ?? 0) + 1 / (rrfK + index + 1),
-        row: existing?.row ?? row,
+  const buildCandidates = (ftsResultSets: ChunkSearchRow[][]) => {
+    const fusedChunks = new Map<
+      string,
+      { score: number; row: ChunkSearchRow }
+    >();
+    const rrfK = 60;
+    for (const resultSet of [vectorRows, ...ftsResultSets]) {
+      resultSet.forEach((row, index) => {
+        const existing = fusedChunks.get(row.id);
+        fusedChunks.set(row.id, {
+          score: (existing?.score ?? 0) + 1 / (rrfK + index + 1),
+          row: existing?.row ?? row,
+        });
       });
-    });
-  }
+    }
 
-  const candidates = Array.from(fusedChunks.values())
-    .map((candidate) => ({
-      ...candidate,
-      score:
-        candidate.score + getDocumentChunkBoost(params.query, candidate.row),
-    }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, Math.max(params.limit, COMPANY_BRAIN_RERANK_CANDIDATES))
-    .map(({ row, score }) => ({
-      id: row.id,
-      sourceId: row.sourceId,
-      title: row.title,
-      sourceType: row.sourceType,
-      sectionPath: row.sectionPath,
-      scope: row.scope,
-      project: row.project,
-      chunkIndex: row.chunkIndex,
-      content: row.content,
-      contextualContent: row.contextualContent,
-      relevance: Math.round(score * 1000) / 1000,
-      createdAt: row.createdAt,
-    }));
+    return Array.from(fusedChunks.values())
+      .map((candidate) => ({
+        ...candidate,
+        score:
+          candidate.score + getDocumentChunkBoost(params.query, candidate.row),
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, Math.max(params.limit, COMPANY_BRAIN_RERANK_CANDIDATES))
+      .map(({ row, score }) => ({
+        id: row.id,
+        sourceId: row.sourceId,
+        title: row.title,
+        sourceType: row.sourceType,
+        sectionPath: row.sectionPath,
+        scope: row.scope,
+        project: row.project,
+        chunkIndex: row.chunkIndex,
+        content: row.content,
+        contextualContent: row.contextualContent,
+        relevance: Math.round(score * 1000) / 1000,
+        createdAt: row.createdAt,
+      }));
+  };
+
+  const originalFtsResults = await runFtsSearch(params.query);
+  let ftsResultSets = [originalFtsResults];
+  let candidates = buildCandidates(ftsResultSets);
+
+  if (shouldExpandCompanyBrainQuery(candidates, params.limit)) {
+    const originalTopCoverage = candidates[0]
+      ? getDocumentChunkQueryCoverage(params.query, candidates[0])
+      : 0;
+    const queryVariants = await generateQueryVariants(params.query);
+    const validVariants = queryVariants.filter(
+      (variant) => variant && variant.trim().length > 0,
+    );
+    const variantFtsResults = await Promise.all(
+      validVariants.map((variant) => runFtsSearch(variant)),
+    );
+    ftsResultSets = [originalFtsResults, ...variantFtsResults];
+    const expandedCandidates = buildCandidates(ftsResultSets);
+    const expandedTopCoverage = expandedCandidates[0]
+      ? getDocumentChunkQueryCoverage(params.query, expandedCandidates[0])
+      : 0;
+
+    if (expandedTopCoverage >= originalTopCoverage) {
+      candidates = expandedCandidates;
+    }
+  }
 
   return rerankCompanyBrainChunks(params.query, candidates, params.limit);
 }
@@ -2457,7 +2520,9 @@ async function rerankCompanyBrainChunks(
   candidates: CompanyBrainChunkResult[],
   limit: number,
 ) {
-  if (candidates.length <= 1) return candidates.slice(0, limit);
+  if (!shouldRerankCompanyBrainChunks(query, candidates, limit)) {
+    return candidates.slice(0, limit);
+  }
 
   try {
     const reranked = await rerankDocuments({
