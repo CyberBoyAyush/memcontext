@@ -148,9 +148,9 @@ curl -X POST https://api.memcontext.in/api/company-brain/documents \
   }'
 ```
 
-For docs sites that expose `llms.txt`, MemContext discovers the canonical page
-map first and ingests only the top-priority pages. `priorityPageLimit` defaults
-to `15` and is capped at `25`.
+For docs sites that expose `llms.txt`, MemContext uses the page map to discover
+and rank useful pages, then ingests only the selected priority pages.
+`priorityPageLimit` defaults to `15` and is capped at `25`.
 
 ### Add Text Or Markdown Directly
 
