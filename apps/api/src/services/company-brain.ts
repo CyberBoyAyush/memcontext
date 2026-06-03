@@ -2334,7 +2334,8 @@ function getDocumentChunkQueryCoverage(
   const searchableText = [chunk.title, chunk.sectionPath, chunk.content]
     .map((value) => normalizeSearchText(value))
     .join(" ");
-  const matchedTerms = terms.filter((term) => searchableText.includes(term));
+  const searchableTerms = new Set(searchableText.split(" ").filter(Boolean));
+  const matchedTerms = terms.filter((term) => searchableTerms.has(term));
 
   return matchedTerms.length / terms.length;
 }
@@ -2345,7 +2346,11 @@ function shouldRerankCompanyBrainChunks(
   limit: number,
 ) {
   if (candidates.length <= 1) return false;
-  if (candidates.length < Math.max(10, limit * 2)) return false;
+  const minimumRerankCandidates = Math.min(
+    Math.max(10, limit * 2),
+    Math.max(limit, COMPANY_BRAIN_RERANK_CANDIDATES),
+  );
+  if (candidates.length < minimumRerankCandidates) return false;
 
   const topCandidate = candidates[0];
   if (!topCandidate) return false;
