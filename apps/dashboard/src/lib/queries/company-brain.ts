@@ -389,6 +389,7 @@ export function useIngestCompanyBrainDocument() {
       uri?: string;
       sourceType?: DocumentSourceType;
       crawlSubpages?: boolean;
+      priorityPageLimit?: number;
       subpageTarget?: string[];
       scope?: string;
       project?: string;

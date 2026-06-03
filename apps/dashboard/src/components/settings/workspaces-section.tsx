@@ -6,6 +6,7 @@ import {
   Buildings,
   CaretDown,
   Check,
+  Copy,
   Plus,
   Trash,
   UserPlus,
@@ -58,6 +59,9 @@ export function WorkspacesSection({ embedded }: { embedded?: boolean } = {}) {
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<InviteRole>("member");
+  const [copiedWorkspaceId, setCopiedWorkspaceId] = useState<string | null>(
+    null,
+  );
 
   const { data: workspaceData } = useQuery(workspacesQueryOptions());
   const createWorkspace = useCreateWorkspace();
@@ -107,6 +111,21 @@ export function WorkspacesSection({ embedded }: { embedded?: boolean } = {}) {
       toast.error(
         error instanceof Error ? error.message : "Could not send invite",
       );
+    }
+  }
+
+  async function handleCopyWorkspaceId(workspaceId: string) {
+    try {
+      await navigator.clipboard.writeText(workspaceId);
+      setCopiedWorkspaceId(workspaceId);
+      toast.success("Workspace ID copied");
+      window.setTimeout(() => {
+        setCopiedWorkspaceId((current) =>
+          current === workspaceId ? null : current,
+        );
+      }, 2000);
+    } catch {
+      toast.error("Failed to copy workspace ID");
     }
   }
 
@@ -212,14 +231,33 @@ export function WorkspacesSection({ embedded }: { embedded?: boolean } = {}) {
                       </p>
                     </div>
                   </div>
-                  <span
-                    className={cn(
-                      "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize",
-                      roleBadgeTone(workspace.role),
-                    )}
-                  >
-                    {workspace.role}
-                  </span>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleCopyWorkspaceId(workspace.id)}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-2.5 text-xs font-medium text-foreground-muted transition-colors hover:border-border-hover hover:text-foreground"
+                      aria-label={`Copy workspace ID for ${workspace.name}`}
+                    >
+                      {copiedWorkspaceId === workspace.id ? (
+                        <Check className="h-3.5 w-3.5 text-success" />
+                      ) : (
+                        <Copy className="h-3.5 w-3.5" />
+                      )}
+                      <span className="hidden sm:inline">
+                        {copiedWorkspaceId === workspace.id
+                          ? "Copied"
+                          : "Copy ID"}
+                      </span>
+                    </button>
+                    <span
+                      className={cn(
+                        "rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize",
+                        roleBadgeTone(workspace.role),
+                      )}
+                    >
+                      {workspace.role}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
