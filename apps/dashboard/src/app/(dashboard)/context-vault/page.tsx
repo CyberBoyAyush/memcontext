@@ -6,6 +6,8 @@ import {
   Brain,
   Buildings,
   CaretDown,
+  CaretLeft,
+  CaretRight,
   ChatCircleDots,
   Check,
   FileText,
@@ -66,6 +68,8 @@ const ingestTabs: Array<{
 
 const inputClass =
   "h-10 w-full rounded-lg border border-border bg-surface-elevated/50 px-3 text-sm transition-colors placeholder:text-foreground-subtle focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20";
+
+const DOCS_PER_PAGE = 6;
 
 function normalizeDocumentationUrl(value: string) {
   const trimmed = value.trim();
@@ -289,6 +293,7 @@ export default function CompanyBrainPage() {
     null,
   );
   const [manageOpen, setManageOpen] = useState(false);
+  const [docPage, setDocPage] = useState(1);
 
   const { data: workspaceData } = useQuery(workspacesQueryOptions());
   const ingestDocument = useIngestCompanyBrainDocument();
@@ -321,6 +326,13 @@ export default function CompanyBrainPage() {
   );
 
   const documents = documentsData?.documents ?? [];
+  const docPageCount = Math.max(1, Math.ceil(documents.length / DOCS_PER_PAGE));
+  // Clamp during render so deletes/workspace switches never strand an empty page.
+  const currentDocPage = Math.min(Math.max(1, docPage), docPageCount);
+  const pagedDocuments = documents.slice(
+    (currentDocPage - 1) * DOCS_PER_PAGE,
+    currentDocPage * DOCS_PER_PAGE,
+  );
   const availableScopes = hierarchyData?.scopes ?? [];
   const selectedScopeProjects =
     searchScopes.length === 0
@@ -492,7 +504,10 @@ export default function CompanyBrainPage() {
           <WorkspaceSelect
             workspaces={workspaces}
             value={activeWorkspaceId}
-            onChange={setSelectedWorkspaceId}
+            onChange={(id) => {
+              setSelectedWorkspaceId(id);
+              setDocPage(1);
+            }}
             onAdd={() => setManageOpen(true)}
             onManage={() => setManageOpen(true)}
           />
@@ -1044,7 +1059,7 @@ export default function CompanyBrainPage() {
               </div>
 
               <div className="mt-4 space-y-1">
-                {documents.map((document, index) => {
+                {pagedDocuments.map((document, index) => {
                   const isProcessing = [
                     "pending",
                     "processing",
@@ -1180,6 +1195,40 @@ export default function CompanyBrainPage() {
                   </div>
                 )}
               </div>
+
+              {docPageCount > 1 && (
+                <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
+                  <p className="text-xs text-foreground-muted">
+                    Page{" "}
+                    <span className="text-foreground">{currentDocPage}</span> of{" "}
+                    {docPageCount}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDocPage(Math.max(1, currentDocPage - 1))
+                      }
+                      disabled={currentDocPage === 1}
+                      className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 text-xs font-medium text-foreground-muted transition-colors hover:border-border-hover hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <CaretLeft className="h-3.5 w-3.5" weight="bold" />
+                      Prev
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDocPage(Math.min(docPageCount, currentDocPage + 1))
+                      }
+                      disabled={currentDocPage === docPageCount}
+                      className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 text-xs font-medium text-foreground-muted transition-colors hover:border-border-hover hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Next
+                      <CaretRight className="h-3.5 w-3.5" weight="bold" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
