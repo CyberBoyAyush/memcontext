@@ -658,9 +658,16 @@ async function enqueueLongMemorySource(
         },
         updatedAt: new Date(),
       })
-      .returning({ id: memorySources.id, reservedSlots: memorySources.reservedSlots });
+      .returning({
+        id: memorySources.id,
+        reservedSlots: memorySources.reservedSlots,
+      });
 
-    return { limitExceeded: false, id: memorySource.id, reservedSlots: memorySource.reservedSlots };
+    return {
+      limitExceeded: false,
+      id: memorySource.id,
+      reservedSlots: memorySource.reservedSlots,
+    };
   });
 
   if (result.limitExceeded) {
@@ -757,7 +764,10 @@ async function claimNextPendingMemorySource() {
 async function processMemorySource(memorySource: MemorySourceRow) {
   const payload = memorySource.payload as MemorySourcePayload;
   const extractedMemories = await extractAtomicMemories(payload.content);
-  const candidateMemories = extractedMemories.slice(0, memorySource.reservedSlots);
+  const candidateMemories = extractedMemories.slice(
+    0,
+    memorySource.reservedSlots,
+  );
 
   if (candidateMemories.length === 0) {
     await db
@@ -885,7 +895,8 @@ async function drainPendingMemorySources() {
           {
             memorySourceId: memorySource.id,
             userId: memorySource.userId,
-            errorMessage: error instanceof Error ? error.message : String(error),
+            errorMessage:
+              error instanceof Error ? error.message : String(error),
           },
           "background long-content memory processing failed",
         );
@@ -1026,20 +1037,20 @@ export async function searchMemories(
   const noProject = params.project === NO_PROJECT_FILTER_VALUE;
   const project = noProject ? undefined : normalizeProjectName(params.project);
   const threshold = params.threshold ?? SEARCH_THRESHOLD;
-  const memoryTypes = params.memoryTypes?.length ? params.memoryTypes : ["user"];
+  const memoryTypes = params.memoryTypes?.length
+    ? params.memoryTypes
+    : ["user"];
   const activeMemoryCondition = sql`(${memories.validUntil} IS NULL OR ${memories.validUntil} > NOW())`;
 
-  // Step 1: Generate query variants and original embedding in parallel
-  const [queryVariants, originalEmbedding] = await Promise.all([
-    generateQueryVariants(query, timing),
-    generateEmbedding(query, timing),
-  ]);
+  // Step 1: Search the original query first. Variants are only used as fallback.
+  const originalEmbedding = await generateEmbedding(query, timing);
 
-  // Step 2: Generate variant embeddings + run vector/FTS search in parallel
   const runVectorSearch = async (embedding: number[]) => {
     const distance = cosineDistance(memories.embedding, embedding);
     const conditions = [
-      workspaceId ? eq(memories.workspaceId, workspaceId) : eq(memories.userId, userId),
+      workspaceId
+        ? eq(memories.workspaceId, workspaceId)
+        : eq(memories.userId, userId),
       eq(memories.isCurrent, true),
       isNull(memories.deletedAt),
       activeMemoryCondition,
@@ -1080,7 +1091,9 @@ export async function searchMemories(
 
   const runFtsSearch = async (queryText: string) => {
     const conditions = [
-      workspaceId ? eq(memories.workspaceId, workspaceId) : eq(memories.userId, userId),
+      workspaceId
+        ? eq(memories.workspaceId, workspaceId)
+        : eq(memories.userId, userId),
       eq(memories.isCurrent, true),
       isNull(memories.deletedAt),
       activeMemoryCondition,
@@ -1124,38 +1137,44 @@ export async function searchMemories(
 
   const searchStart = performance.now();
 
-  // Filter out empty/whitespace-only variants to prevent embedding failures
-  const validVariants = queryVariants.filter((v) => v && v.trim().length > 0);
-
-  // Run original vector search, original FTS search, and generate variant embeddings in parallel
-  const [originalResults, ftsResults, variantEmbeddings] = await Promise.all([
+  const [originalResults, ftsResults] = await Promise.all([
     runVectorSearch(originalEmbedding),
     runFtsSearch(query),
-    Promise.all(
-      validVariants.map((variant) => generateEmbedding(variant, timing)),
-    ),
   ]);
 
-  // Step 3: Search with variant embeddings and FTS variant queries in parallel
-  const [variantResults, ftsVariantResults] = await (timing
-    ? withTiming(timing, "db_search_variants", () =>
-        Promise.all([
+  let validVariants: string[] = [];
+  let variantResults: Array<typeof originalResults> = [];
+  let ftsVariantResults: Array<typeof ftsResults> = [];
+  let allResults = [originalResults, ftsResults];
+
+  if (
+    new Set(allResults.flat().map((row) => row.id)).size < Math.min(limit, 3)
+  ) {
+    const queryVariants = await generateQueryVariants(query, timing);
+    validVariants = queryVariants.filter((v) => v && v.trim().length > 0);
+    const variantEmbeddings = await Promise.all(
+      validVariants.map((variant) => generateEmbedding(variant, timing)),
+    );
+    [variantResults, ftsVariantResults] = await (timing
+      ? withTiming(timing, "db_search_variants", () =>
+          Promise.all([
+            Promise.all(variantEmbeddings.map((emb) => runVectorSearch(emb))),
+            Promise.all(validVariants.map((variant) => runFtsSearch(variant))),
+          ]),
+        )
+      : Promise.all([
           Promise.all(variantEmbeddings.map((emb) => runVectorSearch(emb))),
           Promise.all(validVariants.map((variant) => runFtsSearch(variant))),
-        ]),
-      )
-    : Promise.all([
-        Promise.all(variantEmbeddings.map((emb) => runVectorSearch(emb))),
-        Promise.all(validVariants.map((variant) => runFtsSearch(variant))),
-      ]));
+        ]));
+    allResults = [
+      originalResults,
+      ...variantResults,
+      ftsResults,
+      ...ftsVariantResults,
+    ];
+  }
 
   // Combine all results via Reciprocal Rank Fusion (RRF)
-  const allResults = [
-    originalResults,
-    ...variantResults,
-    ftsResults,
-    ...ftsVariantResults,
-  ];
   const fusedScores = new Map<
     string,
     {
