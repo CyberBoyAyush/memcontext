@@ -292,8 +292,8 @@ type Mode = "mcp" | "api";
 const mcpSteps = [
   {
     num: "01",
-    title: "Drop the config",
-    body: "into Claude Code, Cursor, Codex or any MCP client.",
+    title: "Connect in one click",
+    body: "with Claude over OAuth — no key to paste — or drop the config into Cursor, Codex, or any MCP client.",
   },
   {
     num: "02",

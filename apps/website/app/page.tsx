@@ -4,6 +4,7 @@ import {
   StatsBar,
   LaunchVideo,
   Features,
+  ContextVault,
   MemoryPipeline,
   UseCases,
   HowItWorks,
@@ -20,6 +21,7 @@ export default function Home() {
         <Hero />
         {/* <StatsBar /> */}
         <Features />
+        <ContextVault />
         <MemoryPipeline />
         <HowItWorks />
         <UseCases />
