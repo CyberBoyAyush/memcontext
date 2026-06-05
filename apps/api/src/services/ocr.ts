@@ -81,7 +81,13 @@ export async function extractDocumentWithOcr(params: {
       model: env.MISTRAL_OCR_MODEL,
       document: getOcrDocument(params),
       table_format: "markdown",
+      // We only need extracted text/markdown, never the images. Setting
+      // image_limit to 0 tells Mistral to skip image extraction entirely.
+      // This is required for .docx files: with images present and
+      // include_image_base64 disabled, Mistral returns a 400 (code 3051)
+      // unless image_limit is 0.
       include_image_base64: false,
+      image_limit: 0,
     }),
     signal: AbortSignal.timeout(120_000),
   });
