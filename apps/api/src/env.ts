@@ -54,9 +54,7 @@ const envSchema = z.object({
   // Email auth
   RESEND_API_KEY: z.string().min(1, "RESEND_API_KEY is required"),
   EMAIL_FROM: z.string().min(1, "EMAIL_FROM is required"),
-  TURNSTILE_SECRET_KEY: z
-    .string()
-    .min(1, "TURNSTILE_SECRET_KEY is required"),
+  TURNSTILE_SECRET_KEY: z.string().min(1, "TURNSTILE_SECRET_KEY is required"),
 
   // OAuth Providers
   GOOGLE_CLIENT_ID: z.string().min(1, "GOOGLE_CLIENT_ID is required"),
@@ -74,6 +72,7 @@ const envSchema = z.object({
     .default("test_mode"),
   DODO_PRODUCT_HOBBY: z.string().min(1, "DODO_PRODUCT_HOBBY is required"),
   DODO_PRODUCT_PRO: z.string().min(1, "DODO_PRODUCT_PRO is required"),
+  DODO_PRODUCT_ULTIMATE: z.string().optional(),
 
   // Cloudflare R2 document storage
   R2_ACCOUNT_ID: z.string().optional(),

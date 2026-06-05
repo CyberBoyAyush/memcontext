@@ -38,6 +38,7 @@ async function invalidateUserCache(userId: string): Promise<void> {
 export function mapProductToPlan(productId: string): PlanType {
   if (productId === env.DODO_PRODUCT_HOBBY) return "hobby";
   if (productId === env.DODO_PRODUCT_PRO) return "pro";
+  if (productId === env.DODO_PRODUCT_ULTIMATE) return "ultimate";
   return "free";
 }
 

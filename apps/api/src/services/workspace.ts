@@ -9,6 +9,7 @@ import {
 import { user as userTable } from "../db/auth-schema.js";
 import { env } from "../env.js";
 import { sendAuthEmail } from "../lib/email.js";
+import { checkWorkspaceLimit } from "./subscription.js";
 
 export type WorkspaceRole = "owner" | "admin" | "member" | "viewer";
 export type InvitableWorkspaceRole = Exclude<WorkspaceRole, "owner">;
@@ -43,6 +44,13 @@ export async function listWorkspaces(userId: string) {
 }
 
 export async function createWorkspace(userId: string, name: string) {
+  const limitCheck = await checkWorkspaceLimit(userId);
+  if (!limitCheck.allowed) {
+    throw new Error(
+      `Workspace limit exceeded. Current: ${limitCheck.current}, Limit: ${limitCheck.limit}. Upgrade your plan to create more workspaces.`,
+    );
+  }
+
   const baseSlug = slugifyWorkspaceName(name);
   const suffix = randomBytes(3).toString("hex");
 

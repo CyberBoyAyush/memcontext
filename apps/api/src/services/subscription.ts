@@ -1,4 +1,11 @@
-import { db, subscriptions, PLAN_LIMITS, memorySources } from "../db/index.js";
+import {
+  db,
+  subscriptions,
+  PLAN_LIMITS,
+  CONTEXT_VAULT_LIMITS,
+  memorySources,
+  workspaces,
+} from "../db/index.js";
 import type { PlanType, SubscriptionStatus } from "../db/schema.js";
 import { and, eq, inArray, sql } from "drizzle-orm";
 
@@ -33,10 +40,23 @@ export interface MemoryLimitCheck {
   plan: PlanType;
 }
 
+export type ContextLimitKind = "workspaces" | "documents";
+
+export interface ContextLimitCheck {
+  allowed: boolean;
+  current: number;
+  limit: number;
+  plan: PlanType;
+}
+
 export interface SubscriptionData {
   plan: PlanType;
   memoryCount: number;
   memoryLimit: number;
+  contextDocumentsCount: number;
+  contextDocumentsLimit: number;
+  workspaceCount: number;
+  workspaceLimit: number;
   status: SubscriptionStatus;
   dodoCustomerId: string | null;
   dodoSubscriptionId: string | null;
@@ -102,6 +122,51 @@ export async function checkMemoryLimit(
   };
 }
 
+export async function checkWorkspaceLimit(
+  userId: string,
+): Promise<ContextLimitCheck> {
+  const sub = await getOrCreateSubscription(userId);
+  const plan = sub.plan as PlanType;
+  const limit = CONTEXT_VAULT_LIMITS[plan].workspaces;
+  const [usage] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(workspaces)
+    .where(eq(workspaces.createdByUserId, userId));
+  const current = usage?.count ?? 0;
+
+  return {
+    allowed: current < limit,
+    current,
+    limit,
+    plan,
+  };
+}
+
+export async function checkContextDocumentLimit(
+  userId: string,
+): Promise<ContextLimitCheck> {
+  const sub = await getOrCreateSubscription(userId);
+  const plan = sub.plan as PlanType;
+  const limit = CONTEXT_VAULT_LIMITS[plan].documents;
+  const [usage] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(memorySources)
+    .where(
+      and(
+        eq(memorySources.userId, userId),
+        sql`${memorySources.workspaceId} IS NOT NULL`,
+      ),
+    );
+  const current = usage?.count ?? 0;
+
+  return {
+    allowed: current < limit,
+    current,
+    limit,
+    plan,
+  };
+}
+
 export async function incrementMemoryCount(
   userId: string,
   tx?: Transaction,
@@ -150,10 +215,20 @@ export async function getSubscriptionData(
   userId: string,
 ): Promise<SubscriptionData> {
   const sub = await getOrCreateSubscription(userId);
+  const plan = sub.plan as PlanType;
+  const [workspaceUsage, documentUsage] = await Promise.all([
+    checkWorkspaceLimit(userId),
+    checkContextDocumentLimit(userId),
+  ]);
+
   return {
-    plan: sub.plan as PlanType,
+    plan,
     memoryCount: sub.memoryCount,
     memoryLimit: sub.memoryLimit,
+    contextDocumentsCount: documentUsage.current,
+    contextDocumentsLimit: CONTEXT_VAULT_LIMITS[plan].documents,
+    workspaceCount: workspaceUsage.current,
+    workspaceLimit: CONTEXT_VAULT_LIMITS[plan].workspaces,
     status: sub.status as SubscriptionStatus,
     dodoCustomerId: sub.dodoCustomerId,
     dodoSubscriptionId: sub.dodoSubscriptionId,

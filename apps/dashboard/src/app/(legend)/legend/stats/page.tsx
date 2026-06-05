@@ -10,6 +10,7 @@ const planColors: Record<string, { bg: string; bar: string }> = {
   free: { bg: "bg-gray-500/10", bar: "bg-gray-500" },
   hobby: { bg: "bg-blue-500/10", bar: "bg-blue-500" },
   pro: { bg: "bg-purple-500/10", bar: "bg-purple-500" },
+  ultimate: { bg: "bg-amber-500/10", bar: "bg-amber-500" },
 };
 
 function StatCard({
@@ -60,7 +61,7 @@ function PlanBreakdown({
   totalUsers: number;
   loading?: boolean;
 }) {
-  const plans = ["free", "hobby", "pro"];
+  const plans = ["free", "hobby", "pro", "ultimate"];
 
   return (
     <Card>

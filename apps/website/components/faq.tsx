@@ -1,14 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  ChevronDown,
-  ArrowRight,
-  Mail,
-  MessageCircle,
-  XIcon,
-  X,
-} from "lucide-react";
+import { ChevronDown, ArrowRight } from "lucide-react";
 import { FaXTwitter } from "react-icons/fa6";
 import { BsGithub } from "react-icons/bs";
 
@@ -35,7 +28,15 @@ const faqs = [
   },
   {
     q: "Is there a free plan?",
-    a: "Yes. The free plan includes 300 memories. Paid plans start at hobby tier with 2,000 memories and go up to pro with 10,000. Check the pricing page for current details.",
+    a: "Yes. The free plan includes 300 memories, 1 workspace, and 5 Context Vault documents. Paid plans add more memories, workspaces, and document capacity, with Pro marked as the recommended plan.",
+  },
+  {
+    q: "Do Context Vault documents count toward memory limits?",
+    a: "No. Personal memories and Context Vault documents have separate limits. Extracted document memories are managed under your Context Vault document allowance.",
+  },
+  {
+    q: "Is memory retrieval unlimited?",
+    a: "Yes. Plans do not have a fixed retrieval quota. Search endpoints still use rate limits to protect service reliability.",
   },
 ];
 

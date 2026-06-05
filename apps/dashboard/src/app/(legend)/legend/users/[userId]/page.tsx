@@ -38,12 +38,14 @@ const plans: { value: PlanType; label: string; limit: number }[] = [
   { value: "free", label: "Free", limit: 300 },
   { value: "hobby", label: "Hobby", limit: 2000 },
   { value: "pro", label: "Pro", limit: 10000 },
+  { value: "ultimate", label: "Ultimate", limit: 100000 },
 ];
 
 const planColors: Record<string, string> = {
   free: "bg-gray-500/10 text-gray-500 border-gray-500/20",
   hobby: "bg-blue-500/10 text-blue-500 border-blue-500/20",
   pro: "bg-purple-500/10 text-purple-500 border-purple-500/20",
+  ultimate: "bg-amber-500/10 text-amber-500 border-amber-500/20",
 };
 
 function PlanSelect({

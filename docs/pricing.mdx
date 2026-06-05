@@ -1,0 +1,41 @@
+---
+title: "Pricing and Limits"
+description: "Plan limits for memories, workspaces, Context Vault documents, retrieval, SDK, and API access."
+---
+
+MemContext plans limit how much durable context you can store. Memory retrieval is not capped by plan, though API endpoints still use rate limits to keep the service reliable.
+
+## Plans
+
+| Plan     | Price      | Memories | Workspaces | Context Vault documents |
+| -------- | ---------- | -------- | ---------- | ----------------------- |
+| Free     | $0/month   | 300      | 1          | 5                       |
+| Hobby    | $20/month  | 2K       | 5          | 25                      |
+| Pro      | $50/month  | 10K      | 10         | 100                     |
+| Ultimate | $100/month | 100K     | 50         | 500                     |
+
+Pro is the recommended plan for serious builders and small teams. Ultimate is for power users, agencies, and teams running larger knowledge bases.
+
+## What Counts
+
+**Memories** are saved personal or application memories created through MCP, the REST API, the SDK, or the dashboard.
+
+**Workspaces** are Context Vault containers for team or company knowledge.
+
+**Context Vault documents** are documents, uploads, URLs, and other source files ingested into a workspace. Extracted document memories do not count toward your personal memory limit; they are managed under your Context Vault document allowance.
+
+## Access
+
+All plans include:
+
+- SDK and API access
+- MCP integration
+- Unlimited memory retrieval by plan
+
+Search and write endpoints may still be rate limited for abuse protection and service reliability.
+
+## Upgrades and Limits
+
+When you upgrade, your new limits apply immediately after the subscription update is processed.
+
+If you downgrade, existing memories, workspaces, and Context Vault documents are preserved. You cannot add more items of a type until usage is below the new plan limit.

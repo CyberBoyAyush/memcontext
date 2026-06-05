@@ -25,6 +25,26 @@ export const PLAN_LIMITS = {
   free: 300,
   hobby: 2000,
   pro: 10000,
+  ultimate: 100000,
+} as const;
+
+export const CONTEXT_VAULT_LIMITS = {
+  free: {
+    workspaces: 1,
+    documents: 5,
+  },
+  hobby: {
+    workspaces: 5,
+    documents: 25,
+  },
+  pro: {
+    workspaces: 10,
+    documents: 100,
+  },
+  ultimate: {
+    workspaces: 50,
+    documents: 500,
+  },
 } as const;
 
 export type PlanType = keyof typeof PLAN_LIMITS;

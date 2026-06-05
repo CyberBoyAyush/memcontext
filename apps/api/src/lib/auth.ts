@@ -219,6 +219,9 @@ export const auth: AuthWithMcp = betterAuth({
           products: [
             { productId: env.DODO_PRODUCT_HOBBY, slug: "hobby" },
             { productId: env.DODO_PRODUCT_PRO, slug: "pro" },
+            ...(env.DODO_PRODUCT_ULTIMATE
+              ? [{ productId: env.DODO_PRODUCT_ULTIMATE, slug: "ultimate" }]
+              : []),
           ],
           successUrl: `${env.DASHBOARD_URL}/subscription?success=true`,
           authenticatedUsersOnly: true,
