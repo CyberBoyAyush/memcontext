@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import {
   Buildings,
-  CaretDown,
   Check,
   Copy,
   Plus,
@@ -15,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
+import { ThemedSelect } from "@/components/ui/themed-select";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
 import {
@@ -22,6 +22,7 @@ import {
   useInviteWorkspaceMember,
   useRemoveWorkspaceMember,
   useRevokeWorkspaceInvitation,
+  useUpdateWorkspaceBillingOwner,
   useUpdateWorkspaceMember,
   workspaceTeamQueryOptions,
   workspacesQueryOptions,
@@ -41,6 +42,7 @@ const inputClass =
   "h-10 w-full rounded-lg border border-border bg-surface-elevated/50 px-3 text-sm transition-colors placeholder:text-foreground-subtle focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20";
 
 interface SubscriptionData {
+  plan: string;
   workspaceCount: number;
   workspaceLimit: number;
 }
@@ -60,6 +62,16 @@ function canManageMember(
   return managerRole === "admin" && targetRole !== "admin";
 }
 
+function formatPlanName(plan?: string) {
+  if (!plan) return "Your current plan";
+  return `${plan.charAt(0).toUpperCase()}${plan.slice(1)} plan`;
+}
+
+function workspaceTierLabel(workspace: { billingOwnerPlan?: string | null }) {
+  const plan = workspace.billingOwnerPlan ?? "free";
+  return `${plan.charAt(0).toUpperCase()}${plan.slice(1)} Workspace`;
+}
+
 export function WorkspacesSection({ embedded }: { embedded?: boolean } = {}) {
   const toast = useToast();
   const [workspaceName, setWorkspaceName] = useState("");
@@ -73,6 +85,7 @@ export function WorkspacesSection({ embedded }: { embedded?: boolean } = {}) {
   const { data: workspaceData } = useQuery(workspacesQueryOptions());
   const createWorkspace = useCreateWorkspace();
   const inviteMember = useInviteWorkspaceMember();
+  const updateBillingOwner = useUpdateWorkspaceBillingOwner();
   const updateMember = useUpdateWorkspaceMember();
   const removeMember = useRemoveWorkspaceMember();
   const revokeInvitation = useRevokeWorkspaceInvitation();
@@ -171,6 +184,23 @@ export function WorkspacesSection({ embedded }: { embedded?: boolean } = {}) {
     }
   }
 
+  async function handleUpdateBillingOwner(nextUserId: string) {
+    if (!activeWorkspaceId || !nextUserId) return;
+    try {
+      await updateBillingOwner.mutateAsync({
+        workspaceId: activeWorkspaceId,
+        userId: nextUserId,
+      });
+      toast.success("Billing owner updated");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not update billing owner",
+      );
+    }
+  }
+
   async function handleRemoveMember(memberId: string) {
     try {
       await removeMember.mutateAsync({
@@ -205,7 +235,8 @@ export function WorkspacesSection({ embedded }: { embedded?: boolean } = {}) {
       <div>
         <h3 className="text-sm font-semibold">Create a workspace</h3>
         <p className="mt-0.5 text-xs text-foreground-subtle">
-          Each workspace is an isolated knowledge brain for a team.
+          Each workspace is isolated. Your plan controls how many workspaces you
+          can own.
         </p>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           <input
@@ -231,7 +262,8 @@ export function WorkspacesSection({ embedded }: { embedded?: boolean } = {}) {
         </div>
         {workspaceLimitReached && (
           <div className="mt-3 rounded-lg border border-accent/20 bg-accent/10 px-3 py-2 text-xs text-accent">
-            Your plan includes {subscription.workspaceLimit} workspace
+            {formatPlanName(subscription.plan)} includes{" "}
+            {subscription.workspaceLimit} workspace
             {subscription.workspaceLimit === 1 ? "" : "s"}.{" "}
             <Link href="/subscription" className="font-semibold underline">
               Upgrade your plan
@@ -266,7 +298,7 @@ export function WorkspacesSection({ embedded }: { embedded?: boolean } = {}) {
                         {workspace.name}
                       </p>
                       <p className="truncate text-xs text-foreground-subtle">
-                        {workspace.slug}
+                        {workspace.slug} · {workspaceTierLabel(workspace)}
                       </p>
                     </div>
                   </div>
@@ -315,25 +347,15 @@ export function WorkspacesSection({ embedded }: { embedded?: boolean } = {}) {
                     : "Only owners and admins can invite members."}
                 </p>
               </div>
-              <div className="relative shrink-0">
-                <select
-                  value={activeWorkspaceId}
-                  onChange={(event) =>
-                    setSelectedWorkspaceId(event.target.value)
-                  }
-                  className="h-9 w-40 appearance-none rounded-lg border border-border bg-surface pl-3 pr-8 text-xs font-medium transition-colors hover:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20"
-                >
-                  {workspaces.map((workspace) => (
-                    <option key={workspace.id} value={workspace.id}>
-                      {workspace.name}
-                    </option>
-                  ))}
-                </select>
-                <CaretDown
-                  className="pointer-events-none absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-foreground-muted"
-                  weight="bold"
-                />
-              </div>
+              <ThemedSelect
+                value={activeWorkspaceId}
+                onChange={setSelectedWorkspaceId}
+                className="w-44 shrink-0"
+                options={workspaces.map((workspace) => ({
+                  value: workspace.id,
+                  label: workspace.name,
+                }))}
+              />
             </div>
 
             {/* Role picker */}
@@ -416,6 +438,32 @@ export function WorkspacesSection({ embedded }: { embedded?: boolean } = {}) {
               invites.
             </p>
 
+            {teamData?.members.length ? (
+              <div className="mt-3 rounded-xl border border-border bg-surface-elevated/30 p-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold">Billing owner</p>
+                    <p className="mt-0.5 text-[11px] text-foreground-subtle">
+                      Workspace documents use this member&apos;s plan limits.
+                    </p>
+                  </div>
+                  <ThemedSelect
+                    value={teamData.billingOwnerUserId ?? ""}
+                    disabled={!canManageTeam || updateBillingOwner.isPending}
+                    onChange={handleUpdateBillingOwner}
+                    align="right"
+                    className="w-full sm:w-52"
+                    options={teamData.members
+                      .filter((member) => member.role !== "viewer")
+                      .map((member) => ({
+                        value: member.userId,
+                        label: member.name || member.email,
+                      }))}
+                  />
+                </div>
+              </div>
+            ) : null}
+
             <div className="mt-3 divide-y divide-border rounded-xl border border-border">
               {teamLoading ? (
                 <div className="p-3 text-sm text-foreground-subtle">
@@ -442,24 +490,24 @@ export function WorkspacesSection({ embedded }: { embedded?: boolean } = {}) {
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <select
+                        <ThemedSelect
                           value={member.role}
                           disabled={!manageable || updateMember.isPending}
-                          onChange={(event) =>
+                          capitalize
+                          className="w-32"
+                          onChange={(next) =>
                             handleUpdateMemberRole(
                               member.id,
-                              event.target.value as InvitableWorkspaceRole,
+                              next as InvitableWorkspaceRole,
                             )
                           }
-                          className="h-8 rounded-lg border border-border bg-surface px-2 text-xs capitalize disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <option value="owner" disabled>
-                            Owner
-                          </option>
-                          <option value="admin">Admin</option>
-                          <option value="member">Member</option>
-                          <option value="viewer">Viewer</option>
-                        </select>
+                          options={[
+                            { value: "owner", label: "Owner", disabled: true },
+                            { value: "admin", label: "Admin" },
+                            { value: "member", label: "Member" },
+                            { value: "viewer", label: "Viewer" },
+                          ]}
+                        />
                         <button
                           type="button"
                           disabled={!manageable || removeMember.isPending}

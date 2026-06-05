@@ -5,7 +5,10 @@ import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Buildings, CaretDown, Check, User } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
-import { workspacesQueryOptions } from "@/lib/queries/company-brain";
+import {
+  workspacesQueryOptions,
+  type Workspace,
+} from "@/lib/queries/company-brain";
 
 export type MemorySource =
   | { type: "user" }
@@ -15,6 +18,11 @@ interface MemorySourceSwitcherProps {
   value: MemorySource;
   onChange: (source: MemorySource) => void;
   className?: string;
+}
+
+function workspaceTierLabel(workspace: Workspace) {
+  const plan = workspace.billingOwnerPlan ?? "free";
+  return `${plan.charAt(0).toUpperCase()}${plan.slice(1)} Workspace`;
 }
 
 /**
@@ -88,7 +96,10 @@ export function MemorySourceSwitcher({
         typeof document !== "undefined" &&
         createPortal(
           <>
-            <div className="fixed inset-0 z-[60]" onClick={() => setOpen(false)} />
+            <div
+              className="fixed inset-0 z-[60]"
+              onClick={() => setOpen(false)}
+            />
             <div
               style={{ top: coords.top, left: coords.left }}
               className="fixed z-[61] w-64 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border bg-surface-elevated shadow-lg animate-scale-in"
@@ -134,8 +145,7 @@ export function MemorySourceSwitcher({
                   <div className="max-h-60 overflow-y-auto scrollbar-hide">
                     {workspaces.map((workspace) => {
                       const active =
-                        value.type === "workspace" &&
-                        value.id === workspace.id;
+                        value.type === "workspace" && value.id === workspace.id;
                       return (
                         <button
                           key={workspace.id}
@@ -159,7 +169,14 @@ export function MemorySourceSwitcher({
                               className="h-4 w-4 text-accent shrink-0"
                               weight="duotone"
                             />
-                            <span className="truncate">{workspace.name}</span>
+                            <span className="flex min-w-0 flex-col">
+                              <span className="truncate leading-tight">
+                                {workspace.name}
+                              </span>
+                              <span className="truncate text-[10px] leading-tight text-foreground-subtle">
+                                {workspaceTierLabel(workspace)}
+                              </span>
+                            </span>
                           </span>
                           {active && (
                             <Check

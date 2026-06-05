@@ -221,6 +221,7 @@ export interface Workspace {
   name: string;
   slug: string;
   role: WorkspaceRole;
+  billingOwnerPlan: PlanType | null;
   createdAt: Date;
 }
 

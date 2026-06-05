@@ -178,3 +178,10 @@ In the Memories page workspace mode, each memory row shows its source document (
 ## Context Vault Plan Limits
 
 Current Free/Hobby/Pro `PLAN_LIMITS` apply to personal/user memories. Context Vault extracted document memories are saved with `memoryType = "document"` and do not increment `subscriptions.memory_count` during the beta. Public docs and pricing copy should describe the 300 / 2,000 / 10,000 limits as personal memory limits until separate Context Vault limits for documents, storage, OCR/scraping, and extracted facts are implemented.
+
+<!-- Added: 2026-06-05 -->
+## Themed Dropdowns (Dashboard)
+
+Do not use native `<select>` elements in the dashboard — they render OS-native menus that break the dark theme. Use the reusable `ThemedSelect` component at `apps/dashboard/src/components/ui/themed-select.tsx` instead. It matches the app dropdown aesthetic (button with border-border/bg-surface + CaretDown, absolute menu with bg-surface-elevated, animate-scale-in, Check marks, click-outside overlay), mirroring `scope-picker.tsx`. Props: value, options ({value,label,disabled?}), onChange, disabled, align ("left"|"right"), capitalize, className. The workspaces management UI (`components/settings/workspaces-section.tsx`) uses it for the workspace picker, billing-owner picker, and member-role picker.
+
+The Manage Workspaces dialog (`ManageWorkspacesDialog` in `app/(dashboard)/context-vault/page.tsx`) uses a landscape width of `max-w-3xl`.

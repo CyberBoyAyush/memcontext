@@ -2,6 +2,7 @@ import { and, asc, eq, gt, isNull, sql } from "drizzle-orm";
 import { createHash, randomBytes } from "node:crypto";
 import {
   db,
+  subscriptions,
   workspaceInvitations,
   workspaceMembers,
   workspaces,
@@ -33,10 +34,15 @@ export async function listWorkspaces(userId: string) {
       name: workspaces.name,
       slug: workspaces.slug,
       role: workspaceMembers.role,
+      billingOwnerPlan: subscriptions.plan,
       createdAt: workspaces.createdAt,
     })
     .from(workspaceMembers)
     .innerJoin(workspaces, eq(workspaceMembers.workspaceId, workspaces.id))
+    .leftJoin(
+      subscriptions,
+      eq(workspaces.billingOwnerUserId, subscriptions.userId),
+    )
     .where(eq(workspaceMembers.userId, userId))
     .orderBy(workspaces.createdAt);
 
@@ -61,6 +67,7 @@ export async function createWorkspace(userId: string, name: string) {
         name: name.trim(),
         slug: `${baseSlug}-${suffix}`,
         createdByUserId: userId,
+        billingOwnerUserId: userId,
         updatedAt: new Date(),
       })
       .returning();
@@ -277,6 +284,14 @@ export async function listWorkspaceTeam(params: {
     params.workspaceId,
   );
 
+  const [workspace] = await db
+    .select({
+      billingOwnerUserId: workspaces.billingOwnerUserId,
+    })
+    .from(workspaces)
+    .where(eq(workspaces.id, params.workspaceId))
+    .limit(1);
+
   const members = await db
     .select({
       id: workspaceMembers.id,
@@ -314,6 +329,7 @@ export async function listWorkspaceTeam(params: {
 
   return {
     currentUserRole: membership.role,
+    billingOwnerUserId: workspace?.billingOwnerUserId ?? null,
     members,
     invitations,
   };
@@ -331,6 +347,49 @@ function canManageRole(managerRole: string, targetRole: string) {
   if (targetRole === "owner") return false;
   if (managerRole === "owner") return true;
   return targetRole !== "admin";
+}
+
+export async function updateWorkspaceBillingOwner(params: {
+  userId: string;
+  workspaceId: string;
+  billingOwnerUserId: string;
+}) {
+  await requireWorkspaceManager(params.userId, params.workspaceId);
+
+  const [target] = await db
+    .select({
+      userId: workspaceMembers.userId,
+      role: workspaceMembers.role,
+    })
+    .from(workspaceMembers)
+    .where(
+      and(
+        eq(workspaceMembers.workspaceId, params.workspaceId),
+        eq(workspaceMembers.userId, params.billingOwnerUserId),
+      ),
+    )
+    .limit(1);
+
+  if (!target) {
+    throw new Error("Billing owner must be a workspace member");
+  }
+  if (target.role === "viewer") {
+    throw new Error("Viewers cannot be billing owners");
+  }
+
+  const [workspace] = await db
+    .update(workspaces)
+    .set({
+      billingOwnerUserId: params.billingOwnerUserId,
+      updatedAt: new Date(),
+    })
+    .where(eq(workspaces.id, params.workspaceId))
+    .returning({
+      id: workspaces.id,
+      billingOwnerUserId: workspaces.billingOwnerUserId,
+    });
+
+  return { workspace };
 }
 
 export async function updateWorkspaceMemberRole(params: {
@@ -366,6 +425,18 @@ export async function updateWorkspaceMemberRole(params: {
   }
   if (!canManageRole(manager.role, target.role)) {
     throw new Error("You cannot manage this workspace member");
+  }
+  if (params.role === "viewer") {
+    const [workspace] = await db
+      .select({ billingOwnerUserId: workspaces.billingOwnerUserId })
+      .from(workspaces)
+      .where(eq(workspaces.id, params.workspaceId))
+      .limit(1);
+    if (workspace?.billingOwnerUserId === target.userId) {
+      throw new Error(
+        "Transfer billing ownership before making this member a viewer",
+      );
+    }
   }
 
   const [member] = await db
@@ -414,6 +485,14 @@ export async function removeWorkspaceMember(params: {
   }
   if (!canManageRole(manager.role, target.role)) {
     throw new Error("You cannot manage this workspace member");
+  }
+  const [workspace] = await db
+    .select({ billingOwnerUserId: workspaces.billingOwnerUserId })
+    .from(workspaces)
+    .where(eq(workspaces.id, params.workspaceId))
+    .limit(1);
+  if (workspace?.billingOwnerUserId === target.userId) {
+    throw new Error("Transfer billing ownership before removing this member");
   }
 
   await db

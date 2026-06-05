@@ -311,10 +311,14 @@ export const workspaces = pgTable(
     name: text("name").notNull(),
     slug: text("slug").notNull().unique(),
     createdByUserId: text("created_by_user_id").notNull(),
+    billingOwnerUserId: text("billing_owner_user_id").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
-  (table) => [index("workspaces_created_by_idx").on(table.createdByUserId)],
+  (table) => [
+    index("workspaces_created_by_idx").on(table.createdByUserId),
+    index("workspaces_billing_owner_idx").on(table.billingOwnerUserId),
+  ],
 );
 
 export const workspaceMembers = pgTable(

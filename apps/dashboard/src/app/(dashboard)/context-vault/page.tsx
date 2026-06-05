@@ -1324,7 +1324,7 @@ function ManageWorkspacesDialog({ onClose }: { onClose: () => void }) {
         onClick={onClose}
       />
 
-      <div className="relative flex max-h-[85vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl animate-scale-in">
+      <div className="relative flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl animate-scale-in">
         <div className="flex items-center justify-between gap-4 border-b border-border p-5">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/10">
@@ -1345,7 +1345,7 @@ function ManageWorkspacesDialog({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6">
           <WorkspacesSection embedded />
         </div>
       </div>

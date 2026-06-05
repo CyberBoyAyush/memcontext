@@ -50,6 +50,13 @@
       "when": 1780272000000,
       "tag": "0006_context_vault_progress",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1780358400000,
+      "tag": "0007_workspace_billing_owner",
+      "breakpoints": true
     }
   ]
 }

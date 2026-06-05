@@ -21,6 +21,11 @@ interface WorkspaceSelectProps {
   className?: string;
 }
 
+function workspaceTierLabel(workspace?: Workspace) {
+  const plan = workspace?.billingOwnerPlan ?? "free";
+  return `${plan.charAt(0).toUpperCase()}${plan.slice(1)} Workspace`;
+}
+
 /**
  * Themed workspace picker for the Context Vault. Renders its menu in a portal
  * so it is never clipped, matching the dashboard dropdown aesthetic.
@@ -39,6 +44,7 @@ export function WorkspaceSelect({
 
   const active = workspaces.find((workspace) => workspace.id === value);
   const label = active?.name ?? "No workspace yet";
+  const tierLabel = active ? workspaceTierLabel(active) : null;
 
   useLayoutEffect(() => {
     if (!open || !triggerRef.current) return;
@@ -79,7 +85,14 @@ export function WorkspaceSelect({
             className="h-4 w-4 shrink-0 text-accent"
             weight="duotone"
           />
-          <span className="truncate">{label}</span>
+          <span className="flex min-w-0 flex-col items-start">
+            <span className="truncate leading-tight">{label}</span>
+            {tierLabel && (
+              <span className="truncate text-[10px] font-normal leading-tight text-foreground-subtle">
+                {tierLabel}
+              </span>
+            )}
+          </span>
         </span>
         <CaretDown
           className={cn(
@@ -99,7 +112,11 @@ export function WorkspaceSelect({
               onClick={() => setOpen(false)}
             />
             <div
-              style={{ top: coords.top, left: coords.left, width: coords.width }}
+              style={{
+                top: coords.top,
+                left: coords.left,
+                width: coords.width,
+              }}
               className="fixed z-[61] min-w-56 overflow-hidden rounded-xl border border-border bg-surface-elevated shadow-lg animate-scale-in"
             >
               <div className="p-1.5">
@@ -129,7 +146,14 @@ export function WorkspaceSelect({
                             className="h-4 w-4 shrink-0 text-accent"
                             weight="duotone"
                           />
-                          <span className="truncate">{workspace.name}</span>
+                          <span className="flex min-w-0 flex-col">
+                            <span className="truncate leading-tight">
+                              {workspace.name}
+                            </span>
+                            <span className="truncate text-[10px] leading-tight text-foreground-subtle">
+                              {workspaceTierLabel(workspace)}
+                            </span>
+                          </span>
                         </span>
                         {workspace.id === value && (
                           <Check

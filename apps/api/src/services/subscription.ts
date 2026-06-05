@@ -16,6 +16,10 @@ interface CheckMemoryLimitOptions {
   tx?: Transaction;
 }
 
+interface CheckContextDocumentLimitOptions {
+  workspaceId?: string;
+}
+
 async function lockSubscriptionRow(
   userId: string,
   tx?: Transaction,
@@ -144,19 +148,28 @@ export async function checkWorkspaceLimit(
 
 export async function checkContextDocumentLimit(
   userId: string,
+  options: CheckContextDocumentLimitOptions = {},
 ): Promise<ContextLimitCheck> {
-  const sub = await getOrCreateSubscription(userId);
+  let billingUserId = userId;
+
+  if (options.workspaceId) {
+    const [workspace] = await db
+      .select({ billingOwnerUserId: workspaces.billingOwnerUserId })
+      .from(workspaces)
+      .where(eq(workspaces.id, options.workspaceId))
+      .limit(1);
+
+    billingUserId = workspace?.billingOwnerUserId ?? userId;
+  }
+
+  const sub = await getOrCreateSubscription(billingUserId);
   const plan = sub.plan as PlanType;
   const limit = CONTEXT_VAULT_LIMITS[plan].documents;
   const [usage] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(memorySources)
-    .where(
-      and(
-        eq(memorySources.userId, userId),
-        sql`${memorySources.workspaceId} IS NOT NULL`,
-      ),
-    );
+    .innerJoin(workspaces, eq(memorySources.workspaceId, workspaces.id))
+    .where(eq(workspaces.billingOwnerUserId, billingUserId));
   const current = usage?.count ?? 0;
 
   return {

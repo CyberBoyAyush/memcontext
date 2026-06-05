@@ -20,9 +20,21 @@ Pro is the recommended plan for serious builders and small teams. Ultimate is fo
 
 **Memories** are saved personal or application memories created through MCP, the REST API, the SDK, or the dashboard.
 
-**Workspaces** are Context Vault containers for team or company knowledge.
+**Workspaces** are Context Vault containers for team or company knowledge. The
+workspace limit is the number of workspaces your account can own and bill.
 
-**Context Vault documents** are documents, uploads, URLs, and other source files ingested into a workspace. Extracted document memories do not count toward your personal memory limit; they are managed under your Context Vault document allowance.
+**Context Vault documents** are documents, uploads, URLs, and other source files ingested into a workspace. Extracted document memories do not count toward your personal memory limit. Workspace documents count against the workspace billing owner's Context Vault document allowance, regardless of which member uploads them.
+
+## Workspace Billing Owner
+
+Each workspace has one billing owner. By default, this is the user who created
+the workspace. Invited admins and members can add knowledge, but their uploads
+consume the workspace billing owner's Context Vault document allowance.
+
+For example, if Ayush creates a workspace on the Ultimate plan and invites
+Vranda on the Free plan, Vranda's uploads use Ayush's workspace document limit.
+If Vranda upgrades her own plan later, that does not automatically move billing
+ownership for Ayush's workspace.
 
 ## Access
 

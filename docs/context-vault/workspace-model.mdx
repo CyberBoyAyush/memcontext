@@ -8,17 +8,32 @@ search, browse, correct, or review knowledge for workspaces they belong to.
 
 ## Roles
 
-| Role | Can search | Can ingest | Can correct | Can invite | Can manage members |
-| --- | --- | --- | --- | --- | --- |
-| `owner` | Yes | Yes | Yes | Yes | Yes |
-| `admin` | Yes | Yes | Yes | Yes | Yes, except owners/admins |
-| `member` | Yes | Yes | Yes | No | No |
-| `viewer` | Yes | No | No | No | No |
+| Role     | Can search | Can ingest | Can correct | Can invite | Can manage members        |
+| -------- | ---------- | ---------- | ----------- | ---------- | ------------------------- |
+| `owner`  | Yes        | Yes        | Yes         | Yes        | Yes                       |
+| `admin`  | Yes        | Yes        | Yes         | Yes        | Yes, except owners/admins |
+| `member` | Yes        | Yes        | Yes         | No         | No                        |
+| `viewer` | Yes        | No         | No          | No         | No                        |
 
 Workspace creators become `owner`. Invitations can assign `admin`, `member`, or
 `viewer`; `owner` is not an invitable role. Invitations are emailed to the
 teammate and do not create membership until that user accepts the invite from
 the same email address.
+
+## Billing owner
+
+Each workspace has one billing owner. By default, the billing owner is the user
+who created the workspace.
+
+The billing owner's plan controls the workspace's Context Vault document
+allowance. Invited admins and members can upload documents when their role
+allows it, but those documents count against the workspace billing owner's
+allowance, not the uploader's personal plan.
+
+For example, if a workspace is owned by an Ultimate user, a Free-plan member can
+upload documents into that workspace until the owner's Context Vault document
+limit is reached. If an invited admin upgrades their own plan, that does not
+automatically transfer billing ownership for an existing workspace.
 
 ## Workspace isolation
 
