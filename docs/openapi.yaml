@@ -1050,7 +1050,7 @@ components:
         - `openclaw` - Saved via OpenClaw integration.
     Workspace:
       type: object
-      required: [id, name, slug, role, createdAt]
+      required: [id, name, slug, role, billingOwnerPlan, createdAt]
       properties:
         id:
           type: string
@@ -1062,6 +1062,11 @@ components:
         role:
           type: string
           enum: [owner, admin, member, viewer]
+        billingOwnerPlan:
+          type: string
+          nullable: true
+          enum: [free, hobby, pro, ultimate]
+          description: Plan tier of the workspace billing owner. Treat null as free.
         createdAt:
           type: string
           format: date-time

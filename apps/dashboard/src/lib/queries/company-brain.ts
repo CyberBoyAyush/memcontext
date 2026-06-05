@@ -31,6 +31,7 @@ export interface Workspace {
   name: string;
   slug: string;
   role: string;
+  billingOwnerPlan: "free" | "hobby" | "pro" | "ultimate" | null;
   createdAt: string;
 }
 
@@ -58,6 +59,7 @@ export interface WorkspaceInvitation {
 
 export interface WorkspaceTeamResponse {
   currentUserRole: WorkspaceRole;
+  billingOwnerUserId: string | null;
   members: WorkspaceMember[];
   invitations: WorkspaceInvitation[];
 }
@@ -514,6 +516,25 @@ export function useUpdateWorkspaceMember() {
         queryKey: ["workspace-team", variables.workspaceId],
       });
       queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+    },
+  });
+}
+
+export function useUpdateWorkspaceBillingOwner() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: { workspaceId: string; userId: string }) =>
+      api.patch<{
+        workspace: { id: string; billingOwnerUserId: string };
+      }>(`/api/workspaces/${data.workspaceId}/billing-owner`, {
+        userId: data.userId,
+      }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["workspace-team", variables.workspaceId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["subscription"] });
     },
   });
 }

@@ -14,6 +14,7 @@ import {
   listWorkspaces,
   removeWorkspaceMember,
   revokeWorkspaceInvitation,
+  updateWorkspaceBillingOwner,
   updateWorkspaceMemberRole,
 } from "../services/workspace.js";
 
@@ -116,6 +117,39 @@ app.get(
       throw new HTTPException(message === "Workspace not found" ? 404 : 500, {
         message,
       });
+    }
+  },
+);
+
+app.patch(
+  "/:workspaceId/billing-owner",
+  zValidator("param", workspaceIdParamSchema),
+  zValidator("json", z.object({ userId: z.string().min(1) })),
+  async (c) => {
+    const { userId } = c.get("auth");
+    const { workspaceId } = c.req.valid("param");
+    const body = c.req.valid("json");
+
+    try {
+      return c.json(
+        await updateWorkspaceBillingOwner({
+          userId,
+          workspaceId,
+          billingOwnerUserId: body.userId,
+        }),
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to update billing owner";
+      if (message === "Workspace not found") {
+        throw new HTTPException(404, { message });
+      }
+      if (message === "Billing owner must be a workspace member") {
+        throw new HTTPException(400, { message });
+      }
+      throw new HTTPException(403, { message });
     }
   },
 );

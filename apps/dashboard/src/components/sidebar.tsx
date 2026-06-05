@@ -260,7 +260,7 @@ export function Sidebar() {
           {/* Navigation */}
           <nav
             className={cn(
-              "flex-1 transition-all duration-300 p-4",
+              "flex-1 min-h-0 overflow-y-auto transition-all duration-300 p-4",
               collapsed && "md:p-2",
             )}
             aria-label="Main navigation"
@@ -390,7 +390,7 @@ export function Sidebar() {
           {/* Footer */}
           <div
             className={cn(
-              "border-t border-border space-y-3 transition-all duration-300 overflow-visible p-4",
+              "shrink-0 border-t border-border space-y-3 transition-all duration-300 overflow-visible p-4",
               collapsed && "md:p-2",
             )}
           >

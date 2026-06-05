@@ -32,7 +32,11 @@ const faqs = [
   },
   {
     q: "Do Context Vault documents count toward memory limits?",
-    a: "No. Personal memories and Context Vault documents have separate limits. Extracted document memories are managed under your Context Vault document allowance.",
+    a: "No. Personal memories and Context Vault documents have separate limits. Workspace documents count against the workspace billing owner's Context Vault document allowance.",
+  },
+  {
+    q: "Who pays for workspace documents?",
+    a: "The workspace creator is the billing owner by default. Invited admins and members can upload documents when permitted, but those uploads use the workspace billing owner's document allowance.",
   },
   {
     q: "Is memory retrieval unlimited?",

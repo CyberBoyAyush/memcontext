@@ -826,7 +826,9 @@ export async function ingestCompanyBrainDocument(
   if (membership.role === "viewer") {
     throw new Error("Viewers cannot ingest workspace documents");
   }
-  const limitCheck = await checkContextDocumentLimit(params.userId);
+  const limitCheck = await checkContextDocumentLimit(params.userId, {
+    workspaceId: params.workspaceId,
+  });
   if (!limitCheck.allowed) {
     throw new Error(
       `Context Vault document limit exceeded. Current: ${limitCheck.current}, Limit: ${limitCheck.limit}. Upgrade your plan to ingest more documents.`,

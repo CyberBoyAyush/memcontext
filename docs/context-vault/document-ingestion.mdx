@@ -47,6 +47,12 @@ possible.
 The ingest endpoint returns `202 Accepted`; processing continues in the
 background.
 
+## Document limits
+
+Context Vault document limits are enforced at the workspace billing-owner level.
+If an invited admin or member uploads a document, it still counts against the
+workspace billing owner's document allowance.
+
 ## Scope and project on ingestion
 
 Set `scope` when the document should only appear in a specific hard lane, such
