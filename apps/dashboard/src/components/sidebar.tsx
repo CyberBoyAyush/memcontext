@@ -54,6 +54,10 @@ interface SubscriptionData {
   plan: string;
   memoryCount: number;
   memoryLimit: number;
+  contextDocumentsCount: number;
+  contextDocumentsLimit: number;
+  workspaceCount: number;
+  workspaceLimit: number;
 }
 
 interface NavItem {
@@ -439,6 +443,32 @@ export function Sidebar() {
                     ? "Running low — consider upgrading"
                     : `${Math.round(100 - usagePercentage)}% of your memory quota available`}
                 </p>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div className="rounded-lg border border-border/70 bg-surface/40 px-2 py-1.5">
+                    <p className="text-[10px] text-foreground-subtle">
+                      Vault docs
+                    </p>
+                    <p className="text-xs font-semibold tabular-nums">
+                      {subscription?.contextDocumentsCount ?? 0}
+                      <span className="font-normal text-foreground-muted">
+                        {" "}
+                        / {subscription?.contextDocumentsLimit ?? 0}
+                      </span>
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border/70 bg-surface/40 px-2 py-1.5">
+                    <p className="text-[10px] text-foreground-subtle">
+                      Workspaces
+                    </p>
+                    <p className="text-xs font-semibold tabular-nums">
+                      {subscription?.workspaceCount ?? 0}
+                      <span className="font-normal text-foreground-muted">
+                        {" "}
+                        / {subscription?.workspaceLimit ?? 0}
+                      </span>
+                    </p>
+                  </div>
+                </div>
               </div>
               <Link
                 href="/subscription"

@@ -2,13 +2,13 @@
 
 import { Check, ArrowRight } from "lucide-react";
 import { GrTopCorner } from "react-icons/gr";
-import Link from "next/link";
 
 interface Plan {
   id: string;
   name: string;
   price: number;
   memories: number;
+  memoryLabel: string;
   popular?: boolean;
   features: string[];
 }
@@ -19,10 +19,13 @@ const PLANS: Plan[] = [
     name: "Free",
     price: 0,
     memories: 300,
+    memoryLabel: "300",
     features: [
       "300 memories",
-      "Limited memory retrieval",
-      "Unlimited projects",
+      "1 workspace",
+      "5 Context Vault documents",
+      "Unlimited memory retrieval",
+      "SDK and API access",
       "MCP integration",
       "Community support",
     ],
@@ -30,13 +33,15 @@ const PLANS: Plan[] = [
   {
     id: "hobby",
     name: "Hobby",
-    price: 5,
+    price: 20,
     memories: 2000,
-    popular: true,
+    memoryLabel: "2K",
     features: [
-      "2,000 memories",
+      "2K memories",
+      "5 workspaces",
+      "25 Context Vault documents",
       "Unlimited memory retrieval",
-      "Unlimited projects",
+      "SDK and API access",
       "MCP integration",
       "Priority support",
     ],
@@ -44,15 +49,37 @@ const PLANS: Plan[] = [
   {
     id: "pro",
     name: "Pro",
-    price: 15,
+    price: 50,
     memories: 10000,
+    memoryLabel: "10K",
+    popular: true,
     features: [
-      "10,000 memories",
+      "10K memories",
+      "10 workspaces",
+      "100 Context Vault documents",
       "Unlimited memory retrieval",
-      "Unlimited projects",
+      "SDK and API access",
       "MCP integration",
       "Priority support",
       "Early access to features",
+    ],
+  },
+  {
+    id: "ultimate",
+    name: "Ultimate",
+    price: 100,
+    memories: 100000,
+    memoryLabel: "100K",
+    features: [
+      "100K memories",
+      "50 workspaces",
+      "500 Context Vault documents",
+      "Unlimited memory retrieval",
+      "SDK and API access",
+      "MCP integration",
+      "Priority support",
+      "Early access to features",
+      "Fair-use scaling for large knowledge bases",
     ],
   },
 ];
@@ -317,7 +344,7 @@ function PricingCard({ plan, index }: { plan: Plan; index: number }) {
 
             {/* Memories included */}
             <p className="text-xs text-white/50 mt-1">
-              {plan.memories.toLocaleString()} memories included
+              {plan.memoryLabel} memories included
             </p>
           </div>
         </div>
@@ -561,7 +588,7 @@ export function Pricing() {
         </div>
 
         {/* Plans Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 sm:gap-6 max-w-6xl mx-auto">
           {PLANS.map((plan, index) => (
             <PricingCard key={plan.id} plan={plan} index={index} />
           ))}

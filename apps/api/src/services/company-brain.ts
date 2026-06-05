@@ -30,6 +30,7 @@ import {
 import { rerankDocuments } from "../lib/openrouter.js";
 import { saveExtractedDocumentMemory, searchMemories } from "./memory.js";
 import { requireWorkspaceMember } from "./workspace.js";
+import { checkContextDocumentLimit } from "./subscription.js";
 import { scrapeUrlWithExa } from "./exa.js";
 import { extractDocumentWithOcr } from "./ocr.js";
 import { deleteDocumentObject } from "./document-storage.js";
@@ -824,6 +825,12 @@ export async function ingestCompanyBrainDocument(
   );
   if (membership.role === "viewer") {
     throw new Error("Viewers cannot ingest workspace documents");
+  }
+  const limitCheck = await checkContextDocumentLimit(params.userId);
+  if (!limitCheck.allowed) {
+    throw new Error(
+      `Context Vault document limit exceeded. Current: ${limitCheck.current}, Limit: ${limitCheck.limit}. Upgrade your plan to ingest more documents.`,
+    );
   }
 
   const scope = normalizeScope(params.scope);

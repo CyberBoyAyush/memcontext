@@ -341,15 +341,27 @@ const CategoriesChart = memo(function CategoriesChart({
                 />
                 <XAxis
                   dataKey="category"
-                  tickLine={{ stroke: "var(--foreground-muted)", strokeWidth: 1.25 }}
+                  tickLine={{
+                    stroke: "var(--foreground-muted)",
+                    strokeWidth: 1.25,
+                  }}
                   tickMargin={12}
-                  axisLine={{ stroke: "var(--foreground-muted)", strokeWidth: 1.25 }}
+                  axisLine={{
+                    stroke: "var(--foreground-muted)",
+                    strokeWidth: 1.25,
+                  }}
                   tick={{ fontSize: 12, fill: "var(--foreground-muted)" }}
                 />
                 <YAxis
                   allowDecimals={false}
-                  tickLine={{ stroke: "var(--foreground-muted)", strokeWidth: 1.25 }}
-                  axisLine={{ stroke: "var(--foreground-muted)", strokeWidth: 1.25 }}
+                  tickLine={{
+                    stroke: "var(--foreground-muted)",
+                    strokeWidth: 1.25,
+                  }}
+                  axisLine={{
+                    stroke: "var(--foreground-muted)",
+                    strokeWidth: 1.25,
+                  }}
                   tickMargin={8}
                   width={28}
                   tick={{ fontSize: 12, fill: "var(--foreground-muted)" }}
@@ -471,7 +483,7 @@ export default function DashboardPage() {
               <div className="text-xl sm:text-3xl font-semibold mt-0.5 sm:mt-1">
                 {subLoading ? "..." : (subscription?.memoryCount ?? 0)}
                 <span className="text-xs sm:text-base font-normal text-foreground-muted">
-                  /{subscription?.memoryLimit ?? 100}
+                  /{subscription?.memoryLimit ?? 300}
                 </span>
               </div>
             </div>

@@ -5,8 +5,9 @@ import {
   Sparkles,
   Search,
   RefreshCcw,
-  Shield,
   GitBranch,
+  FolderLock,
+  FileText,
   LucideIcon,
   Plus,
 } from "lucide-react";
@@ -16,7 +17,6 @@ import { VscCopilot, VscVscode } from "react-icons/vsc";
 import { GrTopCorner } from "react-icons/gr";
 import { ReactNode } from "react";
 import { BsFillCursorFill } from "react-icons/bs";
-import { IoLockClosed, IoShield } from "react-icons/io5";
 import Image from "next/image";
 
 interface Feature {
@@ -602,30 +602,123 @@ function AutoUpdatesVisual() {
   );
 }
 
-function EncryptedPrivateVisual() {
+function ContextVaultVisual() {
   return (
-    <div className="relative w-full h-full scale-130 flex items-center justify-center overflow-hidden">
-      {/* Layered shields - outer to inner, progressively more opaque */}
+    <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+      {/* Left — stacked source documents fanning out, fading on the left edge */}
+      <div className="absolute left-1 top-1/2 -translate-y-1/2 scale-110">
+        <div className="relative w-24 h-28">
+          {/* Doc 3 — back, most faded */}
+          <div
+            className="absolute top-0 left-0 w-20 h-26 rounded-lg -rotate-6 origin-bottom-left"
+            style={{
+              background:
+                "linear-gradient(145deg, rgba(45,45,45,0.4) 0%, rgba(28,28,28,0.3) 100%)",
+              border: "1px solid rgba(255,255,255,0.05)",
+              maskImage:
+                "linear-gradient(to right, transparent 0%, black 55%, black 100%)",
+              WebkitMaskImage:
+                "linear-gradient(to right, transparent 0%, black 55%, black 100%)",
+            }}
+          />
+          {/* Doc 2 — middle */}
+          <div
+            className="absolute top-1 left-2 w-20 h-26 rounded-lg -rotate-2 origin-bottom-left"
+            style={{
+              background:
+                "linear-gradient(145deg, rgba(55,55,55,0.55) 0%, rgba(33,33,33,0.45) 100%)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              maskImage:
+                "linear-gradient(to right, transparent 0%, black 50%, black 100%)",
+              WebkitMaskImage:
+                "linear-gradient(to right, transparent 0%, black 50%, black 100%)",
+            }}
+          />
+          {/* Doc 1 — front, most visible */}
+          <div
+            className="absolute top-2 left-4 w-20 h-26 rounded-lg p-2.5"
+            style={{
+              background:
+                "linear-gradient(145deg, rgba(62,62,62,0.8) 0%, rgba(40,40,40,0.7) 100%)",
+              boxShadow:
+                "inset 0 1px 1px rgba(255,255,255,0.1), 0 4px 16px rgba(0,0,0,0.35)",
+              border: "1px solid rgba(255,255,255,0.12)",
+            }}
+          >
+            <div className="flex items-center gap-1.5 mb-2">
+              <FileText className="w-3 h-3 text-[#E8613C]" />
+              <div className="h-1 w-9 bg-white/20 rounded" />
+            </div>
+            <div className="space-y-1.5">
+              <div className="h-1 w-full bg-white/12 rounded" />
+              <div className="h-1 w-4/5 bg-white/10 rounded" />
+              <div className="h-1 w-full bg-white/12 rounded" />
+              <div className="h-1 w-3/5 bg-white/8 rounded" />
+            </div>
+          </div>
+        </div>
+      </div>
 
-      {/* Shield 5 - Outermost, most faded */}
-      <IoShield className="absolute w-44 h-44 text-[#E8613C]/[0.03]" />
+      {/* Center — distillation node */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+        <div className="w-px h-16 absolute left-1/2 -translate-x-1/2 -top-8 bg-linear-to-b from-transparent via-white/15 to-transparent" />
+        <div
+          className="w-9 h-9 rounded-full flex items-center justify-center"
+          style={{
+            background:
+              "linear-gradient(145deg, rgba(25,25,25,0.95) 0%, rgba(15,15,15,0.98) 100%)",
+            boxShadow:
+              "0 4px 20px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.1)",
+            border: "1px solid rgba(255,255,255,0.15)",
+          }}
+        >
+          <FolderLock className="w-4 h-4 text-[#E8613C]" strokeWidth={2.2} />
+        </div>
+      </div>
 
-      {/* Shield 4 */}
-      <IoShield className="absolute w-36 h-36 text-[#E8613C]/[0.06]" />
-
-      {/* Shield 3 */}
-      <IoShield className="absolute w-28 h-28 text-[#E8613C]/[0.1]" />
-
-      {/* Shield 2 */}
-      <IoShield className="absolute w-20 h-20 text-[#E8613C]/[0.18]" />
-
-      {/* Shield 1 - Main shield, most opaque */}
-      <div className="relative">
-        <IoShield className="w-14 h-14 text-[#E8613C]/30" />
-
-        {/* Lock icon in center */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-          <IoLockClosed className="w-5 h-5 text-white/90" />
+      {/* Right — extracted, cited memory cards */}
+      <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col items-center">
+        <p className="text-[7px] text-white/40 mb-2 tracking-wide">
+          Extracted facts
+        </p>
+        <div className="relative h-28 w-28">
+          {/* Memory card — older */}
+          <div
+            className="absolute top-0 right-3 w-24 rounded-lg p-2"
+            style={{
+              background:
+                "linear-gradient(145deg, rgba(45,45,45,0.45) 0%, rgba(28,28,28,0.35) 100%)",
+              border: "1px solid rgba(255,255,255,0.06)",
+              opacity: 0.55,
+            }}
+          >
+            <div className="text-[6px] text-white/40 mb-1">SOC 2 renews Q3</div>
+            <div className="flex items-center gap-1">
+              <span className="w-1 h-1 rounded-full bg-[#E8613C]/50" />
+              <div className="h-0.5 w-8 bg-white/10 rounded" />
+            </div>
+          </div>
+          {/* Memory card — latest, with citation */}
+          <div
+            className="absolute top-9 right-0 w-26 rounded-lg p-2.5"
+            style={{
+              background:
+                "linear-gradient(145deg, rgba(55,55,55,0.75) 0%, rgba(40,40,40,1) 100%)",
+              boxShadow:
+                "0 4px 15px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.1)",
+              border: "1px solid rgba(255,255,255,0.12)",
+            }}
+          >
+            <p className="text-[8px] text-white/90 leading-snug font-medium">
+              Refund window is 30 days
+            </p>
+            <div className="flex items-center gap-1 mt-1.5">
+              <FileText className="w-2 h-2 text-[#E8613C]/80" />
+              <span className="text-[6px] text-[#E8613C]/80 font-mono">
+                policy.pdf · p.4
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -850,16 +943,16 @@ const features: Feature[] = [
     visual: <PowerfulSearchVisual />,
   },
   {
-    title: "Encrypted & Private",
+    title: "Context Vault",
     description:
-      "Your memories are yours alone. Secure API keys and strict no-training policy. Your context stays private, period.",
-    icon: Shield,
-    visual: <EncryptedPrivateVisual />,
+      "A shared knowledge base for your team. Ingest PDFs, docs, and URLs — MemContext extracts the facts and cites each one back to its source.",
+    icon: FolderLock,
+    visual: <ContextVaultVisual />,
   },
   {
     title: "Cross-Tool Sync",
     description:
-      "Claude, Cursor, Windsurf, Cline, or your own app via REST API. One memory for all. Save in Claude, search from your custom app.",
+      "Connect Claude over OAuth — no key to paste. Or wire Cursor, Codex, and your own app via API key. One memory layer, every tool.",
     icon: GitBranch,
     visual: <CrossToolSyncVisual />,
   },
@@ -912,8 +1005,9 @@ export function Features() {
             Memory that evolves with you
           </h2>
           <p className="text-base sm:text-lg text-foreground-muted max-w-2xl mx-auto">
-            Hybrid search, auto-expiring temporal facts, feedback-driven
-            ranking, and version history. Built for AI agents and custom apps.
+            Hybrid search, auto-expiring facts, feedback-driven ranking, and a
+            shared Context Vault for your team. Built for AI agents and custom
+            apps.
           </p>
         </div>
 

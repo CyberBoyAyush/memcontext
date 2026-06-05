@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import {
   Buildings,
   CaretDown,
@@ -12,6 +13,7 @@ import {
   UserPlus,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
@@ -37,6 +39,11 @@ const roleOptions: Array<{ value: InviteRole; label: string; hint: string }> = [
 
 const inputClass =
   "h-10 w-full rounded-lg border border-border bg-surface-elevated/50 px-3 text-sm transition-colors placeholder:text-foreground-subtle focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20";
+
+interface SubscriptionData {
+  workspaceCount: number;
+  workspaceLimit: number;
+}
 
 function roleBadgeTone(role: string) {
   if (role === "owner") return "bg-accent/10 text-accent border-accent/20";
@@ -69,6 +76,10 @@ export function WorkspacesSection({ embedded }: { embedded?: boolean } = {}) {
   const updateMember = useUpdateWorkspaceMember();
   const removeMember = useRemoveWorkspaceMember();
   const revokeInvitation = useRevokeWorkspaceInvitation();
+  const { data: subscription } = useQuery({
+    queryKey: ["subscription"],
+    queryFn: () => api.get<SubscriptionData>("/api/user/subscription"),
+  });
 
   const workspaces = useMemo(
     () => workspaceData?.workspaces ?? [],
@@ -84,16 +95,29 @@ export function WorkspacesSection({ embedded }: { embedded?: boolean } = {}) {
   const canManageTeam =
     teamData?.currentUserRole === "owner" ||
     teamData?.currentUserRole === "admin";
+  const workspaceLimitReached =
+    !!subscription &&
+    subscription.workspaceLimit > 0 &&
+    subscription.workspaceCount >= subscription.workspaceLimit;
 
   async function handleCreateWorkspace() {
     if (!workspaceName.trim()) return;
+    if (workspaceLimitReached) {
+      toast.error("Workspace limit reached. Upgrade your plan to create more.");
+      return;
+    }
     try {
       const result = await createWorkspace.mutateAsync(workspaceName.trim());
       setSelectedWorkspaceId(result.workspace.id);
       setWorkspaceName("");
       toast.success(`Workspace "${result.workspace.name}" created`);
-    } catch {
-      toast.error("Could not create workspace");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      toast.error(
+        message.toLowerCase().includes("workspace limit")
+          ? "Workspace limit reached. Upgrade your plan to create more."
+          : "Could not create workspace",
+      );
     }
   }
 
@@ -189,17 +213,32 @@ export function WorkspacesSection({ embedded }: { embedded?: boolean } = {}) {
             onChange={(event) => setWorkspaceName(event.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleCreateWorkspace()}
             placeholder="Acme Inc"
+            disabled={workspaceLimitReached}
             className={inputClass}
           />
           <Button
             onClick={handleCreateWorkspace}
-            disabled={createWorkspace.isPending || !workspaceName.trim()}
+            disabled={
+              createWorkspace.isPending ||
+              workspaceLimitReached ||
+              !workspaceName.trim()
+            }
             className="sm:w-auto"
           >
             <Plus className="h-4 w-4" weight="bold" />
             {createWorkspace.isPending ? "Creating..." : "Create"}
           </Button>
         </div>
+        {workspaceLimitReached && (
+          <div className="mt-3 rounded-lg border border-accent/20 bg-accent/10 px-3 py-2 text-xs text-accent">
+            Your plan includes {subscription.workspaceLimit} workspace
+            {subscription.workspaceLimit === 1 ? "" : "s"}.{" "}
+            <Link href="/subscription" className="font-semibold underline">
+              Upgrade your plan
+            </Link>{" "}
+            to create more.
+          </div>
+        )}
       </div>
 
       {workspaces.length > 0 && (

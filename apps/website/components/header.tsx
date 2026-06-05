@@ -14,10 +14,11 @@ const XIcon = ({ className }: { className?: string }) => (
 
 const navigation = [
   { name: "Features", href: "/#features" },
-  { name: "How it Works", href: "/#how-it-works" },
+  { name: "Context Vault", href: "/#context-vault" },
+  { name: "How it Works", href: "/#how-it-works", mdHidden: true },
   { name: "Pricing", href: "/pricing" },
   { name: "Docs", href: "https://docs.memcontext.in", external: true },
-  { name: "FAQ", href: "/#faq" },
+  { name: "FAQ", href: "/#faq", mdHidden: true },
 ];
 
 export function Header() {
@@ -80,7 +81,7 @@ export function Header() {
                 MemContext
               </span>
             </Link>
-            <div className="hidden md:flex items-center gap-8 lg:gap-10">
+            <div className="hidden md:flex items-center gap-5 lg:gap-8">
               {navigation.map((item) =>
                 "external" in item && item.external ? (
                   <a
@@ -96,7 +97,11 @@ export function Header() {
                   <Link
                     key={item.name}
                     href={item.href}
-                    className="text-sm lg:text-base text-foreground-muted hover:text-foreground transition-colors link-underline"
+                    className={`text-sm lg:text-base text-foreground-muted hover:text-foreground transition-colors link-underline ${
+                      "mdHidden" in item && item.mdHidden
+                        ? "hidden lg:inline-block"
+                        : ""
+                    }`}
                   >
                     {item.name}
                   </Link>

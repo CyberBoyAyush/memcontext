@@ -39,7 +39,7 @@
     "groups": [
       {
         "group": "Get Started",
-        "pages": ["index", "quickstart", "authentication"]
+        "pages": ["index", "quickstart", "authentication", "pricing"]
       },
       {
         "group": "Concepts",

@@ -49,11 +49,14 @@ const PLANS = [
     name: "Free",
     price: 0,
     memories: 300,
+    memoryLabel: "300",
     icon: Star,
     features: [
       "300 memories",
-      "Limited memory retrieval",
-      "Unlimited projects",
+      "1 workspace",
+      "5 Context Vault documents",
+      "Unlimited memory retrieval",
+      "SDK and API access",
       "MCP integration",
       "Community support",
     ],
@@ -61,33 +64,59 @@ const PLANS = [
   {
     id: "hobby",
     name: "Hobby",
-    price: 5,
+    price: 20,
     memories: 2000,
+    memoryLabel: "2K",
     slug: "hobby",
     icon: Lightning,
     features: [
-      "2,000 memories",
+      "2K memories",
+      "5 workspaces",
+      "25 Context Vault documents",
       "Unlimited memory retrieval",
-      "Unlimited projects",
+      "SDK and API access",
       "MCP integration",
       "Priority support",
     ],
-    popular: true,
   },
   {
     id: "pro",
     name: "Pro",
-    price: 15,
+    price: 50,
     memories: 10000,
+    memoryLabel: "10K",
     slug: "pro",
     icon: RocketLaunch,
     features: [
-      "10,000 memories",
+      "10K memories",
+      "10 workspaces",
+      "100 Context Vault documents",
       "Unlimited memory retrieval",
-      "Unlimited projects",
+      "SDK and API access",
       "MCP integration",
       "Priority support",
       "Early access to features",
+    ],
+    popular: true,
+  },
+  {
+    id: "ultimate",
+    name: "Ultimate",
+    price: 100,
+    memories: 100000,
+    memoryLabel: "100K",
+    slug: "ultimate",
+    icon: RocketLaunch,
+    features: [
+      "100K memories",
+      "50 workspaces",
+      "500 Context Vault documents",
+      "Unlimited memory retrieval",
+      "SDK and API access",
+      "MCP integration",
+      "Priority support",
+      "Early access to features",
+      "Fair-use scaling for large knowledge bases",
     ],
   },
 ];
@@ -300,9 +329,7 @@ function PlanCard({
                 </span>
               )}
               {isCurrent && !plan.popular && (
-                <span
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold uppercase tracking-wide bg-white/20 text-white border border-white/10 backdrop-blur-sm"
-                >
+                <span className="px-2.5 py-1 rounded-lg text-[11px] font-semibold uppercase tracking-wide bg-white/20 text-white border border-white/10 backdrop-blur-sm">
                   Current
                 </span>
               )}
@@ -334,7 +361,7 @@ function PlanCard({
               isHighlighted ? "text-white/50" : "text-foreground-subtle",
             )}
           >
-            {plan.memories.toLocaleString()} memories included
+            {plan.memoryLabel} memories included
           </p>
 
           {/* ── CTA inside hero ── */}
@@ -452,7 +479,17 @@ const FAQ_ITEMS = [
   {
     question: "What happens to my memories if I downgrade?",
     answer:
-      "Your existing memories are preserved. However, you won't be able to add new memories if you exceed your new plan's limit.",
+      "Your existing memories, workspaces, and Context Vault documents are preserved. However, you won't be able to add more if you exceed your new plan's limits.",
+  },
+  {
+    question: "Do Context Vault documents count toward memory limits?",
+    answer:
+      "No. Personal memories and Context Vault documents have separate limits. Extracted document memories are managed under your Context Vault document allowance.",
+  },
+  {
+    question: "Is memory retrieval unlimited?",
+    answer:
+      "Yes. Plans do not have a fixed retrieval quota. Search endpoints still use rate limits to protect service reliability.",
   },
 ];
 
@@ -661,7 +698,7 @@ export default function SubscriptionPage() {
   const currentPlan = subscription?.plan || "free";
   const isOnHold = subscription?.status === "on_hold";
   const usagePercentage = Math.min(
-    ((subscription?.memoryCount ?? 0) / (subscription?.memoryLimit ?? 100)) *
+    ((subscription?.memoryCount ?? 0) / (subscription?.memoryLimit ?? 300)) *
       100,
     100,
   );
@@ -738,7 +775,7 @@ export default function SubscriptionPage() {
                       Plan
                     </h3>
                     <p className="text-xs text-foreground-subtle mt-0.5">
-                      {(subscription?.memoryLimit ?? 100).toLocaleString()}{" "}
+                      {(subscription?.memoryLimit ?? 300).toLocaleString()}{" "}
                       memories included
                     </p>
                   </div>
@@ -786,7 +823,7 @@ export default function SubscriptionPage() {
                     </span>
                     <span className="text-sm text-foreground-subtle">/</span>
                     <span className="text-sm text-foreground-muted tabular-nums">
-                      {(subscription?.memoryLimit ?? 100).toLocaleString()}
+                      {(subscription?.memoryLimit ?? 300).toLocaleString()}
                     </span>
                     <span className="ml-1.5 text-xs text-foreground-subtle tabular-nums">
                       ({Math.round(usagePercentage)}%)
@@ -840,7 +877,7 @@ export default function SubscriptionPage() {
       {/* Plans Grid */}
       <div>
         <h2 className="text-lg font-semibold mb-5">Choose your plan</h2>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
           {PLANS.map((plan, index) => {
             const isCurrent = currentPlan === plan.id;
             const isUpgrade =

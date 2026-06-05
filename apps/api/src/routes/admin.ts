@@ -84,7 +84,7 @@ app.get("/users/:userId", zValidator("param", userIdParamSchema), async (c) => {
 });
 
 const updatePlanSchema = z.object({
-  plan: z.enum(["free", "hobby", "pro"]),
+  plan: z.enum(["free", "hobby", "pro", "ultimate"]),
 });
 
 app.patch(

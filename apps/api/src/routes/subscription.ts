@@ -10,6 +10,7 @@ import { dodoClient } from "../lib/auth.js";
 import { env } from "../env.js";
 import { logger } from "../lib/logger.js";
 import type { PlanType } from "../db/schema.js";
+import { getSubscriptionData } from "../services/subscription.js";
 
 const app = new Hono<{
   Variables: {
@@ -21,8 +22,14 @@ const app = new Hono<{
 app.use("*", sessionAuthMiddleware);
 
 const changePlanSchema = z.object({
-  plan: z.enum(["hobby", "pro"]),
+  plan: z.enum(["hobby", "pro", "ultimate"]),
 });
+
+function getProductIdForPlan(plan: Exclude<PlanType, "free">) {
+  if (plan === "hobby") return env.DODO_PRODUCT_HOBBY;
+  if (plan === "pro") return env.DODO_PRODUCT_PRO;
+  return env.DODO_PRODUCT_ULTIMATE;
+}
 
 // POST /change-plan - Change subscription plan (upgrade/downgrade)
 app.post("/change-plan", async (c) => {
@@ -39,7 +46,7 @@ app.post("/change-plan", async (c) => {
 
   if (!parsed.success) {
     return c.json(
-      { error: "Invalid request. Plan must be 'hobby' or 'pro'" },
+      { error: "Invalid request. Plan must be 'hobby', 'pro', or 'ultimate'" },
       400,
     );
   }
@@ -103,8 +110,16 @@ app.post("/change-plan", async (c) => {
   }
 
   // Map plan to Dodo product ID
-  const productId =
-    newPlan === "hobby" ? env.DODO_PRODUCT_HOBBY : env.DODO_PRODUCT_PRO;
+  const productId = getProductIdForPlan(newPlan);
+  if (!productId) {
+    return c.json(
+      {
+        error: "Ultimate plan is not configured yet.",
+        code: "PLAN_NOT_CONFIGURED",
+      },
+      400,
+    );
+  }
 
   logger.info(
     {
@@ -188,32 +203,7 @@ app.post("/change-plan", async (c) => {
 // GET /current - Get current subscription (alternative to /api/user/subscription)
 app.get("/current", async (c) => {
   const { userId } = c.get("session");
-
-  const [subscription] = await db
-    .select({
-      plan: subscriptions.plan,
-      memoryCount: subscriptions.memoryCount,
-      memoryLimit: subscriptions.memoryLimit,
-      status: subscriptions.status,
-      dodoCustomerId: subscriptions.dodoCustomerId,
-      dodoSubscriptionId: subscriptions.dodoSubscriptionId,
-    })
-    .from(subscriptions)
-    .where(eq(subscriptions.userId, userId))
-    .limit(1);
-
-  if (!subscription) {
-    return c.json({
-      plan: "free" as PlanType,
-      memoryCount: 0,
-      memoryLimit: 300,
-      status: "active",
-      dodoCustomerId: null,
-      dodoSubscriptionId: null,
-    });
-  }
-
-  return c.json(subscription);
+  return c.json(await getSubscriptionData(userId));
 });
 
 export default app;

@@ -4,6 +4,7 @@ export { TrustBlock } from "./trust-block";
 export { StatsBar } from "./stats-bar";
 export { LaunchVideo } from "./launch-video";
 export { Features } from "./features";
+export { ContextVault } from "./context-vault";
 export { MemoryPipeline } from "./memory-pipeline";
 export { UseCases } from "./use-cases";
 export { HowItWorks } from "./how-it-works";

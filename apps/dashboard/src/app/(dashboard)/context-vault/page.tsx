@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import {
   Brain,
   Buildings,
@@ -24,6 +25,7 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
 import {
@@ -54,6 +56,11 @@ interface DeleteTarget {
 interface DocumentRef {
   id: string;
   title: string;
+}
+
+interface SubscriptionData {
+  contextDocumentsCount: number;
+  contextDocumentsLimit: number;
 }
 
 const ingestTabs: Array<{
@@ -95,6 +102,13 @@ function uniqueProjects(
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function getDocumentIngestErrorMessage(error: unknown) {
+  const message = getErrorMessage(error, "Could not process document");
+  return message.toLowerCase().includes("context vault document limit")
+    ? "Context Vault document limit reached. Upgrade your plan to ingest more documents."
+    : message;
 }
 
 function parseUrl(url: string | null | undefined): URL | null {
@@ -296,6 +310,10 @@ export default function CompanyBrainPage() {
   const [docPage, setDocPage] = useState(1);
 
   const { data: workspaceData } = useQuery(workspacesQueryOptions());
+  const { data: subscription } = useQuery({
+    queryKey: ["subscription"],
+    queryFn: () => api.get<SubscriptionData>("/api/user/subscription"),
+  });
   const ingestDocument = useIngestCompanyBrainDocument();
   const uploadDocument = useUploadCompanyBrainDocument();
   const cancelDocument = useCancelCompanyBrainDocument();
@@ -352,6 +370,10 @@ export default function CompanyBrainPage() {
   const hasSearched = query.trim().length > 0;
   const resultCount =
     (searchData?.chunks.length ?? 0) + (searchData?.memories.length ?? 0);
+  const documentLimitReached =
+    !!subscription &&
+    subscription.contextDocumentsLimit > 0 &&
+    subscription.contextDocumentsCount >= subscription.contextDocumentsLimit;
 
   function resetIngestForm() {
     setTitle("");
@@ -372,6 +394,12 @@ export default function CompanyBrainPage() {
 
   async function handleIngestDocument() {
     if (!canSubmitIngest) return;
+    if (documentLimitReached) {
+      toast.error(
+        "Context Vault document limit reached. Upgrade your plan to ingest more documents.",
+      );
+      return;
+    }
     if (scope.includes(",")) {
       toast.error("Use one scope when ingesting a document");
       return;
@@ -427,7 +455,7 @@ export default function CompanyBrainPage() {
         return;
       }
     } catch (error) {
-      toast.error(getErrorMessage(error, "Could not process document"));
+      toast.error(getDocumentIngestErrorMessage(error));
     }
   }
 
@@ -475,6 +503,7 @@ export default function CompanyBrainPage() {
   const isProcessing = ingestDocument.isPending || uploadDocument.isPending;
   const canSubmitIngest =
     !isProcessing &&
+    !documentLimitReached &&
     !!activeWorkspaceId &&
     (ingestMode === "upload"
       ? !!file
@@ -606,7 +635,10 @@ export default function CompanyBrainPage() {
               {ingestMode === "upload" && (
                 <label
                   className={cn(
-                    "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-8 text-center transition-colors",
+                    "flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-8 text-center transition-colors",
+                    documentLimitReached
+                      ? "cursor-not-allowed opacity-60"
+                      : "cursor-pointer",
                     file
                       ? "border-accent/40 bg-accent/[0.04]"
                       : "border-border bg-surface-elevated/30 hover:border-border-hover",
@@ -618,6 +650,7 @@ export default function CompanyBrainPage() {
                     onChange={(event) =>
                       setFile(event.target.files?.[0] ?? null)
                     }
+                    disabled={documentLimitReached}
                     className="hidden"
                   />
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-elevated border border-border">
@@ -654,6 +687,7 @@ export default function CompanyBrainPage() {
                   value={content}
                   onChange={(event) => setContent(event.target.value)}
                   placeholder="Paste document text or Markdown here..."
+                  disabled={documentLimitReached}
                   className="min-h-48 w-full resize-y rounded-lg border border-border bg-surface-elevated/50 p-3 text-sm transition-colors placeholder:text-foreground-subtle focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20"
                 />
               )}
@@ -669,6 +703,7 @@ export default function CompanyBrainPage() {
                       value={uri}
                       onChange={(event) => setUri(event.target.value)}
                       placeholder="https://docs.example.com or a file URL"
+                      disabled={documentLimitReached}
                       className="h-10 w-full rounded-lg border border-border bg-surface-elevated/50 pl-9 pr-3 text-sm transition-colors placeholder:text-foreground-subtle focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20"
                     />
                   </div>
@@ -679,6 +714,7 @@ export default function CompanyBrainPage() {
                       onChange={(event) =>
                         setCrawlSubpages(event.target.checked)
                       }
+                      disabled={documentLimitReached}
                       className="h-4 w-4 accent-accent"
                     />
                     Crawl linked sub-pages
@@ -691,6 +727,7 @@ export default function CompanyBrainPage() {
                           setSubpageTarget(event.target.value)
                         }
                         placeholder="Path hints: docs, api, guides"
+                        disabled={documentLimitReached}
                         className={inputClass}
                       />
                       <input
@@ -707,6 +744,7 @@ export default function CompanyBrainPage() {
                           )
                         }
                         aria-label="Priority page limit"
+                        disabled={documentLimitReached}
                         className={inputClass}
                       />
                     </div>
@@ -727,6 +765,7 @@ export default function CompanyBrainPage() {
                       ? "Defaults to the file name"
                       : "Employee Handbook"
                   }
+                  disabled={documentLimitReached}
                   className={inputClass}
                 />
               </div>
@@ -753,17 +792,34 @@ export default function CompanyBrainPage() {
                       value={scope}
                       onChange={(event) => setScope(event.target.value)}
                       placeholder="scope"
+                      disabled={documentLimitReached}
                       className="h-9 rounded-lg border border-border bg-surface px-3 text-sm transition-colors placeholder:text-foreground-subtle focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20"
                     />
                     <input
                       value={project}
                       onChange={(event) => setProject(event.target.value)}
                       placeholder="project"
+                      disabled={documentLimitReached}
                       className="h-9 rounded-lg border border-border bg-surface px-3 text-sm transition-colors placeholder:text-foreground-subtle focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20"
                     />
                   </div>
                 )}
               </div>
+
+              {documentLimitReached && (
+                <div className="rounded-lg border border-accent/20 bg-accent/10 px-3 py-2 text-xs text-accent">
+                  Your plan includes {subscription.contextDocumentsLimit}{" "}
+                  Context Vault document
+                  {subscription.contextDocumentsLimit === 1 ? "" : "s"}.{" "}
+                  <Link
+                    href="/subscription"
+                    className="font-semibold underline"
+                  >
+                    Upgrade your plan
+                  </Link>{" "}
+                  to ingest more.
+                </div>
+              )}
 
               <Button
                 onClick={handleIngestDocument}

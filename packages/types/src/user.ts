@@ -10,7 +10,7 @@ export interface User {
   updatedAt: Date;
 }
 
-export type PlanType = "free" | "hobby" | "pro";
+export type PlanType = "free" | "hobby" | "pro" | "ultimate";
 
 export type SubscriptionStatus =
   | "active"

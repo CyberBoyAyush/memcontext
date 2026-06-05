@@ -23,6 +23,8 @@ import {
   PaperPlaneTilt,
   CheckCircle,
   WarningCircle,
+  Buildings,
+  FileText,
   X,
 } from "@phosphor-icons/react";
 import { useTheme } from "next-themes";
@@ -56,10 +58,7 @@ interface TurnstileRenderOptions {
 }
 
 interface TurnstileApi {
-  render: (
-    container: HTMLElement,
-    options: TurnstileRenderOptions,
-  ) => string;
+  render: (container: HTMLElement, options: TurnstileRenderOptions) => string;
   reset: (widgetId?: string) => void;
   remove: (widgetId?: string) => void;
 }
@@ -84,6 +83,10 @@ interface SubscriptionData {
   plan: string;
   memoryCount: number;
   memoryLimit: number;
+  contextDocumentsCount: number;
+  contextDocumentsLimit: number;
+  workspaceCount: number;
+  workspaceLimit: number;
 }
 
 interface ApiKeysData {
@@ -212,7 +215,11 @@ interface TurnstileWidgetProps {
   theme: "light" | "dark";
 }
 
-function TurnstileWidget({ onToken, resetSignal, theme }: TurnstileWidgetProps) {
+function TurnstileWidget({
+  onToken,
+  resetSignal,
+  theme,
+}: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
 
@@ -347,8 +354,7 @@ function PasswordSection({ email, resolvedTheme }: PasswordSectionProps) {
     }
   };
 
-  const disabled =
-    submitting || !email || !captchaConfigured || !captchaToken;
+  const disabled = submitting || !email || !captchaConfigured || !captchaToken;
 
   return (
     <Card className="shadow-none">
@@ -356,9 +362,7 @@ function PasswordSection({ email, resolvedTheme }: PasswordSectionProps) {
         <div className="space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="min-w-0 max-w-xl">
-              <h3 className="text-sm font-semibold">
-                Password
-              </h3>
+              <h3 className="text-sm font-semibold">Password</h3>
               <p className="text-sm text-foreground-muted mt-1 leading-relaxed">
                 Set or reset your password using a secure email link. This also
                 works if you signed up with Google or GitHub.
@@ -475,7 +479,10 @@ function PasswordSection({ email, resolvedTheme }: PasswordSectionProps) {
                           </>
                         ) : (
                           <>
-                            <PaperPlaneTilt className="h-4 w-4" weight="duotone" />
+                            <PaperPlaneTilt
+                              className="h-4 w-4"
+                              weight="duotone"
+                            />
                             Send password link
                           </>
                         )}
@@ -541,7 +548,7 @@ export default function SettingsPage() {
 
   const user = profile?.user;
   const usagePercentage = Math.min(
-    ((subscription?.memoryCount ?? 0) / (subscription?.memoryLimit ?? 100)) *
+    ((subscription?.memoryCount ?? 0) / (subscription?.memoryLimit ?? 300)) *
       100,
     100,
   );
@@ -729,7 +736,7 @@ export default function SettingsPage() {
                       {subscription?.memoryCount ?? 0}
                       <span className="text-sm font-normal text-foreground-muted">
                         {" "}
-                        / {subscription?.memoryLimit ?? 100}
+                        / {subscription?.memoryLimit ?? 300}
                       </span>
                     </div>
                     <div className="mt-3 h-1.5 rounded-full bg-border overflow-hidden">
@@ -747,8 +754,57 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  {/* Quick Stats */}
+                  {/* Context Vault Usage */}
                   <div className="p-4 rounded-xl bg-surface-elevated border border-border">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <FileText
+                            className="h-4 w-4 text-accent"
+                            weight="duotone"
+                          />
+                          <span className="text-sm font-medium">
+                            Vault docs
+                          </span>
+                        </div>
+                        <div className="text-2xl font-bold tabular-nums">
+                          {subscription?.contextDocumentsCount ?? 0}
+                          <span className="text-sm font-normal text-foreground-muted">
+                            {" "}
+                            / {subscription?.contextDocumentsLimit ?? 5}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Buildings
+                            className="h-4 w-4 text-accent"
+                            weight="duotone"
+                          />
+                          <span className="text-sm font-medium">
+                            Workspaces
+                          </span>
+                        </div>
+                        <div className="text-2xl font-bold tabular-nums">
+                          {subscription?.workspaceCount ?? 0}
+                          <span className="text-sm font-normal text-foreground-muted">
+                            {" "}
+                            / {subscription?.workspaceLimit ?? 1}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <Link
+                      href="/context-vault"
+                      className="mt-3 text-xs text-foreground-subtle hover:text-foreground-muted flex items-center gap-1 transition-colors"
+                    >
+                      Manage Context Vault
+                      <ArrowRight className="h-3 w-3" weight="bold" />
+                    </Link>
+                  </div>
+
+                  {/* Quick Stats */}
+                  <div className="p-4 rounded-xl bg-surface-elevated border border-border sm:col-span-2">
                     <div className="flex items-center gap-2 mb-2">
                       <ShieldCheck
                         className="h-4 w-4 text-foreground-muted"

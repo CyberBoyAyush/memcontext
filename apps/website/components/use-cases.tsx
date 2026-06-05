@@ -45,11 +45,11 @@ const useCases: UseCaseProps[] = [
     icon: SquaresFour,
     title: "Custom Applications",
     description:
-      "Use the REST API to build memory into any app. CRM context, support bots, onboarding flows, personalization.",
+      "Build memory into any app with the REST API or TypeScript SDK. Per-tenant scope isolation keeps every customer's data separate.",
     examples: [
+      "Scope isolation per user or tenant",
+      "TypeScript SDK, typed end to end",
       "Profile endpoint for fast context",
-      "Feedback API for learning loops",
-      "Version history for audit trails",
     ],
     cta: "View API docs",
     href: "https://docs.memcontext.in/api-reference/overview",

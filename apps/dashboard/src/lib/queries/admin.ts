@@ -49,7 +49,7 @@ interface UserUsageStats {
   lastActivityAt: string | null;
 }
 
-type PlanType = "free" | "hobby" | "pro";
+type PlanType = "free" | "hobby" | "pro" | "ultimate";
 
 interface ListUsersParams {
   limit?: number;
