@@ -124,7 +124,7 @@ const createCompanyMemorySchema = z.object({
     .enum(["preference", "fact", "decision", "context"])
     .default("fact"),
   scope: z.string().trim().min(1).max(200).optional(),
-  project: z.string().max(100).optional(),
+  project: z.string().trim().min(1).max(100).optional(),
 });
 
 const memoryCorrectionSchema = z.object({
