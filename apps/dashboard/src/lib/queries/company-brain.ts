@@ -168,6 +168,11 @@ export interface CorrectCompanyBrainMemoryResponse {
   updatedChunkCount: number;
 }
 
+export interface DeleteCompanyBrainMemoryResponse {
+  success: boolean;
+  memoryId: string;
+}
+
 export interface CompanyBrainEvidenceResponse {
   evidence: CompanyBrainEvidence[];
 }
@@ -356,6 +361,23 @@ export function useCreateCompanyBrainMemory() {
       api.post<{ memory: CompanyBrainMemory }>(
         "/api/company-brain/memories",
         data,
+      ),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["company-brain-hierarchy", variables.workspaceId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["company-brain-memories"] });
+      queryClient.invalidateQueries({ queryKey: ["company-brain-search"] });
+    },
+  });
+}
+
+export function useDeleteCompanyBrainMemory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { workspaceId: string; memoryId: string }) =>
+      api.delete<DeleteCompanyBrainMemoryResponse>(
+        `/api/company-brain/memories/${data.memoryId}?workspaceId=${data.workspaceId}`,
       ),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({

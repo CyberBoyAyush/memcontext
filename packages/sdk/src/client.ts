@@ -16,6 +16,7 @@ import type {
   CreateWorkspaceRequest,
   CreateWorkspaceResponse,
   DeleteCompanyBrainDocumentResponse,
+  DeleteCompanyBrainMemoryResponse,
   HealthResponse,
   IngestCompanyBrainDocumentRequest,
   IngestCompanyBrainDocumentResponse,
@@ -837,6 +838,17 @@ export class MemContextClient {
         body: request,
         signal: options?.signal,
       },
+    );
+  }
+
+  async deleteContextVaultMemory(
+    workspaceId: string,
+    memoryId: string,
+    options?: SaveOptions,
+  ): Promise<DeleteCompanyBrainMemoryResponse> {
+    return this.request<DeleteCompanyBrainMemoryResponse>(
+      `/api/company-brain/memories/${memoryId}${buildQuery({ workspaceId })}`,
+      { method: "DELETE", signal: options?.signal },
     );
   }
 

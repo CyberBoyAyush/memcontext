@@ -40,3 +40,7 @@ curl -X POST "https://api.memcontext.in/api/company-brain/memories/MEMORY_ID/cor
 
 Viewers can submit regular feedback but cannot directly correct workspace
 memories. Correction is available to owners, admins, and members.
+
+Use `DELETE /api/company-brain/memories/{memoryId}?workspaceId=...` to remove a
+curated company fact. Document-extracted memories are cleaned up through document
+deletion when they are no longer backed by any source document.

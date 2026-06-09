@@ -386,6 +386,11 @@ export interface CreateCompanyBrainMemoryResponse {
   memory: CompanyBrainMemory;
 }
 
+export interface DeleteCompanyBrainMemoryResponse {
+  success: boolean;
+  memoryId: string;
+}
+
 export interface CompanyBrainMemory {
   id: string;
   content: string;
@@ -539,6 +544,7 @@ export type DeleteContextVaultDocumentResponse =
 export type ListContextVaultMemoriesRequest = ListCompanyBrainMemoriesRequest;
 export type CreateContextVaultMemoryRequest = CreateCompanyBrainMemoryRequest;
 export type CreateContextVaultMemoryResponse = CreateCompanyBrainMemoryResponse;
+export type DeleteContextVaultMemoryResponse = DeleteCompanyBrainMemoryResponse;
 export type ContextVaultMemory = CompanyBrainMemory;
 export type ListContextVaultMemoriesResponse = ListCompanyBrainMemoriesResponse;
 export type ListContextVaultDocumentMemoriesResponse =

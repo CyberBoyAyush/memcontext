@@ -11,6 +11,7 @@ import {
   cancelCompanyBrainDocument,
   correctCompanyBrainMemory,
   deleteCompanyBrainDocument,
+  deleteCompanyBrainMemory,
   getCompanyBrainHierarchy,
   ingestCompanyBrainDocument,
   listCompanyBrainDocumentMemories,
@@ -474,6 +475,37 @@ app.post(
         "vault correction failed",
       );
       throw new HTTPException(500, { message: "Failed to correct memory" });
+    }
+  },
+);
+
+app.delete(
+  "/memories/:memoryId",
+  zValidator("param", z.object({ memoryId: z.string().uuid() })),
+  zValidator("query", hierarchyQuerySchema),
+  async (c) => {
+    const { userId } = c.get("auth");
+    const { memoryId } = c.req.valid("param");
+    const { workspaceId } = c.req.valid("query");
+
+    try {
+      return c.json(
+        await deleteCompanyBrainMemory({ userId, workspaceId, memoryId }),
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to delete memory";
+      if (message === "Workspace not found" || message === "Memory not found") {
+        throw new HTTPException(404, { message });
+      }
+      if (message === "Viewers cannot delete company facts") {
+        throw new HTTPException(403, { message });
+      }
+      logger.error(
+        { userId, memoryId, error: message },
+        "vault memory delete failed",
+      );
+      throw new HTTPException(500, { message: "Failed to delete memory" });
     }
   },
 );

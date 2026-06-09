@@ -173,6 +173,12 @@ interface CorrectCompanyBrainMemoryParams {
   evidenceChunkId?: string;
 }
 
+interface DeleteCompanyBrainMemoryParams {
+  userId: string;
+  workspaceId: string;
+  memoryId: string;
+}
+
 export async function saveCompanyBrainMemory(
   params: SaveCompanyBrainMemoryParams,
 ) {
@@ -236,6 +242,38 @@ export async function saveCompanyBrainMemory(
       sourceUrl: null,
     },
   };
+}
+
+export async function deleteCompanyBrainMemory(
+  params: DeleteCompanyBrainMemoryParams,
+) {
+  const membership = await requireWorkspaceMember(
+    params.userId,
+    params.workspaceId,
+  );
+  if (membership.role === "viewer") {
+    throw new Error("Viewers cannot delete company facts");
+  }
+
+  const [deletedMemory] = await db
+    .update(memories)
+    .set({ deletedAt: new Date() })
+    .where(
+      and(
+        eq(memories.id, params.memoryId),
+        eq(memories.workspaceId, params.workspaceId),
+        eq(memories.memoryType, "company"),
+        eq(memories.isCurrent, true),
+        isNull(memories.deletedAt),
+      ),
+    )
+    .returning({ id: memories.id });
+
+  if (!deletedMemory) {
+    throw new Error("Memory not found");
+  }
+
+  return { success: true, memoryId: deletedMemory.id };
 }
 
 interface ParsedBlock {

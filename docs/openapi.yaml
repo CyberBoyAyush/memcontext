@@ -559,7 +559,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CompanyBrainMemoryFeedbackRequest"
+                $ref: "#/components/schemas/CompanyBrainMemoryFeedbackRequest"
       responses:
         "200":
           description: Feedback recorded.
@@ -567,6 +567,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MemoryFeedbackResponse"
+  /api/company-brain/memories/{memoryId}:
+    delete:
+      tags: [Context Vault]
+      summary: Delete a curated company fact
+      operationId: deleteCompanyBrainMemory
+      description: Soft-deletes a curated company fact. Document-extracted memories are removed through document deletion instead.
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      parameters:
+        - in: path
+          name: memoryId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: workspaceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Curated company fact deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteCompanyBrainMemoryResponse"
   /api/company-brain/memories/{memoryId}/correction:
     post:
       tags: [Context Vault]
@@ -1424,6 +1453,15 @@ components:
       properties:
         memory:
           $ref: "#/components/schemas/CompanyBrainMemory"
+    DeleteCompanyBrainMemoryResponse:
+      type: object
+      required: [success, memoryId]
+      properties:
+        success:
+          type: boolean
+        memoryId:
+          type: string
+          format: uuid
     ListCompanyBrainMemoriesResponse:
       type: object
       required: [memories, total, hasMore]

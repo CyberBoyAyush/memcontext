@@ -392,6 +392,16 @@ await client.createContextVaultMemory({
 });
 ```
 
+### `deleteContextVaultMemory(workspaceId, memoryId, options?)`
+
+Deletes a curated company fact from a workspace. Document-extracted memories are
+removed by deleting their source document when they are not backed by any other
+document.
+
+```typescript
+await client.deleteContextVaultMemory(workspace.id, "memory-id");
+```
+
 ### `searchContextVault(request, options?)`
 
 Searches workspace knowledge in `documents`, `memories`, or `hybrid` mode.
