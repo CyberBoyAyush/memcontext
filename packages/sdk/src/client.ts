@@ -11,6 +11,8 @@ import type {
   CorrectCompanyBrainMemoryResponse,
   CompanyBrainSearchChunk,
   CompanyBrainSearchMemory,
+  CreateCompanyBrainMemoryRequest,
+  CreateCompanyBrainMemoryResponse,
   CreateWorkspaceRequest,
   CreateWorkspaceResponse,
   DeleteCompanyBrainDocumentResponse,
@@ -799,6 +801,27 @@ export class MemContextClient {
     return {
       ...response,
       memories: response.memories.map(hydrateCompanyBrainMemory),
+    };
+  }
+
+  async createContextVaultMemory(
+    request: CreateCompanyBrainMemoryRequest,
+    options?: SaveOptions,
+  ): Promise<CreateCompanyBrainMemoryResponse> {
+    const response = await this.request<{
+      memory: JsonCompanyBrainMemory;
+    }>("/api/company-brain/memories", {
+      method: "POST",
+      body: {
+        ...request,
+        scope: normalizeScope(request.scope) ?? this.defaultScope,
+        project: normalizeProject(request.project) ?? this.defaultProject,
+      },
+      signal: options?.signal,
+    });
+
+    return {
+      memory: hydrateCompanyBrainMemory(response.memory),
     };
   }
 

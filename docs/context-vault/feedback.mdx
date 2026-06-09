@@ -19,9 +19,11 @@ knows the corrected content.
 
 ## Correction workflow
 
-Corrections update the extracted memory. If `correctedChunkContent` is provided,
-the cited source chunk is updated as well so future document retrieval does not
-drift away from the corrected memory.
+Corrections update the memory itself. For document-backed memories, if
+`correctedChunkContent` is provided, the cited source chunk is updated as well
+so future document retrieval does not drift away from the corrected memory. For
+curated company facts, there is no source chunk, so the correction updates only
+the company fact.
 
 ```bash
 curl -X POST "https://api.memcontext.in/api/company-brain/memories/MEMORY_ID/correction" \

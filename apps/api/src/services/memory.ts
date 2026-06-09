@@ -200,6 +200,43 @@ export async function saveExtractedDocumentMemory(params: {
   );
 }
 
+export async function saveCuratedCompanyMemory(params: {
+  userId: string;
+  workspaceId: string;
+  content: string;
+  category?: MemoryCategory;
+  scope?: string;
+  project?: string;
+  source?: MemorySource;
+  validUntil?: string;
+}): Promise<SaveMemoryResult> {
+  const scope = normalizeScope(params.scope);
+  const noProject = params.project === NO_PROJECT_FILTER_VALUE;
+  const project = noProject ? undefined : normalizeProjectName(params.project);
+
+  return saveAtomicMemory(
+    {
+      userId: params.userId,
+      workspaceId: params.workspaceId,
+      content: params.content,
+      category: params.category,
+      scope,
+      project,
+      source: params.source ?? "api",
+      memoryType: "company",
+      validUntil: params.validUntil,
+    },
+    {
+      scope,
+      project,
+      workspaceId: params.workspaceId,
+      memoryType: "company",
+      skipLimitCheck: true,
+      countTowardsUserLimit: false,
+    },
+  );
+}
+
 async function saveAtomicMemory(
   params: SaveMemoryParams,
   options: AtomicSaveOptions,
@@ -232,11 +269,13 @@ async function saveAtomicMemory(
         findSimilarMemories(userId, embedding, undefined, scope, {
           workspaceId,
           memoryType,
+          project,
         }),
       )
     : findSimilarMemories(userId, embedding, undefined, scope, {
         workspaceId,
         memoryType,
+        project,
       }));
 
   if (similarMemories.length === 0) {
@@ -957,6 +996,7 @@ export async function findSimilarMemories(
   namespace?: {
     workspaceId?: string;
     memoryType?: "user" | "document" | "company";
+    project?: string;
   },
 ): Promise<SimilarMemoryResult[]> {
   const start = performance.now();
@@ -983,6 +1023,13 @@ export async function findSimilarMemories(
       ? eq(memories.scope, normalizedScope)
       : isNull(memories.scope),
   );
+  if (namespace && "project" in namespace) {
+    conditions.push(
+      namespace.project
+        ? eq(memories.project, namespace.project)
+        : isNull(memories.project),
+    );
+  }
 
   // Exclude specific memory if provided (used in updateMemory)
   if (excludeId) {
@@ -1081,6 +1128,7 @@ export async function searchMemories(
         category: memories.category,
         scope: memories.scope,
         project: memories.project,
+        memoryType: memories.memoryType,
         createdAt: memories.createdAt,
       })
       .from(memories)
@@ -1126,6 +1174,7 @@ export async function searchMemories(
         category: memories.category,
         scope: memories.scope,
         project: memories.project,
+        memoryType: memories.memoryType,
         createdAt: memories.createdAt,
         rank: tsRank,
       })
@@ -1185,6 +1234,7 @@ export async function searchMemories(
         category: string | null;
         scope: string | null;
         project: string | null;
+        memoryType: string;
         createdAt: Date;
       };
     }
@@ -1203,6 +1253,7 @@ export async function searchMemories(
           category: row.category,
           scope: row.scope,
           project: row.project,
+          memoryType: row.memoryType,
           createdAt: row.createdAt,
         },
       });
@@ -1284,6 +1335,7 @@ export async function searchMemories(
       category: row.category as MemoryCategory | undefined,
       scope: row.scope ?? undefined,
       project: row.project ?? undefined,
+      memoryType: row.memoryType as "user" | "document" | "company",
       relevance: topScore > 0 ? Math.round((score / topScore) * 100) / 100 : 0,
       createdAt: row.createdAt,
     }),

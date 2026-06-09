@@ -11,9 +11,10 @@ Start by modeling the knowledge boundary before uploading documents.
 2. Pick scopes for hard knowledge lanes.
 3. Pick projects for document collections inside those scopes.
 4. Ingest documents with consistent scope and project values.
-5. Search with `hybrid` mode while evaluating retrieval quality.
-6. Show evidence citations in your product UI.
-7. Let users submit feedback and corrections.
+5. Add curated company facts for important context that is not documented yet.
+6. Search with `hybrid` mode while evaluating retrieval quality.
+7. Show evidence citations and curated-fact provenance in your product UI.
+8. Let users submit feedback and corrections.
 
 ## Example model
 
@@ -28,9 +29,11 @@ Start by modeling the knowledge boundary before uploading documents.
 
 Use `hybrid` mode for most assistant experiences. Pass source chunks and
 extracted memories into your answer-generation layer as separate context blocks.
+Curated company facts should be passed as workspace-approved context and labeled
+separately from document citations.
 
 Use `documents` mode when the answer needs source wording. Use `memories` mode
-when the answer needs short extracted facts.
+when the answer needs short extracted facts or curated company context.
 
 ## Correction pattern
 

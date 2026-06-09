@@ -518,6 +518,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ListCompanyBrainMemoriesResponse"
+    post:
+      tags: [Context Vault]
+      summary: Add a curated company fact
+      operationId: createCompanyBrainMemory
+      description: Adds atomic workspace context that may not be backed by an uploaded document.
+      security:
+        - ApiKeyAuth: []
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCompanyBrainMemoryRequest"
+      responses:
+        "201":
+          description: Curated company fact created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateCompanyBrainMemoryResponse"
   /api/company-brain/memories/{memoryId}/feedback:
     post:
       tags: [Context Vault]
@@ -1343,7 +1364,7 @@ components:
           type: integer
     CompanyBrainMemory:
       type: object
-      required: [id, content, createdAt]
+      required: [id, content, memoryType, createdAt]
       properties:
         id:
           type: string
@@ -1359,6 +1380,10 @@ components:
         project:
           type: string
           nullable: true
+        memoryType:
+          type: string
+          enum: [document, company]
+          description: "`document` memories are extracted from sources; `company` memories are curated workspace facts."
         createdAt:
           type: string
           format: date-time
@@ -1372,6 +1397,33 @@ components:
         sourceUrl:
           type: string
           nullable: true
+    CreateCompanyBrainMemoryRequest:
+      type: object
+      required: [workspaceId, content]
+      properties:
+        workspaceId:
+          type: string
+          format: uuid
+        content:
+          type: string
+          minLength: 1
+          maxLength: 800
+        category:
+          type: string
+          enum: [preference, fact, decision, context]
+          default: fact
+        scope:
+          type: string
+          maxLength: 200
+        project:
+          type: string
+          maxLength: 100
+    CreateCompanyBrainMemoryResponse:
+      type: object
+      required: [memory]
+      properties:
+        memory:
+          $ref: "#/components/schemas/CompanyBrainMemory"
     ListCompanyBrainMemoriesResponse:
       type: object
       required: [memories, total, hasMore]
@@ -1598,7 +1650,8 @@ components:
           format: date-time
     CompanyBrainSearchMemory:
       type: object
-      required: [id, content, category, scope, project, createdAt, evidence]
+      required:
+        [id, content, category, scope, project, memoryType, createdAt, evidence]
       properties:
         id:
           type: string
@@ -1614,6 +1667,10 @@ components:
         project:
           type: string
           nullable: true
+        memoryType:
+          type: string
+          enum: [document, company]
+          description: "`company` results are curated facts and may have an empty evidence array."
         createdAt:
           type: string
           format: date-time
@@ -1658,9 +1715,10 @@ components:
       description: >-
         Ranked Context Vault retrieval results. `chunks` contains source
         document passages; `memories` contains extracted atomic facts with
-        citation evidence. Hybrid mode returns these as separate arrays instead
-        of a single merged list so callers can build two downstream context
-        blocks: source documents and extracted memories. This response
+        citation evidence or curated company facts. Hybrid mode returns these
+        as separate arrays instead of a single merged list so callers can build
+        downstream context blocks: source documents, extracted memories, and
+        curated company facts. This response
         intentionally does not include a synthesized answer.
       properties:
         mode:
