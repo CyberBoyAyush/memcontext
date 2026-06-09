@@ -11,12 +11,14 @@ import {
   cancelCompanyBrainDocument,
   correctCompanyBrainMemory,
   deleteCompanyBrainDocument,
+  deleteCompanyBrainMemory,
   getCompanyBrainHierarchy,
   ingestCompanyBrainDocument,
   listCompanyBrainDocumentMemories,
   listCompanyBrainDocuments,
   listCompanyBrainMemories,
   listCompanyBrainMemoryEvidence,
+  saveCompanyBrainMemory,
   searchCompanyBrain,
   submitCompanyBrainMemoryFeedback,
 } from "../services/company-brain.js";
@@ -113,6 +115,16 @@ const memoryFeedbackSchema = z.object({
   workspaceId: z.string().uuid(),
   type: z.enum(["helpful", "not_helpful", "outdated", "wrong"]),
   context: z.string().max(1000).optional(),
+});
+
+const createCompanyMemorySchema = z.object({
+  workspaceId: z.string().uuid(),
+  content: z.string().trim().min(1).max(800),
+  category: z
+    .enum(["preference", "fact", "decision", "context"])
+    .default("fact"),
+  scope: z.string().trim().min(1).max(200).optional(),
+  project: z.string().trim().min(1).max(100).optional(),
 });
 
 const memoryCorrectionSchema = z.object({
@@ -355,6 +367,40 @@ app.get("/memories", zValidator("query", memoriesQuerySchema), async (c) => {
 });
 
 app.post(
+  "/memories",
+  zValidator("json", createCompanyMemorySchema),
+  async (c) => {
+    const { userId } = c.get("auth");
+    const body = c.req.valid("json");
+
+    try {
+      return c.json(
+        await saveCompanyBrainMemory({
+          userId,
+          workspaceId: body.workspaceId,
+          content: body.content,
+          category: body.category,
+          scope: body.scope,
+          project: body.project,
+        }),
+        201,
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to add company fact";
+      if (message === "Workspace not found") {
+        throw new HTTPException(404, { message });
+      }
+      if (message === "Viewers cannot add company facts") {
+        throw new HTTPException(403, { message });
+      }
+      logger.error({ userId, error: message }, "create vault memory failed");
+      throw new HTTPException(500, { message: "Failed to add company fact" });
+    }
+  },
+);
+
+app.post(
   "/memories/:memoryId/feedback",
   rateLimitFeedback,
   zValidator("param", z.object({ memoryId: z.string().uuid() })),
@@ -429,6 +475,37 @@ app.post(
         "vault correction failed",
       );
       throw new HTTPException(500, { message: "Failed to correct memory" });
+    }
+  },
+);
+
+app.delete(
+  "/memories/:memoryId",
+  zValidator("param", z.object({ memoryId: z.string().uuid() })),
+  zValidator("query", hierarchyQuerySchema),
+  async (c) => {
+    const { userId } = c.get("auth");
+    const { memoryId } = c.req.valid("param");
+    const { workspaceId } = c.req.valid("query");
+
+    try {
+      return c.json(
+        await deleteCompanyBrainMemory({ userId, workspaceId, memoryId }),
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to delete memory";
+      if (message === "Workspace not found" || message === "Memory not found") {
+        throw new HTTPException(404, { message });
+      }
+      if (message === "Viewers cannot delete company facts") {
+        throw new HTTPException(403, { message });
+      }
+      logger.error(
+        { userId, memoryId, error: message },
+        "vault memory delete failed",
+      );
+      throw new HTTPException(500, { message: "Failed to delete memory" });
     }
   },
 );

@@ -111,6 +111,7 @@ export interface CompanyBrainSearchResponse {
     category: string | null;
     scope: string | null;
     project: string | null;
+    memoryType: "document" | "company";
     createdAt: string;
     evidence: Array<{
       sourceId: string;
@@ -130,6 +131,7 @@ export interface CompanyBrainMemory {
   category: string | null;
   scope: string | null;
   project: string | null;
+  memoryType: "document" | "company";
   createdAt: string;
   sourceId?: string | null;
   sourceTitle?: string | null;
@@ -164,6 +166,11 @@ export interface CorrectCompanyBrainMemoryResponse {
   success: boolean;
   memory: CompanyBrainMemory;
   updatedChunkCount: number;
+}
+
+export interface DeleteCompanyBrainMemoryResponse {
+  success: boolean;
+  memoryId: string;
 }
 
 export interface CompanyBrainEvidenceResponse {
@@ -338,6 +345,47 @@ export function useSubmitVaultMemoryFeedback() {
           context: data.context,
         },
       ),
+  });
+}
+
+export function useCreateCompanyBrainMemory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      workspaceId: string;
+      content: string;
+      category?: "preference" | "fact" | "decision" | "context";
+      scope?: string;
+      project?: string;
+    }) =>
+      api.post<{ memory: CompanyBrainMemory }>(
+        "/api/company-brain/memories",
+        data,
+      ),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["company-brain-hierarchy", variables.workspaceId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["company-brain-memories"] });
+      queryClient.invalidateQueries({ queryKey: ["company-brain-search"] });
+    },
+  });
+}
+
+export function useDeleteCompanyBrainMemory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { workspaceId: string; memoryId: string }) =>
+      api.delete<DeleteCompanyBrainMemoryResponse>(
+        `/api/company-brain/memories/${data.memoryId}?workspaceId=${data.workspaceId}`,
+      ),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["company-brain-hierarchy", variables.workspaceId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["company-brain-memories"] });
+      queryClient.invalidateQueries({ queryKey: ["company-brain-search"] });
+    },
   });
 }
 

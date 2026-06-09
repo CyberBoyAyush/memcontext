@@ -10,10 +10,14 @@ Search supports three modes:
 | Mode | Returns |
 | --- | --- |
 | `documents` | Source chunks from ingested documents |
-| `memories` | Extracted atomic memories with evidence |
-| `hybrid` | Both chunks and memories |
+| `memories` | Extracted document memories and curated company facts |
+| `hybrid` | Source chunks, extracted document memories, and curated company facts |
 
 The endpoint returns retrieval context, not a generated final answer.
+
+Document memories include evidence when they were extracted from uploaded or
+scraped sources. Curated company facts can return with `evidence: []`; treat
+them as workspace-approved context rather than document-backed citations.
 
 ## Single-scope search
 

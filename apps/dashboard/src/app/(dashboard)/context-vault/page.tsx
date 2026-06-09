@@ -34,6 +34,7 @@ import {
   companyBrainHierarchyQueryOptions,
   companyBrainSearchQueryOptions,
   useCancelCompanyBrainDocument,
+  useCreateCompanyBrainMemory,
   useDeleteCompanyBrainDocument,
   useIngestCompanyBrainDocument,
   useUploadCompanyBrainDocument,
@@ -298,6 +299,9 @@ export default function CompanyBrainPage() {
   const [scope, setScope] = useState("");
   const [project, setProject] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [companyFact, setCompanyFact] = useState("");
+  const [companyFactScope, setCompanyFactScope] = useState("");
+  const [companyFactProject, setCompanyFactProject] = useState("");
   const [query, setQuery] = useState("");
   const [searchScopes, setSearchScopes] = useState<string[]>([]);
   const [searchProject, setSearchProject] = useState("");
@@ -316,6 +320,7 @@ export default function CompanyBrainPage() {
   });
   const ingestDocument = useIngestCompanyBrainDocument();
   const uploadDocument = useUploadCompanyBrainDocument();
+  const createCompanyMemory = useCreateCompanyBrainMemory();
   const cancelDocument = useCancelCompanyBrainDocument();
   const deleteDocument = useDeleteCompanyBrainDocument();
 
@@ -459,6 +464,28 @@ export default function CompanyBrainPage() {
     }
   }
 
+  async function handleCreateCompanyFact() {
+    if (!activeWorkspaceId || !companyFact.trim()) return;
+    if (companyFactScope.includes(",")) {
+      toast.error("Use one scope when adding a company fact");
+      return;
+    }
+
+    try {
+      await createCompanyMemory.mutateAsync({
+        workspaceId: activeWorkspaceId,
+        content: companyFact.trim(),
+        category: "fact",
+        scope: companyFactScope || undefined,
+        project: companyFactProject || undefined,
+      });
+      setCompanyFact("");
+      toast.success("Company fact added");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not add company fact"));
+    }
+  }
+
   async function confirmDeleteDocument() {
     if (!deleteTarget) return;
     try {
@@ -501,6 +528,10 @@ export default function CompanyBrainPage() {
   }
 
   const isProcessing = ingestDocument.isPending || uploadDocument.isPending;
+  const canCreateCompanyFact =
+    !!activeWorkspaceId &&
+    companyFact.trim().length > 0 &&
+    !createCompanyMemory.isPending;
   const canSubmitIngest =
     !isProcessing &&
     !documentLimitReached &&
@@ -593,19 +624,23 @@ export default function CompanyBrainPage() {
             !hasWorkspace && "pointer-events-none select-none opacity-40",
           )}
         >
-          {/* Ingest */}
-          <div className="rounded-2xl border border-border bg-surface p-5">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10">
-                <UploadSimple className="h-4 w-4 text-accent" weight="bold" />
+          <div className="space-y-6">
+            {/* Ingest */}
+            <div className="rounded-2xl border border-border bg-surface p-5">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10">
+                  <UploadSimple
+                    className="h-4 w-4 text-accent"
+                    weight="bold"
+                  />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold">Ingest document</h2>
+                  <p className="text-xs text-foreground-muted">
+                    We auto-detect the format and extract memories.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-sm font-semibold">Ingest document</h2>
-                <p className="text-xs text-foreground-muted">
-                  We auto-detect the format and extract memories.
-                </p>
-              </div>
-            </div>
 
             {/* Source tabs */}
             <div className="mt-4 grid grid-cols-3 gap-1 rounded-lg border border-border bg-surface-elevated/50 p-1">
@@ -842,6 +877,67 @@ export default function CompanyBrainPage() {
                 )}
               </Button>
             </div>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-surface p-5">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10">
+                  <Brain className="h-4 w-4 text-accent" weight="duotone" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold">Company facts</h2>
+                  <p className="text-xs text-foreground-muted">
+                    Add curated context that is not in a document yet.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                <textarea
+                  value={companyFact}
+                  onChange={(event) => setCompanyFact(event.target.value)}
+                  maxLength={800}
+                  placeholder="We do not offer discounts after the trial period ends."
+                  className="min-h-28 w-full resize-y rounded-lg border border-border bg-surface-elevated/50 p-3 text-sm transition-colors placeholder:text-foreground-subtle focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    value={companyFactScope}
+                    onChange={(event) => setCompanyFactScope(event.target.value)}
+                    placeholder="scope"
+                    className="h-9 rounded-lg border border-border bg-surface px-3 text-sm transition-colors placeholder:text-foreground-subtle focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20"
+                  />
+                  <input
+                    value={companyFactProject}
+                    onChange={(event) =>
+                      setCompanyFactProject(event.target.value)
+                    }
+                    placeholder="project"
+                    className="h-9 rounded-lg border border-border bg-surface px-3 text-sm transition-colors placeholder:text-foreground-subtle focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20"
+                  />
+                </div>
+                <Button
+                  onClick={handleCreateCompanyFact}
+                  disabled={!canCreateCompanyFact}
+                  className="w-full"
+                >
+                  {createCompanyMemory.isPending ? (
+                    <>
+                      <SpinnerGap
+                        className="h-4 w-4 animate-spin"
+                        weight="bold"
+                      />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkle className="h-4 w-4" weight="fill" />
+                      Save company fact
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
           </div>
 
           {/* Search + Documents */}
@@ -1050,7 +1146,9 @@ export default function CompanyBrainPage() {
                           className="h-3.5 w-3.5 shrink-0"
                           weight="duotone"
                         />
-                        Extracted memory
+                        {memory.memoryType === "company"
+                          ? "Curated company fact"
+                          : "Extracted memory"}
                       </div>
                       <p className="mt-2 line-clamp-6 break-words text-sm leading-6 text-foreground/90">
                         {memory.content}
@@ -1059,13 +1157,17 @@ export default function CompanyBrainPage() {
                         {memory.scope ?? "Global"}
                         {memory.project ? ` · ${memory.project}` : ""}
                       </p>
-                      {memory.evidence[0] && (
+                      {memory.evidence[0] ? (
                         <p className="mt-2 truncate text-xs text-foreground-subtle">
                           {memory.evidence[0].title ?? "Source"} ·{" "}
                           {memory.evidence[0].sectionPath ?? "Document"} · chunk{" "}
                           {memory.evidence[0].chunkIndex}
                         </p>
-                      )}
+                      ) : memory.memoryType === "company" ? (
+                        <p className="mt-2 truncate text-xs text-foreground-subtle">
+                          Curated workspace knowledge
+                        </p>
+                      ) : null}
                     </div>
                   ))}
 

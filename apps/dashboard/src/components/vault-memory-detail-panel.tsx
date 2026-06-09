@@ -245,13 +245,13 @@ export function VaultMemoryDetailPanel({
               </div>
             </div>
 
-            {memory.sourceTitle && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-foreground-muted">
-                  <FileText className="h-3.5 w-3.5" />
-                  Source
-                </div>
-                {memory.sourceUrl ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-foreground-muted">
+                <FileText className="h-3.5 w-3.5" />
+                Source
+              </div>
+              {memory.sourceTitle ? (
+                memory.sourceUrl ? (
                   <a
                     href={memory.sourceUrl}
                     target="_blank"
@@ -273,9 +273,19 @@ export function VaultMemoryDetailPanel({
                     />
                     <span className="truncate">{memory.sourceTitle}</span>
                   </span>
-                )}
-              </div>
-            )}
+                )
+              ) : memory.memoryType === "company" ? (
+                <span className="flex items-center gap-1.5 text-sm text-foreground-subtle">
+                  <Brain className="h-3.5 w-3.5" weight="duotone" />
+                  Curated company fact
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 text-sm text-foreground-subtle">
+                  <FileText className="h-3.5 w-3.5" weight="duotone" />
+                  Source unavailable
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Feedback */}

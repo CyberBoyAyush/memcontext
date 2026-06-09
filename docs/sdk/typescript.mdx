@@ -377,6 +377,31 @@ only backed by that document.
 await client.deleteContextVaultDocument("document-id");
 ```
 
+### `createContextVaultMemory(request, options?)`
+
+Adds a curated company fact to a workspace. Use this for important company
+context that is not documented yet.
+
+```typescript
+await client.createContextVaultMemory({
+  workspaceId: workspace.id,
+  content: "Refund discounts are not offered after the trial period ends.",
+  scope: "billing",
+  project: "pricing",
+  category: "fact",
+});
+```
+
+### `deleteContextVaultMemory(workspaceId, memoryId, options?)`
+
+Deletes a curated company fact from a workspace. Document-extracted memories are
+removed by deleting their source document when they are not backed by any other
+document.
+
+```typescript
+await client.deleteContextVaultMemory(workspace.id, "memory-id");
+```
+
 ### `searchContextVault(request, options?)`
 
 Searches workspace knowledge in `documents`, `memories`, or `hybrid` mode.
@@ -392,13 +417,14 @@ const results = await client.searchContextVault({
 // Source passages from files/docs.
 console.log(results.chunks);
 
-// Extracted atomic facts with evidence back to source chunks.
+// Extracted atomic facts and curated company facts.
 console.log(results.memories);
 ```
 
 Hybrid mode keeps `chunks[]` and `memories[]` separate. For answer generation,
 pass `chunks[]` as source document context and convert `memories[]` into a
-second memory-context document.
+second memory-context document. Curated company facts use
+`memoryType: "company"` and may return with `evidence: []`.
 
 ### `listContextVaultMemories(request, options?)`
 

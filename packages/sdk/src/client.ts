@@ -11,9 +11,12 @@ import type {
   CorrectCompanyBrainMemoryResponse,
   CompanyBrainSearchChunk,
   CompanyBrainSearchMemory,
+  CreateCompanyBrainMemoryRequest,
+  CreateCompanyBrainMemoryResponse,
   CreateWorkspaceRequest,
   CreateWorkspaceResponse,
   DeleteCompanyBrainDocumentResponse,
+  DeleteCompanyBrainMemoryResponse,
   HealthResponse,
   IngestCompanyBrainDocumentRequest,
   IngestCompanyBrainDocumentResponse,
@@ -802,6 +805,27 @@ export class MemContextClient {
     };
   }
 
+  async createContextVaultMemory(
+    request: CreateCompanyBrainMemoryRequest,
+    options?: SaveOptions,
+  ): Promise<CreateCompanyBrainMemoryResponse> {
+    const response = await this.request<{
+      memory: JsonCompanyBrainMemory;
+    }>("/api/company-brain/memories", {
+      method: "POST",
+      body: {
+        ...request,
+        scope: normalizeScope(request.scope) ?? this.defaultScope,
+        project: normalizeProject(request.project) ?? this.defaultProject,
+      },
+      signal: options?.signal,
+    });
+
+    return {
+      memory: hydrateCompanyBrainMemory(response.memory),
+    };
+  }
+
   async submitContextVaultMemoryFeedback(
     memoryId: string,
     request: CompanyBrainMemoryFeedbackRequest,
@@ -814,6 +838,17 @@ export class MemContextClient {
         body: request,
         signal: options?.signal,
       },
+    );
+  }
+
+  async deleteContextVaultMemory(
+    workspaceId: string,
+    memoryId: string,
+    options?: SaveOptions,
+  ): Promise<DeleteCompanyBrainMemoryResponse> {
+    return this.request<DeleteCompanyBrainMemoryResponse>(
+      `/api/company-brain/memories/${memoryId}${buildQuery({ workspaceId })}`,
+      { method: "DELETE", signal: options?.signal },
     );
   }
 

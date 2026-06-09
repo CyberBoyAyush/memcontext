@@ -28,7 +28,11 @@ import {
   generateQueryVariants,
 } from "./embedding.js";
 import { rerankDocuments } from "../lib/openrouter.js";
-import { saveExtractedDocumentMemory, searchMemories } from "./memory.js";
+import {
+  saveCuratedCompanyMemory,
+  saveExtractedDocumentMemory,
+  searchMemories,
+} from "./memory.js";
 import { requireWorkspaceMember } from "./workspace.js";
 import { checkContextDocumentLimit } from "./subscription.js";
 import { scrapeUrlWithExa } from "./exa.js";
@@ -149,6 +153,15 @@ interface SearchCompanyBrainParams {
   limit: number;
 }
 
+interface SaveCompanyBrainMemoryParams {
+  userId: string;
+  workspaceId: string;
+  content: string;
+  category?: MemoryCategory;
+  scope?: string;
+  project?: string;
+}
+
 interface CorrectCompanyBrainMemoryParams {
   userId: string;
   workspaceId: string;
@@ -158,6 +171,109 @@ interface CorrectCompanyBrainMemoryParams {
   reason?: string;
   correctedChunkContent?: string;
   evidenceChunkId?: string;
+}
+
+interface DeleteCompanyBrainMemoryParams {
+  userId: string;
+  workspaceId: string;
+  memoryId: string;
+}
+
+export async function saveCompanyBrainMemory(
+  params: SaveCompanyBrainMemoryParams,
+) {
+  const membership = await requireWorkspaceMember(
+    params.userId,
+    params.workspaceId,
+  );
+  if (membership.role === "viewer") {
+    throw new Error("Viewers cannot add company facts");
+  }
+
+  const result = await saveCuratedCompanyMemory({
+    userId: params.userId,
+    workspaceId: params.workspaceId,
+    content: params.content,
+    category: params.category ?? "fact",
+    scope: params.scope,
+    project: params.project,
+    source: "api",
+  });
+
+  if (result.status === "limit_exceeded") {
+    throw new Error("Company fact limit reached");
+  }
+  if (!result.id) {
+    throw new Error("Memory not found");
+  }
+
+  const [memory] = await db
+    .select({
+      id: memories.id,
+      content: memories.content,
+      category: memories.category,
+      scope: memories.scope,
+      project: memories.project,
+      memoryType: memories.memoryType,
+      createdAt: memories.createdAt,
+    })
+    .from(memories)
+    .where(
+      and(
+        eq(memories.id, result.id),
+        eq(memories.workspaceId, params.workspaceId),
+        eq(memories.memoryType, "company"),
+        eq(memories.isCurrent, true),
+        isNull(memories.deletedAt),
+      ),
+    )
+    .limit(1);
+
+  if (!memory) {
+    throw new Error("Memory not found");
+  }
+
+  return {
+    memory: {
+      ...memory,
+      memoryType: "company" as const,
+      sourceId: null,
+      sourceTitle: null,
+      sourceUrl: null,
+    },
+  };
+}
+
+export async function deleteCompanyBrainMemory(
+  params: DeleteCompanyBrainMemoryParams,
+) {
+  const membership = await requireWorkspaceMember(
+    params.userId,
+    params.workspaceId,
+  );
+  if (membership.role === "viewer") {
+    throw new Error("Viewers cannot delete company facts");
+  }
+
+  const [deletedMemory] = await db
+    .update(memories)
+    .set({ deletedAt: new Date() })
+    .where(
+      and(
+        eq(memories.id, params.memoryId),
+        eq(memories.workspaceId, params.workspaceId),
+        eq(memories.memoryType, "company"),
+        eq(memories.isCurrent, true),
+        isNull(memories.deletedAt),
+      ),
+    )
+    .returning({ id: memories.id });
+
+  if (!deletedMemory) {
+    throw new Error("Memory not found");
+  }
+
+  return { success: true, memoryId: deletedMemory.id };
 }
 
 interface ParsedBlock {
@@ -1645,6 +1761,7 @@ export async function listCompanyBrainMemories(
         category: memories.category,
         scope: memories.scope,
         project: memories.project,
+        memoryType: memories.memoryType,
         createdAt: memories.createdAt,
       })
       .from(memories)
@@ -1755,6 +1872,7 @@ export async function listCompanyBrainDocumentMemories(
       category: memories.category,
       scope: memories.scope,
       project: memories.project,
+      memoryType: memories.memoryType,
       createdAt: memories.createdAt,
     })
     .from(memories)
@@ -1913,6 +2031,7 @@ export async function correctCompanyBrainMemory(
         category: memories.category,
         scope: memories.scope,
         project: memories.project,
+        memoryType: memories.memoryType,
         createdAt: memories.createdAt,
       });
 
@@ -2238,15 +2357,16 @@ export async function searchCompanyBrain(params: SearchCompanyBrainParams) {
       evidence,
     ]);
   }
-  const citedMemoryRows = memoryRows.filter((memory) =>
-    evidenceByMemoryId.has(memory.id),
+  const searchableMemoryRows = memoryRows.filter(
+    (memory) =>
+      memory.memoryType === "company" || evidenceByMemoryId.has(memory.id),
   );
 
   return {
     mode: params.mode,
-    found: chunks.length + citedMemoryRows.length,
+    found: chunks.length + searchableMemoryRows.length,
     chunks,
-    memories: citedMemoryRows.map((memory) => ({
+    memories: searchableMemoryRows.map((memory) => ({
       ...memory,
       evidence: evidenceByMemoryId.get(memory.id) ?? [],
     })),
