@@ -22,6 +22,7 @@ import {
   Envelope,
   BookOpen,
   ShareNetwork,
+  Vault,
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -77,7 +78,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: "Dashboard", href: "/dashboard", icon: SquaresFour },
       { label: "Memories", href: "/memories", icon: Brain },
-      { label: "Context Vault", href: "/context-vault", icon: Brain },
+      { label: "Context Vault", href: "/context-vault", icon: Vault },
       { label: "Memory Graph", href: "/memories/graph", icon: ShareNetwork },
     ],
   },
