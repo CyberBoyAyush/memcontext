@@ -185,3 +185,10 @@ Current Free/Hobby/Pro `PLAN_LIMITS` apply to personal/user memories. Context Va
 Do not use native `<select>` elements in the dashboard — they render OS-native menus that break the dark theme. Use the reusable `ThemedSelect` component at `apps/dashboard/src/components/ui/themed-select.tsx` instead. It matches the app dropdown aesthetic (button with border-border/bg-surface + CaretDown, absolute menu with bg-surface-elevated, animate-scale-in, Check marks, click-outside overlay), mirroring `scope-picker.tsx`. Props: value, options ({value,label,disabled?}), onChange, disabled, align ("left"|"right"), capitalize, className. The workspaces management UI (`components/settings/workspaces-section.tsx`) uses it for the workspace picker, billing-owner picker, and member-role picker.
 
 The Manage Workspaces dialog (`ManageWorkspacesDialog` in `app/(dashboard)/context-vault/page.tsx`) uses a landscape width of `max-w-3xl`.
+
+<!-- Added: 2026-06-09 -->
+## Context Vault Ingestion UI
+
+The Context Vault page (`apps/dashboard/src/app/(dashboard)/context-vault/page.tsx`) uses a single unified "Add knowledge" card with a 4-tab switcher: Upload / Paste / URL / Fact (the `addTabs` array, each with a `hint` shown as the card subtitle). The "Company facts" card is NOT a separate card — the Fact tab renders the curated company-fact form (companyFact textarea + scope/project + Save). State is `addMode: AddMode = "upload"|"paste"|"url"|"fact"`, and the document logic derives `const ingestMode: IngestMode = addMode === "fact" ? "upload" : addMode;`.
+
+The Context Vault sidebar nav item uses the Phosphor `Vault` icon (NOT `Brain`, which is reserved for Memories). The page header pill also uses `Vault`.

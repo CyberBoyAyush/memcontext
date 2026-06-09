@@ -22,6 +22,7 @@ import {
   TextAlignLeft,
   Trash,
   UploadSimple,
+  Vault,
   X,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,7 @@ import { WorkspacesSection } from "@/components/settings/workspaces-section";
 
 type SearchMode = "memories" | "documents" | "hybrid";
 type IngestMode = "upload" | "paste" | "url";
+type AddMode = IngestMode | "fact";
 
 interface DeleteTarget {
   id: string;
@@ -64,14 +66,36 @@ interface SubscriptionData {
   contextDocumentsLimit: number;
 }
 
-const ingestTabs: Array<{
-  value: IngestMode;
+const addTabs: Array<{
+  value: AddMode;
   label: string;
   icon: typeof UploadSimple;
+  hint: string;
 }> = [
-  { value: "upload", label: "Upload", icon: UploadSimple },
-  { value: "paste", label: "Paste", icon: TextAlignLeft },
-  { value: "url", label: "URL", icon: LinkIcon },
+  {
+    value: "upload",
+    label: "Upload",
+    icon: UploadSimple,
+    hint: "Drop in a file and we auto-detect the format.",
+  },
+  {
+    value: "paste",
+    label: "Paste",
+    icon: TextAlignLeft,
+    hint: "Paste raw text or Markdown to extract memories.",
+  },
+  {
+    value: "url",
+    label: "URL",
+    icon: LinkIcon,
+    hint: "Crawl a page or docs site and extract memories.",
+  },
+  {
+    value: "fact",
+    label: "Fact",
+    icon: Brain,
+    hint: "Add curated context that is not in a document yet.",
+  },
 ];
 
 const inputClass =
@@ -295,7 +319,8 @@ export default function CompanyBrainPage() {
   const [crawlSubpages, setCrawlSubpages] = useState(true);
   const [priorityPageLimit, setPriorityPageLimit] = useState(15);
   const [subpageTarget, setSubpageTarget] = useState("docs, api, guides");
-  const [ingestMode, setIngestMode] = useState<IngestMode>("upload");
+  const [addMode, setAddMode] = useState<AddMode>("upload");
+  const ingestMode: IngestMode = addMode === "fact" ? "upload" : addMode;
   const [scope, setScope] = useState("");
   const [project, setProject] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -548,15 +573,15 @@ export default function CompanyBrainPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="inline-flex items-center gap-1.5 rounded-full bg-accent/10 border border-accent/20 px-2.5 py-1 text-xs font-medium text-accent">
-            <Buildings className="h-3.5 w-3.5" weight="fill" />
+            <Vault className="h-3.5 w-3.5" weight="fill" />
             Context Vault
           </div>
           <h1 className="mt-3 text-3xl font-bold tracking-tight">
             Workspace knowledge
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-foreground-muted">
-            Upload documents, extract durable company memories, and search the
-            original chunks with citations.
+            Upload documents, paste text, crawl URLs, or curate facts — then
+            search durable company memories with citations.
           </p>
         </div>
 
@@ -625,32 +650,29 @@ export default function CompanyBrainPage() {
           )}
         >
           <div className="space-y-6">
-            {/* Ingest */}
+            {/* Unified add-knowledge card */}
             <div className="rounded-2xl border border-border bg-surface p-5">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10">
-                  <UploadSimple
-                    className="h-4 w-4 text-accent"
-                    weight="bold"
-                  />
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/10">
+                  <Vault className="h-5 w-5 text-accent" weight="duotone" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-semibold">Ingest document</h2>
+                  <h2 className="text-sm font-semibold">Add knowledge</h2>
                   <p className="text-xs text-foreground-muted">
-                    We auto-detect the format and extract memories.
+                    {addTabs.find((tab) => tab.value === addMode)?.hint}
                   </p>
                 </div>
               </div>
 
             {/* Source tabs */}
-            <div className="mt-4 grid grid-cols-3 gap-1 rounded-lg border border-border bg-surface-elevated/50 p-1">
-              {ingestTabs.map((tab) => {
-                const active = ingestMode === tab.value;
+            <div className="mt-4 grid grid-cols-4 gap-1 rounded-lg border border-border bg-surface-elevated/50 p-1">
+              {addTabs.map((tab) => {
+                const active = addMode === tab.value;
                 return (
                   <button
                     key={tab.value}
                     type="button"
-                    onClick={() => setIngestMode(tab.value)}
+                    onClick={() => setAddMode(tab.value)}
                     className={cn(
                       "flex h-9 items-center justify-center gap-1.5 rounded-md text-xs font-medium transition-all",
                       active
@@ -665,6 +687,54 @@ export default function CompanyBrainPage() {
               })}
             </div>
 
+            {/* Fact mode: curated company fact */}
+            {addMode === "fact" ? (
+              <div className="mt-4 space-y-3">
+                <textarea
+                  value={companyFact}
+                  onChange={(event) => setCompanyFact(event.target.value)}
+                  maxLength={800}
+                  placeholder="We do not offer discounts after the trial period ends."
+                  className="min-h-40 w-full resize-y rounded-lg border border-border bg-surface-elevated/50 p-3 text-sm transition-colors placeholder:text-foreground-subtle focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    value={companyFactScope}
+                    onChange={(event) => setCompanyFactScope(event.target.value)}
+                    placeholder="scope"
+                    className="h-9 rounded-lg border border-border bg-surface px-3 text-sm transition-colors placeholder:text-foreground-subtle focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20"
+                  />
+                  <input
+                    value={companyFactProject}
+                    onChange={(event) =>
+                      setCompanyFactProject(event.target.value)
+                    }
+                    placeholder="project"
+                    className="h-9 rounded-lg border border-border bg-surface px-3 text-sm transition-colors placeholder:text-foreground-subtle focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20"
+                  />
+                </div>
+                <Button
+                  onClick={handleCreateCompanyFact}
+                  disabled={!canCreateCompanyFact}
+                  className="w-full"
+                >
+                  {createCompanyMemory.isPending ? (
+                    <>
+                      <SpinnerGap
+                        className="h-4 w-4 animate-spin"
+                        weight="bold"
+                      />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkle className="h-4 w-4" weight="fill" />
+                      Save company fact
+                    </>
+                  )}
+                </Button>
+              </div>
+            ) : (
             <div className="mt-4 space-y-3">
               {/* Mode-specific input */}
               {ingestMode === "upload" && (
@@ -877,66 +947,7 @@ export default function CompanyBrainPage() {
                 )}
               </Button>
             </div>
-            </div>
-
-            <div className="rounded-2xl border border-border bg-surface p-5">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10">
-                  <Brain className="h-4 w-4 text-accent" weight="duotone" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-semibold">Company facts</h2>
-                  <p className="text-xs text-foreground-muted">
-                    Add curated context that is not in a document yet.
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-3">
-                <textarea
-                  value={companyFact}
-                  onChange={(event) => setCompanyFact(event.target.value)}
-                  maxLength={800}
-                  placeholder="We do not offer discounts after the trial period ends."
-                  className="min-h-28 w-full resize-y rounded-lg border border-border bg-surface-elevated/50 p-3 text-sm transition-colors placeholder:text-foreground-subtle focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20"
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    value={companyFactScope}
-                    onChange={(event) => setCompanyFactScope(event.target.value)}
-                    placeholder="scope"
-                    className="h-9 rounded-lg border border-border bg-surface px-3 text-sm transition-colors placeholder:text-foreground-subtle focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20"
-                  />
-                  <input
-                    value={companyFactProject}
-                    onChange={(event) =>
-                      setCompanyFactProject(event.target.value)
-                    }
-                    placeholder="project"
-                    className="h-9 rounded-lg border border-border bg-surface px-3 text-sm transition-colors placeholder:text-foreground-subtle focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20"
-                  />
-                </div>
-                <Button
-                  onClick={handleCreateCompanyFact}
-                  disabled={!canCreateCompanyFact}
-                  className="w-full"
-                >
-                  {createCompanyMemory.isPending ? (
-                    <>
-                      <SpinnerGap
-                        className="h-4 w-4 animate-spin"
-                        weight="bold"
-                      />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkle className="h-4 w-4" weight="fill" />
-                      Save company fact
-                    </>
-                  )}
-                </Button>
-              </div>
+            )}
             </div>
           </div>
 
