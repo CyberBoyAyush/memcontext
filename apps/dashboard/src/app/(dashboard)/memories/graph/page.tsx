@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
@@ -23,33 +23,54 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScopePicker } from "@/components/scope-picker";
+import { ThemedSelect } from "@/components/ui/themed-select";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn, formatDateTime } from "@/lib/utils";
+
+const LINK_TYPE_LABELS: Record<MemoryGraphLink["type"], string> = {
+  extends: "Extends",
+  similar: "Similar",
+  "shared-root": "Shared root",
+  "shared-project": "Shared project",
+  "shared-category": "Shared category",
+};
+
+const RELATION_FILTER_OPTIONS = [
+  { value: "all", label: "All link types" },
+  { value: "similar", label: "Similar only" },
+  { value: "extends", label: "Extends only" },
+  { value: "shared-root", label: "Shared root" },
+  { value: "shared-project", label: "Shared project" },
+  { value: "shared-category", label: "Shared category" },
+];
 
 const GraphCanvas = dynamic(() => import("./graph-canvas"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-[620px] w-full items-center justify-center rounded-xl bg-[#070a12] text-sm text-foreground-muted">
+    <div className="flex h-full min-h-[420px] w-full items-center justify-center rounded-xl bg-background-secondary text-sm text-foreground-muted">
       <SpinnerGap className="mr-2 h-4 w-4 animate-spin" />
       Warming up graph canvas...
     </div>
   ),
 });
 
-// Softer, desaturated palette for a more professional feel.
+// Coral / warm-neutral palette derived from the app accent (#e8613c).
+// Project nodes cycle through warm tones (coral, amber, taupe, rose, sand)
+// to stay on-brand with the dashboard's grey + coral aesthetic.
 const PROJECT_COLORS = [
-  "#6e8ab8", // soft steel blue
-  "#9b7ab0", // muted lavender
-  "#7aab9b", // sage teal
-  "#b58b6e", // warm taupe
-  "#a87a94", // dusty rose
-  "#7a96b0", // slate blue
+  "#e8613c", // coral (accent)
+  "#d97757", // soft terracotta
+  "#c4906a", // warm sand
+  "#b07a5e", // muted taupe
+  "#8a6a5e", // dusty mocha
+  "#a3938a", // warm grey
 ];
 
 const CATEGORY_COLORS: Record<string, string> = {
-  preference: "#b58670", // warm taupe
-  fact: "#7aa890", // sage
-  decision: "#9880ad", // muted violet
-  context: "#b0945c", // muted gold
+  preference: "#e8613c", // coral
+  fact: "#c4906a", // warm sand
+  decision: "#a3938a", // warm grey
+  context: "#d97757", // terracotta
 };
 
 type RelationFilter =
@@ -99,6 +120,100 @@ function sortByPriority(nodes: CanvasNode[]): CanvasNode[] {
 type ViewMode = "full" | "focused";
 
 const HEAVY_GRAPH_THRESHOLD = 600;
+
+const VIEW_MODES: { id: ViewMode; label: string }[] = [
+  { id: "full", label: "Full" },
+  { id: "focused", label: "Focused" },
+];
+
+function ViewModeTabs({
+  value,
+  onChange,
+}: {
+  value: ViewMode;
+  onChange: (next: ViewMode) => void;
+}) {
+  const tabsRef = useRef<Map<ViewMode, HTMLButtonElement>>(new Map());
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
+
+  useEffect(() => {
+    const activeTab = tabsRef.current.get(value);
+    if (!activeTab) return;
+    const container = activeTab.parentElement;
+    if (!container) return;
+    const containerRect = container.getBoundingClientRect();
+    const tabRect = activeTab.getBoundingClientRect();
+    setIndicatorStyle({
+      left: tabRect.left - containerRect.left,
+      width: tabRect.width,
+    });
+  }, [value]);
+
+  return (
+    <div
+      role="group"
+      aria-label="View mode"
+      className="relative inline-flex h-9 items-center gap-0.5 rounded-lg border border-border bg-surface p-1"
+    >
+      <div
+        className="absolute top-1 bottom-1 rounded-md bg-accent transition-all duration-300 ease-out"
+        style={{
+          left: indicatorStyle.left,
+          width: indicatorStyle.width,
+        }}
+      />
+      {VIEW_MODES.map((mode) => (
+        <button
+          key={mode.id}
+          ref={(el) => {
+            if (el) tabsRef.current.set(mode.id, el);
+          }}
+          type="button"
+          onClick={() => onChange(mode.id)}
+          className={cn(
+            "relative z-10 rounded-md px-3 text-xs font-medium transition-colors",
+            value === mode.id
+              ? "text-accent-foreground"
+              : "text-foreground-muted hover:text-foreground",
+          )}
+        >
+          {mode.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function SummaryStat({
+  label,
+  value,
+  hint,
+  compact,
+}: {
+  label: string;
+  value: string | number;
+  hint?: string;
+  compact?: boolean;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-background-secondary px-3 py-2.5">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground-subtle">
+        {label}
+      </p>
+      <p
+        className={cn(
+          "mt-1.5 font-semibold text-foreground",
+          compact ? "text-sm" : "text-base",
+        )}
+      >
+        {value}
+      </p>
+      {hint && (
+        <p className="text-[10px] text-foreground-muted">{hint}</p>
+      )}
+    </div>
+  );
+}
 
 function GraphEmptyState() {
   return (
@@ -227,6 +342,18 @@ export default function MemoryGraphPage() {
     [data?.links],
   );
 
+  const linkBreakdown = useMemo(() => {
+    const counts: Record<MemoryGraphLink["type"], number> = {
+      extends: 0,
+      similar: 0,
+      "shared-root": 0,
+      "shared-project": 0,
+      "shared-category": 0,
+    };
+    for (const link of links) counts[link.type] += 1;
+    return counts;
+  }, [links]);
+
   const searchMatches = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return [];
@@ -325,15 +452,17 @@ export default function MemoryGraphPage() {
     : null;
 
   const headerBlock = (
-    <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <div className="flex shrink-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Memory Graph</h1>
-        <p className="mt-1 text-foreground-muted">
+        <div className="flex items-baseline gap-3">
+          <h1 className="text-2xl font-bold tracking-tight">Memory Graph</h1>
+          <p className="text-xs font-medium uppercase tracking-wider text-foreground-subtle">
+            {scopeContextLabel}
+          </p>
+        </div>
+        <p className="mt-1 text-sm text-foreground-muted">
           Real links come from saved memory relations. Shared roots, projects,
-          and categories fill in the rest when that data exists.
-        </p>
-        <p className="mt-2 text-xs font-medium uppercase tracking-wider text-foreground-subtle">
-          {scopeContextLabel}
+          and categories fill in the rest.
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -344,16 +473,50 @@ export default function MemoryGraphPage() {
           isLoading={hierarchyLoading}
         />
         {data && (
-          <div className="flex flex-wrap items-center gap-2 text-xs text-foreground-muted">
-            <span className="rounded-full border border-border px-3 py-1">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-foreground-muted">
+            <span className="inline-flex h-10 items-center rounded-xl border border-border bg-surface px-3 font-medium">
               {data.meta.totalNodes} memories
             </span>
-            <span className="rounded-full border border-border px-3 py-1">
-              {data.meta.relationLinks} real links
-            </span>
-            <span className="rounded-full border border-border px-3 py-1">
-              {data.meta.derivedLinks} shared-context links
-            </span>
+            <Tooltip
+              content={
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground-subtle">
+                    Link breakdown
+                  </p>
+                  <div className="space-y-1 text-xs">
+                    {(
+                      Object.keys(LINK_TYPE_LABELS) as Array<
+                        MemoryGraphLink["type"]
+                      >
+                    ).map((type) => (
+                      <div
+                        key={type}
+                        className="flex items-center justify-between gap-4"
+                      >
+                        <span className="text-foreground-muted">
+                          {LINK_TYPE_LABELS[type]}
+                        </span>
+                        <span className="font-mono text-foreground">
+                          {linkBreakdown[type]}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-1 flex items-center justify-between gap-4 border-t border-border/60 pt-1.5 text-xs">
+                    <span className="text-foreground-muted">
+                      Real / Shared
+                    </span>
+                    <span className="font-mono text-foreground">
+                      {data.meta.relationLinks} / {data.meta.derivedLinks}
+                    </span>
+                  </div>
+                </div>
+              }
+            >
+              <span className="inline-flex h-10 cursor-help items-center rounded-xl border border-border bg-surface px-3 font-medium">
+                {links.length} links
+              </span>
+            </Tooltip>
           </div>
         )}
       </div>
@@ -362,10 +525,10 @@ export default function MemoryGraphPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6 animate-fade-in">
+      <div className="flex h-full flex-col gap-4 animate-fade-in">
         {headerBlock}
-        <Card className="min-h-[560px] border-border/70">
-          <CardContent className="flex min-h-[560px] items-center justify-center pt-6">
+        <Card className="flex-1 min-h-0 border-border/70">
+          <CardContent className="flex h-full items-center justify-center pt-6">
             <div className="flex items-center gap-3 text-foreground-muted">
               <SpinnerGap className="h-5 w-5 animate-spin" />
               Building your memory graph...
@@ -378,7 +541,7 @@ export default function MemoryGraphPage() {
 
   if (isError) {
     return (
-      <div className="space-y-6 animate-fade-in">
+      <div className="flex h-full flex-col gap-4 animate-fade-in">
         {headerBlock}
         <Card className="border-error/20 bg-error/5">
           <CardContent className="pt-6 text-sm text-foreground-muted">
@@ -393,7 +556,7 @@ export default function MemoryGraphPage() {
 
   if (!data || data.nodes.length === 0) {
     return (
-      <div className="space-y-6 animate-fade-in">
+      <div className="flex h-full flex-col gap-4 animate-fade-in">
         {headerBlock}
         <GraphEmptyState />
       </div>
@@ -401,129 +564,85 @@ export default function MemoryGraphPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="flex h-full flex-col gap-4 animate-fade-in">
       {headerBlock}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-4">
-          <Card className="border-border/70">
-            <CardContent className="space-y-4 pt-6">
-              <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_200px_auto_auto]">
-                <div className="space-y-2">
-                  <div className="relative">
-                    <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-subtle" />
-                    <Input
-                      value={search}
-                      onChange={(event) => setSearch(event.target.value)}
-                      placeholder="Search memories, projects, or categories"
-                      className="pl-10"
-                    />
+      <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <Card className="flex min-h-0 flex-col overflow-hidden border-border/70 p-0 shadow-none">
+          <div className="shrink-0 border-b border-border/70 px-4 py-3">
+            <div className="grid gap-2.5 lg:grid-cols-[minmax(0,1.2fr)_180px_auto_auto]">
+              <div className="space-y-2">
+                <div className="relative">
+                  <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-subtle" />
+                  <Input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search memories, projects, categories"
+                    className="h-9 pl-9 text-sm"
+                  />
+                </div>
+                {searchMatches.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {searchMatches.map((match) => (
+                      <Button
+                        key={match.id}
+                        type="button"
+                        variant={
+                          selectedNodeId === match.id ? "secondary" : "outline"
+                        }
+                        size="sm"
+                        onClick={() => setSelectedNodeId(match.id)}
+                        className="max-w-full"
+                      >
+                        <span className="truncate">{match.label}</span>
+                      </Button>
+                    ))}
                   </div>
-                  {searchMatches.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {searchMatches.map((match) => (
-                        <Button
-                          key={match.id}
-                          type="button"
-                          variant={
-                            selectedNodeId === match.id
-                              ? "secondary"
-                              : "outline"
-                          }
-                          size="sm"
-                          onClick={() => setSelectedNodeId(match.id)}
-                          className="max-w-full"
-                        >
-                          <span className="truncate">{match.label}</span>
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <select
-                  value={relationFilter}
-                  onChange={(event) =>
-                    setRelationFilter(event.target.value as RelationFilter)
-                  }
-                  className="flex h-10 w-full rounded-xl border border-border bg-surface px-4 py-2 text-sm text-foreground transition-all duration-200 hover:border-border-hover focus:border-foreground-subtle focus:outline-none"
-                >
-                  <option value="all">All link types</option>
-                  <option value="similar">Similar only</option>
-                  <option value="extends">Extends only</option>
-                  <option value="shared-root">Shared root</option>
-                  <option value="shared-project">Shared project</option>
-                  <option value="shared-category">Shared category</option>
-                </select>
-
-                <Button
-                  type="button"
-                  variant={includeDerived ? "secondary" : "outline"}
-                  onClick={() => setIncludeDerived((current) => !current)}
-                  className="justify-center"
-                >
-                  <Sparkle weight="duotone" />
-                  {includeDerived ? "Including shared" : "Real only"}
-                </Button>
-
-                <div
-                  role="group"
-                  aria-label="View mode"
-                  className="flex h-10 items-center overflow-hidden rounded-xl border border-border bg-surface text-sm"
-                >
-                  <button
-                    type="button"
-                    onClick={() => setViewMode("full")}
-                    className={cn(
-                      "h-full px-3 font-medium transition-colors",
-                      viewMode === "full"
-                        ? "bg-surface-elevated text-foreground"
-                        : "text-foreground-muted hover:text-foreground",
-                    )}
-                  >
-                    Full
-                  </button>
-                  <div className="h-5 w-px bg-border" />
-                  <button
-                    type="button"
-                    onClick={() => setViewMode("focused")}
-                    className={cn(
-                      "h-full px-3 font-medium transition-colors",
-                      viewMode === "focused"
-                        ? "bg-surface-elevated text-foreground"
-                        : "text-foreground-muted hover:text-foreground",
-                    )}
-                  >
-                    Focused
-                  </button>
-                </div>
+                )}
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 text-xs text-foreground-muted">
-                <span className="rounded-full bg-surface-elevated px-3 py-1">
-                  {viewMode === "full"
-                    ? `Showing all ${data.meta.totalNodes} memories`
-                    : `Showing ${graphNodes.length} of ${data.meta.totalNodes} memories`}
-                </span>
-                <span className="rounded-full bg-surface-elevated px-3 py-1">
-                  {graphLinks.length} visible links
-                </span>
+              <ThemedSelect
+                value={relationFilter}
+                options={RELATION_FILTER_OPTIONS}
+                onChange={(next) => setRelationFilter(next as RelationFilter)}
+                align="left"
+                buttonClassName="h-9 rounded-lg px-3 text-xs"
+              />
+
+              <Button
+                type="button"
+                variant={includeDerived ? "secondary" : "outline"}
+                size="sm"
+                onClick={() => setIncludeDerived((current) => !current)}
+                className="h-9 justify-center rounded-lg"
+              >
+                <Sparkle weight="duotone" />
+                {includeDerived ? "Including shared" : "Real only"}
+              </Button>
+
+              <ViewModeTabs value={viewMode} onChange={setViewMode} />
+            </div>
+
+            {(viewMode === "focused" ||
+              (viewMode === "full" &&
+                data.meta.totalNodes > HEAVY_GRAPH_THRESHOLD)) && (
+              <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-foreground-muted">
                 {viewMode === "focused" && focusedNodeId && (
-                  <span className="rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-accent">
-                    Focused neighborhood
+                  <span className="rounded-md border border-accent/30 bg-accent/10 px-2 py-0.5 text-[11px] text-accent">
+                    Focused on {graphNodes.length} of {data.meta.totalNodes}
                   </span>
                 )}
                 {viewMode === "full" &&
                   data.meta.totalNodes > HEAVY_GRAPH_THRESHOLD && (
-                    <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1 text-amber-300">
+                    <span className="rounded-md border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-300">
                       Large graph · performance may drop
                     </span>
                   )}
               </div>
-            </CardContent>
-          </Card>
+            )}
+          </div>
 
-          <Card className="overflow-hidden border-border/70 p-0">
+          <div className="relative min-h-0 flex-1">
             <GraphCanvas
               key={JSON.stringify(["scope", selectedScope])}
               nodes={graphNodes}
@@ -546,118 +665,103 @@ export default function MemoryGraphPage() {
                 ).size,
               }}
             />
-          </Card>
-        </div>
+          </div>
+        </Card>
 
-        <div className="space-y-4">
-          <Card className="border-border/70">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-base">
+        <div className="flex min-h-0 flex-col gap-4 overflow-y-auto pr-1 scrollbar-hide">
+          <Card className="border-border/70 shadow-none">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
                 <Brain className="h-4 w-4 text-accent" weight="duotone" />
-                {selectedNode ? "Selected Memory" : "Graph Summary"}
+                {selectedNode ? "Selected memory" : "Graph summary"}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 text-sm">
+            <CardContent className="space-y-3 text-sm">
               {selectedNode ? (
                 <>
-                  <div className="space-y-2">
-                    <p className="text-base font-semibold text-foreground">
+                  <div className="space-y-1.5">
+                    <p className="text-sm font-semibold text-foreground">
                       {selectedNode.label}
                     </p>
-                    <p className="leading-6 text-foreground-muted">
+                    <p className="text-xs leading-relaxed text-foreground-muted">
                       {selectedNode.content}
                     </p>
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     {selectedNode.project && (
-                      <span className="rounded-full border border-border bg-surface-elevated px-3 py-1 text-xs text-foreground-muted">
-                        Project: {selectedNode.project}
+                      <span className="rounded-md border border-border bg-background-secondary px-2 py-0.5 text-[11px] text-foreground-muted">
+                        {selectedNode.project}
                       </span>
                     )}
                     {selectedNode.category && (
-                      <span className="rounded-full border border-border bg-surface-elevated px-3 py-1 text-xs text-foreground-muted">
-                        Category: {selectedNode.category}
+                      <span className="rounded-md border border-border bg-background-secondary px-2 py-0.5 text-[11px] text-foreground-muted">
+                        {selectedNode.category}
                       </span>
                     )}
                     {selectedNode.rootId && (
-                      <span className="rounded-full border border-border bg-surface-elevated px-3 py-1 text-xs text-foreground-muted">
+                      <span className="rounded-md border border-accent/30 bg-accent/10 px-2 py-0.5 text-[11px] text-accent">
                         Version chain
                       </span>
                     )}
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-xl border border-border bg-surface-elevated p-3">
-                      <p className="text-xs uppercase tracking-wide text-foreground-subtle">
-                        Connections
-                      </p>
-                      <p className="mt-2 text-lg font-semibold text-foreground">
-                        {selectedNodeLinks.length}
-                      </p>
-                    </div>
-                    <div className="rounded-xl border border-border bg-surface-elevated p-3">
-                      <p className="text-xs uppercase tracking-wide text-foreground-subtle">
-                        Created
-                      </p>
-                      <p className="mt-2 text-sm font-medium text-foreground">
-                        {graphTime?.date}
-                      </p>
-                      <p className="text-xs text-foreground-muted">
-                        {graphTime?.time}
-                      </p>
-                    </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <SummaryStat
+                      label="Connections"
+                      value={selectedNodeLinks.length}
+                    />
+                    <SummaryStat
+                      label="Created"
+                      value={graphTime?.date ?? "—"}
+                      hint={graphTime?.time}
+                      compact
+                    />
                   </div>
 
-                  <div className="space-y-2">
-                    <p className="text-xs uppercase tracking-wide text-foreground-subtle">
-                      Visible link types
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {Array.from(
-                        new Set(selectedNodeLinks.map((link) => link.type)),
-                      ).map((type) => (
-                        <span
-                          key={type}
-                          className="rounded-full border border-border bg-surface px-3 py-1 text-xs text-foreground-muted"
-                        >
-                          {type}
-                        </span>
-                      ))}
+                  {selectedNodeLinks.length > 0 && (
+                    <div className="space-y-1.5 pt-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground-subtle">
+                        Visible link types
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {Array.from(
+                          new Set(selectedNodeLinks.map((link) => link.type)),
+                        ).map((type) => (
+                          <span
+                            key={type}
+                            className="rounded-md border border-border bg-background-secondary px-2 py-0.5 text-[11px] text-foreground-muted"
+                          >
+                            {type}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </>
               ) : (
-                <div className="space-y-4 text-foreground-muted">
-                  <p>
-                    Click a memory node to inspect the raw memory content and
-                    the link types currently keeping it connected.
+                <div className="space-y-3">
+                  <p className="text-xs leading-relaxed text-foreground-muted">
+                    Click a memory node to inspect its content and the link
+                    types keeping it connected.
                   </p>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-xl border border-border bg-surface-elevated p-3">
-                      <p className="text-xs uppercase tracking-wide text-foreground-subtle">
-                        Projects represented
-                      </p>
-                      <p className="mt-2 text-lg font-semibold text-foreground">
-                        {
-                          new Set(
-                            nodes.map((node) => node.project).filter(Boolean),
-                          ).size
-                        }
-                      </p>
-                    </div>
-                    <div className="rounded-xl border border-border bg-surface-elevated p-3">
-                      <p className="text-xs uppercase tracking-wide text-foreground-subtle">
-                        Categories represented
-                      </p>
-                      <p className="mt-2 text-lg font-semibold text-foreground">
-                        {
-                          new Set(
-                            nodes.map((node) => node.category).filter(Boolean),
-                          ).size
-                        }
-                      </p>
-                    </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <SummaryStat
+                      label="Projects"
+                      value={
+                        new Set(
+                          nodes.map((node) => node.project).filter(Boolean),
+                        ).size
+                      }
+                    />
+                    <SummaryStat
+                      label="Categories"
+                      value={
+                        new Set(
+                          nodes.map((node) => node.category).filter(Boolean),
+                        ).size
+                      }
+                    />
                   </div>
                 </div>
               )}

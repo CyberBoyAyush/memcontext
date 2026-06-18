@@ -115,6 +115,22 @@ function XIcon({ className }: { className?: string }) {
 
 export function Sidebar() {
   const pathname = usePathname();
+  // Pick the single most-specific internal nav href that matches the current
+  // pathname so child routes (e.g. /memories/graph) don't also activate their
+  // parent (/memories) via prefix matching.
+  const activeNavHref = (() => {
+    const internalHrefs = navGroups
+      .flatMap((g) => g.items)
+      .map((i) => i.href)
+      .filter((href) => !href.startsWith("http"));
+    let best: string | null = null;
+    for (const href of internalHrefs) {
+      if (pathname === href || pathname.startsWith(href + "/")) {
+        if (!best || href.length > best.length) best = href;
+      }
+    }
+    return best;
+  })();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -287,10 +303,7 @@ export function Sidebar() {
                 <div className="space-y-0.5">
                   {group.items.map((item) => {
                     const isExternal = item.href.startsWith("http");
-                    const isActive =
-                      !isExternal &&
-                      (pathname === item.href ||
-                        pathname.startsWith(item.href + "/"));
+                    const isActive = !isExternal && activeNavHref === item.href;
 
                     const linkProps = isExternal
                       ? {

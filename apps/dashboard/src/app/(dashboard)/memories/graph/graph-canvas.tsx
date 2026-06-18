@@ -6,7 +6,9 @@ import ForceGraph2D, {
   type LinkObject,
   type NodeObject,
 } from "react-force-graph-2d";
+import { CaretDown } from "@phosphor-icons/react";
 import type { MemoryGraphLink, MemoryGraphNode } from "@memcontext/types";
+import { cn } from "@/lib/utils";
 
 type CanvasNode = MemoryGraphNode & {
   color: string;
@@ -55,17 +57,17 @@ function resolveId(
 function getLinkRGB(link: CanvasLink): string {
   switch (link.type) {
     case "extends":
-      return "200, 132, 108"; // muted warm
+      return "232, 97, 60"; // coral (accent) — strongest, real relation
     case "similar":
-      return "155, 177, 196"; // soft slate
+      return "217, 119, 87"; // terracotta — semantic similarity
     case "shared-root":
-      return "170, 153, 196"; // muted violet
+      return "196, 144, 106"; // warm sand — version chain
     case "shared-project":
-      return "128, 155, 196"; // soft blue
+      return "163, 147, 138"; // warm grey — shared project
     case "shared-category":
-      return "196, 169, 122"; // muted gold
+      return "138, 106, 94"; // dusty mocha — shared category
     default:
-      return "148, 163, 184";
+      return "163, 147, 138";
   }
 }
 
@@ -215,7 +217,7 @@ export default function GraphCanvas(props: GraphCanvasProps) {
     const instance = graphRef.current;
     if (!instance) return;
     const current = instance.zoom();
-    instance.zoom(Math.max(0.3, Math.min(current + delta, 8)), 220);
+    instance.zoom(Math.max(0.02, Math.min(current + delta, 3)), 220);
   }, []);
 
   const activeNode = useMemo(() => {
@@ -226,18 +228,14 @@ export default function GraphCanvas(props: GraphCanvasProps) {
   return (
     <div
       ref={containerRef}
-      className="relative h-[680px] w-full overflow-hidden rounded-xl"
-      style={{
-        background:
-          "radial-gradient(ellipse at 50% 115%, rgba(59, 73, 223, 0.28), transparent 55%), radial-gradient(ellipse at 15% 10%, rgba(168, 139, 250, 0.08), transparent 45%), linear-gradient(180deg, #0a0d1a 0%, #070915 100%)",
-      }}
+      className="relative h-full min-h-[420px] w-full flex-1 overflow-hidden bg-background-secondary"
     >
-      {/* Subtle grid pattern */}
+      {/* Subtle grid pattern — uses currentColor so it adapts */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.035]"
+        className="pointer-events-none absolute inset-0 text-foreground opacity-[0.04]"
         style={{
           backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.4) 1px, transparent 1px)",
+            "linear-gradient(currentColor 1px, transparent 1px), linear-gradient(90deg, currentColor 1px, transparent 1px)",
           backgroundSize: "48px 48px",
         }}
       />
@@ -252,8 +250,8 @@ export default function GraphCanvas(props: GraphCanvasProps) {
         warmupTicks={80}
         d3VelocityDecay={0.28}
         d3AlphaDecay={0.02}
-        minZoom={0.3}
-        maxZoom={8}
+        minZoom={0.02}
+        maxZoom={3}
         linkDirectionalArrowLength={0}
         linkCurvature={0}
         linkWidth={(link) => getLinkWidth(link as CanvasLink)}
@@ -269,7 +267,12 @@ export default function GraphCanvas(props: GraphCanvasProps) {
           const isTouching = sourceId === activeNodeId || targetId === activeNodeId;
           return `rgba(${rgb}, ${isTouching ? Math.min(1, baseAlpha + 0.35) : 0.04})`;
         }}
-        onZoom={(transform) => setZoomLevel(transform.k)}
+        onZoom={(transform) => {
+          // Defer to next microtask so we don't update GraphCanvas state
+          // while ForceGraph2D is still in its render phase (React warns
+          // about cross-component setState-during-render otherwise).
+          queueMicrotask(() => setZoomLevel(transform.k));
+        }}
         onRenderFramePost={() => {
           // Update tooltip position every animation frame so it follows the node
           // while the simulation is running.
@@ -380,12 +383,12 @@ export default function GraphCanvas(props: GraphCanvasProps) {
           ctx.fillStyle = innerGradient;
           ctx.fill();
 
-          // Selection / hover ring — subtle tonal ring rather than hard white.
+          // Selection / hover ring — accent-tinted so it works in both themes.
           if (isActive) {
             ctx.beginPath();
             ctx.arc(x, y, baseRadius + 2, 0, Math.PI * 2);
-            ctx.strokeStyle = "rgba(226, 232, 240, 0.78)";
-            ctx.lineWidth = 1.25;
+            ctx.strokeStyle = "rgba(232, 97, 60, 0.85)";
+            ctx.lineWidth = 1.5;
             ctx.stroke();
           }
 
@@ -417,36 +420,36 @@ export default function GraphCanvas(props: GraphCanvasProps) {
       {/* Floating Supermemory-style hover/selection tooltip */}
       <div
         ref={tooltipRef}
-        className="pointer-events-none absolute left-0 top-0 z-10 w-72 origin-top-left opacity-0 transition-opacity duration-150"
+        className="pointer-events-none absolute left-0 top-0 z-10 w-64 origin-top-left opacity-0 transition-opacity duration-150"
       >
         {activeNode && (
-          <div className="overflow-hidden rounded-xl border border-white/10 bg-[rgba(8,10,20,0.94)] shadow-[0_10px_40px_rgba(0,0,0,0.55)] backdrop-blur-md">
-            <div className="flex items-start gap-3 px-4 py-3">
+          <div className="overflow-hidden rounded-lg border border-border bg-surface-elevated/95 backdrop-blur-md">
+            <div className="flex items-start gap-2.5 px-3 py-2.5">
               <span
-                className="mt-1 h-3 w-3 shrink-0 rounded-full border border-white/20"
+                className="mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full border border-border"
                 style={{
                   background: activeNode.color,
-                  boxShadow: `0 0 10px ${activeNode.color}`,
+                  boxShadow: `0 0 8px ${activeNode.color}`,
                 }}
               />
               <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-semibold leading-snug text-slate-100">
+                <p className="text-xs font-semibold leading-snug text-foreground">
                   {activeNode.label}
                 </p>
-                <p className="mt-1 line-clamp-2 text-[11.5px] leading-snug text-slate-400">
+                <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-foreground-muted">
                   {activeNode.content}
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-1.5 border-t border-white/5 px-4 py-2 text-[10.5px]">
+            <div className="flex flex-wrap items-center gap-1 border-t border-border px-3 py-1.5 text-[10px]">
               {activeNode.project && (
-                <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-slate-300">
+                <span className="rounded-sm border border-border bg-surface px-1.5 py-0.5 text-foreground-muted">
                   {activeNode.project}
                 </span>
               )}
               {activeNode.category && (
                 <span
-                  className="rounded-full border px-2 py-0.5"
+                  className="rounded-sm border px-1.5 py-0.5"
                   style={{
                     borderColor: `${activeNode.categoryColor}55`,
                     color: activeNode.categoryColor,
@@ -457,11 +460,11 @@ export default function GraphCanvas(props: GraphCanvasProps) {
                 </span>
               )}
               {activeNode.rootId && (
-                <span className="rounded-full border border-violet-400/30 bg-violet-400/10 px-2 py-0.5 text-violet-300">
+                <span className="rounded-sm border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-accent">
                   version chain
                 </span>
               )}
-              <span className="ml-auto text-slate-500">
+              <span className="ml-auto text-foreground-subtle">
                 {activeNode.degree} link{activeNode.degree === 1 ? "" : "s"}
               </span>
             </div>
@@ -470,108 +473,112 @@ export default function GraphCanvas(props: GraphCanvasProps) {
       </div>
 
       {/* Floating stats / legend panel */}
-      <div className="pointer-events-auto absolute left-4 top-4 w-60 overflow-hidden rounded-xl border border-white/10 bg-[rgba(8,10,20,0.82)] text-slate-200 shadow-[0_10px_40px_rgba(0,0,0,0.45)] backdrop-blur-md">
+      <div className="pointer-events-auto absolute left-3 top-3 w-52 overflow-hidden rounded-lg border border-border bg-surface-elevated/90 text-foreground backdrop-blur-md">
         <button
           type="button"
           onClick={() => setLegendOpen((value) => !value)}
-          className="flex w-full items-center justify-between px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-300 transition hover:bg-white/5"
+          className="flex w-full items-center justify-between px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-foreground-muted transition hover:bg-surface-hover"
         >
-          <span className="flex items-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <span className="flex items-center gap-1.5">
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
               <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.2" />
               <circle cx="7" cy="7" r="1.8" fill="currentColor" />
             </svg>
             Graph overview
           </span>
-          <span
-            className={`transition-transform ${legendOpen ? "rotate-0" : "-rotate-90"}`}
-          >
-            ⌄
-          </span>
+          <CaretDown
+            className={cn(
+              "h-3 w-3 transition-transform",
+              !legendOpen && "-rotate-90",
+            )}
+            weight="bold"
+          />
         </button>
 
         {legendOpen && (
-          <div className="space-y-4 border-t border-white/5 px-4 py-3">
-            <div className="space-y-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          <div className="space-y-3 border-t border-border px-3 py-2.5">
+            <div className="space-y-1.5">
+              <p className="text-[9px] font-semibold uppercase tracking-wider text-foreground-subtle">
                 Statistics
               </p>
-              <div className="space-y-1.5 text-[12px]">
+              <div className="space-y-1 text-[11px]">
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-300">Memories</span>
-                  <span className="font-mono text-slate-100">
+                  <span className="text-foreground-muted">Memories</span>
+                  <span className="font-mono text-foreground">
                     {stats.totalNodes}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-300">Real links</span>
-                  <span className="font-mono text-slate-100">
+                  <span className="text-foreground-muted">Real links</span>
+                  <span className="font-mono text-foreground">
                     {stats.relationLinks}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-300">Shared links</span>
-                  <span className="font-mono text-slate-100">
+                  <span className="text-foreground-muted">Shared links</span>
+                  <span className="font-mono text-foreground">
                     {stats.derivedLinks}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-300">Projects</span>
-                  <span className="font-mono text-slate-100">
+                  <span className="text-foreground-muted">Projects</span>
+                  <span className="font-mono text-foreground">
                     {stats.projectCount}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-300">Categories</span>
-                  <span className="font-mono text-slate-100">
+                  <span className="text-foreground-muted">Categories</span>
+                  <span className="font-mono text-foreground">
                     {stats.categoryCount}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            <div className="space-y-1.5">
+              <p className="text-[9px] font-semibold uppercase tracking-wider text-foreground-subtle">
                 Connections
               </p>
-              <div className="space-y-1.5 text-[12px]">
+              <div className="space-y-1 text-[11px]">
                 <div className="flex items-center gap-2">
-                  <span className="h-[2px] w-6 rounded-full bg-[#c8846c]" />
-                  <span className="text-slate-300">Extends</span>
+                  <span className="h-[2px] w-5 rounded-full bg-[#e8613c]" />
+                  <span className="text-foreground-muted">Extends</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="h-[2px] w-6 rounded-full bg-[#9bb1c4]" />
-                  <span className="text-slate-300">Similar</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className="h-[2px] w-6 rounded-full"
-                    style={{
-                      background:
-                        "repeating-linear-gradient(90deg, #aa99c4 0, #aa99c4 3px, transparent 3px, transparent 6px)",
-                    }}
-                  />
-                  <span className="text-slate-300">Shared root</span>
+                  <span className="h-[2px] w-5 rounded-full bg-[#d97757]" />
+                  <span className="text-foreground-muted">Similar</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span
-                    className="h-[2px] w-6 rounded-full"
+                    className="h-[2px] w-5 rounded-full"
                     style={{
                       background:
-                        "repeating-linear-gradient(90deg, #809bc4 0, #809bc4 3px, transparent 3px, transparent 6px)",
+                        "repeating-linear-gradient(90deg, #c4906a 0, #c4906a 3px, transparent 3px, transparent 6px)",
                     }}
                   />
-                  <span className="text-slate-300">Shared project</span>
+                  <span className="text-foreground-muted">Shared root</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span
-                    className="h-[2px] w-6 rounded-full"
+                    className="h-[2px] w-5 rounded-full"
                     style={{
                       background:
-                        "repeating-linear-gradient(90deg, #c4a97a 0, #c4a97a 3px, transparent 3px, transparent 6px)",
+                        "repeating-linear-gradient(90deg, #a3938a 0, #a3938a 3px, transparent 3px, transparent 6px)",
                     }}
                   />
-                  <span className="text-slate-300">Shared category</span>
+                  <span className="text-foreground-muted">Shared project</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className="h-[2px] w-5 rounded-full"
+                    style={{
+                      background:
+                        "repeating-linear-gradient(90deg, #8a6a5e 0, #8a6a5e 3px, transparent 3px, transparent 6px)",
+                    }}
+                  />
+                  <span className="text-foreground-muted">
+                    Shared category
+                  </span>
                 </div>
               </div>
             </div>
@@ -580,29 +587,29 @@ export default function GraphCanvas(props: GraphCanvasProps) {
       </div>
 
       {/* Zoom controls */}
-      <div className="pointer-events-auto absolute right-4 top-4 flex flex-col overflow-hidden rounded-xl border border-white/10 bg-[rgba(8,10,20,0.82)] text-slate-200 shadow-xl backdrop-blur-md">
+      <div className="pointer-events-auto absolute right-3 top-3 flex flex-col overflow-hidden rounded-lg border border-border bg-surface-elevated/90 text-foreground backdrop-blur-md">
         <button
           type="button"
           onClick={() => handleZoom(0.6)}
-          className="px-3 py-2 text-lg leading-none transition hover:bg-white/10"
+          className="h-7 w-7 text-sm leading-none text-foreground-muted transition hover:bg-surface-hover hover:text-foreground"
           aria-label="Zoom in"
         >
           +
         </button>
-        <div className="h-px bg-white/10" />
+        <div className="h-px bg-border" />
         <button
           type="button"
           onClick={() => handleZoom(-0.6)}
-          className="px-3 py-2 text-lg leading-none transition hover:bg-white/10"
+          className="h-7 w-7 text-sm leading-none text-foreground-muted transition hover:bg-surface-hover hover:text-foreground"
           aria-label="Zoom out"
         >
           −
         </button>
-        <div className="h-px bg-white/10" />
+        <div className="h-px bg-border" />
         <button
           type="button"
           onClick={fitToView}
-          className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider transition hover:bg-white/10"
+          className="h-7 w-7 text-[9px] font-semibold uppercase tracking-wider text-foreground-muted transition hover:bg-surface-hover hover:text-foreground"
           aria-label="Fit to view"
         >
           Fit
@@ -610,13 +617,8 @@ export default function GraphCanvas(props: GraphCanvasProps) {
       </div>
 
       {/* Zoom indicator */}
-      <div className="pointer-events-none absolute right-4 bottom-4 rounded-md border border-white/10 bg-black/50 px-2 py-1 font-mono text-[10px] text-slate-400 backdrop-blur">
+      <div className="pointer-events-none absolute right-3 bottom-3 rounded border border-border bg-surface-elevated/80 px-1.5 py-0.5 font-mono text-[9px] text-foreground-muted backdrop-blur">
         {Math.round(zoomLevel * 100)}%
-      </div>
-
-      {/* Hint */}
-      <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.25em] text-slate-500">
-        scroll to zoom · drag to pan · click a node to focus
       </div>
     </div>
   );
