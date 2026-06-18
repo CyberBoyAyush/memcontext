@@ -1602,6 +1602,7 @@ interface ListMemoriesParams {
   project?: string;
   projects?: string[];
   search?: string;
+  sort?: "asc" | "desc";
 }
 
 interface ListMemoriesResult {
@@ -1872,6 +1873,7 @@ export async function listMemories(
     scope: rawScope,
     projects,
     search,
+    sort = "desc",
   } = params;
   const scope = normalizeScope(rawScope);
   const rawProject = params.project;
@@ -1966,7 +1968,10 @@ export async function listMemories(
       })
       .from(memories)
       .where(and(...conditions))
-      .orderBy(desc(memories.createdAt))
+      .orderBy(
+        sort === "asc" ? asc(memories.createdAt) : desc(memories.createdAt),
+        sort === "asc" ? asc(memories.id) : desc(memories.id),
+      )
       .limit(limit)
       .offset(offset),
 
@@ -2249,4 +2254,72 @@ export async function deleteMemory(
   }
 
   return deleted;
+}
+
+export async function deleteMemories(
+  userId: string,
+  memoryIds: string[],
+  scope?: string,
+): Promise<{
+  deletedCount: number;
+  affectedMemories: Array<{ scope: string | null; project: string | null }>;
+}> {
+  const start = performance.now();
+  const normalizedScope = normalizeScope(scope);
+  const uniqueMemoryIds = Array.from(new Set(memoryIds));
+
+  if (uniqueMemoryIds.length === 0) {
+    return { deletedCount: 0, affectedMemories: [] };
+  }
+
+  const deletedRows = await db.transaction(async (tx) => {
+    const rows = await tx
+      .update(memories)
+      .set({ deletedAt: sql`NOW()` })
+      .where(
+        and(
+          inArray(memories.id, uniqueMemoryIds),
+          eq(memories.userId, userId),
+          isNull(memories.workspaceId),
+          eq(memories.memoryType, "user"),
+          isNull(memories.deletedAt),
+          normalizedScope
+            ? eq(memories.scope, normalizedScope)
+            : isNull(memories.scope),
+        ),
+      )
+      .returning({
+        isCurrent: memories.isCurrent,
+        scope: memories.scope,
+        project: memories.project,
+      });
+
+    const currentDeletedCount = rows.filter((row) => row.isCurrent).length;
+    for (let i = 0; i < currentDeletedCount; i += 1) {
+      await decrementMemoryCount(userId, tx);
+    }
+
+    return rows;
+  });
+
+  const duration = Math.round(performance.now() - start);
+
+  logger.info(
+    {
+      requestedCount: uniqueMemoryIds.length,
+      deletedCount: deletedRows.length,
+      userId,
+      scope: normalizedScope,
+      duration,
+    },
+    "memories bulk deleted",
+  );
+
+  return {
+    deletedCount: deletedRows.length,
+    affectedMemories: deletedRows.map((row) => ({
+      scope: row.scope,
+      project: row.project,
+    })),
+  };
 }

@@ -60,8 +60,11 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  delete: <T>(path: string) =>
-    fetchWithCredentials<T>(path, { method: "DELETE" }),
+  delete: <T>(path: string, data?: unknown) =>
+    fetchWithCredentials<T>(path, {
+      method: "DELETE",
+      ...(data === undefined ? {} : { body: JSON.stringify(data) }),
+    }),
 
   postForm: <T>(path: string, data: FormData) =>
     fetchWithCredentials<T>(path, {
