@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import {
@@ -8,13 +8,17 @@ import {
   Check,
   Copy,
   Plus,
+  SpinnerGap,
   Trash,
   UserPlus,
+  Warning,
+  X,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { ThemedSelect } from "@/components/ui/themed-select";
+import { AnimatedTabs } from "@/components/ui/animated-tabs";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
 import {
@@ -87,6 +91,20 @@ export function WorkspacesSection({
   const [activeTab, setActiveTab] = useState<"team" | "workspaces">(
     initialTab,
   );
+  const [pendingRemoval, setPendingRemoval] = useState<
+    | {
+        kind: "member";
+        id: string;
+        name: string;
+        email: string;
+      }
+    | {
+        kind: "invite";
+        id: string;
+        email: string;
+      }
+    | null
+  >(null);
 
   const { data: workspaceData } = useQuery(workspacesQueryOptions());
   const createWorkspace = useCreateWorkspace();
@@ -207,30 +225,30 @@ export function WorkspacesSection({
     }
   }
 
-  async function handleRemoveMember(memberId: string) {
+  async function handleConfirmRemoval() {
+    if (!pendingRemoval) return;
     try {
-      await removeMember.mutateAsync({
-        workspaceId: activeWorkspaceId,
-        memberId,
-      });
-      toast.success("Member removed");
+      if (pendingRemoval.kind === "member") {
+        await removeMember.mutateAsync({
+          workspaceId: activeWorkspaceId,
+          memberId: pendingRemoval.id,
+        });
+        toast.success("Member removed");
+      } else {
+        await revokeInvitation.mutateAsync({
+          workspaceId: activeWorkspaceId,
+          invitationId: pendingRemoval.id,
+        });
+        toast.success("Invite revoked");
+      }
+      setPendingRemoval(null);
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Could not remove member",
-      );
-    }
-  }
-
-  async function handleRevokeInvitation(invitationId: string) {
-    try {
-      await revokeInvitation.mutateAsync({
-        workspaceId: activeWorkspaceId,
-        invitationId,
-      });
-      toast.success("Invite revoked");
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not revoke invite",
+        error instanceof Error
+          ? error.message
+          : pendingRemoval.kind === "member"
+            ? "Could not remove member"
+            : "Could not revoke invite",
       );
     }
   }
@@ -356,7 +374,7 @@ export function WorkspacesSection({
       </div>
     ) : (
       <div className="space-y-6">
-        {/* Manage team — invite + members + invites in one section */}
+        {/* Manage team: invite + members + invites in one section */}
           <div>
             <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -502,9 +520,16 @@ export function WorkspacesSection({
                               disabled={
                                 !manageable || removeMember.isPending
                               }
-                              onClick={() => handleRemoveMember(member.id)}
+                              onClick={() =>
+                                setPendingRemoval({
+                                  kind: "member",
+                                  id: member.id,
+                                  name: member.name || member.email,
+                                  email: member.email,
+                                })
+                              }
                               title={`Remove ${member.email}`}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-foreground-muted transition-colors hover:bg-error/10 hover:text-error disabled:cursor-not-allowed disabled:opacity-40"
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-foreground-muted transition-colors hover:bg-error/10 hover:text-error disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
                             >
                               <Trash className="h-4 w-4" weight="duotone" />
                             </button>
@@ -521,7 +546,7 @@ export function WorkspacesSection({
               )}
             </div>
 
-            {/* Billing owner — inline line */}
+            {/* Billing owner: inline line */}
             {teamData?.members.length ? (
               <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-foreground-muted">
@@ -592,10 +617,14 @@ export function WorkspacesSection({
                                 !canManageTeam || revokeInvitation.isPending
                               }
                               onClick={() =>
-                                handleRevokeInvitation(invitation.id)
+                                setPendingRemoval({
+                                  kind: "invite",
+                                  id: invitation.id,
+                                  email: invitation.email,
+                                })
                               }
                               title={`Revoke invite for ${invitation.email}`}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-foreground-muted transition-colors hover:bg-error/10 hover:text-error disabled:cursor-not-allowed disabled:opacity-40"
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-foreground-muted transition-colors hover:bg-error/10 hover:text-error disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
                             >
                               <Trash className="h-4 w-4" weight="duotone" />
                             </button>
@@ -614,33 +643,26 @@ export function WorkspacesSection({
   const inner = (
     <div className="space-y-4">
       {/* Tab switcher */}
-      <div className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface-elevated/50 p-1">
-        {(
-          [
-            { value: "team", label: "Team" },
-            { value: "workspaces", label: "Workspaces" },
-          ] as const
-        ).map((tab) => {
-          const active = activeTab === tab.value;
-          return (
-            <button
-              key={tab.value}
-              type="button"
-              onClick={() => setActiveTab(tab.value)}
-              className={cn(
-                "h-8 rounded-md px-3 text-xs font-medium transition-all",
-                active
-                  ? "bg-accent text-white shadow-sm"
-                  : "text-foreground-muted hover:text-foreground",
-              )}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
+      <AnimatedTabs<"team" | "workspaces">
+        ariaLabel="Workspaces section"
+        value={activeTab}
+        onChange={setActiveTab}
+        tabs={[
+          { value: "team", label: "Team" },
+          { value: "workspaces", label: "Workspaces" },
+        ]}
+      />
 
       {activeTab === "team" ? teamTab : workspacesTab}
+
+      {pendingRemoval && (
+        <RemoveConfirmDialog
+          pending={pendingRemoval}
+          isWorking={removeMember.isPending || revokeInvitation.isPending}
+          onCancel={() => setPendingRemoval(null)}
+          onConfirm={handleConfirmRemoval}
+        />
+      )}
     </div>
   );
 
@@ -652,5 +674,143 @@ export function WorkspacesSection({
     <Card className="shadow-none">
       <CardContent className="p-6">{inner}</CardContent>
     </Card>
+  );
+}
+
+function RemoveConfirmDialog({
+  pending,
+  isWorking,
+  onCancel,
+  onConfirm,
+}: {
+  pending:
+    | { kind: "member"; id: string; name: string; email: string }
+    | { kind: "invite"; id: string; email: string };
+  isWorking: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const cancelButtonRef = useRef<HTMLButtonElement | null>(null);
+  const isMember = pending.kind === "member";
+  const title = isMember ? "Remove member" : "Revoke invite";
+  const subjectName = isMember ? pending.name : pending.email;
+  const subjectEmail = pending.email;
+  const verb = isMember ? "remove" : "revoke the invite for";
+  const consequence = isMember
+    ? "They will immediately lose access to this workspace and its memories. You can re-invite them later."
+    : "The invitation link will stop working. You can send a new invite later.";
+
+  useEffect(() => {
+    cancelButtonRef.current?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape" && !isWorking) {
+        onCancel();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isWorking, onCancel]);
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={isWorking ? undefined : onCancel}
+      />
+
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="remove-member-dialog-title"
+        className="relative w-full max-w-md bg-background border border-border rounded-xl shadow-2xl animate-scale-in"
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between p-4 pb-0">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-error/10 shrink-0">
+              <Warning
+                className="h-5 w-5 text-error"
+                weight="duotone"
+              />
+            </div>
+            <div className="min-w-0 pt-1">
+              <h3
+                id="remove-member-dialog-title"
+                className="text-base font-semibold leading-tight"
+              >
+                {title}
+              </h3>
+              <p className="text-xs text-foreground-muted mt-0.5">
+                This action cannot be undone.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onCancel}
+            disabled={isWorking}
+            className="p-1 rounded-md text-foreground-muted hover:text-foreground hover:bg-surface transition-colors cursor-pointer disabled:opacity-50"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-4 space-y-3">
+          <p className="text-sm text-foreground-muted leading-relaxed">
+            Are you sure you want to {verb}{" "}
+            <span className="font-medium text-foreground">{subjectName}</span>
+            {isMember && subjectName !== subjectEmail && (
+              <>
+                {" "}
+                <span className="text-foreground-subtle">
+                  ({subjectEmail})
+                </span>
+              </>
+            )}
+            ?
+          </p>
+          <p className="text-xs text-foreground-subtle leading-relaxed">
+            {consequence}
+          </p>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 p-4 pt-0">
+          <Button
+            ref={cancelButtonRef}
+            variant="outline"
+            size="sm"
+            onClick={onCancel}
+            disabled={isWorking}
+            className="hover:translate-y-0 hover:shadow-none cursor-pointer"
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={onConfirm}
+            disabled={isWorking}
+            className="hover:translate-y-0 hover:shadow-none cursor-pointer"
+          >
+            {isWorking ? (
+              <>
+                <SpinnerGap
+                  className="h-3.5 w-3.5 animate-spin mr-1.5"
+                  weight="bold"
+                />
+                {isMember ? "Removing..." : "Revoking..."}
+              </>
+            ) : isMember ? (
+              "Remove member"
+            ) : (
+              "Revoke invite"
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }

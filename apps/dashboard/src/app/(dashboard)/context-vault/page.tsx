@@ -29,9 +29,12 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { ThemedSelect } from "@/components/ui/themed-select";
-import ReactMarkdown, { type Components } from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { AnimatedTabs } from "@/components/ui/animated-tabs";
 import { Button } from "@/components/ui/button";
+import {
+  InlineVaultChunkMarkdown,
+  VaultChunkMarkdown,
+} from "@/components/vault-chunk-markdown";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
@@ -135,145 +138,6 @@ function getTypeBadgeClass(sourceType: string): string {
   );
 }
 
-const MARKDOWN_COMPONENTS: Components = {
-  p: ({ children }) => (
-    <p className="break-words text-sm leading-6 text-foreground/90 [&:not(:first-child)]:mt-2">
-      {children}
-    </p>
-  ),
-  strong: ({ children }) => (
-    <strong className="font-semibold text-foreground">{children}</strong>
-  ),
-  em: ({ children }) => <em className="italic">{children}</em>,
-  a: ({ children, href }) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      className="text-accent underline-offset-2 hover:underline"
-    >
-      {children}
-    </a>
-  ),
-  ul: ({ children }) => (
-    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-foreground/90">
-      {children}
-    </ul>
-  ),
-  ol: ({ children }) => (
-    <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-foreground/90">
-      {children}
-    </ol>
-  ),
-  li: ({ children }) => <li className="leading-6">{children}</li>,
-  code: ({ children }) => (
-    <code className="rounded bg-surface px-1 py-0.5 font-mono text-[12px] text-foreground">
-      {children}
-    </code>
-  ),
-  pre: ({ children }) => (
-    <pre className="mt-2 overflow-x-auto rounded-md border border-border bg-surface p-2 text-[12px] leading-5 text-foreground/90">
-      {children}
-    </pre>
-  ),
-  blockquote: ({ children }) => (
-    <blockquote className="mt-2 border-l-2 border-border pl-3 italic text-foreground-muted">
-      {children}
-    </blockquote>
-  ),
-  h1: ({ children }) => (
-    <h1 className="mt-3 text-sm font-semibold text-foreground first:mt-0">
-      {children}
-    </h1>
-  ),
-  h2: ({ children }) => (
-    <h2 className="mt-3 text-sm font-semibold text-foreground first:mt-0">
-      {children}
-    </h2>
-  ),
-  h3: ({ children }) => (
-    <h3 className="mt-2 text-sm font-semibold text-foreground first:mt-0">
-      {children}
-    </h3>
-  ),
-  table: ({ children }) => (
-    <div className="mt-2 overflow-x-auto rounded-md border border-border">
-      <table className="w-full border-collapse text-[12px]">{children}</table>
-    </div>
-  ),
-  thead: ({ children }) => (
-    <thead className="bg-surface-elevated">{children}</thead>
-  ),
-  th: ({ children }) => (
-    <th className="border-b border-r border-border px-2 py-1.5 text-left font-semibold text-foreground last:border-r-0">
-      {children}
-    </th>
-  ),
-  td: ({ children }) => (
-    <td className="border-b border-r border-border/60 px-2 py-1.5 align-top text-foreground/90 last:border-r-0">
-      {children}
-    </td>
-  ),
-  hr: () => <hr className="my-2 border-border" />,
-};
-
-/**
- * Some chunked markdown tables arrive without a GFM separator row (e.g. `| --- |`)
- * or with rows collapsed onto a single line (e.g. `... | col | | next row ...`).
- * Normalize both shapes so remark-gfm can render them as real tables.
- */
-function normalizeChunkMarkdown(input: string): string {
-  if (!input) return input;
-
-  // Step 1: split runs of inline rows like "| a | b | | c | d |" into separate lines.
-  let normalized = input.replace(/\|\s*\|/g, (match, offset, str) => {
-    const before = str.slice(0, offset);
-    const after = str.slice(offset + match.length);
-    const beforeLineStart = before.lastIndexOf("\n") + 1;
-    const afterLineEnd = after.indexOf("\n");
-    const beforeLine = before.slice(beforeLineStart);
-    const afterLine = afterLineEnd === -1 ? after : after.slice(0, afterLineEnd);
-    if (beforeLine.includes("|") && afterLine.includes("|")) {
-      return "|\n|";
-    }
-    return match;
-  });
-
-  // Step 2: inject a separator row after a header row if missing.
-  const lines = normalized.split("\n");
-  const isTableRow = (s: string) =>
-    s.startsWith("|") && s.endsWith("|") && s.includes("|", 1);
-  const isSeparator = (s: string) =>
-    /^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?$/.test(s);
-  const out: string[] = [];
-  let inTable = false;
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmed = line.trim();
-    if (isTableRow(trimmed)) {
-      out.push(line);
-      const next = (lines[i + 1] ?? "").trim();
-      if (!inTable) {
-        if (!isSeparator(next)) {
-          const cellCount = trimmed
-            .split("|")
-            .filter((c) => c.length > 0).length;
-          if (cellCount >= 2 && isTableRow(next)) {
-            out.push("|" + " --- |".repeat(cellCount));
-          }
-        }
-        inTable = true;
-      }
-    } else {
-      out.push(line);
-      if (trimmed === "") inTable = false;
-    }
-  }
-  normalized = out.join("\n");
-
-  return normalized;
-}
-
 function SearchMarkdown({
   content,
   className,
@@ -281,63 +145,11 @@ function SearchMarkdown({
   content: string;
   className?: string;
 }) {
-  return (
-    <div className={cn("markdown-body", className)}>
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={MARKDOWN_COMPONENTS}
-      >
-        {normalizeChunkMarkdown(content)}
-      </ReactMarkdown>
-    </div>
-  );
+  return <VaultChunkMarkdown content={content} className={className} size="sm" />;
 }
 
-/** Renders markdown inline (no <p> wrapper) — safe for use inside truncated lines. */
-const INLINE_MARKDOWN_COMPONENTS: Components = {
-  p: ({ children }) => <>{children}</>,
-  strong: ({ children }) => (
-    <strong className="font-semibold text-foreground/90">{children}</strong>
-  ),
-  em: ({ children }) => <em className="italic">{children}</em>,
-  code: ({ children }) => (
-    <code className="rounded bg-surface px-1 py-px font-mono text-[11px] text-foreground/90">
-      {children}
-    </code>
-  ),
-  a: ({ children, href }) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      className="text-accent underline-offset-2 hover:underline"
-    >
-      {children}
-    </a>
-  ),
-};
-
 function InlineMarkdown({ content }: { content: string }) {
-  return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={INLINE_MARKDOWN_COMPONENTS}
-      // Restrict to inline-safe nodes — strip headings/lists/blockquotes etc.
-      allowedElements={[
-        "p",
-        "strong",
-        "em",
-        "code",
-        "a",
-        "span",
-        "del",
-        "br",
-      ]}
-      unwrapDisallowed
-    >
-      {content}
-    </ReactMarkdown>
-  );
+  return <InlineVaultChunkMarkdown content={content} />;
 }
 
 interface ScopeMultiSelectOption {
@@ -425,7 +237,12 @@ function ScopeMultiSelect({
         ref={triggerRef}
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="inline-flex h-10 w-full items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 text-xs font-medium text-foreground transition-colors hover:border-border-hover hover:bg-surface-elevated focus:outline-none focus:ring-2 focus:ring-accent/20 sm:w-36"
+        className={cn(
+          "inline-flex h-10 w-full items-center justify-between gap-2 rounded-full border px-3 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-accent/20 sm:w-36",
+          values.length > 0
+            ? "border-accent bg-accent/10 text-accent"
+            : "border-border bg-surface text-foreground-muted hover:border-border-hover hover:text-foreground",
+        )}
       >
         <span className="truncate">{label}</span>
         <CaretDown
@@ -1011,24 +828,17 @@ export default function CompanyBrainPage() {
                 <h2 className="text-base font-semibold tracking-tight">
                   Search knowledge
                 </h2>
-                <div className="flex rounded-lg border border-border bg-surface-elevated/50 p-1">
-                  {(["hybrid", "documents", "memories"] as SearchMode[]).map(
-                    (item) => (
-                      <button
-                        key={item}
-                        onClick={() => setMode(item)}
-                        className={cn(
-                          "h-8 rounded-md px-3 text-xs font-medium capitalize transition-all",
-                          mode === item
-                            ? "bg-accent text-white shadow-sm"
-                            : "text-foreground-muted hover:text-foreground",
-                        )}
-                      >
-                        {item}
-                      </button>
-                    ),
-                  )}
-                </div>
+                <AnimatedTabs<SearchMode>
+                  ariaLabel="Search mode"
+                  value={mode}
+                  onChange={setMode}
+                  capitalize
+                  tabs={[
+                    { value: "hybrid", label: "hybrid" },
+                    { value: "documents", label: "documents" },
+                    { value: "memories", label: "memories" },
+                  ]}
+                />
               </div>
 
               <div className="mt-4 flex flex-col gap-2 shrink-0 sm:flex-row sm:items-center">
@@ -1064,7 +874,12 @@ export default function CompanyBrainPage() {
                   value={searchProject}
                   onChange={(value) => setSearchProject(value)}
                   align="right"
-                  buttonClassName="h-10 w-full sm:w-36"
+                  buttonClassName={cn(
+                    "h-10 w-full rounded-full sm:w-36",
+                    searchProject
+                      ? "border-accent bg-accent/10 text-accent"
+                      : "border-border bg-surface text-foreground-muted hover:border-border-hover hover:text-foreground",
+                  )}
                   options={[
                     { value: "", label: "All projects" },
                     ...availableSearchProjects.map((item) => ({
@@ -1537,21 +1352,16 @@ export default function CompanyBrainPage() {
           onClose={() => setAddOpen(false)}
           hint={addTabs.find((tab) => tab.value === addMode)?.hint ?? ""}
         >
-          {/* Source dropdown */}
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-foreground-muted">
-              Source
-            </label>
-            <ThemedSelect
-              value={addMode}
-              options={addTabs.map((tab) => ({
-                value: tab.value,
-                label: tab.label,
-              }))}
-              onChange={(value) => setAddMode(value as AddMode)}
-              align="left"
-            />
-          </div>
+          {/* Source tabs */}
+          <AnimatedTabs<AddMode>
+            ariaLabel="Knowledge source"
+            value={addMode}
+            onChange={setAddMode}
+            tabs={addTabs.map((tab) => ({
+              value: tab.value,
+              label: tab.label,
+            }))}
+          />
 
           {/* Fact mode: curated company fact */}
           {addMode === "fact" ? (
