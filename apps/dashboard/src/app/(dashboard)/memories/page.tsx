@@ -8,6 +8,7 @@ import {
   SpinnerGap,
   CaretLeft,
   CaretRight,
+  CaretUp,
   Calendar,
   Tag,
   FolderOpen,
@@ -30,6 +31,7 @@ import {
   memoryHierarchyQueryOptions,
   memoryHistoryQueryOptions,
   useDeleteMemory,
+  useDeleteMemories,
   useUpdateMemory,
   useSubmitFeedback,
   type MemoryHierarchyProject,
@@ -47,6 +49,8 @@ import {
   type MemorySource as MemoryViewSource,
 } from "@/components/memory-source-switcher";
 import { VaultMemoryDetailPanel } from "@/components/vault-memory-detail-panel";
+import { ThemedSelect } from "@/components/ui/themed-select";
+import { Tooltip } from "@/components/ui/tooltip";
 
 interface Memory {
   id: string;
@@ -143,62 +147,111 @@ const categoryConfig: Record<
   },
 };
 
-const ITEMS_PER_PAGE = 10;
+const DEFAULT_PAGE_SIZE = 25;
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 
-function TableSkeleton() {
+function SelectionCheckbox({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: string;
+}) {
+  return (
+    <label
+      className="inline-flex h-5 w-5 cursor-pointer items-center justify-center"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        onClick={(event) => event.stopPropagation()}
+        aria-label={label}
+        className="peer sr-only"
+      />
+      <span className="flex h-4 w-4 items-center justify-center rounded-[4px] border border-foreground-subtle/50 transition-colors peer-checked:border-accent peer-checked:bg-accent">
+        {checked && <Check className="h-3 w-3 text-white" weight="bold" />}
+      </span>
+    </label>
+  );
+}
+
+function TableSkeleton({
+  rowCount = DEFAULT_PAGE_SIZE,
+  isWorkspace = false,
+}: {
+  rowCount?: number;
+  isWorkspace?: boolean;
+}) {
   return (
     <div className="flex flex-col flex-1 min-h-0 gap-4">
       <Card className="overflow-hidden flex-1 min-h-0 flex flex-col">
         <div className="overflow-auto flex-1 scrollbar-hide flex flex-col">
-          <table className="w-full min-w-[780px] flex-1 flex flex-col">
+          <table
+            className={cn(
+              "w-full flex-1 flex flex-col",
+              isWorkspace ? "min-w-[940px]" : "min-w-[760px]",
+            )}
+          >
             <thead className="sticky top-0 z-10 border-b border-border shrink-0">
-              <tr className="flex bg-surface-elevated w-full">
-                <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 shrink-0 border-r border-border flex items-center justify-center">
+              <tr className="flex bg-surface-elevated w-full h-11">
+                <th className="text-center text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 shrink-0 border-r border-border flex items-center justify-center">
                   #
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-48 md:flex-1 md:w-auto border-r border-border flex items-center">
+                <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-48 md:flex-1 md:w-auto border-r border-border flex items-center">
                   Content
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-40 shrink-0 border-r border-border flex items-center">
+                {isWorkspace && (
+                  <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-44 shrink-0 border-r border-border flex items-center">
+                    Source
+                  </th>
+                )}
+                <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-40 shrink-0 border-r border-border flex items-center">
                   Category
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-44 shrink-0 border-r border-border flex items-center">
+                <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-44 shrink-0 border-r border-border flex items-center">
                   Project
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-48 shrink-0 border-r border-border flex items-center">
+                <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-48 shrink-0 border-r border-border flex items-center">
                   Created
                 </th>
-                <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 shrink-0 flex items-center justify-center">
+                <th className="text-center text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 shrink-0 flex items-center justify-center">
                   <span className="sr-only">Actions</span>
                 </th>
               </tr>
             </thead>
             <tbody className="flex-1 flex flex-col">
-              {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => (
+              {Array.from({ length: rowCount }).map((_, i) => (
                 <tr
                   key={i}
                   className="animate-pulse border-b border-border last:border-b-0 flex flex-1 w-full"
                 >
-                  <td className="py-3 w-12 shrink-0 border-r border-border flex items-center justify-center">
-                    <div className="h-4 bg-surface-elevated rounded w-6" />
+                  <td className="py-2 w-12 shrink-0 border-r border-border flex items-center justify-center">
+                    <div className="h-3 bg-surface-elevated rounded w-5" />
                   </td>
-                  <td className="px-4 py-3 w-48 md:flex-1 md:w-auto border-r border-border flex items-center">
-                    <div className="space-y-2 w-full">
-                      <div className="h-4 bg-surface-elevated rounded w-full" />
-                      <div className="h-4 bg-surface-elevated rounded w-3/4" />
-                    </div>
+                  <td className="px-4 py-2 w-48 md:flex-1 md:w-auto border-r border-border flex items-center">
+                    <div className="h-3.5 bg-surface-elevated rounded w-3/4" />
                   </td>
-                  <td className="px-4 py-3 w-40 shrink-0 border-r border-border flex items-center">
-                    <div className="h-6 bg-surface-elevated rounded-full w-20" />
+                  {isWorkspace && (
+                    <td className="px-4 py-2 w-44 shrink-0 border-r border-border flex items-center gap-2">
+                      <div className="h-3.5 w-3.5 bg-surface-elevated rounded" />
+                      <div className="h-3 bg-surface-elevated rounded flex-1 max-w-[120px]" />
+                    </td>
+                  )}
+                  <td className="px-4 py-2 w-40 shrink-0 border-r border-border flex items-center">
+                    <div className="h-5 bg-surface-elevated rounded-md w-16" />
                   </td>
-                  <td className="px-4 py-3 w-44 shrink-0 border-r border-border flex items-center">
-                    <div className="h-4 bg-surface-elevated rounded w-24" />
+                  <td className="px-4 py-2 w-44 shrink-0 border-r border-border flex items-center">
+                    <div className="h-3.5 bg-surface-elevated rounded w-24" />
                   </td>
-                  <td className="px-4 py-3 w-48 shrink-0 border-r border-border flex items-center">
-                    <div className="h-4 bg-surface-elevated rounded w-32" />
+                  <td className="px-4 py-2 w-48 shrink-0 border-r border-border flex items-center">
+                    <div className="h-3.5 bg-surface-elevated rounded w-32" />
                   </td>
-                  <td className="py-3 w-12 shrink-0 flex items-center justify-center">
-                    <div className="h-8 w-8 bg-surface-elevated rounded" />
+                  <td className="py-2 w-12 shrink-0 flex items-center justify-center">
+                    <div className="h-7 w-7 bg-surface-elevated rounded-md" />
                   </td>
                 </tr>
               ))}
@@ -601,12 +654,15 @@ function DeleteConfirmDialog({
   onClose,
   onConfirm,
   isDeleting,
+  count = 1,
 }: {
   onClose: () => void;
   onConfirm: () => void;
   isDeleting: boolean;
+  count?: number;
 }) {
   const [confirmed, setConfirmed] = useState(false);
+  const isBulk = count > 1;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -618,7 +674,9 @@ function DeleteConfirmDialog({
       <div className="relative w-full max-w-md bg-background border border-border rounded-xl shadow-2xl animate-scale-in">
         {/* Header */}
         <div className="flex items-center justify-between p-4 pb-0">
-          <h3 className="text-lg font-semibold">Delete Memory</h3>
+          <h3 className="text-lg font-semibold">
+            Delete {isBulk ? `${count} Memories` : "Memory"}
+          </h3>
           <button
             onClick={onClose}
             disabled={isDeleting}
@@ -631,7 +689,7 @@ function DeleteConfirmDialog({
         {/* Content */}
         <div className="p-4 space-y-4">
           <p className="text-sm text-foreground-muted">
-            Are you sure you want to delete this memory?
+            Are you sure you want to delete {isBulk ? "these memories" : "this memory"}?
           </p>
 
           <p className="text-sm font-medium">This action is irreversible.</p>
@@ -865,11 +923,11 @@ function CategoryFilter({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full mt-2 z-50 w-56 bg-surface-elevated border border-border rounded-lg overflow-hidden animate-scale-in">
-            <div className="p-2 border-b border-border">
+          <div className="absolute left-0 top-full mt-1.5 z-50 w-52 bg-surface-elevated border border-border rounded-lg shadow-lg overflow-hidden animate-scale-in">
+            <div className="p-1.5 border-b border-border">
               <div className="relative">
                 <MagnifyingGlass
-                  className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-foreground-subtle"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-foreground-subtle"
                   weight="bold"
                 />
                 <input
@@ -877,37 +935,31 @@ function CategoryFilter({
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search categories..."
-                  className="w-full h-9 pl-8 pr-2 rounded-md text-sm text-foreground placeholder:text-foreground-subtle focus:outline-none focus:border-foreground-subtle"
+                  className="w-full h-7 pl-7 pr-2 rounded-md text-xs text-foreground placeholder:text-foreground-subtle focus:outline-none focus:border-foreground-subtle"
                 />
               </div>
             </div>
 
-            <div className="max-h-56 overflow-y-auto scrollbar-hide p-1">
+            <div className="max-h-52 overflow-y-auto scrollbar-hide p-1">
               {filteredCategories.map((cat) => (
                 <button
                   key={cat}
                   type="button"
                   onClick={() => toggleCategory(cat)}
-                  className="w-full px-2.5 py-2 text-sm text-left flex items-center gap-2.5 hover:bg-surface rounded-md transition-colors cursor-pointer"
+                  className="w-full px-2 py-1.5 text-[13px] text-left flex items-center gap-2 hover:bg-surface rounded-md transition-colors cursor-pointer"
                 >
                   <div
                     className={cn(
-                      "w-4 h-4 rounded-[4px] border-2 flex items-center justify-center shrink-0",
+                      "w-3.5 h-3.5 rounded-[3px] border flex items-center justify-center shrink-0",
                       values.includes(cat)
                         ? "bg-accent border-accent"
-                        : "border-foreground-subtle/40",
+                        : "border-foreground-subtle/50",
                     )}
                   >
                     {values.includes(cat) && (
-                      <Check className="h-3 w-3 text-white" weight="bold" />
+                      <Check className="h-2.5 w-2.5 text-white" weight="bold" />
                     )}
                   </div>
-                  {/* <span
-                    className={cn(
-                      "w-2 h-2 rounded-full",
-                      categoryConfig[cat]?.dot,
-                    )}
-                  /> */}
                   <span className="text-foreground-muted capitalize">
                     {cat}
                   </span>
@@ -915,20 +967,20 @@ function CategoryFilter({
               ))}
 
               {filteredCategories.length === 0 && (
-                <div className="px-2.5 py-6 text-xs text-foreground-subtle text-center">
+                <div className="px-2 py-4 text-[11px] text-foreground-subtle text-center">
                   No matching categories
                 </div>
               )}
             </div>
 
             {values.length > 0 && (
-              <div className="border-t border-border p-1.5">
+              <div className="border-t border-border p-1">
                 <button
                   type="button"
                   onClick={() => onChange([])}
-                  className="w-full h-7 rounded-md text-xs font-medium text-foreground-muted hover:text-foreground hover:bg-surface transition-colors cursor-pointer"
+                  className="w-full h-6 rounded-md text-[11px] font-medium text-foreground-muted hover:text-foreground hover:bg-surface transition-colors cursor-pointer"
                 >
-                  Clear category filters
+                  Clear filter
                 </button>
               </div>
             )}
@@ -998,11 +1050,11 @@ function ProjectFilter({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full mt-2 z-50 w-64 bg-surface-elevated border border-border rounded-lg overflow-hidden animate-scale-in">
-            <div className="p-2 border-b border-border">
+          <div className="absolute left-0 top-full mt-1.5 z-50 w-56 bg-surface-elevated border border-border rounded-lg shadow-lg overflow-hidden animate-scale-in">
+            <div className="p-1.5 border-b border-border">
               <div className="relative">
                 <MagnifyingGlass
-                  className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-foreground-subtle"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-foreground-subtle"
                   weight="bold"
                 />
                 <input
@@ -1010,29 +1062,29 @@ function ProjectFilter({
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search projects..."
-                  className="w-full h-8 pl-8 pr-2 rounded-md text-sm text-foreground placeholder:text-foreground-subtle focus:outline-none focus:border-foreground-subtle"
+                  className="w-full h-7 pl-7 pr-2 rounded-md text-xs text-foreground placeholder:text-foreground-subtle focus:outline-none focus:border-foreground-subtle"
                 />
               </div>
             </div>
 
-            <div className="max-h-56 overflow-y-auto scrollbar-hide p-1">
+            <div className="max-h-52 overflow-y-auto scrollbar-hide p-1">
               {filteredProjects.map((project) => (
                 <button
                   key={project.value}
                   type="button"
                   onClick={() => toggleProject(project.value)}
-                  className="w-full px-2.5 py-2 text-sm text-left flex items-center gap-2.5 hover:bg-surface rounded-md transition-colors cursor-pointer"
+                  className="w-full px-2 py-1.5 text-[13px] text-left flex items-center gap-2 hover:bg-surface rounded-md transition-colors cursor-pointer"
                 >
                   <div
                     className={cn(
-                      "w-4 h-4 rounded-[4px] border-2 flex items-center justify-center shrink-0",
+                      "w-3.5 h-3.5 rounded-[3px] border flex items-center justify-center shrink-0",
                       values.includes(project.value)
                         ? "bg-accent border-accent"
-                        : "border-foreground-subtle/40",
+                        : "border-foreground-subtle/50",
                     )}
                   >
                     {values.includes(project.value) && (
-                      <Check className="h-3 w-3 text-white" weight="bold" />
+                      <Check className="h-2.5 w-2.5 text-white" weight="bold" />
                     )}
                   </div>
                   <span className="truncate text-foreground-muted">
@@ -1042,20 +1094,20 @@ function ProjectFilter({
               ))}
 
               {!isLoading && filteredProjects.length === 0 && (
-                <div className="px-2.5 py-6 text-xs text-foreground-subtle text-center">
+                <div className="px-2 py-4 text-[11px] text-foreground-subtle text-center">
                   No matching projects
                 </div>
               )}
             </div>
 
             {values.length > 0 && (
-              <div className="border-t border-border p-1.5">
+              <div className="border-t border-border p-1">
                 <button
                   type="button"
                   onClick={() => onChange([])}
-                  className="w-full h-7 rounded-md text-xs font-medium text-foreground-muted hover:text-foreground hover:bg-surface transition-colors cursor-pointer"
+                  className="w-full h-6 rounded-md text-[11px] font-medium text-foreground-muted hover:text-foreground hover:bg-surface transition-colors cursor-pointer"
                 >
-                  Clear project filters
+                  Clear filter
                 </button>
               </div>
             )}
@@ -1074,15 +1126,19 @@ export default function MemoriesPage() {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+  const [selectedMemoryIds, setSelectedMemoryIds] = useState<string[]>([]);
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
   const [selectedVaultMemory, setSelectedVaultMemory] =
     useState<CompanyBrainMemory | null>(null);
   const [deletingMemory, setDeletingMemory] = useState<Memory | null>(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const toast = useToast();
   const queryClient = useQueryClient();
-  const offset = page * ITEMS_PER_PAGE;
+  const offset = page * pageSize;
   const isWorkspace = source.type === "workspace";
   const workspaceId = source.type === "workspace" ? source.id : undefined;
 
@@ -1114,6 +1170,7 @@ export default function MemoriesPage() {
     setSearchInput("");
     setSearch("");
     setPage(0);
+    setSelectedMemoryIds([]);
     setSelectedMemory(null);
     setSelectedVaultMemory(null);
   }
@@ -1131,6 +1188,7 @@ export default function MemoriesPage() {
     setSelectedScope(next);
     setSelectedProjects([]);
     setPage(0);
+    setSelectedMemoryIds([]);
     setSelectedMemory(null);
   }
 
@@ -1139,9 +1197,27 @@ export default function MemoriesPage() {
     const timer = setTimeout(() => {
       setSearch(searchInput);
       setPage(0);
+      setSelectedMemoryIds([]);
     }, 300);
     return () => clearTimeout(timer);
   }, [searchInput]);
+
+  useEffect(() => {
+    setSelectedMemoryIds([]);
+  }, [
+    page,
+    pageSize,
+    sortOrder,
+    isWorkspace,
+    selectedScope,
+    selectedCategories,
+    selectedProjects,
+    search,
+  ]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [sortOrder]);
 
   // Build API params for multi-value filters
   const apiCategories =
@@ -1151,12 +1227,13 @@ export default function MemoriesPage() {
 
   const userMemories = useQuery({
     ...memoriesQueryOptions({
-      limit: ITEMS_PER_PAGE,
+      limit: pageSize,
       offset,
       categories: apiCategories,
       projects: apiProjects,
       search: search || undefined,
       scope: selectedScope ?? undefined,
+      sort: sortOrder,
     }),
     enabled: !isWorkspace,
   });
@@ -1168,8 +1245,9 @@ export default function MemoriesPage() {
       scope: selectedScope ?? undefined,
       projects: apiProjects,
       search: search || undefined,
-      limit: ITEMS_PER_PAGE,
+      limit: pageSize,
       offset,
+      sort: sortOrder,
     }),
   );
 
@@ -1178,6 +1256,41 @@ export default function MemoriesPage() {
     : userMemories;
 
   const deleteMutation = useDeleteMemory();
+  const bulkDeleteMutation = useDeleteMemories();
+  const selectedMemoryIdSet = new Set(selectedMemoryIds);
+  const pageMemoryIds = isWorkspace ? [] : (data?.memories.map((m) => m.id) ?? []);
+  const selectedPageMemoryIds = pageMemoryIds.filter((id) =>
+    selectedMemoryIdSet.has(id),
+  );
+  const hasSelection = selectedMemoryIds.length > 0;
+  const allPageSelected =
+    pageMemoryIds.length > 0 && selectedPageMemoryIds.length === pageMemoryIds.length;
+
+  function toggleMemorySelection(memoryId: string, checked: boolean) {
+    setSelectedMemoryIds((current) =>
+      checked
+        ? Array.from(new Set([...current, memoryId]))
+        : current.filter((id) => id !== memoryId),
+    );
+  }
+
+  function togglePageSelection(checked: boolean) {
+    setSelectedMemoryIds((current) => {
+      if (checked) return Array.from(new Set([...current, ...pageMemoryIds]));
+      const pageIds = new Set(pageMemoryIds);
+      return current.filter((id) => !pageIds.has(id));
+    });
+  }
+
+  function handlePageSizeChange(value: string) {
+    const nextPageSize = Number(value);
+    if (!PAGE_SIZE_OPTIONS.includes(nextPageSize as (typeof PAGE_SIZE_OPTIONS)[number])) {
+      return;
+    }
+    setPageSize(nextPageSize);
+    setPage(0);
+    setSelectedMemoryIds([]);
+  }
 
   async function handleDelete() {
     if (!deletingMemory) return;
@@ -1190,6 +1303,9 @@ export default function MemoriesPage() {
       toast.success("Memory deleted successfully");
       setDeletingMemory(null);
       setSelectedMemory(null);
+      setSelectedMemoryIds((current) =>
+        current.filter((id) => id !== deletingMemory.id),
+      );
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to delete memory",
@@ -1199,9 +1315,37 @@ export default function MemoriesPage() {
     }
   }
 
-  const totalPages = data ? Math.ceil(data.total / ITEMS_PER_PAGE) : 0;
+  async function handleBulkDelete() {
+    if (selectedMemoryIds.length === 0) return;
+    setIsDeleting(true);
+    try {
+      const result = await bulkDeleteMutation.mutateAsync({
+        ids: selectedMemoryIds,
+        scope: selectedScope ?? undefined,
+      });
+      if (result.deletedCount === 0) {
+        toast.success("No selected memories needed deletion");
+      } else {
+        toast.success(
+          `${result.deletedCount} ${result.deletedCount === 1 ? "memory" : "memories"} deleted successfully`,
+        );
+      }
+      setBulkDeleteOpen(false);
+      setSelectedMemoryIds([]);
+      setSelectedMemory(null);
+      setPage(0);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to delete memories",
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  const totalPages = data ? Math.ceil(data.total / pageSize) : 0;
   const showingFrom = data && data.total > 0 ? offset + 1 : 0;
-  const showingTo = data ? Math.min(offset + ITEMS_PER_PAGE, data.total) : 0;
+  const showingTo = data ? Math.min(offset + pageSize, data.total) : 0;
   const totalMemoriesCount =
     (hierarchy?.global.count ?? 0) +
     (hierarchy?.scopes.reduce((sum, scope) => sum + scope.count, 0) ?? 0);
@@ -1224,63 +1368,66 @@ export default function MemoriesPage() {
     <div className="h-full flex flex-col animate-fade-in overflow-hidden">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-1 pt-1 pb-6 shrink-0">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl font-bold tracking-tight">
-                Memories
-              </span>
-              <span className="text-sm -mb-2 text-foreground-muted">
-                (
-                {data?.total
-                  ? `${data.total} memories stored`
-                  : "Manage your saved memories"}
-                )
-              </span>
-            </div>
-          </div>
+        <div className="flex items-baseline gap-2">
+          <span className="text-2xl font-bold tracking-tight">Memories</span>
+          {typeof data?.total === "number" && (
+            <span className="text-sm font-medium text-foreground-muted tabular-nums">
+              ({data.total})
+            </span>
+          )}
         </div>
 
         {/* Search and Filters */}
         <div className="flex flex-wrap items-center gap-2">
-          <MemorySourceSwitcher value={source} onChange={handleSourceChange} />
+          {!isWorkspace && (
+            <div className="relative w-full sm:w-64">
+              <MagnifyingGlass
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground-subtle"
+                weight="bold"
+              />
+              <Input
+                placeholder="Search memories..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="pl-9 h-10 bg-surface border-border"
+              />
+            </div>
+          )}
+          <MemorySourceSwitcher
+            value={source}
+            onChange={handleSourceChange}
+            className="max-w-[180px]"
+          />
           <ScopePicker
             value={selectedScope}
             onChange={handleScopeChange}
             hierarchy={hierarchy}
             isLoading={hierarchyLoading}
+            className="max-w-[180px]"
           />
-          {/* Content Search */}
-          <div className="relative w-full sm:w-64">
-            <MagnifyingGlass
-              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground-subtle"
-              weight="bold"
-            />
-            <Input
-              placeholder="Search memories..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="pl-9 h-10 bg-surface border-border"
-            />
-          </div>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleRefresh}
-            disabled={isFetching}
-            className="h-10 w-10 shrink-0 cursor-pointer"
-          >
-            <ArrowsClockwise
-              className={cn("h-4 w-4", isFetching && "animate-spin")}
-              weight="bold"
-            />
-          </Button>
+          <Tooltip content={isFetching ? "Refreshing…" : "Refresh memories"}>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleRefresh}
+              disabled={isFetching}
+              aria-label={
+                isFetching ? "Refreshing memories" : "Refresh memories"
+              }
+              className="h-10 w-10 shrink-0 cursor-pointer"
+            >
+              <ArrowsClockwise
+                className={cn("h-4 w-4", isFetching && "animate-spin")}
+                weight="bold"
+              />
+            </Button>
+          </Tooltip>
         </div>
       </div>
 
       {/* Content */}
       {isLoading ? (
-        <TableSkeleton />
+        <TableSkeleton rowCount={pageSize} isWorkspace={isWorkspace} />
       ) : error ? (
         <Card className="flex-1">
           <CardContent className="p-8 text-center">
@@ -1334,16 +1481,34 @@ export default function MemoriesPage() {
           {/* Table */}
           <Card className="overflow-hidden flex-1 min-h-0 flex flex-col">
             <div className="overflow-x-auto overflow-y-auto flex-1 scrollbar-hide flex flex-col">
-              <table className="w-full min-w-[760px] flex-1 flex flex-col">
+              <table
+                className={cn(
+                  "w-full flex-1 flex flex-col",
+                  isWorkspace ? "min-w-[940px]" : "min-w-[760px]",
+                )}
+              >
                 <thead className="sticky top-0 z-10 border-b border-border shrink-0">
-                  <tr className="flex bg-surface-elevated w-full">
-                    <th className="text-center px-2 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 shrink-0 border-r border-border flex items-center justify-center">
-                      #
+                  <tr className="flex bg-surface-elevated w-full h-11">
+                    <th className="text-center px-2 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 shrink-0 border-r border-border flex items-center justify-center">
+                      {!isWorkspace ? (
+                        <SelectionCheckbox
+                          checked={allPageSelected}
+                          onChange={togglePageSelection}
+                          label="Select all memories on this page"
+                        />
+                      ) : (
+                        "#"
+                      )}
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-48 md:flex-1 md:w-auto border-r border-border flex items-center">
+                    <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-48 md:flex-1 md:w-auto border-r border-border flex items-center">
                       Content
                     </th>
-                    <th className="text-left px-4 py-3 w-40 shrink-0 border-r border-border flex items-center">
+                    {isWorkspace && (
+                      <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-44 shrink-0 border-r border-border flex items-center">
+                        Source
+                      </th>
+                    )}
+                    <th className="text-left px-4 w-40 shrink-0 border-r border-border flex items-center">
                       {isWorkspace ? (
                         <span className="text-xs font-semibold uppercase tracking-wider text-foreground-muted">
                           Category
@@ -1358,7 +1523,7 @@ export default function MemoriesPage() {
                         />
                       )}
                     </th>
-                    <th className="text-left px-4 py-3 w-44 shrink-0 border-r border-border flex items-center">
+                    <th className="text-left px-4 w-44 shrink-0 border-r border-border flex items-center">
                       <ProjectFilter
                         values={selectedProjects}
                         onChange={(values) => {
@@ -1369,11 +1534,65 @@ export default function MemoriesPage() {
                         isLoading={hierarchyLoading}
                       />
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-48 shrink-0 border-r border-border flex items-center">
-                      Created
+                    <th className="text-left px-4 w-48 shrink-0 border-r border-border flex items-center">
+                      <Tooltip
+                        content={
+                          sortOrder === "desc"
+                            ? "Sorted newest first — click for oldest first"
+                            : "Sorted oldest first — click for newest first"
+                        }
+                      >
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSortOrder((current) =>
+                              current === "desc" ? "asc" : "desc",
+                            )
+                          }
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-foreground-muted hover:text-foreground transition-colors cursor-pointer"
+                          aria-label={`Sort by created date, currently ${sortOrder === "desc" ? "newest first" : "oldest first"}`}
+                        >
+                          Created
+                          <span className="flex flex-col -space-y-1">
+                            <CaretUp
+                              className={cn(
+                                "h-2.5 w-2.5 transition-colors",
+                                sortOrder === "asc"
+                                  ? "text-foreground"
+                                  : "text-foreground-subtle/60",
+                              )}
+                              weight="bold"
+                            />
+                            <CaretDown
+                              className={cn(
+                                "h-2.5 w-2.5 transition-colors",
+                                sortOrder === "desc"
+                                  ? "text-foreground"
+                                  : "text-foreground-subtle/60",
+                              )}
+                              weight="bold"
+                            />
+                          </span>
+                        </button>
+                      </Tooltip>
                     </th>
-                    <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 shrink-0 flex items-center justify-center">
-                      <span className="sr-only">Actions</span>
+                    <th className="text-center text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 shrink-0 flex items-center justify-center">
+                      {hasSelection ? (
+                        <Tooltip
+                          content={`Delete ${selectedMemoryIds.length} selected ${selectedMemoryIds.length === 1 ? "memory" : "memories"}`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setBulkDeleteOpen(true)}
+                            aria-label={`Delete ${selectedMemoryIds.length} selected memories`}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-foreground-muted hover:text-error hover:bg-error/10 transition-colors cursor-pointer"
+                          >
+                            <Trash className="h-4 w-4" weight="duotone" />
+                          </button>
+                        </Tooltip>
+                      ) : (
+                        <span className="sr-only">Actions</span>
+                      )}
                     </th>
                   </tr>
                 </thead>
@@ -1403,30 +1622,40 @@ export default function MemoriesPage() {
                         }
                       >
                         {/* Serial Number */}
-                        <td className="py-3 text-center text-sm text-foreground-muted font-medium w-12 shrink-0 border-r border-border flex items-center justify-center">
-                          {offset + index + 1}
+                        <td className="relative py-2 text-center text-xs text-foreground-muted font-medium w-12 shrink-0 border-r border-border flex items-center justify-center">
+                          {!isWorkspace && hasSelection ? (
+                            <SelectionCheckbox
+                              checked={selectedMemoryIdSet.has(memory.id)}
+                              onChange={(checked) =>
+                                toggleMemorySelection(memory.id, checked)
+                              }
+                              label={`Select memory ${offset + index + 1}`}
+                            />
+                          ) : !isWorkspace ? (
+                            <>
+                              <span className="transition-opacity group-hover:opacity-0">
+                                {offset + index + 1}
+                              </span>
+                              <span className="absolute opacity-0 transition-opacity group-hover:opacity-100">
+                                <SelectionCheckbox
+                                  checked={selectedMemoryIdSet.has(memory.id)}
+                                  onChange={(checked) =>
+                                    toggleMemorySelection(memory.id, checked)
+                                  }
+                                  label={`Select memory ${offset + index + 1}`}
+                                />
+                              </span>
+                            </>
+                          ) : (
+                            offset + index + 1
+                          )}
                         </td>
 
                         {/* Content */}
-                        <td className="px-4 py-3 w-48 md:flex-1 md:w-auto border-r border-border flex items-center gap-2">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm leading-relaxed line-clamp-2">
-                              {memory.content}
-                            </p>
-                            {isWorkspace &&
-                              "sourceTitle" in memory &&
-                              memory.sourceTitle && (
-                                <span className="mt-1 inline-flex max-w-full items-center gap-1 text-[11px] text-foreground-subtle">
-                                  <FileText
-                                    className="h-3 w-3 shrink-0"
-                                    weight="duotone"
-                                  />
-                                  <span className="truncate">
-                                    {memory.sourceTitle}
-                                  </span>
-                                </span>
-                              )}
-                          </div>
+                        <td className="px-4 py-2 w-48 md:flex-1 md:w-auto border-r border-border flex items-center gap-2 min-w-0">
+                          <p className="text-sm text-foreground truncate min-w-0 flex-1">
+                            {memory.content}
+                          </p>
                           {(() => {
                             const ts = getTemporalStatus(memory as Memory);
                             return ts ? (
@@ -1442,12 +1671,36 @@ export default function MemoriesPage() {
                           })()}
                         </td>
 
+                        {/* Source (workspace only) */}
+                        {isWorkspace && (
+                          <td className="px-4 py-2 w-44 shrink-0 border-r border-border flex items-center min-w-0">
+                            {"sourceTitle" in memory && memory.sourceTitle ? (
+                              <span
+                                className="inline-flex min-w-0 items-center gap-1.5 text-xs text-foreground-muted"
+                                title={memory.sourceTitle}
+                              >
+                                <FileText
+                                  className="h-3.5 w-3.5 shrink-0 text-foreground-subtle"
+                                  weight="duotone"
+                                />
+                                <span className="truncate">
+                                  {memory.sourceTitle}
+                                </span>
+                              </span>
+                            ) : (
+                              <span className="text-xs text-foreground-subtle">
+                                —
+                              </span>
+                            )}
+                          </td>
+                        )}
+
                         {/* Category */}
-                        <td className="px-4 py-3 w-40 shrink-0 border-r border-border flex items-center">
+                        <td className="px-4 py-2 w-40 shrink-0 border-r border-border flex items-center">
                           {memory.category && config ? (
                             <span
                               className={cn(
-                                "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
+                                "inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium",
                                 config.lightBg,
                                 config.lightText,
                               )}
@@ -1462,14 +1715,14 @@ export default function MemoriesPage() {
                         </td>
 
                         {/* Project */}
-                        <td className="px-4 py-3 w-44 shrink-0 border-r border-border flex items-center">
+                        <td className="px-4 py-2 w-44 shrink-0 border-r border-border flex items-center">
                           <span className="text-sm text-foreground-muted truncate block">
                             {memory.project || "No project"}
                           </span>
                         </td>
 
                         {/* Created */}
-                        <td className="px-4 py-3 w-48 shrink-0 border-r border-border flex items-center">
+                        <td className="px-4 py-2 w-48 shrink-0 border-r border-border flex items-center">
                           <span className="text-sm text-foreground-muted whitespace-nowrap">
                             {formatDateTime(memory.createdAt).date},{" "}
                             {formatDateTime(memory.createdAt).time}
@@ -1477,7 +1730,7 @@ export default function MemoriesPage() {
                         </td>
 
                         {/* Actions */}
-                        <td className="py-3 w-12 shrink-0 flex items-center justify-center">
+                        <td className="py-2 w-12 shrink-0 flex items-center justify-center">
                           {isWorkspace ? (
                             <CaretRight
                               className="h-3.5 w-3.5 text-foreground-subtle transition-colors group-hover:text-foreground-muted"
@@ -1495,32 +1748,37 @@ export default function MemoriesPage() {
                       </tr>
                     );
                   })}
-                  {/* Empty placeholder rows to always show 10 rows */}
+                  {/* Empty placeholder rows keep the table height stable. */}
                   {data?.memories &&
-                    data.memories.length < ITEMS_PER_PAGE &&
+                    data.memories.length < pageSize &&
                     Array.from({
-                      length: ITEMS_PER_PAGE - data.memories.length,
+                      length: pageSize - data.memories.length,
                     }).map((_, index) => (
                       <tr
                         key={`empty-${index}`}
                         className="border-b border-border last:border-b-0 flex flex-1 w-full"
                       >
-                        <td className="py-3 w-12 shrink-0 border-r border-border">
+                        <td className="py-2 w-12 shrink-0 border-r border-border">
                           &nbsp;
                         </td>
-                        <td className="px-4 py-3 w-48 md:flex-1 md:w-auto border-r border-border">
+                        <td className="px-4 py-2 w-48 md:flex-1 md:w-auto border-r border-border">
                           &nbsp;
                         </td>
-                        <td className="px-4 py-3 w-40 shrink-0 border-r border-border">
+                        {isWorkspace && (
+                          <td className="px-4 py-2 w-44 shrink-0 border-r border-border">
+                            &nbsp;
+                          </td>
+                        )}
+                        <td className="px-4 py-2 w-40 shrink-0 border-r border-border">
                           &nbsp;
                         </td>
-                        <td className="px-4 py-3 w-44 shrink-0 border-r border-border">
+                        <td className="px-4 py-2 w-44 shrink-0 border-r border-border">
                           &nbsp;
                         </td>
-                        <td className="px-4 py-3 w-48 shrink-0 border-r border-border">
+                        <td className="px-4 py-2 w-48 shrink-0 border-r border-border">
                           &nbsp;
                         </td>
-                        <td className="py-3 w-12 shrink-0">&nbsp;</td>
+                        <td className="py-2 w-12 shrink-0">&nbsp;</td>
                       </tr>
                     ))}
                 </tbody>
@@ -1531,18 +1789,37 @@ export default function MemoriesPage() {
           {/* Pagination */}
           {data && data.total > 0 && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-1">
-              <p className="text-sm text-foreground-muted order-2 sm:order-1">
-                Showing{" "}
-                <span className="font-medium text-foreground">
-                  {showingFrom}
-                </span>
-                {" to "}
-                <span className="font-medium text-foreground">{showingTo}</span>
-                {" of "}
-                <span className="font-medium text-foreground">
-                  {data.total}
-                </span>
-              </p>
+              <div className="flex items-center gap-3 order-2 sm:order-1">
+                <p className="text-sm text-foreground-muted">
+                  Showing{" "}
+                  <span className="font-medium text-foreground">
+                    {showingFrom}
+                  </span>
+                  {" to "}
+                  <span className="font-medium text-foreground">
+                    {showingTo}
+                  </span>
+                  {" of "}
+                  <span className="font-medium text-foreground">
+                    {data.total}
+                  </span>
+                </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-foreground-subtle">Rows</span>
+                  <ThemedSelect
+                    value={String(pageSize)}
+                    options={PAGE_SIZE_OPTIONS.map((value) => ({
+                      value: String(value),
+                      label: String(value),
+                    }))}
+                    onChange={handlePageSizeChange}
+                    disabled={isFetching}
+                    align="left"
+                    className="w-20"
+                    buttonClassName="h-8"
+                  />
+                </div>
+              </div>
 
               <div className="flex items-center gap-1.5 order-1 sm:order-2">
                 <button
@@ -1649,6 +1926,15 @@ export default function MemoriesPage() {
           onClose={() => setDeletingMemory(null)}
           onConfirm={handleDelete}
           isDeleting={isDeleting}
+        />
+      )}
+
+      {bulkDeleteOpen && (
+        <DeleteConfirmDialog
+          onClose={() => setBulkDeleteOpen(false)}
+          onConfirm={handleBulkDelete}
+          isDeleting={isDeleting}
+          count={selectedMemoryIds.length}
         />
       )}
     </div>

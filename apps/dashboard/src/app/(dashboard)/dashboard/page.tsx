@@ -611,14 +611,14 @@ export default function DashboardPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[420px]">
                     <thead>
-                      <tr className="bg-surface-elevated border-b border-border">
-                        <th className="text-left px-3 py-2 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-48 border-r border-border">
+                      <tr className="bg-surface-elevated border-b border-border h-11">
+                        <th className="text-left px-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-48 border-r border-border">
                           Memory
                         </th>
-                        <th className="text-left px-3 py-2 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-28 border-r border-border">
+                        <th className="text-left px-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-28 border-r border-border">
                           Category
                         </th>
-                        <th className="text-left px-3 py-2 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-20">
+                        <th className="text-left px-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-20">
                           Created
                         </th>
                       </tr>
@@ -631,7 +631,7 @@ export default function DashboardPage() {
                             key={memory.id}
                             className="group hover:bg-surface-elevated/50 transition-colors border-b border-border last:border-b-0"
                           >
-                            <td className="px-3 py-3 border-r border-border">
+                            <td className="px-3 py-2 border-r border-border">
                               <Link
                                 href="/memories"
                                 className="text-sm truncate block max-w-[180px]"
@@ -639,18 +639,18 @@ export default function DashboardPage() {
                                 {memory.content}
                               </Link>
                             </td>
-                            <td className="px-3 py-3 border-r border-border">
+                            <td className="px-3 py-2 border-r border-border">
                               {memory.category ? (
-                                <span className="text-xs px-2.5 py-1 rounded-full bg-accent/10 text-accent capitalize">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-accent/10 text-accent capitalize">
                                   {memory.category}
                                 </span>
                               ) : (
-                                <span className="text-xs px-2.5 py-1 rounded-full bg-surface-elevated text-foreground-muted">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-surface-elevated text-foreground-muted">
                                   Uncategorized
                                 </span>
                               )}
                             </td>
-                            <td className="px-3 py-3">
+                            <td className="px-3 py-2">
                               <span className="text-xs text-foreground-muted">
                                 {timeAgo}
                               </span>

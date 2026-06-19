@@ -72,20 +72,23 @@ export function MemorySourceSwitcher({
         type="button"
         onClick={() => setOpen((current) => !current)}
         className={cn(
-          "inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors",
+          "inline-flex h-10 w-full max-w-full items-center gap-2 rounded-xl border border-border bg-surface px-3 text-sm font-medium text-foreground transition-colors",
           "hover:bg-surface-elevated hover:border-border-hover",
           "focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent/50",
         )}
       >
         {isUser ? (
-          <User className="h-4 w-4 text-foreground-muted" weight="duotone" />
+          <User
+            className="h-4 w-4 shrink-0 text-foreground-muted"
+            weight="duotone"
+          />
         ) : (
-          <Buildings className="h-4 w-4 text-accent" weight="duotone" />
+          <Buildings className="h-4 w-4 shrink-0 text-accent" weight="duotone" />
         )}
-        <span className="max-w-[160px] truncate">{label}</span>
+        <span className="min-w-0 flex-1 truncate text-left">{label}</span>
         <CaretDown
           className={cn(
-            "h-3 w-3 text-foreground-muted transition-transform",
+            "h-3 w-3 shrink-0 text-foreground-muted transition-transform",
             open && "rotate-180",
           )}
           weight="bold"
@@ -102,18 +105,18 @@ export function MemorySourceSwitcher({
             />
             <div
               style={{ top: coords.top, left: coords.left }}
-              className="fixed z-[61] w-64 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border bg-surface-elevated shadow-lg animate-scale-in"
+              className="fixed z-[61] w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-border bg-surface-elevated shadow-lg animate-scale-in"
             >
               {/* Personal */}
-              <div className="p-1.5">
-                <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-foreground-subtle">
+              <div className="p-1">
+                <div className="px-2 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-foreground-subtle">
                   Personal
                 </div>
                 <button
                   type="button"
                   onClick={() => select({ type: "user" })}
                   className={cn(
-                    "w-full flex items-center justify-between gap-2 rounded-md px-2.5 py-2 text-sm text-left transition-colors",
+                    "w-full flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-[13px] text-left transition-colors",
                     isUser
                       ? "bg-surface text-foreground"
                       : "text-foreground-muted hover:bg-surface hover:text-foreground",
@@ -121,28 +124,28 @@ export function MemorySourceSwitcher({
                 >
                   <span className="flex items-center gap-2 min-w-0">
                     <User
-                      className="h-4 w-4 text-accent shrink-0"
+                      className="h-3.5 w-3.5 text-accent shrink-0"
                       weight="duotone"
                     />
                     <span className="truncate">My memories</span>
                   </span>
                   {isUser && (
-                    <Check className="h-3.5 w-3.5 shrink-0" weight="bold" />
+                    <Check className="h-3 w-3 shrink-0" weight="bold" />
                   )}
                 </button>
               </div>
 
               {/* Workspaces */}
-              <div className="border-t border-border p-1.5">
-                <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-foreground-subtle">
+              <div className="border-t border-border p-1">
+                <div className="px-2 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-foreground-subtle">
                   Workspaces
                 </div>
                 {workspaces.length === 0 ? (
-                  <div className="px-3 py-3 text-[11px] text-foreground-subtle">
+                  <div className="px-2.5 py-2.5 text-[11px] text-foreground-subtle">
                     No workspaces yet. Create one in Settings.
                   </div>
                 ) : (
-                  <div className="max-h-60 overflow-y-auto scrollbar-hide">
+                  <div className="max-h-52 overflow-y-auto scrollbar-hide">
                     {workspaces.map((workspace) => {
                       const active =
                         value.type === "workspace" && value.id === workspace.id;
@@ -158,7 +161,7 @@ export function MemorySourceSwitcher({
                             })
                           }
                           className={cn(
-                            "w-full flex items-center justify-between gap-2 rounded-md px-2.5 py-2 text-sm text-left transition-colors",
+                            "w-full flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-[13px] text-left transition-colors",
                             active
                               ? "bg-surface text-foreground"
                               : "text-foreground-muted hover:bg-surface hover:text-foreground",
@@ -166,7 +169,7 @@ export function MemorySourceSwitcher({
                         >
                           <span className="flex items-center gap-2 min-w-0">
                             <Buildings
-                              className="h-4 w-4 text-accent shrink-0"
+                              className="h-3.5 w-3.5 text-accent shrink-0"
                               weight="duotone"
                             />
                             <span className="flex min-w-0 flex-col">
@@ -180,7 +183,7 @@ export function MemorySourceSwitcher({
                           </span>
                           {active && (
                             <Check
-                              className="h-3.5 w-3.5 shrink-0"
+                              className="h-3 w-3 shrink-0"
                               weight="bold"
                             />
                           )}

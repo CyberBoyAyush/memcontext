@@ -1702,6 +1702,7 @@ interface ListCompanyBrainMemoriesParams {
   search?: string;
   limit?: number;
   offset?: number;
+  sort?: "asc" | "desc";
 }
 
 export async function listCompanyBrainMemories(
@@ -1710,9 +1711,10 @@ export async function listCompanyBrainMemories(
   await requireWorkspaceMember(params.userId, params.workspaceId);
 
   const scope = normalizeScope(params.scope);
-  const limit = Math.min(Math.max(params.limit ?? 20, 1), 50);
+  const limit = Math.min(Math.max(params.limit ?? 25, 1), 100);
   const offset = Math.max(params.offset ?? 0, 0);
   const search = params.search?.trim();
+  const sort = params.sort ?? "desc";
 
   // Support both a single `project` and a multi-value `projects[]` filter.
   const rawProjects =
@@ -1766,7 +1768,12 @@ export async function listCompanyBrainMemories(
       })
       .from(memories)
       .where(and(...conditions))
-      .orderBy(desc(memories.createdAt), desc(memories.id))
+      .orderBy(
+        sort === "asc"
+          ? asc(memories.createdAt)
+          : desc(memories.createdAt),
+        sort === "asc" ? asc(memories.id) : desc(memories.id),
+      )
       .limit(limit)
       .offset(offset),
     db

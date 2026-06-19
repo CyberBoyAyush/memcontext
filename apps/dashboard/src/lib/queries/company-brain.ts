@@ -252,6 +252,7 @@ export const companyBrainMemoriesQueryOptions = (params: {
   search?: string;
   limit?: number;
   offset?: number;
+  sort?: "asc" | "desc";
 }) =>
   queryOptions({
     queryKey: ["company-brain-memories", params] as const,
@@ -266,6 +267,7 @@ export const companyBrainMemoriesQueryOptions = (params: {
       if (params.search) searchParams.set("search", params.search);
       if (params.limit) searchParams.set("limit", String(params.limit));
       if (params.offset) searchParams.set("offset", String(params.offset));
+      if (params.sort) searchParams.set("sort", params.sort);
       return api.get<CompanyBrainMemoriesResponse>(
         `/api/company-brain/memories?${searchParams.toString()}`,
       );

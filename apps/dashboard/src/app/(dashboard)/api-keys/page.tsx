@@ -34,23 +34,23 @@ function TableSkeleton() {
       <div className="overflow-auto">
         <table className="w-full min-w-[640px]">
           <thead className="sticky top-0 z-10 bg-surface-elevated border-b border-border">
-            <tr>
-              <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 border-r border-border">
+            <tr className="h-11">
+              <th className="text-center text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 border-r border-border">
                 #
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-40 border-r border-border">
+              <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-40 border-r border-border">
                 Name
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-32 border-r border-border">
+              <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-32 border-r border-border">
                 Key
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-44 border-r border-border">
+              <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-44 border-r border-border">
                 Created
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-44 border-r border-border">
+              <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-44 border-r border-border">
                 Last Used
               </th>
-              <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12">
+              <th className="text-center text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12">
                 <span className="sr-only">Actions</span>
               </th>
             </tr>
@@ -58,23 +58,23 @@ function TableSkeleton() {
           <tbody>
             {Array.from({ length: 3 }).map((_, i) => (
               <tr key={i} className="animate-pulse border-b border-border">
-                <td className="py-3 w-12 border-r border-border">
-                  <div className="h-4 bg-surface-elevated rounded w-5 mx-auto" />
+                <td className="py-2 w-12 border-r border-border">
+                  <div className="h-3 bg-surface-elevated rounded w-5 mx-auto" />
                 </td>
-                <td className="px-4 py-3 w-40 border-r border-border">
-                  <div className="h-4 bg-surface-elevated rounded w-24" />
+                <td className="px-4 py-2 w-40 border-r border-border">
+                  <div className="h-3.5 bg-surface-elevated rounded w-24" />
                 </td>
-                <td className="px-4 py-3 w-32 border-r border-border">
-                  <div className="h-4 bg-surface-elevated rounded w-20" />
+                <td className="px-4 py-2 w-32 border-r border-border">
+                  <div className="h-3.5 bg-surface-elevated rounded w-20" />
                 </td>
-                <td className="px-4 py-3 w-44 border-r border-border">
-                  <div className="h-4 bg-surface-elevated rounded w-32" />
+                <td className="px-4 py-2 w-44 border-r border-border">
+                  <div className="h-3.5 bg-surface-elevated rounded w-32" />
                 </td>
-                <td className="px-4 py-3 w-44 border-r border-border">
-                  <div className="h-4 bg-surface-elevated rounded w-32" />
+                <td className="px-4 py-2 w-44 border-r border-border">
+                  <div className="h-3.5 bg-surface-elevated rounded w-32" />
                 </td>
-                <td className="py-3 w-12">
-                  <div className="h-6 w-6 bg-surface-elevated rounded mx-auto" />
+                <td className="py-2 w-12">
+                  <div className="h-7 w-7 bg-surface-elevated rounded-md mx-auto" />
                 </td>
               </tr>
             ))}
@@ -446,7 +446,7 @@ function DeleteButton({
     <Button
       variant="ghost"
       size="icon"
-      className="h-8 w-8 text-foreground-muted hover:text-error hover:bg-error/10 cursor-pointer"
+      className="h-7 w-7 rounded-md text-foreground-muted hover:text-error hover:bg-error/10 cursor-pointer"
       onClick={(e) => {
         e.stopPropagation();
         onDelete();
@@ -581,23 +581,23 @@ export default function ApiKeysPage() {
           <div className="overflow-auto">
             <table className="w-full min-w-[640px]">
               <thead className="sticky top-0 z-10 bg-surface-elevated border-b border-border">
-                <tr>
-                  <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 border-r border-border">
+                <tr className="h-11">
+                  <th className="text-center text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 border-r border-border">
                     #
                   </th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-40 border-r border-border">
+                  <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-40 border-r border-border">
                     Name
                   </th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-32 border-r border-border">
+                  <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-32 border-r border-border">
                     Key
                   </th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-44 border-r border-border">
+                  <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-44 border-r border-border">
                     Created
                   </th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-44 border-r border-border">
+                  <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-44 border-r border-border">
                     Last Used
                   </th>
-                  <th className="text-center py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12">
+                  <th className="text-center text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12">
                     <span className="sr-only">Actions</span>
                   </th>
                 </tr>
@@ -609,24 +609,24 @@ export default function ApiKeysPage() {
                     className="hover:bg-surface/50 transition-colors border-b border-border"
                   >
                     {/* Serial Number */}
-                    <td className="py-3 text-center text-sm text-foreground-muted font-medium w-12 border-r border-border">
+                    <td className="py-2 text-center text-xs text-foreground-muted font-medium w-12 border-r border-border">
                       {index + 1}
                     </td>
 
                     {/* Name */}
-                    <td className="px-4 py-3 w-40 border-r border-border">
+                    <td className="px-4 py-2 w-40 border-r border-border">
                       <p className="text-sm font-medium truncate">{key.name}</p>
                     </td>
 
                     {/* Key Prefix */}
-                    <td className="px-4 py-3 w-32 border-r border-border">
+                    <td className="px-4 py-2 w-32 border-r border-border">
                       <code className="text-sm font-mono text-foreground-muted">
                         {key.keyPrefix}...
                       </code>
                     </td>
 
                     {/* Created */}
-                    <td className="px-4 py-3 w-44 border-r border-border">
+                    <td className="px-4 py-2 w-44 border-r border-border">
                       <span className="text-sm text-foreground-muted whitespace-nowrap">
                         {formatDateTime(key.createdAt).date},{" "}
                         {formatDateTime(key.createdAt).time}
@@ -634,7 +634,7 @@ export default function ApiKeysPage() {
                     </td>
 
                     {/* Last Used */}
-                    <td className="px-4 py-3 w-44 border-r border-border">
+                    <td className="px-4 py-2 w-44 border-r border-border">
                       {key.lastUsedAt ? (
                         <span className="text-sm text-foreground-muted whitespace-nowrap">
                           {formatDateTime(key.lastUsedAt).date},{" "}
@@ -648,7 +648,7 @@ export default function ApiKeysPage() {
                     </td>
 
                     {/* Actions */}
-                    <td className="py-3 w-12">
+                    <td className="py-2 w-12">
                       <div className="flex justify-center">
                         <DeleteButton
                           onDelete={() => setDeletingKey(key)}
