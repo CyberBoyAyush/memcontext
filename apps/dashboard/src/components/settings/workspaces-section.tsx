@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import {
@@ -8,13 +8,17 @@ import {
   Check,
   Copy,
   Plus,
+  SpinnerGap,
   Trash,
   UserPlus,
+  Warning,
+  X,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { ThemedSelect } from "@/components/ui/themed-select";
+import { AnimatedTabs } from "@/components/ui/animated-tabs";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
 import {
@@ -32,10 +36,10 @@ import {
 
 type InviteRole = InvitableWorkspaceRole;
 
-const roleOptions: Array<{ value: InviteRole; label: string; hint: string }> = [
-  { value: "admin", label: "Admin", hint: "Manage members and content" },
-  { value: "member", label: "Member", hint: "Add and search knowledge" },
-  { value: "viewer", label: "Viewer", hint: "Read-only access" },
+const roleOptions: Array<{ value: InviteRole; label: string }> = [
+  { value: "admin", label: "Admin" },
+  { value: "member", label: "Member" },
+  { value: "viewer", label: "Viewer" },
 ];
 
 const inputClass =
@@ -72,7 +76,10 @@ function workspaceTierLabel(workspace: { billingOwnerPlan?: string | null }) {
   return `${plan.charAt(0).toUpperCase()}${plan.slice(1)} Workspace`;
 }
 
-export function WorkspacesSection({ embedded }: { embedded?: boolean } = {}) {
+export function WorkspacesSection({
+  embedded,
+  initialTab = "team",
+}: { embedded?: boolean; initialTab?: "team" | "workspaces" } = {}) {
   const toast = useToast();
   const [workspaceName, setWorkspaceName] = useState("");
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("");
@@ -81,6 +88,23 @@ export function WorkspacesSection({ embedded }: { embedded?: boolean } = {}) {
   const [copiedWorkspaceId, setCopiedWorkspaceId] = useState<string | null>(
     null,
   );
+  const [activeTab, setActiveTab] = useState<"team" | "workspaces">(
+    initialTab,
+  );
+  const [pendingRemoval, setPendingRemoval] = useState<
+    | {
+        kind: "member";
+        id: string;
+        name: string;
+        email: string;
+      }
+    | {
+        kind: "invite";
+        id: string;
+        email: string;
+      }
+    | null
+  >(null);
 
   const { data: workspaceData } = useQuery(workspacesQueryOptions());
   const createWorkspace = useCreateWorkspace();
@@ -201,35 +225,35 @@ export function WorkspacesSection({ embedded }: { embedded?: boolean } = {}) {
     }
   }
 
-  async function handleRemoveMember(memberId: string) {
+  async function handleConfirmRemoval() {
+    if (!pendingRemoval) return;
     try {
-      await removeMember.mutateAsync({
-        workspaceId: activeWorkspaceId,
-        memberId,
-      });
-      toast.success("Member removed");
+      if (pendingRemoval.kind === "member") {
+        await removeMember.mutateAsync({
+          workspaceId: activeWorkspaceId,
+          memberId: pendingRemoval.id,
+        });
+        toast.success("Member removed");
+      } else {
+        await revokeInvitation.mutateAsync({
+          workspaceId: activeWorkspaceId,
+          invitationId: pendingRemoval.id,
+        });
+        toast.success("Invite revoked");
+      }
+      setPendingRemoval(null);
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Could not remove member",
+        error instanceof Error
+          ? error.message
+          : pendingRemoval.kind === "member"
+            ? "Could not remove member"
+            : "Could not revoke invite",
       );
     }
   }
 
-  async function handleRevokeInvitation(invitationId: string) {
-    try {
-      await revokeInvitation.mutateAsync({
-        workspaceId: activeWorkspaceId,
-        invitationId,
-      });
-      toast.success("Invite revoked");
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not revoke invite",
-      );
-    }
-  }
-
-  const inner = (
+  const workspacesTab = (
     <div className="space-y-6">
       {/* Create workspace */}
       <div>
@@ -274,83 +298,97 @@ export function WorkspacesSection({ embedded }: { embedded?: boolean } = {}) {
       </div>
 
       {workspaces.length > 0 && (
-        <>
-          <div className="h-px bg-border" />
-
-          {/* Workspace + role list */}
-          <div>
-            <h3 className="text-sm font-semibold">Your workspaces</h3>
-            <div className="mt-3 divide-y divide-border rounded-xl border border-border">
-              {workspaces.map((workspace) => (
-                <div
-                  key={workspace.id}
-                  className="flex items-center justify-between gap-3 p-3"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-elevated border border-border">
-                      <Buildings
-                        className="h-4 w-4 text-foreground-muted"
-                        weight="duotone"
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">
-                        {workspace.name}
-                      </p>
-                      <p className="truncate text-xs text-foreground-subtle">
-                        {workspace.slug} · {workspaceTierLabel(workspace)}
-                      </p>
-                    </div>
+        <div>
+          <h3 className="text-sm font-semibold">Your workspaces</h3>
+          <div className="mt-3 divide-y divide-border rounded-xl border border-border">
+            {workspaces.map((workspace) => (
+              <div
+                key={workspace.id}
+                className="flex items-center justify-between gap-3 p-3"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-elevated border border-border">
+                    <Buildings
+                      className="h-4 w-4 text-foreground-muted"
+                      weight="duotone"
+                    />
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleCopyWorkspaceId(workspace.id)}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-2.5 text-xs font-medium text-foreground-muted transition-colors hover:border-border-hover hover:text-foreground"
-                      aria-label={`Copy workspace ID for ${workspace.name}`}
-                    >
-                      {copiedWorkspaceId === workspace.id ? (
-                        <Check className="h-3.5 w-3.5 text-success" />
-                      ) : (
-                        <Copy className="h-3.5 w-3.5" />
-                      )}
-                      <span className="hidden sm:inline">
-                        {copiedWorkspaceId === workspace.id
-                          ? "Copied"
-                          : "Copy ID"}
-                      </span>
-                    </button>
-                    <span
-                      className={cn(
-                        "rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize",
-                        roleBadgeTone(workspace.role),
-                      )}
-                    >
-                      {workspace.role}
-                    </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      {workspace.name}
+                    </p>
+                    <p className="truncate text-xs text-foreground-subtle">
+                      {workspace.slug} · {workspaceTierLabel(workspace)}
+                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleCopyWorkspaceId(workspace.id)}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-2.5 text-xs font-medium text-foreground-muted transition-colors hover:border-border-hover hover:text-foreground"
+                    aria-label={`Copy workspace ID for ${workspace.name}`}
+                  >
+                    {copiedWorkspaceId === workspace.id ? (
+                      <Check className="h-3.5 w-3.5 text-success" />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5" />
+                    )}
+                    <span className="hidden sm:inline">
+                      {copiedWorkspaceId === workspace.id
+                        ? "Copied"
+                        : "Copy ID"}
+                    </span>
+                  </button>
+                  <span
+                    className={cn(
+                      "rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize",
+                      roleBadgeTone(workspace.role),
+                    )}
+                  >
+                    {workspace.role}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
+        </div>
+      )}
+    </div>
+  );
 
-          <div className="h-px bg-border" />
-
-          {/* Invite member */}
+  const teamTab =
+    workspaces.length === 0 ? (
+      <div className="rounded-xl border border-dashed border-border bg-surface-elevated/30 p-6 text-center">
+        <p className="text-sm text-foreground-muted">
+          Create a workspace first to manage team members.
+        </p>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="mt-3"
+          onClick={() => setActiveTab("workspaces")}
+        >
+          Go to Workspaces
+        </Button>
+      </div>
+    ) : (
+      <div className="space-y-6">
+        {/* Manage team: invite + members + invites in one section */}
           <div>
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h3 className="text-sm font-semibold">Invite a member</h3>
+                <h3 className="text-sm font-semibold">Manage team</h3>
                 <p className="mt-0.5 text-xs text-foreground-subtle">
                   {canInvite
-                    ? "Send an email invite to a teammate."
-                    : "Only owners and admins can invite members."}
+                    ? "Invite teammates, update roles, or remove access."
+                    : "Only owners and admins can invite or manage members."}
                 </p>
               </div>
               <ThemedSelect
                 value={activeWorkspaceId}
                 onChange={setSelectedWorkspaceId}
-                className="w-44 shrink-0"
+                className="w-full shrink-0 sm:w-44"
                 options={workspaces.map((workspace) => ({
                   value: workspace.id,
                   label: workspace.name,
@@ -358,44 +396,7 @@ export function WorkspacesSection({ embedded }: { embedded?: boolean } = {}) {
               />
             </div>
 
-            {/* Role picker */}
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              {roleOptions.map((option) => {
-                const active = inviteRole === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setInviteRole(option.value)}
-                    disabled={!canInvite}
-                    className={cn(
-                      "rounded-lg border p-2.5 text-left transition-all disabled:cursor-not-allowed disabled:opacity-50",
-                      active
-                        ? "border-accent bg-accent/[0.06]"
-                        : "border-border bg-surface hover:border-border-hover",
-                    )}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span
-                        className={cn(
-                          "text-xs font-semibold",
-                          active ? "text-accent" : "text-foreground",
-                        )}
-                      >
-                        {option.label}
-                      </span>
-                      {active && (
-                        <Check className="h-3 w-3 text-accent" weight="bold" />
-                      )}
-                    </div>
-                    <p className="mt-0.5 text-[10px] leading-tight text-foreground-subtle">
-                      {option.hint}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-
+            {/* Invite row */}
             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
               <input
                 value={inviteEmail}
@@ -405,8 +406,19 @@ export function WorkspacesSection({ embedded }: { embedded?: boolean } = {}) {
                 disabled={!canInvite}
                 className={cn(
                   inputClass,
-                  "disabled:cursor-not-allowed disabled:opacity-50",
+                  "flex-1 disabled:cursor-not-allowed disabled:opacity-50",
                 )}
+              />
+              <ThemedSelect
+                value={inviteRole}
+                disabled={!canInvite}
+                onChange={(next) => setInviteRole(next as InviteRole)}
+                buttonClassName="h-10"
+                className="w-full shrink-0 sm:w-32"
+                options={roleOptions.map((option) => ({
+                  value: option.value,
+                  label: option.label,
+                }))}
               />
               <Button
                 onClick={handleInvite}
@@ -423,146 +435,233 @@ export function WorkspacesSection({ embedded }: { embedded?: boolean } = {}) {
               </Button>
             </div>
 
-            <p className="mt-2 text-[11px] text-foreground-subtle">
-              The teammate is added only after accepting the email invite.
-            </p>
-          </div>
-
-          <div className="h-px bg-border" />
-
-          {/* Team management */}
-          <div>
-            <h3 className="text-sm font-semibold">Team members</h3>
-            <p className="mt-0.5 text-xs text-foreground-subtle">
-              Review members, update roles, remove access, or revoke pending
-              invites.
-            </p>
-
+            {/* Team members count */}
             {teamData?.members.length ? (
-              <div className="mt-3 rounded-xl border border-border bg-surface-elevated/30 p-3">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-xs font-semibold">Billing owner</p>
-                    <p className="mt-0.5 text-[11px] text-foreground-subtle">
-                      Workspace documents use this member&apos;s plan limits.
-                    </p>
-                  </div>
-                  <ThemedSelect
-                    value={teamData.billingOwnerUserId ?? ""}
-                    disabled={!canManageTeam || updateBillingOwner.isPending}
-                    onChange={handleUpdateBillingOwner}
-                    align="right"
-                    className="w-full sm:w-52"
-                    options={teamData.members
-                      .filter((member) => member.role !== "viewer")
-                      .map((member) => ({
-                        value: member.userId,
-                        label: member.name || member.email,
-                      }))}
-                  />
-                </div>
+              <div className="mt-4 flex items-baseline justify-between">
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-foreground-muted">
+                  Members
+                </h4>
+                <span className="text-xs text-foreground-muted">
+                  {teamData.members.length} member
+                  {teamData.members.length === 1 ? "" : "s"}
+                </span>
               </div>
             ) : null}
 
-            <div className="mt-3 divide-y divide-border rounded-xl border border-border">
+            <div className="mt-2 overflow-x-auto rounded-xl border border-border">
               {teamLoading ? (
-                <div className="p-3 text-sm text-foreground-subtle">
+                <div className="p-4 text-sm text-foreground-subtle">
                   Loading team...
                 </div>
               ) : teamData?.members.length ? (
-                teamData.members.map((member) => {
-                  const manageable = canManageMember(
-                    teamData.currentUserRole,
-                    member.role,
-                  );
-
-                  return (
-                    <div
-                      key={member.id}
-                      className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">
-                          {member.name || member.email}
-                        </p>
-                        <p className="truncate text-xs text-foreground-subtle">
-                          {member.email}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <ThemedSelect
-                          value={member.role}
-                          disabled={!manageable || updateMember.isPending}
-                          capitalize
-                          className="w-32"
-                          onChange={(next) =>
-                            handleUpdateMemberRole(
-                              member.id,
-                              next as InvitableWorkspaceRole,
-                            )
-                          }
-                          options={[
-                            { value: "owner", label: "Owner", disabled: true },
-                            { value: "admin", label: "Admin" },
-                            { value: "member", label: "Member" },
-                            { value: "viewer", label: "Viewer" },
-                          ]}
-                        />
-                        <button
-                          type="button"
-                          disabled={!manageable || removeMember.isPending}
-                          onClick={() => handleRemoveMember(member.id)}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border text-foreground-muted transition-colors hover:border-red-500/40 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50"
-                          aria-label={`Remove ${member.email}`}
+                <table className="w-full min-w-[480px] border-collapse text-sm">
+                  <thead className="border-b border-border bg-surface-elevated">
+                    <tr className="h-10 text-left text-[11px] font-semibold uppercase tracking-wider text-foreground-muted">
+                      <th className="w-10 border-r border-border px-3 text-center">
+                        #
+                      </th>
+                      <th className="border-r border-border px-3">Member</th>
+                      <th className="w-36 border-r border-border px-3">Role</th>
+                      <th className="w-16 px-3 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {teamData.members.map((member, index) => {
+                      const manageable = canManageMember(
+                        teamData.currentUserRole,
+                        member.role,
+                      );
+                      return (
+                        <tr
+                          key={member.id}
+                          className="border-b border-border transition-colors last:border-b-0 hover:bg-surface-elevated/40"
                         >
-                          <Trash className="h-3.5 w-3.5" weight="bold" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })
+                          <td className="w-10 border-r border-border px-3 py-2.5 text-center align-middle text-xs font-medium tabular-nums text-foreground-muted">
+                            {index + 1}
+                          </td>
+                          <td className="border-r border-border px-3 py-2.5 align-middle">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium">
+                                {member.name || member.email}
+                              </p>
+                              <p className="truncate text-xs text-foreground-subtle">
+                                {member.email}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="w-36 border-r border-border px-3 py-2.5 align-middle">
+                            <ThemedSelect
+                              value={member.role}
+                              disabled={!manageable || updateMember.isPending}
+                              capitalize
+                              buttonClassName="h-8"
+                              className="w-full"
+                              onChange={(next) =>
+                                handleUpdateMemberRole(
+                                  member.id,
+                                  next as InvitableWorkspaceRole,
+                                )
+                              }
+                              options={[
+                                {
+                                  value: "owner",
+                                  label: "Owner",
+                                  disabled: true,
+                                },
+                                { value: "admin", label: "Admin" },
+                                { value: "member", label: "Member" },
+                                { value: "viewer", label: "Viewer" },
+                              ]}
+                            />
+                          </td>
+                          <td className="px-3 py-2.5 text-center align-middle">
+                            <button
+                              type="button"
+                              disabled={
+                                !manageable || removeMember.isPending
+                              }
+                              onClick={() =>
+                                setPendingRemoval({
+                                  kind: "member",
+                                  id: member.id,
+                                  name: member.name || member.email,
+                                  email: member.email,
+                                })
+                              }
+                              title={`Remove ${member.email}`}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-foreground-muted transition-colors hover:bg-error/10 hover:text-error disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                            >
+                              <Trash className="h-4 w-4" weight="duotone" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               ) : (
-                <div className="p-3 text-sm text-foreground-subtle">
+                <div className="p-4 text-sm text-foreground-subtle">
                   No members found.
                 </div>
               )}
             </div>
 
+            {/* Billing owner: inline line */}
+            {teamData?.members.length ? (
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs text-foreground-muted">
+                  <span className="font-medium text-foreground">
+                    Billing owner
+                  </span>{" "}
+                  · workspace documents use this member&apos;s plan limits.
+                </p>
+                <ThemedSelect
+                  value={teamData.billingOwnerUserId ?? ""}
+                  disabled={!canManageTeam || updateBillingOwner.isPending}
+                  onChange={handleUpdateBillingOwner}
+                  align="right"
+                  buttonClassName="h-8"
+                  className="w-full sm:w-52"
+                  options={teamData.members
+                    .filter((member) => member.role !== "viewer")
+                    .map((member) => ({
+                      value: member.userId,
+                      label: member.name || member.email,
+                    }))}
+                />
+              </div>
+            ) : null}
+
             {teamData?.invitations.length ? (
               <div className="mt-4">
-                <h4 className="text-xs font-semibold uppercase tracking-wide text-foreground-muted">
+                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-foreground-muted">
                   Pending invites
                 </h4>
-                <div className="mt-2 divide-y divide-border rounded-xl border border-border">
-                  {teamData.invitations.map((invitation) => (
-                    <div
-                      key={invitation.id}
-                      className="flex items-center justify-between gap-3 p-3"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">
-                          {invitation.email}
-                        </p>
-                        <p className="truncate text-xs text-foreground-subtle">
-                          {invitation.role} invite · expires{" "}
-                          {new Date(invitation.expiresAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        disabled={!canManageTeam || revokeInvitation.isPending}
-                        onClick={() => handleRevokeInvitation(invitation.id)}
-                        className="shrink-0 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-foreground-muted transition-colors hover:border-red-500/40 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        Revoke
-                      </button>
-                    </div>
-                  ))}
+                <div className="overflow-x-auto rounded-xl border border-border">
+                  <table className="w-full min-w-[480px] border-collapse text-sm">
+                    <thead className="border-b border-border bg-surface-elevated">
+                      <tr className="h-10 text-left text-[11px] font-semibold uppercase tracking-wider text-foreground-muted">
+                        <th className="border-r border-border px-3">Email</th>
+                        <th className="w-24 border-r border-border px-3">
+                          Role
+                        </th>
+                        <th className="w-32 border-r border-border px-3">
+                          Expires
+                        </th>
+                        <th className="w-16 px-3 text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {teamData.invitations.map((invitation) => (
+                        <tr
+                          key={invitation.id}
+                          className="border-b border-border transition-colors last:border-b-0 hover:bg-surface-elevated/40"
+                        >
+                          <td className="border-r border-border px-3 py-2.5 align-middle">
+                            <p className="truncate text-sm font-medium">
+                              {invitation.email}
+                            </p>
+                          </td>
+                          <td className="w-24 border-r border-border px-3 py-2.5 align-middle text-xs capitalize text-foreground-muted">
+                            {invitation.role}
+                          </td>
+                          <td className="w-32 border-r border-border px-3 py-2.5 align-middle text-xs text-foreground-muted">
+                            {new Date(
+                              invitation.expiresAt,
+                            ).toLocaleDateString()}
+                          </td>
+                          <td className="px-3 py-2.5 text-center align-middle">
+                            <button
+                              type="button"
+                              disabled={
+                                !canManageTeam || revokeInvitation.isPending
+                              }
+                              onClick={() =>
+                                setPendingRemoval({
+                                  kind: "invite",
+                                  id: invitation.id,
+                                  email: invitation.email,
+                                })
+                              }
+                              title={`Revoke invite for ${invitation.email}`}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-foreground-muted transition-colors hover:bg-error/10 hover:text-error disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                            >
+                              <Trash className="h-4 w-4" weight="duotone" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             ) : null}
           </div>
-        </>
+      </div>
+    );
+
+  const inner = (
+    <div className="space-y-4">
+      {/* Tab switcher */}
+      <AnimatedTabs<"team" | "workspaces">
+        ariaLabel="Workspaces section"
+        value={activeTab}
+        onChange={setActiveTab}
+        tabs={[
+          { value: "team", label: "Team" },
+          { value: "workspaces", label: "Workspaces" },
+        ]}
+      />
+
+      {activeTab === "team" ? teamTab : workspacesTab}
+
+      {pendingRemoval && (
+        <RemoveConfirmDialog
+          pending={pendingRemoval}
+          isWorking={removeMember.isPending || revokeInvitation.isPending}
+          onCancel={() => setPendingRemoval(null)}
+          onConfirm={handleConfirmRemoval}
+        />
       )}
     </div>
   );
@@ -575,5 +674,143 @@ export function WorkspacesSection({ embedded }: { embedded?: boolean } = {}) {
     <Card className="shadow-none">
       <CardContent className="p-6">{inner}</CardContent>
     </Card>
+  );
+}
+
+function RemoveConfirmDialog({
+  pending,
+  isWorking,
+  onCancel,
+  onConfirm,
+}: {
+  pending:
+    | { kind: "member"; id: string; name: string; email: string }
+    | { kind: "invite"; id: string; email: string };
+  isWorking: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const cancelButtonRef = useRef<HTMLButtonElement | null>(null);
+  const isMember = pending.kind === "member";
+  const title = isMember ? "Remove member" : "Revoke invite";
+  const subjectName = isMember ? pending.name : pending.email;
+  const subjectEmail = pending.email;
+  const verb = isMember ? "remove" : "revoke the invite for";
+  const consequence = isMember
+    ? "They will immediately lose access to this workspace and its memories. You can re-invite them later."
+    : "The invitation link will stop working. You can send a new invite later.";
+
+  useEffect(() => {
+    cancelButtonRef.current?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape" && !isWorking) {
+        onCancel();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isWorking, onCancel]);
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={isWorking ? undefined : onCancel}
+      />
+
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="remove-member-dialog-title"
+        className="relative w-full max-w-md bg-background border border-border rounded-xl shadow-2xl animate-scale-in"
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between p-4 pb-0">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-error/10 shrink-0">
+              <Warning
+                className="h-5 w-5 text-error"
+                weight="duotone"
+              />
+            </div>
+            <div className="min-w-0 pt-1">
+              <h3
+                id="remove-member-dialog-title"
+                className="text-base font-semibold leading-tight"
+              >
+                {title}
+              </h3>
+              <p className="text-xs text-foreground-muted mt-0.5">
+                This action cannot be undone.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onCancel}
+            disabled={isWorking}
+            className="p-1 rounded-md text-foreground-muted hover:text-foreground hover:bg-surface transition-colors cursor-pointer disabled:opacity-50"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-4 space-y-3">
+          <p className="text-sm text-foreground-muted leading-relaxed">
+            Are you sure you want to {verb}{" "}
+            <span className="font-medium text-foreground">{subjectName}</span>
+            {isMember && subjectName !== subjectEmail && (
+              <>
+                {" "}
+                <span className="text-foreground-subtle">
+                  ({subjectEmail})
+                </span>
+              </>
+            )}
+            ?
+          </p>
+          <p className="text-xs text-foreground-subtle leading-relaxed">
+            {consequence}
+          </p>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 p-4 pt-0">
+          <Button
+            ref={cancelButtonRef}
+            variant="outline"
+            size="sm"
+            onClick={onCancel}
+            disabled={isWorking}
+            className="hover:translate-y-0 hover:shadow-none cursor-pointer"
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={onConfirm}
+            disabled={isWorking}
+            className="hover:translate-y-0 hover:shadow-none cursor-pointer"
+          >
+            {isWorking ? (
+              <>
+                <SpinnerGap
+                  className="h-3.5 w-3.5 animate-spin mr-1.5"
+                  weight="bold"
+                />
+                {isMember ? "Removing..." : "Revoking..."}
+              </>
+            ) : isMember ? (
+              "Remove member"
+            ) : (
+              "Revoke invite"
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }

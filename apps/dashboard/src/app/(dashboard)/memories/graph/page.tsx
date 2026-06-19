@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { ScopePicker } from "@/components/scope-picker";
 import { ThemedSelect } from "@/components/ui/themed-select";
 import { Tooltip } from "@/components/ui/tooltip";
+import { AnimatedTabs } from "@/components/ui/animated-tabs";
 import { cn, formatDateTime } from "@/lib/utils";
 
 const LINK_TYPE_LABELS: Record<MemoryGraphLink["type"], string> = {
@@ -133,54 +134,16 @@ function ViewModeTabs({
   value: ViewMode;
   onChange: (next: ViewMode) => void;
 }) {
-  const tabsRef = useRef<Map<ViewMode, HTMLButtonElement>>(new Map());
-  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
-
-  useEffect(() => {
-    const activeTab = tabsRef.current.get(value);
-    if (!activeTab) return;
-    const container = activeTab.parentElement;
-    if (!container) return;
-    const containerRect = container.getBoundingClientRect();
-    const tabRect = activeTab.getBoundingClientRect();
-    setIndicatorStyle({
-      left: tabRect.left - containerRect.left,
-      width: tabRect.width,
-    });
-  }, [value]);
-
   return (
-    <div
-      role="group"
-      aria-label="View mode"
-      className="relative inline-flex h-9 items-center gap-0.5 rounded-lg border border-border bg-surface p-1"
-    >
-      <div
-        className="absolute top-1 bottom-1 rounded-md bg-accent transition-all duration-300 ease-out"
-        style={{
-          left: indicatorStyle.left,
-          width: indicatorStyle.width,
-        }}
-      />
-      {VIEW_MODES.map((mode) => (
-        <button
-          key={mode.id}
-          ref={(el) => {
-            if (el) tabsRef.current.set(mode.id, el);
-          }}
-          type="button"
-          onClick={() => onChange(mode.id)}
-          className={cn(
-            "relative z-10 rounded-md px-3 text-xs font-medium transition-colors",
-            value === mode.id
-              ? "text-accent-foreground"
-              : "text-foreground-muted hover:text-foreground",
-          )}
-        >
-          {mode.label}
-        </button>
-      ))}
-    </div>
+    <AnimatedTabs<ViewMode>
+      ariaLabel="View mode"
+      value={value}
+      onChange={onChange}
+      tabs={VIEW_MODES.map((mode) => ({
+        value: mode.id,
+        label: mode.label,
+      }))}
+    />
   );
 }
 
