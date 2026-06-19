@@ -205,17 +205,74 @@ const MARKDOWN_COMPONENTS: Components = {
     <thead className="bg-surface-elevated">{children}</thead>
   ),
   th: ({ children }) => (
-    <th className="border-b border-border px-2 py-1.5 text-left font-semibold text-foreground">
+    <th className="border-b border-r border-border px-2 py-1.5 text-left font-semibold text-foreground last:border-r-0">
       {children}
     </th>
   ),
   td: ({ children }) => (
-    <td className="border-b border-border/60 px-2 py-1.5 text-foreground/90">
+    <td className="border-b border-r border-border/60 px-2 py-1.5 align-top text-foreground/90 last:border-r-0">
       {children}
     </td>
   ),
   hr: () => <hr className="my-2 border-border" />,
 };
+
+/**
+ * Some chunked markdown tables arrive without a GFM separator row (e.g. `| --- |`)
+ * or with rows collapsed onto a single line (e.g. `... | col | | next row ...`).
+ * Normalize both shapes so remark-gfm can render them as real tables.
+ */
+function normalizeChunkMarkdown(input: string): string {
+  if (!input) return input;
+
+  // Step 1: split runs of inline rows like "| a | b | | c | d |" into separate lines.
+  let normalized = input.replace(/\|\s*\|/g, (match, offset, str) => {
+    const before = str.slice(0, offset);
+    const after = str.slice(offset + match.length);
+    const beforeLineStart = before.lastIndexOf("\n") + 1;
+    const afterLineEnd = after.indexOf("\n");
+    const beforeLine = before.slice(beforeLineStart);
+    const afterLine = afterLineEnd === -1 ? after : after.slice(0, afterLineEnd);
+    if (beforeLine.includes("|") && afterLine.includes("|")) {
+      return "|\n|";
+    }
+    return match;
+  });
+
+  // Step 2: inject a separator row after a header row if missing.
+  const lines = normalized.split("\n");
+  const isTableRow = (s: string) =>
+    s.startsWith("|") && s.endsWith("|") && s.includes("|", 1);
+  const isSeparator = (s: string) =>
+    /^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?$/.test(s);
+  const out: string[] = [];
+  let inTable = false;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    if (isTableRow(trimmed)) {
+      out.push(line);
+      const next = (lines[i + 1] ?? "").trim();
+      if (!inTable) {
+        if (!isSeparator(next)) {
+          const cellCount = trimmed
+            .split("|")
+            .filter((c) => c.length > 0).length;
+          if (cellCount >= 2 && isTableRow(next)) {
+            out.push("|" + " --- |".repeat(cellCount));
+          }
+        }
+        inTable = true;
+      }
+    } else {
+      out.push(line);
+      if (trimmed === "") inTable = false;
+    }
+  }
+  normalized = out.join("\n");
+
+  return normalized;
+}
 
 function SearchMarkdown({
   content,
@@ -230,7 +287,7 @@ function SearchMarkdown({
         remarkPlugins={[remarkGfm]}
         components={MARKDOWN_COMPONENTS}
       >
-        {content}
+        {normalizeChunkMarkdown(content)}
       </ReactMarkdown>
     </div>
   );
