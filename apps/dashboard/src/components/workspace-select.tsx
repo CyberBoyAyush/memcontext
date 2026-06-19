@@ -8,6 +8,7 @@ import {
   Check,
   GearSix,
   Plus,
+  UsersThree,
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import type { Workspace } from "@/lib/queries/company-brain";
@@ -17,6 +18,7 @@ interface WorkspaceSelectProps {
   value: string;
   onChange: (workspaceId: string) => void;
   onManage?: () => void;
+  onManageTeam?: () => void;
   onAdd?: () => void;
   className?: string;
 }
@@ -35,6 +37,7 @@ export function WorkspaceSelect({
   value,
   onChange,
   onManage,
+  onManageTeam,
   onAdd,
   className,
 }: WorkspaceSelectProps) {
@@ -167,7 +170,7 @@ export function WorkspaceSelect({
                 )}
               </div>
 
-              {(onAdd || onManage) && (
+              {(onAdd || onManage || onManageTeam) && (
                 <div className="border-t border-border p-1.5">
                   {onAdd && (
                     <button
@@ -180,6 +183,22 @@ export function WorkspaceSelect({
                     >
                       <Plus className="h-4 w-4 shrink-0" weight="bold" />
                       Add workspace
+                    </button>
+                  )}
+                  {onManageTeam && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpen(false);
+                        onManageTeam();
+                      }}
+                      className="w-full flex items-center gap-2 rounded-md px-2.5 py-2 text-sm text-left text-foreground-muted transition-colors hover:bg-surface hover:text-foreground"
+                    >
+                      <UsersThree
+                        className="h-4 w-4 shrink-0"
+                        weight="duotone"
+                      />
+                      Manage team
                     </button>
                   )}
                   {onManage && (
