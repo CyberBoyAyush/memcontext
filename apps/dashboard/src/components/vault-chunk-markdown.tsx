@@ -72,7 +72,7 @@ export function normalizeChunkMarkdown(input: string): string {
       }
     } else {
       out.push(line);
-      if (trimmed === "") inTable = false;
+      inTable = false;
     }
   }
 
