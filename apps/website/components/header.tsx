@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useId } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -427,6 +427,7 @@ function NavDropdown({
   align = "center",
 }: NavDropdownProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const panelId = useId();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -468,7 +469,11 @@ function NavDropdown({
       onMouseLeave={onClose}
     >
       <button
+        type="button"
         onClick={onToggle}
+        aria-haspopup="true"
+        aria-expanded={isOpen}
+        aria-controls={panelId}
         className={`flex items-center gap-1 text-sm lg:text-base cursor-pointer transition-colors ${
           isOpen
             ? "text-foreground"
@@ -486,6 +491,10 @@ function NavDropdown({
       {/* Mega Panel — pt-3 acts as an invisible bridge so the cursor can move
           from the trigger into the panel without crossing a dead gap. */}
       <div
+        id={panelId}
+        role="menu"
+        aria-label={menu.label}
+        aria-hidden={!isOpen}
         className={`absolute top-full pt-3 w-[560px] transition-all duration-200 ${
           align === "center"
             ? "left-1/2 -translate-x-1/2 origin-top"

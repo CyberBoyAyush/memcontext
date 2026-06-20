@@ -415,7 +415,7 @@ export default function MemoryGraphPage() {
     : null;
 
   const headerBlock = (
-    <div className="flex shrink-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <div className="flex shrink-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
       <div>
         <div className="flex items-baseline gap-3">
           <h1 className="text-2xl font-bold tracking-tight">Memory Graph</h1>
@@ -428,15 +428,16 @@ export default function MemoryGraphPage() {
           and categories fill in the rest.
         </p>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap lg:justify-end">
         <ScopePicker
           value={selectedScope}
           onChange={handleScopeChange}
           hierarchy={hierarchy}
           isLoading={hierarchyLoading}
+          buttonClassName="w-auto max-w-[220px]"
         />
         {data && (
-          <div className="flex flex-wrap items-center gap-2 text-sm text-foreground-muted">
+          <div className="flex items-center gap-2 text-sm text-foreground-muted">
             <span className="inline-flex h-10 items-center rounded-xl border border-border bg-surface px-3 font-medium">
               {data.meta.totalNodes} memories
             </span>

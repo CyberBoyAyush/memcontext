@@ -298,7 +298,7 @@ const mcpSteps = [
   {
     num: "02",
     title: "Chat as usual",
-    body: "- nothing else changes. No prompts, no wrappers.",
+    body: "nothing else changes. No prompts, no wrappers.",
   },
   {
     num: "03",

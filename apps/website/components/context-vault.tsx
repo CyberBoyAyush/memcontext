@@ -1,6 +1,12 @@
 "use client";
 
 import { ArrowRight } from "lucide-react";
+import { createContext, useContext, useId } from "react";
+
+// Each IsoStack instance (desktop + mobile) gets a unique prefix so its SVG
+// gradient IDs never collide in the DOM. Nested helpers read it from context.
+const GradientIdContext = createContext<string>("cv");
+const useGradientId = (name: string) => `${useContext(GradientIdContext)}-${name}`;
 
 interface Pillar {
   title: string;
@@ -172,6 +178,8 @@ function isoDot(p: Pt, r: number, key: string | number, opacity: number) {
  * rim highlight on the light-facing (upper-left) edge. Light comes top-left.
  */
 function IsoHole({ p }: { p: Pt }) {
+  const wallId = useGradientId("hole-wall");
+  const boreId = useGradientId("hole-bore");
   const RX = 9; // outer rim iso radii (2:1 ellipse)
   const RY = 4.5;
   const DEPTH = 4; // how far the hole sinks (screen-space)
@@ -190,7 +198,7 @@ function IsoHole({ p }: { p: Pt }) {
             A ${RX} ${RY} 0 0 0 ${(p.x + RX).toFixed(1)} ${p.y.toFixed(1)}
             L ${(p.x + boreRX).toFixed(1)} ${fy.toFixed(1)}
             A ${boreRX} ${boreRY} 0 0 1 ${(p.x - boreRX).toFixed(1)} ${fy.toFixed(1)} Z`}
-        fill="url(#cv-hole-wall)"
+        fill={`url(#${wallId})`}
         stroke="none"
       />
 
@@ -200,7 +208,7 @@ function IsoHole({ p }: { p: Pt }) {
         cy={fy}
         rx={boreRX}
         ry={boreRY}
-        fill="url(#cv-hole-bore)"
+        fill={`url(#${boreId})`}
       />
 
       {/* 3. Back wall highlight — the far (upper) inner wall catches light. */}
@@ -1179,6 +1187,15 @@ function IsoLayer({
 
 /** The full exploded stack rendered as one SVG. */
 function IsoStack() {
+  // Unique, DOM-safe prefix per instance so duplicate mounts (desktop + mobile)
+  // never share gradient IDs. useId() returns a value with colons, which are
+  // invalid in url(#...) refs, so strip them.
+  const rawId = useId();
+  const idPrefix = `cv${rawId.replace(/:/g, "")}`;
+  const threadId = `${idPrefix}-thread`;
+  const boreId = `${idPrefix}-hole-bore`;
+  const wallId = `${idPrefix}-hole-wall`;
+
   const cx = 290;
   const startY = 120;
   const gap = 112; // exploded spacing between layers
@@ -1189,54 +1206,56 @@ function IsoStack() {
   }));
 
   return (
-    <svg
-      viewBox="0 0 580 720"
-      className="w-full h-auto"
-      role="img"
-      aria-label="Exploded isometric view of the Context Vault knowledge stack"
-    >
-      <defs>
-        <linearGradient id="cv-thread" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--accent)" stopOpacity="0" />
-          <stop offset="50%" stopColor="var(--accent)" stopOpacity="0.5" />
-          <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
-        </linearGradient>
-        {/* Bore shading: deepest/darkest near front-bottom, lifts toward the
-            back-top rim where light from the upper-left grazes the wall. */}
-        <radialGradient id="cv-hole-bore" cx="0.5" cy="0.32" r="0.75">
-          <stop offset="0%" stopColor="#000000" />
-          <stop offset="55%" stopColor="#040404" />
-          <stop offset="100%" stopColor="#1c1c1c" />
-        </radialGradient>
-        {/* Counterbore floor — a touch lighter than the bore so the step reads */}
-        <linearGradient id="cv-hole-wall" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#2a2a2a" />
-          <stop offset="100%" stopColor="#050505" />
-        </linearGradient>
-      </defs>
+    <GradientIdContext.Provider value={idPrefix}>
+      <svg
+        viewBox="0 0 580 720"
+        className="w-full h-auto"
+        role="img"
+        aria-label="Exploded isometric view of the Context Vault knowledge stack"
+      >
+        <defs>
+          <linearGradient id={threadId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--accent)" stopOpacity="0" />
+            <stop offset="50%" stopColor="var(--accent)" stopOpacity="0.5" />
+            <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
+          </linearGradient>
+          {/* Bore shading: deepest/darkest near front-bottom, lifts toward the
+              back-top rim where light from the upper-left grazes the wall. */}
+          <radialGradient id={boreId} cx="0.5" cy="0.32" r="0.75">
+            <stop offset="0%" stopColor="#000000" />
+            <stop offset="55%" stopColor="#040404" />
+            <stop offset="100%" stopColor="#1c1c1c" />
+          </radialGradient>
+          {/* Counterbore floor — a touch lighter than the bore so the step reads */}
+          <linearGradient id={wallId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#2a2a2a" />
+            <stop offset="100%" stopColor="#050505" />
+          </linearGradient>
+        </defs>
 
-      {/* connecting thread running through every layer centre */}
-      <line
-        x1={cx}
-        y1={startY - 40}
-        x2={cx}
-        y2={startY + 4 * gap + 56}
-        stroke="url(#cv-thread)"
-        strokeWidth={1.5}
-        strokeDasharray="2 6"
-      />
-
-      {/* render bottom-to-top so upper layers overlap lower ones */}
-      {[...layers].reverse().map((l) => (
-        <IsoLayer
-          key={l.variant}
-          cx={cx}
-          cy={l.cy}
-          variant={l.variant}
-          accent={l.accent}
+        {/* connecting thread running through every layer centre */}
+        <line
+          x1={cx}
+          y1={startY - 40}
+          x2={cx}
+          y2={startY + 4 * gap + 56}
+          stroke={`url(#${threadId})`}
+          strokeWidth={1.5}
+          strokeDasharray="2 6"
         />
-      ))}
-    </svg>
+
+        {/* render bottom-to-top so upper layers overlap lower ones */}
+        {[...layers].reverse().map((l) => (
+          <IsoLayer
+            key={l.variant}
+            cx={cx}
+            cy={l.cy}
+            variant={l.variant}
+            accent={l.accent}
+          />
+        ))}
+      </svg>
+    </GradientIdContext.Provider>
   );
 }
 
