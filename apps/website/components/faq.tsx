@@ -20,11 +20,11 @@ const faqs = [
   },
   {
     q: "Is my data private and secure?",
-    a: "Absolutely. All memories are encrypted at rest and in transit. We never use your data to train models or share it with third parties. You own your data — export or delete anytime.",
+    a: "Absolutely. All memories are encrypted at rest and in transit. We never use your data to train models or share it with third parties. You own your data - export or delete anytime.",
   },
   {
     q: "Does it work across multiple AI tools and custom apps?",
-    a: "Yes. Connect any MCP-compatible tool and they share the same memory. You can also use the REST API to build custom applications on top of MemContext — content generators, support bots, CRM memory, anything.",
+    a: "Yes. Connect any MCP-compatible tool and they share the same memory. You can also use the REST API to build custom applications on top of MemContext - content generators, support bots, CRM memory, anything.",
   },
   {
     q: "Is there a free plan?",

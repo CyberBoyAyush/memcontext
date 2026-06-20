@@ -945,14 +945,14 @@ const features: Feature[] = [
   {
     title: "Context Vault",
     description:
-      "A shared knowledge base for your team. Ingest PDFs, docs, and URLs — MemContext extracts the facts and cites each one back to its source.",
+      "A shared knowledge base for your team. Ingest PDFs, docs, and URLs - MemContext extracts the facts and cites each one back to its source.",
     icon: FolderLock,
     visual: <ContextVaultVisual />,
   },
   {
     title: "Cross-Tool Sync",
     description:
-      "Connect Claude over OAuth — no key to paste. Or wire Cursor, Codex, and your own app via API key. One memory layer, every tool.",
+      "Connect Claude over OAuth - no key to paste. Or wire Cursor, Codex, and your own app via API key. One memory layer, every tool.",
     icon: GitBranch,
     visual: <CrossToolSyncVisual />,
   },

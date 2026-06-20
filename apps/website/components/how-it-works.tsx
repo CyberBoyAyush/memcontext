@@ -293,12 +293,12 @@ const mcpSteps = [
   {
     num: "01",
     title: "Connect in one click",
-    body: "with Claude over OAuth — no key to paste — or drop the config into Cursor, Codex, or any MCP client.",
+    body: "with Claude over OAuth - no key to paste - or drop the config into Cursor, Codex, or any MCP client.",
   },
   {
     num: "02",
     title: "Chat as usual",
-    body: "— nothing else changes. No prompts, no wrappers.",
+    body: "nothing else changes. No prompts, no wrappers.",
   },
   {
     num: "03",
@@ -316,7 +316,7 @@ const apiSteps = [
   {
     num: "02",
     title: "Call the REST API",
-    body: "from any language — Node, Python, Go, cURL, anything.",
+    body: "from any language - Node, Python, Go, cURL, anything.",
   },
   {
     num: "03",
@@ -629,7 +629,7 @@ export function HowItWorks() {
                   <span className="text-xs text-foreground-muted">
                     {mode === "mcp"
                       ? "Memories persist across sessions automatically."
-                      : "Works in any language — Node, Python, Go, cURL."}
+                      : "Works in any language - Node, Python, Go, cURL."}
                   </span>
                 </div>
                 <span className="text-[10px] sm:text-xs text-foreground-subtle font-mono hidden sm:block">
