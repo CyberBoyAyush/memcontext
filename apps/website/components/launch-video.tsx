@@ -79,7 +79,7 @@ export function LaunchVideo() {
             Watch how it works
           </h2>
           <p className="text-base sm:text-lg text-foreground-muted max-w-2xl mx-auto">
-            From setup to first memory — see MemContext in action with your
+            From setup to first memory - see MemContext in action with your
             favourite AI coding agent.
           </p>
         </div>

@@ -201,3 +201,8 @@ All tab/segmented-control UI in the dashboard uses the shared `AnimatedTabs` com
 Usage: `<AnimatedTabs<T> value={value} onChange={setValue} tabs={[{value, label, icon?}]} size="md|sm" align="start|center" ariaLabel="..." capitalize? />`
 
 Current consumers: MCP CLI agent picker, Memory Graph view-mode (full/focused), Context Vault search-mode (hybrid/documents/memories), Workspaces section (team/workspaces).
+
+<!-- Added: 2026-06-19 -->
+## Website Isometric Diagram Aesthetic
+
+Isometric/layered SVG diagrams on the marketing website (e.g. `apps/website/components/context-vault.tsx`, `hero-memory-tower.tsx`) follow a shared visual language: a warm brand ramp (BRAND `#A9432A`, BRAND_HI `#D96B3F`, hot highlight `#FFE4D6`) with multi-tone per-face shading (top lightest / left darkest / right mid) so slabs read as solid 3D material rather than flat outlines. Faces must be opaque solid fills (not low-opacity tints) so stacked layers occlude what's behind them. Add bright accent micro-elements with the brand colors — glowing live core dots, expanding dashed pulse rings, brand-lit "active" signal paths/blocks, and animated opacity pulses — to give the scene life. Status pip colors: green `#22c55e`, amber `#f59e0b`, blue `#3b82f6`.
