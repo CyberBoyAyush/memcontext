@@ -413,6 +413,7 @@ type NavDropdownProps = {
   menu: NavMenu;
   isOpen: boolean;
   onToggle: () => void;
+  onOpen: () => void;
   onClose: () => void;
   align?: "left" | "center" | "right";
 };
@@ -421,6 +422,7 @@ function NavDropdown({
   menu,
   isOpen,
   onToggle,
+  onOpen,
   onClose,
   align = "center",
 }: NavDropdownProps) {
@@ -459,10 +461,15 @@ function NavDropdown({
     : { href: menu.featured.href };
 
   return (
-    <div ref={containerRef} className="relative">
+    <div
+      ref={containerRef}
+      className="relative"
+      onMouseEnter={onOpen}
+      onMouseLeave={onClose}
+    >
       <button
         onClick={onToggle}
-        className={`flex items-center gap-1 text-sm lg:text-base transition-colors ${
+        className={`flex items-center gap-1 text-sm lg:text-base cursor-pointer transition-colors ${
           isOpen
             ? "text-foreground"
             : "text-foreground-muted hover:text-foreground"
@@ -476,9 +483,10 @@ function NavDropdown({
         />
       </button>
 
-      {/* Mega Panel */}
+      {/* Mega Panel — pt-3 acts as an invisible bridge so the cursor can move
+          from the trigger into the panel without crossing a dead gap. */}
       <div
-        className={`absolute top-full mt-3 w-[560px] transition-all duration-200 ${
+        className={`absolute top-full pt-3 w-[560px] transition-all duration-200 ${
           align === "center"
             ? "left-1/2 -translate-x-1/2 origin-top"
             : align === "right"
@@ -592,6 +600,7 @@ export function Header() {
   const toggleDropdown = (name: string) => {
     setOpenDropdown((prev) => (prev === name ? null : name));
   };
+  const openDropdownMenu = (name: string) => setOpenDropdown(name);
   const closeDropdown = () => setOpenDropdown(null);
 
   return (
@@ -647,6 +656,7 @@ export function Header() {
               menu={productMenu}
               isOpen={openDropdown === "Product"}
               onToggle={() => toggleDropdown("Product")}
+              onOpen={() => openDropdownMenu("Product")}
               onClose={closeDropdown}
             />
             <Link
@@ -659,6 +669,7 @@ export function Header() {
               menu={resourcesMenu}
               isOpen={openDropdown === "Resources"}
               onToggle={() => toggleDropdown("Resources")}
+              onOpen={() => openDropdownMenu("Resources")}
               onClose={closeDropdown}
             />
           </div>
