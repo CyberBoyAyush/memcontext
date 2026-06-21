@@ -89,8 +89,9 @@ const memoriesQuerySchema = z.object({
   scope: z.string().trim().min(1).max(200).optional(),
   project: z.string().max(100).optional(),
   search: z.string().trim().min(1).max(200).optional(),
-  limit: z.coerce.number().min(1).max(50).default(20),
+  limit: z.coerce.number().min(1).max(100).default(25),
   offset: z.coerce.number().min(0).default(0),
+  sort: z.enum(["asc", "desc"]).default("desc"),
 });
 
 function parseProjectsParam(value: string | undefined): string[] | undefined {

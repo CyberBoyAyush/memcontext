@@ -192,3 +192,17 @@ The Manage Workspaces dialog (`ManageWorkspacesDialog` in `app/(dashboard)/conte
 The Context Vault page (`apps/dashboard/src/app/(dashboard)/context-vault/page.tsx`) uses a single unified "Add knowledge" card with a 4-tab switcher: Upload / Paste / URL / Fact (the `addTabs` array, each with a `hint` shown as the card subtitle). The "Company facts" card is NOT a separate card — the Fact tab renders the curated company-fact form (companyFact textarea + scope/project + Save). State is `addMode: AddMode = "upload"|"paste"|"url"|"fact"`, and the document logic derives `const ingestMode: IngestMode = addMode === "fact" ? "upload" : addMode;`.
 
 The Context Vault sidebar nav item uses the Phosphor `Vault` icon (NOT `Brain`, which is reserved for Memories). The page header pill also uses `Vault`.
+
+<!-- Added: 2026-06-19 -->
+## Dashboard Tab Switchers (AnimatedTabs)
+
+All tab/segmented-control UI in the dashboard uses the shared `AnimatedTabs` component at `apps/dashboard/src/components/ui/animated-tabs.tsx`. It provides a sliding accent-colored pill indicator that smoothly animates between active tabs via absolutely-positioned div + transition-all. Do not implement ad-hoc tab styling with plain buttons; always use AnimatedTabs for consistency.
+
+Usage: `<AnimatedTabs<T> value={value} onChange={setValue} tabs={[{value, label, icon?}]} size="md|sm" align="start|center" ariaLabel="..." capitalize? />`
+
+Current consumers: MCP CLI agent picker, Memory Graph view-mode (full/focused), Context Vault search-mode (hybrid/documents/memories), Workspaces section (team/workspaces).
+
+<!-- Added: 2026-06-19 -->
+## Website Isometric Diagram Aesthetic
+
+Isometric/layered SVG diagrams on the marketing website (e.g. `apps/website/components/context-vault.tsx`, `hero-memory-tower.tsx`) follow a shared visual language: a warm brand ramp (BRAND `#A9432A`, BRAND_HI `#D96B3F`, hot highlight `#FFE4D6`) with multi-tone per-face shading (top lightest / left darkest / right mid) so slabs read as solid 3D material rather than flat outlines. Faces must be opaque solid fills (not low-opacity tints) so stacked layers occlude what's behind them. Add bright accent micro-elements with the brand colors — glowing live core dots, expanding dashed pulse rings, brand-lit "active" signal paths/blocks, and animated opacity pulses — to give the scene life. Status pip colors: green `#22c55e`, amber `#f59e0b`, blue `#3b82f6`.

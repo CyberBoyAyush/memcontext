@@ -115,6 +115,22 @@ function XIcon({ className }: { className?: string }) {
 
 export function Sidebar() {
   const pathname = usePathname();
+  // Pick the single most-specific internal nav href that matches the current
+  // pathname so child routes (e.g. /memories/graph) don't also activate their
+  // parent (/memories) via prefix matching.
+  const activeNavHref = (() => {
+    const internalHrefs = navGroups
+      .flatMap((g) => g.items)
+      .map((i) => i.href)
+      .filter((href) => !href.startsWith("http"));
+    let best: string | null = null;
+    for (const href of internalHrefs) {
+      if (pathname === href || pathname.startsWith(href + "/")) {
+        if (!best || href.length > best.length) best = href;
+      }
+    }
+    return best;
+  })();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -261,7 +277,7 @@ export function Sidebar() {
           {/* Navigation */}
           <nav
             className={cn(
-              "flex-1 min-h-0 overflow-y-auto transition-all duration-300 p-4",
+              "flex-1 min-h-0 overflow-y-auto transition-all duration-300 px-3 py-3",
               collapsed && "md:p-2",
             )}
             aria-label="Main navigation"
@@ -269,28 +285,25 @@ export function Sidebar() {
             {navGroups.map((group, groupIndex) => (
               <div
                 key={group.title}
-                className={cn(groupIndex > 0 && "mt-4")}
+                className={cn(groupIndex > 0 && "mt-3")}
                 role="group"
                 aria-label={group.title}
               >
                 {/* Section label — hidden when collapsed on desktop */}
                 <div
                   className={cn(
-                    "px-4 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-foreground-subtle select-none transition-opacity duration-200",
+                    "px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-foreground-subtle select-none transition-opacity duration-200",
                     collapsed &&
                       "md:opacity-0 md:h-0 md:pb-0 md:overflow-hidden",
-                    groupIndex === 0 ? "pt-0" : "pt-1",
+                    groupIndex === 0 ? "pt-0" : "pt-0.5",
                   )}
                 >
                   {group.title}
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   {group.items.map((item) => {
                     const isExternal = item.href.startsWith("http");
-                    const isActive =
-                      !isExternal &&
-                      (pathname === item.href ||
-                        pathname.startsWith(item.href + "/"));
+                    const isActive = !isExternal && activeNavHref === item.href;
 
                     const linkProps = isExternal
                       ? {
@@ -307,15 +320,15 @@ export function Sidebar() {
                         title={collapsed ? item.label : undefined}
                         {...linkProps}
                         className={cn(
-                          "flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-200 px-4 py-3",
-                          collapsed && "md:p-3 md:justify-center",
+                          "flex items-center gap-2.5 rounded-lg text-[13px] font-medium transition-all duration-200 px-3 py-2",
+                          collapsed && "md:p-2 md:justify-center",
                           isActive
                             ? "bg-border text-sidebar-active border border-border"
                             : "text-foreground-muted hover:bg-surface-elevated hover:text-foreground border border-transparent",
                         )}
                       >
                         <item.icon
-                          size={20}
+                          size={18}
                           className={cn(
                             "transition-colors shrink-0",
                             isActive
@@ -364,8 +377,8 @@ export function Sidebar() {
                   onClick={() => setMobileOpen(false)}
                   title={collapsed ? adminNavItem.label : undefined}
                   className={cn(
-                    "flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-200 px-4 py-3",
-                    collapsed && "md:p-3 md:justify-center",
+                    "flex items-center gap-2.5 rounded-lg text-[13px] font-medium transition-all duration-200 px-3 py-2",
+                    collapsed && "md:p-2 md:justify-center",
                     pathname.startsWith("/legend")
                       ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
                       : "text-foreground-muted hover:bg-surface-elevated hover:text-foreground border border-transparent",
@@ -373,7 +386,7 @@ export function Sidebar() {
                 >
                   <adminNavItem.icon
                     className={cn(
-                      "h-5 w-5 transition-colors shrink-0",
+                      "h-[18px] w-[18px] transition-colors shrink-0",
                       pathname.startsWith("/legend")
                         ? "text-amber-500"
                         : "text-foreground-muted",
@@ -391,7 +404,7 @@ export function Sidebar() {
           {/* Footer */}
           <div
             className={cn(
-              "shrink-0 border-t border-border space-y-3 transition-all duration-300 overflow-visible p-4",
+              "shrink-0 border-t border-border space-y-2.5 transition-all duration-300 overflow-visible p-3",
               collapsed && "md:p-2",
             )}
           >
@@ -402,81 +415,56 @@ export function Sidebar() {
                 collapsed && "md:hidden",
               )}
             >
-              <div className="p-3 space-y-2.5">
+              <div className="p-2.5 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-foreground-muted">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted">
                     {subscription?.plan ?? "Free"} plan
                   </span>
-                  {/* <Brain
-                    className="h-3.5 w-3.5 text-foreground-subtle"
-                    weight="duotone"
-                  /> */}
-                </div>
-                <div className="space-y-1.5">
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-sm font-semibold tabular-nums">
-                      {subscription?.memoryCount ?? 0}
-                      <span className="text-foreground-muted font-normal">
-                        {" "}
-                        / {subscription?.memoryLimit ?? 0}
-                      </span>
+                  <span className="text-[10px] text-foreground-subtle">
+                    {subscription?.memoryCount ?? 0}
+                    <span className="text-foreground-subtle/70">
+                      {" "}
+                      / {subscription?.memoryLimit ?? 0} memories
                     </span>
-                    <span className="text-[10px] text-foreground-subtle">
-                      memories
-                    </span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-border overflow-hidden">
-                    <div
-                      className={cn(
-                        "h-full rounded-full transition-all duration-700 ease-out",
-                        usagePercentage >= 90
-                          ? "bg-error"
-                          : usagePercentage >= 70
-                            ? "bg-warning"
-                            : "bg-accent",
-                      )}
-                      style={{ width: `${usagePercentage}%` }}
-                    />
-                  </div>
+                  </span>
                 </div>
-                <p className="text-[10px] text-foreground-subtle leading-snug">
-                  {usagePercentage >= 90
-                    ? "Running low — consider upgrading"
-                    : `${Math.round(100 - usagePercentage)}% of your memory quota available`}
-                </p>
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <div className="rounded-lg border border-border/70 bg-surface/40 px-2 py-1.5">
-                    <p className="text-[10px] text-foreground-subtle">
-                      Vault docs
-                    </p>
-                    <p className="text-xs font-semibold tabular-nums">
-                      {subscription?.contextDocumentsCount ?? 0}
-                      <span className="font-normal text-foreground-muted">
-                        {" "}
-                        / {subscription?.contextDocumentsLimit ?? 0}
-                      </span>
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-border/70 bg-surface/40 px-2 py-1.5">
-                    <p className="text-[10px] text-foreground-subtle">
-                      Workspaces
-                    </p>
-                    <p className="text-xs font-semibold tabular-nums">
-                      {subscription?.workspaceCount ?? 0}
-                      <span className="font-normal text-foreground-muted">
-                        {" "}
-                        / {subscription?.workspaceLimit ?? 0}
-                      </span>
-                    </p>
-                  </div>
+                <div className="h-1 rounded-full bg-border overflow-hidden">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all duration-700 ease-out",
+                      usagePercentage >= 90
+                        ? "bg-error"
+                        : usagePercentage >= 70
+                          ? "bg-warning"
+                          : "bg-accent",
+                    )}
+                    style={{ width: `${usagePercentage}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-foreground-subtle pt-0.5">
+                  <span>
+                    Vault{" "}
+                    <span className="text-foreground-muted font-medium tabular-nums">
+                      {subscription?.contextDocumentsCount ?? 0}/
+                      {subscription?.contextDocumentsLimit ?? 0}
+                    </span>
+                  </span>
+                  <span className="h-2.5 w-px bg-border" />
+                  <span>
+                    Workspaces{" "}
+                    <span className="text-foreground-muted font-medium tabular-nums">
+                      {subscription?.workspaceCount ?? 0}/
+                      {subscription?.workspaceLimit ?? 0}
+                    </span>
+                  </span>
                 </div>
               </div>
               <Link
                 href="/subscription"
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-semibold text-accent hover:bg-accent/5 border-t border-border transition-colors"
+                className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-accent hover:bg-accent/5 border-t border-border transition-colors"
               >
-                <CreditCard size={13} weight="bold" />
+                <CreditCard size={12} weight="bold" />
                 {subscription?.plan === "free" ? "Select plan" : "Manage plan"}
               </Link>
             </div>
@@ -492,20 +480,20 @@ export function Sidebar() {
                   )}
                 >
                   {/* User Info */}
-                  <div className="p-3 border-b border-border">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-surface-elevated border border-border overflow-hidden flex items-center justify-center shrink-0">
+                  <div className="px-3 py-2.5 border-b border-border">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-full bg-surface-elevated border border-border overflow-hidden flex items-center justify-center shrink-0">
                         {user?.image ? (
                           <Image
                             src={user.image}
                             alt={user.name || "User"}
-                            width={40}
-                            height={40}
+                            width={36}
+                            height={36}
                             className="w-full h-full object-cover"
                           />
                         ) : (
                           <User
-                            className="h-5 w-5 text-foreground-muted"
+                            className="h-4 w-4 text-foreground-muted"
                             weight="duotone"
                           />
                         )}
@@ -528,7 +516,7 @@ export function Sidebar() {
                         router.push("/settings");
                         setProfileOpen(false);
                       }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground-muted hover:text-foreground hover:bg-surface-elevated rounded-lg transition-colors"
+                      className="w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-foreground-muted hover:text-foreground hover:bg-surface-elevated rounded-lg transition-colors"
                     >
                       <GearSix className="h-4 w-4" weight="duotone" />
                       Settings
@@ -537,7 +525,7 @@ export function Sidebar() {
                       onClick={() =>
                         setTheme(resolvedTheme === "dark" ? "light" : "dark")
                       }
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground-muted hover:text-foreground hover:bg-surface-elevated rounded-lg transition-colors"
+                      className="w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-foreground-muted hover:text-foreground hover:bg-surface-elevated rounded-lg transition-colors"
                     >
                       {resolvedTheme === "dark" ? (
                         <>
@@ -554,7 +542,7 @@ export function Sidebar() {
                     <div className="my-1 border-t border-border" />
                     <a
                       href="mailto:hi@aysh.me"
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground-muted hover:text-foreground hover:bg-surface-elevated rounded-lg transition-colors"
+                      className="w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-foreground-muted hover:text-foreground hover:bg-surface-elevated rounded-lg transition-colors"
                     >
                       <Envelope className="h-4 w-4" weight="duotone" />
                       Report Issue
@@ -563,7 +551,7 @@ export function Sidebar() {
                       href="https://aysh.me/X"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground-muted hover:text-foreground hover:bg-surface-elevated rounded-lg transition-colors"
+                      className="w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-foreground-muted hover:text-foreground hover:bg-surface-elevated rounded-lg transition-colors"
                     >
                       <XIcon className="h-4 w-4" />
                       Chat on X
@@ -578,7 +566,7 @@ export function Sidebar() {
                         await signOut();
                         router.push("/login");
                       }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-error hover:bg-error/10 rounded-lg transition-colors"
+                      className="w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-error hover:bg-error/10 rounded-lg transition-colors"
                     >
                       <SignOut className="h-4 w-4" weight="duotone" />
                       Sign Out
@@ -590,7 +578,7 @@ export function Sidebar() {
                 onClick={() => setProfileOpen(!profileOpen)}
                 title={collapsed ? user?.name || "User" : undefined}
                 className={cn(
-                  "w-full flex items-center cursor-pointer rounded-xl border transition-colors gap-3 p-2.5",
+                  "w-full flex items-center cursor-pointer rounded-xl border transition-colors gap-2.5 p-2",
                   collapsed && "md:p-2 md:justify-center",
                   profileOpen
                     ? "bg-surface-elevated border-border"

@@ -36,20 +36,20 @@ function TableSkeleton() {
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-surface-elevated">
-            <tr className="border-b border-border">
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider">
+            <tr className="border-b border-border h-11">
+              <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider">
                 User
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden md:table-cell">
+              <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden md:table-cell">
                 Plan
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden lg:table-cell">
+              <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden lg:table-cell">
                 Memories
               </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden sm:table-cell">
+              <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden sm:table-cell">
                 Joined
               </th>
-              <th className="text-right px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider">
+              <th className="text-right px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider">
                 <span className="sr-only">Actions</span>
               </th>
             </tr>
@@ -57,26 +57,26 @@ function TableSkeleton() {
           <tbody className="divide-y divide-border">
             {Array.from({ length: 5 }).map((_, i) => (
               <tr key={i} className="animate-pulse">
-                <td className="px-4 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-surface-elevated" />
-                    <div className="space-y-2">
-                      <div className="h-4 w-32 bg-surface-elevated rounded" />
+                <td className="px-4 py-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-8 w-8 rounded-full bg-surface-elevated" />
+                    <div className="space-y-1.5">
+                      <div className="h-3.5 w-32 bg-surface-elevated rounded" />
                       <div className="h-3 w-48 bg-surface-elevated rounded" />
                     </div>
                   </div>
                 </td>
-                <td className="px-4 py-4 hidden md:table-cell">
-                  <div className="h-6 w-16 bg-surface-elevated rounded-full" />
+                <td className="px-4 py-2 hidden md:table-cell">
+                  <div className="h-5 w-16 bg-surface-elevated rounded-md" />
                 </td>
-                <td className="px-4 py-4 hidden lg:table-cell">
-                  <div className="h-4 w-20 bg-surface-elevated rounded" />
+                <td className="px-4 py-2 hidden lg:table-cell">
+                  <div className="h-3.5 w-20 bg-surface-elevated rounded" />
                 </td>
-                <td className="px-4 py-4 hidden sm:table-cell">
-                  <div className="h-4 w-24 bg-surface-elevated rounded" />
+                <td className="px-4 py-2 hidden sm:table-cell">
+                  <div className="h-3.5 w-24 bg-surface-elevated rounded" />
                 </td>
-                <td className="px-4 py-4 text-right">
-                  <div className="h-8 w-8 bg-surface-elevated rounded ml-auto" />
+                <td className="px-4 py-2 text-right">
+                  <div className="h-7 w-7 bg-surface-elevated rounded-md ml-auto" />
                 </td>
               </tr>
             ))}
@@ -90,20 +90,20 @@ function TableSkeleton() {
 function UserRow({ user }: { user: AdminUser }) {
   return (
     <tr className="group hover:bg-surface/50 transition-colors">
-      <td className="px-4 py-4">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-surface-elevated border border-border overflow-hidden flex items-center justify-center shrink-0">
+      <td className="px-4 py-2">
+        <div className="flex items-center gap-2.5">
+          <div className="h-8 w-8 rounded-full bg-surface-elevated border border-border overflow-hidden flex items-center justify-center shrink-0">
             {user.image ? (
               <Image
                 src={user.image}
                 alt={user.name}
-                width={40}
-                height={40}
+                width={32}
+                height={32}
                 className="w-full h-full object-cover"
               />
             ) : (
               <User
-                className="h-5 w-5 text-foreground-muted"
+                className="h-4 w-4 text-foreground-muted"
                 weight="duotone"
               />
             )}
@@ -112,7 +112,7 @@ function UserRow({ user }: { user: AdminUser }) {
             <div className="flex items-center gap-2">
               <p className="text-sm font-medium truncate">{user.name}</p>
               {user.role === "admin" && (
-                <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                <span className="px-1.5 py-0.5 text-[10px] font-medium rounded-md bg-amber-500/10 text-amber-500 border border-amber-500/20">
                   Admin
                 </span>
               )}
@@ -124,10 +124,10 @@ function UserRow({ user }: { user: AdminUser }) {
         </div>
       </td>
 
-      <td className="px-4 py-4 hidden md:table-cell">
+      <td className="px-4 py-2 hidden md:table-cell">
         <span
           className={cn(
-            "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium capitalize border",
+            "inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium capitalize border",
             planColors[user.plan] || planColors.free,
           )}
         >
@@ -135,25 +135,25 @@ function UserRow({ user }: { user: AdminUser }) {
         </span>
       </td>
 
-      <td className="px-4 py-4 hidden lg:table-cell">
+      <td className="px-4 py-2 hidden lg:table-cell">
         <div className="flex items-center gap-1.5 text-sm text-foreground-muted">
-          <Brain className="h-4 w-4" weight="duotone" />
+          <Brain className="h-3.5 w-3.5" weight="duotone" />
           <span>
             {user.memoryCount} / {user.memoryLimit}
           </span>
         </div>
       </td>
 
-      <td className="px-4 py-4 hidden sm:table-cell">
+      <td className="px-4 py-2 hidden sm:table-cell">
         <div className="flex items-center gap-1.5 text-sm text-foreground-muted">
-          <Calendar className="h-4 w-4" weight="duotone" />
+          <Calendar className="h-3.5 w-3.5" weight="duotone" />
           <span>{formatDateTime(user.createdAt).date}</span>
         </div>
       </td>
 
-      <td className="px-4 py-4 text-right">
+      <td className="px-4 py-2 text-right">
         <Link href={`/legend/users/${user.id}`}>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md">
             <ArrowRight className="h-4 w-4" weight="bold" />
           </Button>
         </Link>
@@ -251,20 +251,20 @@ export default function AdminUsersPage() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-surface-elevated">
-                  <tr className="border-b border-border">
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider">
+                  <tr className="border-b border-border h-11">
+                    <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider">
                       User
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden md:table-cell">
+                    <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden md:table-cell">
                       Plan
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden lg:table-cell">
+                    <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden lg:table-cell">
                       Memories
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden sm:table-cell">
+                    <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden sm:table-cell">
                       Joined
                     </th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-14">
+                    <th className="text-right px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-14">
                       <span className="sr-only">Actions</span>
                     </th>
                   </tr>

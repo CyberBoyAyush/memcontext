@@ -18,6 +18,10 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
 import {
+  InlineVaultChunkMarkdown,
+  VaultChunkMarkdown,
+} from "@/components/vault-chunk-markdown";
+import {
   companyBrainMemoryEvidenceQueryOptions,
   useCorrectVaultMemory,
   useSubmitVaultMemoryFeedback,
@@ -449,10 +453,15 @@ export function VaultMemoryDetailPanel({
                             #{item.chunkIndex}
                           </span>
                           <span className="truncate text-xs text-foreground-muted">
-                            {item.sectionPath ??
-                              (item.pageNumber != null
-                                ? `Page ${item.pageNumber}`
-                                : "Chunk")}
+                            {item.sectionPath ? (
+                              <InlineVaultChunkMarkdown
+                                content={item.sectionPath}
+                              />
+                            ) : item.pageNumber != null ? (
+                              `Page ${item.pageNumber}`
+                            ) : (
+                              "Chunk"
+                            )}
                           </span>
                         </span>
                         <CaretRight
@@ -465,9 +474,7 @@ export function VaultMemoryDetailPanel({
                       </button>
                       {open && (
                         <div className="border-t border-border px-3 py-2.5">
-                          <p className="whitespace-pre-wrap break-words text-xs leading-6 text-foreground/80">
-                            {item.content}
-                          </p>
+                          <VaultChunkMarkdown content={item.content} />
                         </div>
                       )}
                     </div>

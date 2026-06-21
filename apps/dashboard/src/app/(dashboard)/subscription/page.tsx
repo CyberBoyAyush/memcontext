@@ -15,8 +15,6 @@ import {
   Lightning,
   RocketLaunch,
   Star,
-  CaretDown,
-  Question,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -184,17 +182,17 @@ function StatusBanner({
   };
 
   return (
-    <div className={`rounded-xl border p-4 ${bg} animate-fade-in`}>
-      <div className="flex items-start gap-3">
-        <Icon className={`h-5 w-5 ${text} shrink-0 mt-0.5`} weight="fill" />
+    <div className={`rounded-lg border p-3 ${bg} animate-fade-in`}>
+      <div className="flex items-start gap-2.5">
+        <Icon className={`h-4 w-4 ${text} shrink-0 mt-0.5`} weight="fill" />
         <div className="flex-1 min-w-0">
-          <h3 className={`font-semibold ${text}`}>{title}</h3>
-          <p className="text-sm text-foreground-muted mt-0.5">{message}</p>
+          <h3 className={`text-sm font-semibold ${text}`}>{title}</h3>
+          <p className="text-xs text-foreground-muted mt-0.5">{message}</p>
           {actionLabel && onAction && (
             <Button
               variant="default"
               size="sm"
-              className="mt-3 cursor-pointer"
+              className="mt-2.5 cursor-pointer rounded-md"
               onClick={onAction}
               disabled={actionLoading}
             >
@@ -249,28 +247,15 @@ function PlanCard({
   return (
     <div
       className={cn(
-        "group relative flex h-full flex-col rounded-2xl p-px transition-all duration-300",
+        "group relative flex h-full flex-col rounded-xl p-px transition-all duration-300",
         "bg-linear-to-b from-border-hover to-border",
-        isCurrent &&
-          "ring-2 ring-accent/30 ring-offset-2 ring-offset-background",
       )}
     >
-      {/* Outer aura glow — visible around the card edge */}
-      {isHighlighted && (
-        <div
-          className="pointer-events-none absolute -inset-3 rounded-3xl opacity-60 blur-xl transition-opacity duration-500 group-hover:opacity-80"
-          style={{
-            background:
-              "radial-gradient(ellipse at 50% 0%, var(--accent-glow) 0%, transparent 70%)",
-          }}
-        />
-      )}
-
-      <div className="relative flex flex-col flex-1 rounded-[14px] bg-surface overflow-hidden">
+      <div className="relative flex flex-col flex-1 rounded-[11px] bg-surface overflow-hidden">
         {/* ── Hero Pricing Panel ── */}
         <div
           className={cn(
-            "relative m-4 rounded-lg p-6 pb-6",
+            "relative m-4 rounded-md p-5",
             isHighlighted
               ? "bg-linear-to-br from-[#c04020] via-accent to-[#e87850] text-white"
               : "bg-surface-elevated/60",
@@ -293,21 +278,11 @@ function PlanCard({
           )}
 
           {/* Plan name + badges */}
-          <div className="relative flex items-center justify-between mb-5">
-            <div className="flex items-center gap-2.5">
-              {/* <div
-                className={cn(
-                  "w-9 h-9 rounded-xl flex items-center justify-center",
-                  plan.popular
-                    ? "bg-white/15 text-white"
-                    : "bg-surface-elevated border border-border text-foreground-muted",
-                )}
-              >
-                <PlanIcon size={18} weight="duotone" />
-              </div> */}
+          <div className="relative flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
               <h3
                 className={cn(
-                  "text-lg font-semibold",
+                  "text-base font-semibold",
                   isHighlighted && "text-white",
                 )}
               >
@@ -319,7 +294,7 @@ function PlanCard({
               {plan.popular && (
                 <span
                   className={cn(
-                    "px-2.5 py-1 rounded-lg text-[11px] font-semibold uppercase tracking-wide border",
+                    "px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide border",
                     isHighlighted
                       ? "bg-white/20 text-white border-white/10 backdrop-blur-sm"
                       : "bg-accent/10 border-accent/20 text-accent",
@@ -329,7 +304,7 @@ function PlanCard({
                 </span>
               )}
               {isCurrent && !plan.popular && (
-                <span className="px-2.5 py-1 rounded-lg text-[11px] font-semibold uppercase tracking-wide bg-white/20 text-white border border-white/10 backdrop-blur-sm">
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide bg-white/20 text-white border border-white/10 backdrop-blur-sm">
                   Current
                 </span>
               )}
@@ -340,7 +315,7 @@ function PlanCard({
           <div className="relative flex items-baseline gap-1.5">
             <span
               className={cn(
-                "text-5xl font-extrabold tracking-tighter",
+                "text-4xl font-extrabold tracking-tighter",
                 isHighlighted ? "text-white" : "text-foreground",
               )}
             >
@@ -357,7 +332,7 @@ function PlanCard({
           </div>
           <p
             className={cn(
-              "text-xs mt-2",
+              "text-xs mt-1.5",
               isHighlighted ? "text-white/50" : "text-foreground-subtle",
             )}
           >
@@ -365,12 +340,13 @@ function PlanCard({
           </p>
 
           {/* ── CTA inside hero ── */}
-          <div className="relative mt-5">
+          <div className="relative mt-4">
             {isCurrent ? (
               <Button
                 variant="outline"
+                size="sm"
                 className={cn(
-                  "w-full cursor-default",
+                  "w-full cursor-default rounded-md",
                   isHighlighted &&
                     "border-border/60 bg-background/90 text-foreground hover:bg-background/90 hover:text-foreground",
                 )}
@@ -382,14 +358,15 @@ function PlanCard({
               isOnHold ? (
                 <Button
                   variant="outline"
+                  size="sm"
                   className={cn(
-                    "w-full cursor-default",
+                    "w-full cursor-default rounded-md",
                     isHighlighted &&
                       "border-border/60 bg-background/90 text-foreground hover:bg-background/90 hover:text-foreground",
                   )}
                   disabled
                 >
-                  <Warning className="h-4 w-4 mr-2" />
+                  <Warning className="h-3.5 w-3.5 mr-1.5" />
                   Fix payment first
                 </Button>
               ) : (
@@ -401,13 +378,11 @@ function PlanCard({
                         ? "default"
                         : "outline"
                   }
+                  size="sm"
                   className={cn(
-                    "w-full cursor-pointer hover:translate-y-0 active:translate-y-0",
+                    "w-full cursor-pointer rounded-md hover:translate-y-0 active:translate-y-0 shadow-none hover:shadow-none",
                     isHighlighted &&
-                      "bg-background text-foreground border border-border/70 font-semibold shadow-[0_4px_24px_rgba(0,0,0,0.2)] hover:bg-background-secondary hover:text-foreground hover:shadow-[0_6px_28px_rgba(0,0,0,0.3)]",
-                    !isHighlighted &&
-                      isUpgrade &&
-                      "shadow-[0_2px_12px_var(--accent-glow)]",
+                      "bg-background text-foreground border border-border/70 font-semibold hover:bg-background-secondary hover:text-foreground",
                   )}
                   onClick={() => plan.slug && onUpgrade(plan.slug)}
                   disabled={loadingPlan !== null}
@@ -415,7 +390,7 @@ function PlanCard({
                   {loadingPlan === plan.slug ? (
                     <>
                       <SpinnerGap
-                        className="h-4 w-4 animate-spin mr-2"
+                        className="h-3.5 w-3.5 animate-spin mr-1.5"
                         weight="bold"
                       />
                       Loading...
@@ -423,7 +398,7 @@ function PlanCard({
                   ) : (
                     <>
                       {isUpgrade ? "Upgrade" : "Switch"} to {plan.name}
-                      <ArrowRight className="h-4 w-4 ml-2" />
+                      <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
                     </>
                   )}
                 </Button>
@@ -431,7 +406,8 @@ function PlanCard({
             ) : (
               <Button
                 variant="outline"
-                className="w-full cursor-default"
+                size="sm"
+                className="w-full cursor-default rounded-md"
                 disabled
               >
                 Free Forever
@@ -441,119 +417,24 @@ function PlanCard({
         </div>
 
         {/* ── Feature Checklist (below hero) ── */}
-        <div className="p-6 pt-5 flex flex-col flex-1">
-          <ul className="space-y-3">
+        <div className="px-5 pb-5 pt-1 flex flex-col flex-1">
+          <ul className="space-y-2.5">
             {plan.features.map((feature) => (
-              <li key={feature} className="flex items-center gap-3">
+              <li key={feature} className="flex items-center gap-2.5">
                 <div
                   className={cn(
-                    "w-5 h-5 rounded-md flex items-center justify-center shrink-0",
+                    "w-[18px] h-[18px] rounded-md flex items-center justify-center shrink-0",
                     isHighlighted
                       ? "bg-accent/15 text-accent"
                       : "bg-surface-elevated border border-border text-foreground-muted",
                   )}
                 >
-                  <Check size={12} weight="bold" />
+                  <Check size={11} weight="bold" />
                 </div>
-                <span className="text-sm text-foreground/80">{feature}</span>
+                <span className="text-[13px] text-foreground/80">{feature}</span>
               </li>
             ))}
           </ul>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const FAQ_ITEMS = [
-  {
-    question: "What happens when I upgrade?",
-    answer:
-      "Your new plan takes effect immediately. You'll be charged the prorated amount for the remainder of your billing cycle.",
-  },
-  {
-    question: "Can I cancel anytime?",
-    answer:
-      "Yes! You can cancel your subscription at any time. You'll keep access to your current plan until the end of your billing period.",
-  },
-  {
-    question: "What happens to my memories if I downgrade?",
-    answer:
-      "Your existing memories, workspaces, and Context Vault documents are preserved. However, you won't be able to add more if you exceed your new plan's limits.",
-  },
-  {
-    question: "Do Context Vault documents count toward memory limits?",
-    answer:
-      "No. Personal memories and Context Vault documents have separate limits. Workspace documents count against the workspace billing owner's Context Vault document allowance.",
-  },
-  {
-    question: "Who is the workspace billing owner?",
-    answer:
-      "The workspace creator is the billing owner by default. Invited admins and members can upload documents when permitted, but those uploads use the workspace billing owner's document allowance.",
-  },
-  {
-    question: "Is memory retrieval unlimited?",
-    answer:
-      "Yes. Plans do not have a fixed retrieval quota. Search endpoints still use rate limits to protect service reliability.",
-  },
-];
-
-function FaqItem({
-  item,
-  index,
-  isOpen,
-  onToggle,
-}: {
-  item: (typeof FAQ_ITEMS)[number];
-  index: number;
-  isOpen: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <div
-      className={cn(
-        "group rounded-xl border transition-all duration-200",
-        isOpen
-          ? "border-border-hover bg-surface-elevated/50"
-          : "border-border bg-transparent hover:border-border-hover/60",
-      )}
-    >
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center gap-3 px-5 py-4 text-left cursor-pointer"
-      >
-        <span
-          className={cn(
-            "flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs font-semibold transition-colors duration-200",
-            isOpen
-              ? "bg-accent/15 text-accent"
-              : "bg-surface-elevated text-foreground-subtle",
-          )}
-        >
-          {index + 1}
-        </span>
-        <span className="flex-1 text-sm font-medium text-foreground">
-          {item.question}
-        </span>
-        <CaretDown
-          className={cn(
-            "h-4 w-4 shrink-0 text-foreground-subtle transition-transform duration-200",
-            isOpen && "rotate-180 text-foreground-muted",
-          )}
-          weight="bold"
-        />
-      </button>
-      <div
-        className={cn(
-          "grid transition-[grid-template-rows] duration-200 ease-out",
-          isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
-        )}
-      >
-        <div className="overflow-hidden">
-          <p className="px-5 pb-4 pl-14 text-sm leading-relaxed text-foreground-muted">
-            {item.answer}
-          </p>
         </div>
       </div>
     </div>
@@ -571,7 +452,6 @@ export default function SubscriptionPage() {
   const [showBanner, setShowBanner] = useState<
     "success" | "cancelled" | "on_hold" | "failed" | null
   >(null);
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const { data: subscription, isLoading: subLoading } = useQuery({
     queryKey: ["subscription"],
@@ -709,7 +589,7 @@ export default function SubscriptionPage() {
   );
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
@@ -723,7 +603,7 @@ export default function SubscriptionPage() {
             variant="outline"
             onClick={handleManageBilling}
             disabled={portalLoading}
-            className="cursor-pointer sm:w-auto w-full"
+            className="cursor-pointer sm:w-auto w-full rounded-md"
           >
             {portalLoading ? (
               <>
@@ -754,21 +634,21 @@ export default function SubscriptionPage() {
       )}
 
       {/* Current Usage Card */}
-      <Card className="shadow-none">
-        <CardContent className="p-6">
+      <Card className="shadow-none rounded-lg">
+        <CardContent className="p-5">
           {subLoading ? (
-            <div className="flex items-center justify-center py-8">
+            <div className="flex items-center justify-center py-7">
               <SpinnerGap
-                className="h-5 w-5 animate-spin text-foreground-muted"
+                className="h-4 w-4 animate-spin text-foreground-muted"
                 weight="bold"
               />
             </div>
           ) : (
-            <div className="space-y-5">
+            <div className="space-y-4">
               {/* Top row: Plan info + Status badge */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/10">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent/10">
                     <Brain
                       className="h-[18px] w-[18px] text-accent"
                       weight="duotone"
@@ -787,7 +667,7 @@ export default function SubscriptionPage() {
                 </div>
                 <div
                   className={cn(
-                    "inline-flex items-center gap-1.5 self-start sm:self-auto px-2.5 py-1 rounded-lg text-xs font-medium",
+                    "inline-flex items-center gap-1.5 self-start sm:self-auto px-2.5 py-1 rounded-md text-[11px] font-medium",
                     usagePercentage >= 90
                       ? "bg-error/10 text-error"
                       : usagePercentage >= 70
@@ -813,24 +693,21 @@ export default function SubscriptionPage() {
                 </div>
               </div>
 
-              {/* Divider */}
-              {/* <div className="h-px bg-border" /> */}
-
               {/* Usage stats + progress */}
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 <div className="flex items-baseline justify-between">
                   <span className="text-sm text-foreground-muted">
                     Memory usage
                   </span>
                   <div className="flex items-baseline gap-1.5">
-                    <span className="text-lg font-bold tabular-nums tracking-tight">
+                    <span className="text-base font-semibold tabular-nums tracking-tight">
                       {subscription?.memoryCount ?? 0}
                     </span>
-                    <span className="text-sm text-foreground-subtle">/</span>
-                    <span className="text-sm text-foreground-muted tabular-nums">
+                    <span className="text-xs text-foreground-subtle">/</span>
+                    <span className="text-xs text-foreground-muted tabular-nums">
                       {(subscription?.memoryLimit ?? 300).toLocaleString()}
                     </span>
-                    <span className="ml-1.5 text-xs text-foreground-subtle tabular-nums">
+                    <span className="ml-1 text-[11px] text-foreground-subtle tabular-nums">
                       ({Math.round(usagePercentage)}%)
                     </span>
                   </div>
@@ -855,7 +732,7 @@ export default function SubscriptionPage() {
                 <div className="flex items-center gap-2 pt-0.5">
                   <div
                     className={cn(
-                      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium",
+                      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium",
                       subscription.status === "cancelled"
                         ? "bg-warning/10 text-warning"
                         : "bg-error/10 text-error",
@@ -881,8 +758,8 @@ export default function SubscriptionPage() {
 
       {/* Plans Grid */}
       <div>
-        <h2 className="text-lg font-semibold mb-5">Choose your plan</h2>
-        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <h2 className="text-base font-semibold mb-4">Choose your plan</h2>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {PLANS.map((plan, index) => {
             const isCurrent = currentPlan === plan.id;
             const isUpgrade =
@@ -918,26 +795,6 @@ export default function SubscriptionPage() {
         </div>
       </div>
 
-      {/* FAQ Section */}
-      <div>
-        <div className="flex items-center gap-2.5 mb-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10">
-            <Question className="h-4 w-4 text-accent" weight="duotone" />
-          </div>
-          <h2 className="text-lg font-semibold">Frequently Asked Questions</h2>
-        </div>
-        <div className="space-y-2">
-          {FAQ_ITEMS.map((item, index) => (
-            <FaqItem
-              key={index}
-              item={item}
-              index={index}
-              isOpen={openFaq === index}
-              onToggle={() => setOpenFaq(openFaq === index ? null : index)}
-            />
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

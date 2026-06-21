@@ -20,6 +20,7 @@ import {
   saveMemory,
   searchMemories,
   deleteMemory,
+  deleteMemories,
   updateMemory,
   listMemories,
 } from "../services/memory.js";
@@ -78,12 +79,21 @@ const searchMemorySchema = z.object({
 });
 
 const listMemorySchema = z.object({
-  limit: z.coerce.number().min(1).max(100).optional().default(20),
+  limit: z.coerce.number().min(1).max(100).optional().default(25),
   offset: z.coerce.number().min(0).optional().default(0),
   category: z.string().max(200).optional(),
   scope: z.string().trim().min(1).max(200, "Scope too long").optional(),
   project: z.string().max(500).optional(),
   search: z.string().max(200, "Search query too long").optional(),
+  sort: z.enum(["asc", "desc"]).optional().default("desc"),
+});
+
+const bulkDeleteMemorySchema = z.object({
+  ids: z
+    .array(z.string().uuid("Invalid memory ID format"))
+    .min(1, "At least one memory ID is required")
+    .max(100, "Cannot delete more than 100 memories at once"),
+  scope: z.string().trim().min(1).max(200, "Scope too long").optional(),
 });
 
 const updateMemorySchema = z.object({
@@ -309,6 +319,7 @@ app.get(
       scope: query.scope,
       projects: projects?.length ? projects : undefined,
       search: query.search,
+      sort: query.sort,
     });
 
     return c.json(result);
@@ -467,6 +478,46 @@ app.patch(
     ]).catch(() => {});
 
     return c.json(result);
+  },
+);
+
+// DELETE /bulk - Delete multiple memories (max 100)
+app.delete(
+  "/bulk",
+  eitherAuthMiddleware,
+  zValidator("json", bulkDeleteMemorySchema),
+  async (c) => {
+    const auth = c.get("auth");
+    const body = c.req.valid("json");
+
+    const result = await deleteMemories(auth.userId, body.ids, body.scope);
+
+    const invalidations = result.affectedMemories.flatMap((memory) => [
+      invalidateCachedProfile(auth.userId, memory.scope ?? undefined),
+      invalidateCachedProfile(
+        auth.userId,
+        memory.scope ?? undefined,
+        memory.project ?? undefined,
+      ),
+    ]);
+    await Promise.all(invalidations).catch(() => {});
+
+    if (auth.authType === "api_key" && auth.keyHash) {
+      try {
+        const sub = await getSubscriptionData(auth.userId);
+        await updateCachedMemoryCount(auth.keyHash, sub.memoryCount);
+      } catch (err) {
+        logger.error(
+          {
+            userId: auth.userId,
+            errorMessage: err instanceof Error ? err.message : String(err),
+          },
+          "failed to update cached memory count after bulk delete",
+        );
+      }
+    }
+
+    return c.json({ success: true, deletedCount: result.deletedCount });
   },
 );
 

@@ -42,6 +42,7 @@ interface ListMemoriesParams {
   projects?: string[];
   search?: string;
   scope?: string;
+  sort?: "asc" | "desc";
 }
 
 export interface MemoryHierarchyProject {
@@ -93,6 +94,7 @@ export const memoriesQueryOptions = (params?: ListMemoriesParams) =>
 
       if (params?.search) searchParams.set("search", params.search);
       if (params?.scope) searchParams.set("scope", params.scope);
+      if (params?.sort) searchParams.set("sort", params.sort);
 
       const query = searchParams.toString();
       return api.get<ListMemoriesResponse>(
@@ -155,6 +157,24 @@ export function useDeleteMemory() {
     mutationFn: async ({ id, scope }: { id: string; scope?: string }) => {
       return api.delete<{ success: boolean }>(
         appendScope(`/api/memories/${id}`, scope),
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["memories"] });
+      queryClient.invalidateQueries({ queryKey: ["memory-hierarchy"] });
+      queryClient.invalidateQueries({ queryKey: ["memory-graph"] });
+    },
+  });
+}
+
+export function useDeleteMemories() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ ids, scope }: { ids: string[]; scope?: string }) => {
+      return api.delete<{ success: boolean; deletedCount: number }>(
+        "/api/memories/bulk",
+        { ids, scope },
       );
     },
     onSuccess: () => {
