@@ -131,7 +131,10 @@ export async function getOrCreateDefaultWorkspace(
       billingOwnerUserId: userId,
       updatedAt: new Date(),
     })
-    .onConflictDoNothing()
+    .onConflictDoUpdate({
+      target: workspaces.slug,
+      set: { updatedAt: sql`${workspaces.updatedAt}` },
+    })
     .returning({ id: workspaces.id });
 
   const workspaceId = workspace?.id ?? (await getPrimaryWorkspaceId(userId, tx));

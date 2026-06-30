@@ -41,11 +41,11 @@ async function invalidateUserCache(userId: string): Promise<void> {
 /**
  * Maps Dodo product ID to our internal plan type
  */
-export function mapProductToPlan(productId: string): PlanType {
+export function mapProductToPlan(productId: string): PlanType | null {
   if (productId === env.DODO_PRODUCT_HOBBY) return "hobby";
   if (productId === env.DODO_PRODUCT_PRO) return "pro";
   if (productId === env.DODO_PRODUCT_ULTIMATE) return "ultimate";
-  throw new Error(`Unknown Dodo product ID: ${productId}`);
+  return null;
 }
 
 /**
@@ -219,6 +219,10 @@ export async function handleSubscriptionActive(
   }
 
   const plan = mapProductToPlan(productId);
+  if (!plan) {
+    logger.error({ productId, subscriptionId }, "Unknown Dodo product ID");
+    return;
+  }
   const memoryLimit = PLAN_LIMITS[plan];
 
   logger.debug(
@@ -457,6 +461,10 @@ export async function handleSubscriptionPlanChanged(
   }
 
   const newPlan = mapProductToPlan(productId);
+  if (!newPlan) {
+    logger.error({ productId, subscriptionId }, "Unknown Dodo product ID");
+    return;
+  }
   const newMemoryLimit = PLAN_LIMITS[newPlan];
 
   await db
