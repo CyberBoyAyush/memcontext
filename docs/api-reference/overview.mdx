@@ -37,6 +37,14 @@ API keys are created from the [MemContext dashboard](https://app.memcontext.in).
 | `POST`   | `/api/memories/{id}/forget`   | [Forget a memory](/api-reference/endpoint/forget-a-memory-soft-delete)           |
 | `GET`    | `/api/memories/{id}/history`  | [Get memory version history](/api-reference/endpoint/get-memory-version-history) |
 | `POST`   | `/api/memories/{id}/feedback` | [Submit feedback](/api-reference/endpoint/submit-feedback-for-a-memory)          |
+| `GET`    | `/api/workspaces`             | List workspaces available to the authenticated user                              |
+| `POST`   | `/api/workspaces`             | Create a workspace                                                               |
+| `GET`    | `/api/workspaces/{id}/team`   | List workspace members and pending invitations                                   |
+| `POST`   | `/api/context-vault/documents` | Queue Context Vault text, URL, or remote file ingestion                         |
+| `POST`   | `/api/context-vault/documents/upload` | Upload and ingest a Context Vault file                                  |
+| `GET`    | `/api/context-vault/documents` | List Context Vault documents                                                     |
+| `GET`    | `/api/context-vault/search`   | Search Context Vault documents and extracted memories                            |
+| `GET`    | `/api/context-vault/memories` | Browse extracted and curated workspace memories                                  |
 
 ## Response format
 

@@ -6,7 +6,7 @@ description: "Rate and correct extracted workspace memories."
 Feedback gives your application a way to record whether a retrieved memory was
 useful.
 
-Use `POST /api/company-brain/memories/{memoryId}/feedback` for lightweight
+Use `POST /api/context-vault/memories/{memoryId}/feedback` for lightweight
 signals:
 
 - `helpful`
@@ -14,7 +14,7 @@ signals:
 - `outdated`
 - `wrong`
 
-Use `POST /api/company-brain/memories/{memoryId}/correction` when the caller
+Use `POST /api/context-vault/memories/{memoryId}/correction` when the caller
 knows the corrected content.
 
 ## Correction workflow
@@ -26,7 +26,7 @@ curated company facts, there is no source chunk, so the correction updates only
 the company fact.
 
 ```bash
-curl -X POST "https://api.memcontext.in/api/company-brain/memories/MEMORY_ID/correction" \
+curl -X POST "https://api.memcontext.in/api/context-vault/memories/MEMORY_ID/correction" \
   -H "X-API-Key: $MEMCONTEXT_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -41,6 +41,6 @@ curl -X POST "https://api.memcontext.in/api/company-brain/memories/MEMORY_ID/cor
 Viewers can submit regular feedback but cannot directly correct workspace
 memories. Correction is available to owners, admins, and members.
 
-Use `DELETE /api/company-brain/memories/{memoryId}?workspaceId=...` to remove a
+Use `DELETE /api/context-vault/memories/{memoryId}?workspaceId=...` to remove a
 curated company fact. Document-extracted memories are cleaned up through document
 deletion when they are no longer backed by any source document.

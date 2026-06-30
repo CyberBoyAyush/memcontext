@@ -3,8 +3,8 @@ title: "Document Ingestion"
 description: "Upload or queue documents for Context Vault processing."
 ---
 
-Use `POST /api/company-brain/documents` for text, Markdown, public URLs, and
-remote file URLs. Use `POST /api/company-brain/documents/upload` when the client
+Use `POST /api/context-vault/documents` for text, Markdown, public URLs, and
+remote file URLs. Use `POST /api/context-vault/documents/upload` when the client
 has a local file.
 
 ## Supported sources
@@ -49,9 +49,9 @@ background.
 
 ## Document limits
 
-Context Vault document limits are enforced at the workspace billing-owner level.
-If an invited admin or member uploads a document, it still counts against the
-workspace billing owner's document allowance.
+Context Vault document limits are enforced at the workspace subscription level.
+If an invited admin or member uploads a document, it still counts against that
+workspace's document allowance.
 
 ## Scope and project on ingestion
 

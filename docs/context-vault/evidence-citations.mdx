@@ -6,10 +6,10 @@ description: "Load source chunks behind extracted memories."
 Each extracted Context Vault memory can have one or more evidence rows. Evidence
 links the memory to the document source and chunk it came from.
 
-Use `GET /api/company-brain/memories/{memoryId}/evidence` to load citations.
+Use `GET /api/context-vault/memories/{memoryId}/evidence` to load citations.
 
 ```bash
-curl "https://api.memcontext.in/api/company-brain/memories/MEMORY_ID/evidence?workspaceId=WORKSPACE_ID" \
+curl "https://api.memcontext.in/api/context-vault/memories/MEMORY_ID/evidence?workspaceId=WORKSPACE_ID" \
   -H "X-API-Key: $MEMCONTEXT_API_KEY"
 ```
 

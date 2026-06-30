@@ -3,7 +3,7 @@ title: "Context Vault Search"
 description: "Search source chunks, extracted memories, or both."
 ---
 
-Use `GET /api/company-brain/search` to retrieve Context Vault knowledge.
+Use `GET /api/context-vault/search` to retrieve Context Vault knowledge.
 
 Search supports three modes:
 
@@ -22,7 +22,7 @@ them as workspace-approved context rather than document-backed citations.
 ## Single-scope search
 
 ```bash
-curl "https://api.memcontext.in/api/company-brain/search?workspaceId=WORKSPACE_ID&query=leave%20policy&scope=hr&mode=hybrid" \
+curl "https://api.memcontext.in/api/context-vault/search?workspaceId=WORKSPACE_ID&query=leave%20policy&scope=hr&mode=hybrid" \
   -H "X-API-Key: $MEMCONTEXT_API_KEY"
 ```
 
@@ -31,7 +31,7 @@ curl "https://api.memcontext.in/api/company-brain/search?workspaceId=WORKSPACE_I
 Use `scopes` when the answer should come from two or more hard lanes.
 
 ```bash
-curl "https://api.memcontext.in/api/company-brain/search?workspaceId=WORKSPACE_ID&query=trial%20and%20billing&scopes=dev,billing&mode=hybrid" \
+curl "https://api.memcontext.in/api/context-vault/search?workspaceId=WORKSPACE_ID&query=trial%20and%20billing&scopes=dev,billing&mode=hybrid" \
   -H "X-API-Key: $MEMCONTEXT_API_KEY"
 ```
 
@@ -43,6 +43,6 @@ limited to the same workspace.
 Use `project` to narrow results inside the selected scope or scopes.
 
 ```bash
-curl "https://api.memcontext.in/api/company-brain/search?workspaceId=WORKSPACE_ID&query=refunds&scopes=billing,support&project=q3-policy" \
+curl "https://api.memcontext.in/api/context-vault/search?workspaceId=WORKSPACE_ID&query=refunds&scopes=billing,support&project=q3-policy" \
   -H "X-API-Key: $MEMCONTEXT_API_KEY"
 ```
