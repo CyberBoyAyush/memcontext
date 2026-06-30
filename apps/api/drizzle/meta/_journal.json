@@ -57,6 +57,13 @@
       "when": 1780358400000,
       "tag": "0007_workspace_billing_owner",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1782518400000,
+      "tag": "0008_workspace_vault_migration",
+      "breakpoints": true
     }
   ]
 }

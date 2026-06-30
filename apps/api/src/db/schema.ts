@@ -61,7 +61,11 @@ export type SubscriptionStatus =
 // to avoid cross-file import issues with drizzle-kit
 export const subscriptions = pgTable("subscriptions", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("user_id").notNull().unique(),
+  userId: text("user_id").notNull(),
+  workspaceId: uuid("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" })
+    .unique(),
   plan: text("plan").notNull().default("free"),
   memoryCount: integer("memory_count").notNull().default(0),
   memoryLimit: integer("memory_limit").notNull().default(300),
@@ -78,13 +82,20 @@ export const apiKeys = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     userId: text("user_id").notNull(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
     keyPrefix: text("key_prefix").notNull(),
     keyHash: text("key_hash").notNull().unique(),
     name: text("name").notNull(),
     lastUsedAt: timestamp("last_used_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => [index("api_keys_user_id_idx").on(table.userId)],
+  (table) => [
+    index("api_keys_user_id_idx").on(table.userId),
+    index("api_keys_workspace_id_idx").on(table.workspaceId),
+    index("api_keys_user_workspace_idx").on(table.userId, table.workspaceId),
+  ],
 );
 
 export const memories = pgTable(
@@ -92,9 +103,14 @@ export const memories = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     userId: text("user_id").notNull(),
-    workspaceId: uuid("workspace_id"),
+      workspaceId: uuid("workspace_id").references(() => workspaces.id, {
+        onDelete: "cascade",
+      }),
+      vaultId: uuid("vault_id").references(() => vaults.id, {
+        onDelete: "cascade",
+      }),
     scope: text("scope"),
-    memoryType: text("memory_type").notNull().default("user"),
+    memoryType: text("memory_type").notNull().default("member"),
     content: text("content").notNull(),
     embedding: vector("embedding", { dimensions: 1536 }).notNull(),
     category: text("category"),
@@ -133,6 +149,12 @@ export const memories = pgTable(
     index("memories_workspace_scope_type_current_idx")
       .on(table.workspaceId, table.scope, table.memoryType)
       .where(sql`${table.isCurrent} = true AND ${table.deletedAt} IS NULL`),
+    index("memories_workspace_member_current_idx")
+      .on(table.workspaceId, table.userId, table.memoryType)
+      .where(sql`${table.isCurrent} = true AND ${table.deletedAt} IS NULL`),
+    index("memories_vault_scope_type_current_idx")
+      .on(table.vaultId, table.scope, table.memoryType)
+      .where(sql`${table.isCurrent} = true AND ${table.deletedAt} IS NULL`),
     index("memories_supersedes_idx").on(table.supersedesId),
     index("memories_root_idx").on(table.rootId),
     index("memories_valid_until_idx").on(table.validUntil),
@@ -144,7 +166,12 @@ export const memorySources = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     userId: text("user_id").notNull(),
-    workspaceId: uuid("workspace_id"),
+      workspaceId: uuid("workspace_id").references(() => workspaces.id, {
+        onDelete: "cascade",
+      }),
+      vaultId: uuid("vault_id").references(() => vaults.id, {
+        onDelete: "cascade",
+      }),
     scope: text("scope"),
     project: text("project"),
     category: text("category"),
@@ -194,6 +221,11 @@ export const memorySources = pgTable(
       table.workspaceId,
       table.processingPhase,
     ),
+    index("memory_sources_vault_status_idx").on(table.vaultId, table.status),
+    index("memory_sources_workspace_vault_idx").on(
+      table.workspaceId,
+      table.vaultId,
+    ),
   ],
 );
 
@@ -205,7 +237,12 @@ export const memorySourceChunks = pgTable(
       .notNull()
       .references(() => memorySources.id, { onDelete: "cascade" }),
     userId: text("user_id").notNull(),
-    workspaceId: uuid("workspace_id"),
+      workspaceId: uuid("workspace_id").references(() => workspaces.id, {
+        onDelete: "cascade",
+      }),
+      vaultId: uuid("vault_id").references(() => vaults.id, {
+        onDelete: "cascade",
+      }),
     scope: text("scope"),
     project: text("project"),
     chunkIndex: integer("chunk_index").notNull(),
@@ -241,6 +278,11 @@ export const memorySourceChunks = pgTable(
       table.scope,
       table.project,
     ),
+    index("memory_source_chunks_vault_scope_idx").on(
+      table.vaultId,
+      table.scope,
+      table.project,
+    ),
     index("memory_source_chunks_source_idx").on(table.sourceId),
   ],
 );
@@ -259,7 +301,12 @@ export const memoryEvidence = pgTable(
       .notNull()
       .references(() => memorySourceChunks.id, { onDelete: "cascade" }),
     userId: text("user_id").notNull(),
-    workspaceId: uuid("workspace_id"),
+      workspaceId: uuid("workspace_id").references(() => workspaces.id, {
+        onDelete: "cascade",
+      }),
+      vaultId: uuid("vault_id").references(() => vaults.id, {
+        onDelete: "cascade",
+      }),
     scope: text("scope"),
     quote: text("quote"),
     confidence: real("confidence"),
@@ -278,6 +325,7 @@ export const memoryEvidence = pgTable(
       table.workspaceId,
       table.scope,
     ),
+    index("memory_evidence_vault_scope_idx").on(table.vaultId, table.scope),
   ],
 );
 
@@ -286,7 +334,12 @@ export const memoryRelations = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     userId: text("user_id"),
-    workspaceId: uuid("workspace_id"),
+      workspaceId: uuid("workspace_id").references(() => workspaces.id, {
+        onDelete: "cascade",
+      }),
+      vaultId: uuid("vault_id").references(() => vaults.id, {
+        onDelete: "cascade",
+      }),
     scope: text("scope"),
     sourceId: uuid("source_id").notNull(),
     targetId: uuid("target_id").notNull(),
@@ -301,6 +354,7 @@ export const memoryRelations = pgTable(
       table.workspaceId,
       table.scope,
     ),
+    index("memory_relations_vault_scope_idx").on(table.vaultId, table.scope),
   ],
 );
 
@@ -318,6 +372,32 @@ export const workspaces = pgTable(
   (table) => [
     index("workspaces_created_by_idx").on(table.createdByUserId),
     index("workspaces_billing_owner_idx").on(table.billingOwnerUserId),
+  ],
+);
+
+export const vaults = pgTable(
+  "vaults",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    slug: text("slug").notNull(),
+    createdByUserId: text("created_by_user_id").notNull(),
+    isDefault: boolean("is_default").notNull().default(false),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("vaults_workspace_idx").on(table.workspaceId),
+    uniqueIndex("vaults_workspace_slug_unique").on(
+      table.workspaceId,
+      table.slug,
+    ),
+    uniqueIndex("vaults_workspace_default_unique")
+      .on(table.workspaceId)
+      .where(sql`${table.isDefault} = true`),
   ],
 );
 
@@ -340,6 +420,19 @@ export const workspaceMembers = pgTable(
     index("workspace_members_user_idx").on(table.userId),
     index("workspace_members_workspace_idx").on(table.workspaceId),
   ],
+);
+
+export const mcpWorkspaceSelections = pgTable(
+  "mcp_workspace_selections",
+  {
+    userId: text("user_id").primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [index("mcp_workspace_selections_workspace_idx").on(table.workspaceId)],
 );
 
 export const workspaceInvitations = pgTable(
@@ -402,6 +495,8 @@ export type MemoryFeedbackRow = typeof memoryFeedback.$inferSelect;
 export type NewMemoryFeedbackRow = typeof memoryFeedback.$inferInsert;
 export type WorkspaceRow = typeof workspaces.$inferSelect;
 export type NewWorkspaceRow = typeof workspaces.$inferInsert;
+export type VaultRow = typeof vaults.$inferSelect;
+export type NewVaultRow = typeof vaults.$inferInsert;
 export type WorkspaceMemberRow = typeof workspaceMembers.$inferSelect;
 export type NewWorkspaceMemberRow = typeof workspaceMembers.$inferInsert;
 export type WorkspaceInvitationRow = typeof workspaceInvitations.$inferSelect;
