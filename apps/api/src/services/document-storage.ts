@@ -60,7 +60,7 @@ export async function uploadDocumentObject(params: UploadDocumentObjectParams) {
   const safeFilename = sanitizeFilename(params.filename || "document");
   const extension = extname(safeFilename);
   const key = [
-    "company-brain",
+    "context-vault",
     params.workspaceId,
     params.userId,
     `${Date.now()}-${randomUUID()}${extension}`,

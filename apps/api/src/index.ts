@@ -24,9 +24,9 @@ import waitlistRoutes from "./routes/waitlist.js";
 import adminRoutes from "./routes/admin.js";
 import subscriptionRoutes from "./routes/subscription.js";
 import workspacesRoutes from "./routes/workspaces.js";
-import companyBrainRoutes from "./routes/company-brain.js";
+import contextVaultRoutes from "./routes/context-vault.js";
 import { startMemorySourceProcessor } from "./services/memory.js";
-import { startCompanyBrainProcessor } from "./services/company-brain.js";
+import { startContextVaultProcessor } from "./services/context-vault.js";
 import type { HealthResponse } from "@memcontext/types";
 
 const app = new Hono();
@@ -70,8 +70,8 @@ app.use(
 
 app.use("*", (c, next) => {
   if (
-    c.req.path === "/api/company-brain/documents" ||
-    c.req.path === "/api/company-brain/documents/upload"
+    c.req.path === "/api/context-vault/documents" ||
+    c.req.path === "/api/context-vault/documents/upload"
   ) {
     return next();
   }
@@ -126,7 +126,7 @@ app.route("/api/waitlist", waitlistRoutes);
 app.route("/api/admin", adminRoutes);
 app.route("/api/subscription", subscriptionRoutes);
 app.route("/api/workspaces", workspacesRoutes);
-app.route("/api/company-brain", companyBrainRoutes);
+app.route("/api/context-vault", contextVaultRoutes);
 
 app.onError((err, c) => {
   const requestId = getRequestId(c);
@@ -233,7 +233,7 @@ logger.info(
 );
 
 startMemorySourceProcessor();
-startCompanyBrainProcessor();
+startContextVaultProcessor();
 
 serve({
   fetch: app.fetch,
