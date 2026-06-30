@@ -140,16 +140,17 @@ Use Better Auth's built-in `mcp` plugin in `apps/api` to power Claude remote MCP
 
 ## Context Vault / Workspaces UI
 
-Workspace management (create workspace, invite members) lives in the Settings page via the `WorkspacesSection` component at `apps/dashboard/src/components/settings/workspaces-section.tsx`, NOT in the Context Vault (`/company-brain`) page. The Context Vault page stays focused on workspace selection, document ingestion, and search.
+Workspace management (create workspace, invite members) lives in the Settings page via the `WorkspacesSection` component at `apps/dashboard/src/components/settings/workspaces-section.tsx`, NOT in the Context Vault (`/context-vault`) page. The Context Vault page stays focused on workspace selection, document ingestion, and search.
 
 Workspace invite roles: the backend (`apps/api/src/routes/workspaces.ts`) only accepts `admin`, `member`, `viewer` for invites — `owner` is auto-assigned to the workspace creator and is NOT invitable. Only owners and admins can invite members.
 
 <!-- Added: 2026-05-31 -->
 
 <!-- Added: 2026-06-03 -->
-## Workspace Management Location
 
-Workspace management (create workspace, invite members) lives ONLY in the Context Vault (`apps/dashboard/src/app/(dashboard)/context-vault/page.tsx`), NOT in the Settings page. The Context Vault header has an explicit "Manage workspace" button (GearSix icon) next to the WorkspaceSelect; both open the `ManageWorkspacesDialog`, which embeds the `WorkspacesSection` component (`apps/dashboard/src/components/settings/workspaces-section.tsx`). The Settings page must not import or render `WorkspacesSection`.
+<!-- Added: 2026-06-26 -->
+## Workspace Management Location
+Workspace management now lives in the dashboard Settings page as a dedicated Workspaces section (`apps/dashboard/src/app/(dashboard)/settings/page.tsx` using `WorkspacesSection`). Context Vault should stay focused on knowledge ingestion/search and should link to `/settings#workspaces` for creating/managing workspaces or teams instead of rendering `ManageWorkspacesDialog` inline.
 
 In the Context Vault "Search knowledge" filters, both the scope filter and the project filter use the same rounded-full pill button style (active: `border-accent bg-accent/10 text-accent`; inactive: `border-border bg-surface text-foreground-muted hover:border-border-hover hover:text-foreground`) — do not use a native `<select>` for the project filter.
 
@@ -159,7 +160,7 @@ The Memories page (`apps/dashboard/src/app/(dashboard)/memories/page.tsx`) is th
 
 Workspace memories are READ-ONLY on this page (no edit/delete/feedback/detail panel; delete column shows a Lock icon, content search is hidden, category filter becomes a static label). They are managed in the Context Vault. Personal memories keep full edit/delete behavior unchanged.
 
-Backend: `GET /api/company-brain/memories` (list, supports scope + `projects` comma-separated multi-filter + limit/offset) and `GET /api/company-brain/hierarchy` (scope/project counts) both gate on `requireWorkspaceMember(userId, workspaceId)`. They query `memories` where `workspaceId = ? AND memoryType IN ('document','company') AND isCurrent AND deletedAt IS NULL`. Vault list pagination orders by `createdAt DESC, id DESC` for stable offset paging. Only "Workspace not found" maps to 404; other errors log and return 500.
+Backend: `GET /api/context-vault/memories` (list, supports scope + `projects` comma-separated multi-filter + limit/offset) and `GET /api/context-vault/hierarchy` (scope/project counts) both gate on `requireWorkspaceMember(userId, workspaceId)`. They query `memories` where `workspaceId = ? AND memoryType IN ('document','company') AND isCurrent AND deletedAt IS NULL`. Vault list pagination orders by `createdAt DESC, id DESC` for stable offset paging. Only "Workspace not found" maps to 404; other errors log and return 500.
 
 <!-- Added: 2026-05-31 -->
 
@@ -167,9 +168,9 @@ Backend: `GET /api/company-brain/memories` (list, supports scope + `projects` co
 
 Workspace (Context Vault) memories support a read-only detail sidebar with feedback via the shared component `apps/dashboard/src/components/vault-memory-detail-panel.tsx` (`VaultMemoryDetailPanel`). It is used in two places: the Memories page (workspace mode — clicking a row) and the Context Vault document-memories modal (clicking a memory card). It renders at z-index 70/71 to sit above the document modal (z-60). It shows content/category/project/created/source document and Helpful/Not helpful/Outdated/Wrong feedback. No edit/delete (those stay in Context Vault management).
 
-Feedback backend: `POST /api/company-brain/memories/:memoryId/feedback` (body: workspaceId, type, context?). Gated by `requireWorkspaceMember` + the memory must match `workspaceId AND memoryType IN ('document','company') AND isCurrent AND not deleted`. Uses `rateLimitFeedback` middleware (parity with personal feedback). Frontend hook: `useSubmitVaultMemoryFeedback`.
+Feedback backend: `POST /api/context-vault/memories/:memoryId/feedback` (body: workspaceId, type, context?). Gated by `requireWorkspaceMember` + the memory must match `workspaceId AND memoryType IN ('document','company') AND isCurrent AND not deleted`. Uses `rateLimitFeedback` middleware (parity with personal feedback). Frontend hook: `useSubmitVaultMemoryFeedback`.
 
-The standalone "Extracted knowledge" browse panel was REMOVED from the Context Vault page. Instead, click a document's "N memories" count to open a spacious 2-column modal of that document's extracted memories (`GET /api/company-brain/documents/:documentId/memories`), and click any memory to open the detail sidebar.
+The standalone "Extracted knowledge" browse panel was REMOVED from the Context Vault page. Instead, click a document's "N memories" count to open a spacious 2-column modal of that document's extracted memories (`GET /api/context-vault/documents/:documentId/memories`), and click any memory to open the detail sidebar.
 
 In the Memories page workspace mode, each memory row shows its source document (file icon + title) under the content, and the Actions column shows a CaretRight (clickable to open details) instead of a Lock.
 
@@ -177,7 +178,7 @@ In the Memories page workspace mode, each memory row shows its source document (
 
 ## Context Vault Plan Limits
 
-Current Free/Hobby/Pro `PLAN_LIMITS` apply to personal/user memories. Context Vault extracted document memories are saved with `memoryType = "document"` and do not increment `subscriptions.memory_count` during the beta. Public docs and pricing copy should describe the 300 / 2,000 / 10,000 limits as personal memory limits until separate Context Vault limits for documents, storage, OCR/scraping, and extracted facts are implemented.
+Current Free/Hobby/Pro `PLAN_LIMITS` apply to each workspace's shared member-memory pool. Context Vault extracted document memories are saved with `memoryType = "document"` and do not increment `subscriptions.memory_count` during the beta. Public docs and pricing copy should describe the 300 / 2,000 / 10,000 limits as workspace member-memory limits until separate Context Vault limits for documents, storage, OCR/scraping, and extracted facts are implemented.
 
 <!-- Added: 2026-06-05 -->
 ## Themed Dropdowns (Dashboard)
@@ -206,3 +207,21 @@ Current consumers: MCP CLI agent picker, Memory Graph view-mode (full/focused), 
 ## Website Isometric Diagram Aesthetic
 
 Isometric/layered SVG diagrams on the marketing website (e.g. `apps/website/components/context-vault.tsx`, `hero-memory-tower.tsx`) follow a shared visual language: a warm brand ramp (BRAND `#A9432A`, BRAND_HI `#D96B3F`, hot highlight `#FFE4D6`) with multi-tone per-face shading (top lightest / left darkest / right mid) so slabs read as solid 3D material rather than flat outlines. Faces must be opaque solid fills (not low-opacity tints) so stacked layers occlude what's behind them. Add bright accent micro-elements with the brand colors — glowing live core dots, expanding dashed pulse rings, brand-lit "active" signal paths/blocks, and animated opacity pulses — to give the scene life. Status pip colors: green `#22c55e`, amber `#f59e0b`, blue `#3b82f6`.
+
+<!-- Added: 2026-06-27 -->
+## Workspace Route Auth
+Workspace management routes under `apps/api/src/routes/workspaces.ts` are dashboard/account-management endpoints and must use `sessionAuthMiddleware`, not `eitherAuthMiddleware`. API keys remain workspace-bound data-plane credentials for memories and Context Vault access; they must not create/list/manage workspaces or team/billing settings.
+
+Context Vault document action routes that do not accept `workspaceId` in the request, such as cancel/delete by `documentId`, must still pin non-session auth to `auth.workspaceId` before acting on the document so API keys cannot operate on documents from another workspace by ID.
+
+<!-- Added: 2026-06-28 -->
+## Role-Aware Workspace Memory Visibility
+Workspace member-memory quota is a shared workspace pool, but dashboard visibility is role-aware: workspace owners/admins can view workspace-wide member memories, while regular members should see only their own member memories within the mounted workspace. Viewers are read-only and should not create/update/delete workspace content.
+
+<!-- Added: 2026-06-28 -->
+## Memory API Visibility
+Normal member-memory REST, API-key, OAuth, and MCP operations must read only the caller's own member memories within the selected workspace, even when the caller is a workspace owner or admin. Workspace-wide member-memory visibility for owners/admins is reserved for dashboard-specific viewing surfaces, not standard tool/API memory calls.
+
+<!-- Added: 2026-06-28 -->
+## Context Vault Naming
+Use Context Vault as the canonical product, API, SDK, docs, and code vocabulary for workspace document/company knowledge. Public API routes use `/api/context-vault`; do not reintroduce `Company Brain`, `company-brain`, `CompanyBrain`, `companyBrain`, or `/api/company-brain` aliases unless explicitly adding a documented migration shim.

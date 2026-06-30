@@ -22,10 +22,10 @@ Request
 Middleware (auth, rate-limit, logging)
    |
    v
-Routes (/api/auth, /api/memories, /api/company-brain, /api/api-keys, /api/user, /api/subscription, /api/admin, /api/waitlist)
+Routes (/api/auth, /api/memories, /api/context-vault, /api/api-keys, /api/user, /api/subscription, /api/admin, /api/waitlist)
    |
    v
-Services (memory, company-brain, embedding, relation, subscription)
+Services (memory, context-vault, embedding, relation, subscription)
    |
    v
 Database (Drizzle ORM)
@@ -56,22 +56,22 @@ Memory routes use either API key auth or dashboard session auth. `scope` is the 
 
 ### Context Vault (API Key or Session auth)
 
-The public product name is Context Vault. The beta route prefix remains `/api/company-brain` for compatibility.
+The public product name and route prefix are Context Vault: `/api/context-vault`.
 
 | Method | Path                                      | Description                                                            |
 | ------ | ----------------------------------------- | ---------------------------------------------------------------------- |
-| POST   | /api/company-brain/documents              | Ingest extracted text, public file URLs, or documentation/web URLs     |
-| POST   | /api/company-brain/documents/upload       | Upload and ingest a document file                                      |
-| GET    | /api/company-brain/documents              | List workspace documents and processing state                          |
-| POST   | /api/company-brain/documents/:id/cancel   | Stop a pending, retrying, or active document job                       |
-| DELETE | /api/company-brain/documents/:id          | Delete a document, chunks, citations, and exclusive extracted memories |
-| GET    | /api/company-brain/documents/:id/memories | List extracted memories for a document                                 |
-| GET    | /api/company-brain/search                 | Search workspace knowledge in memories, documents, or hybrid mode      |
-| GET    | /api/company-brain/memories               | Browse workspace document memories                                     |
-| POST   | /api/company-brain/memories/:id/feedback  | Submit feedback on a workspace memory                                  |
-| POST   | /api/company-brain/memories/:id/correction | Correct a workspace memory and optionally its cited source chunk       |
-| GET    | /api/company-brain/memories/:id/evidence  | Load citations/source chunks for a workspace memory                    |
-| GET    | /api/company-brain/hierarchy              | Scope/project hierarchy for workspace memories                         |
+| POST   | /api/context-vault/documents              | Ingest extracted text, public file URLs, or documentation/web URLs     |
+| POST   | /api/context-vault/documents/upload       | Upload and ingest a document file                                      |
+| GET    | /api/context-vault/documents              | List workspace documents and processing state                          |
+| POST   | /api/context-vault/documents/:id/cancel   | Stop a pending, retrying, or active document job                       |
+| DELETE | /api/context-vault/documents/:id          | Delete a document, chunks, citations, and exclusive extracted memories |
+| GET    | /api/context-vault/documents/:id/memories | List extracted memories for a document                                 |
+| GET    | /api/context-vault/search                 | Search workspace knowledge in memories, documents, or hybrid mode      |
+| GET    | /api/context-vault/memories               | Browse workspace document memories                                     |
+| POST   | /api/context-vault/memories/:id/feedback  | Submit feedback on a workspace memory                                  |
+| POST   | /api/context-vault/memories/:id/correction | Correct a workspace memory and optionally its cited source chunk       |
+| GET    | /api/context-vault/memories/:id/evidence  | Load citations/source chunks for a workspace memory                    |
+| GET    | /api/context-vault/hierarchy              | Scope/project hierarchy for workspace memories                         |
 
 Workspace management routes:
 
@@ -125,19 +125,20 @@ Public memory API endpoints support the `X-API-Key` header. Dashboard and admin 
 
 ### memories
 
-Stores user memories and Context Vault extracted document memories with vector embeddings.
+Stores workspace member memories and Context Vault extracted document memories with vector embeddings.
 
 | Field         | Description                                                  |
 | ------------- | ------------------------------------------------------------ |
 | id            | Unique identifier                                            |
-| user_id       | Owner of the memory                                          |
-| workspace_id  | Workspace for Context Vault memory; null for personal memory |
+| user_id       | Creator/owner of the memory                                  |
+| workspace_id  | Workspace memory-pool boundary                              |
+| vault_id      | Context Vault boundary; null for member memories             |
 | scope         | Optional hard isolation boundary                             |
 | content       | The memory text                                              |
 | embedding     | 1536-dimension vector                                        |
 | category      | preference, fact, decision, or context                       |
 | project       | Optional project name                                        |
-| memory_type   | user, document, or company                                   |
+| memory_type   | member, document, or company                                 |
 | source        | mcp, web, or api                                             |
 | is_current    | Whether this is the latest version                           |
 | supersedes_id | ID of memory this replaces                                   |
@@ -159,22 +160,24 @@ Tracks relationships between memories.
 
 ### api_keys
 
-Stores hashed API keys.
+Stores hashed API keys. Each key is bound to one workspace.
 
 | Field      | Description         |
 | ---------- | ------------------- |
 | user_id    | Owner               |
+| workspace_id | Workspace resolved by the key |
 | key_hash   | SHA-256 hash        |
 | key_prefix | Display prefix      |
 | name       | User-provided label |
 
 ### subscriptions
 
-Tracks user plans and memory usage.
+Tracks workspace-owned plans and member-memory usage.
 
 | Field        | Description         |
 | ------------ | ------------------- |
-| user_id      | Owner               |
+| user_id      | Billing actor/legacy owner reference |
+| workspace_id | Workspace entitlement boundary |
 | plan         | free, hobby, or pro |
 | memory_count | Current count       |
 | memory_limit | Based on plan       |
@@ -187,7 +190,7 @@ Tracks user plans and memory usage.
 | hobby | 2,000  |
 | pro   | 10,000 |
 
-These limits currently apply to personal/user memories. Context Vault extracted document memories use `memory_type = document` and are not incremented into `subscriptions.memory_count` during the beta.
+These limits apply to member memories in the workspace pool. Context Vault extracted document memories use `memory_type = document` and are not incremented into `subscriptions.memory_count` during the beta.
 
 ### memory_sources
 
@@ -266,7 +269,7 @@ When a document is ingested:
 
 Context Vault search supports `memories`, `documents`, and `hybrid` modes. The endpoint returns ranked retrieval results and citations, not a generated final answer. Hybrid search keeps source passages in `chunks[]` and extracted atomic facts in `memories[]`, so callers can pass document context and memory context as separate blocks to their AI layer. Pass `scopes=dev,billing` to retrieve from multiple lanes inside the same workspace.
 
-Corrections use `POST /api/company-brain/memories/:id/correction`. The endpoint updates the extracted memory and, when `correctedChunkContent` is provided, updates the cited source chunk and evidence quote to prevent memory/chunk drift.
+Corrections use `POST /api/context-vault/memories/:id/correction`. The endpoint updates the extracted memory and, when `correctedChunkContent` is provided, updates the cited source chunk and evidence quote to prevent memory/chunk drift.
 
 ## Environment Variables
 
