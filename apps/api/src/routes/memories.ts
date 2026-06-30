@@ -42,6 +42,7 @@ import type {
   MemorySource,
 } from "@memcontext/types";
 import type { TimingContext } from "../utils/timing.js";
+import { requireWorkspaceMember } from "../services/workspace.js";
 
 const app = new Hono<{
   Variables: {
@@ -63,6 +64,7 @@ const saveMemorySchema = z.object({
   project: z.string().max(100, "Project name too long").optional(),
   source: z.enum(["mcp", "web", "api", "openclaw"]).optional().default("api"),
   validUntil: z.string().datetime().optional(),
+  workspaceId: z.string().uuid().optional(),
 });
 
 const searchMemorySchema = z.object({
@@ -76,6 +78,7 @@ const searchMemorySchema = z.object({
   scope: z.string().trim().min(1).max(200, "Scope too long").optional(),
   project: z.string().max(100, "Project name too long").optional(),
   threshold: z.coerce.number().min(0).max(1).optional(),
+  workspaceId: z.string().uuid().optional(),
 });
 
 const listMemorySchema = z.object({
@@ -86,6 +89,7 @@ const listMemorySchema = z.object({
   project: z.string().max(500).optional(),
   search: z.string().max(200, "Search query too long").optional(),
   sort: z.enum(["asc", "desc"]).optional().default("desc"),
+  workspaceId: z.string().uuid().optional(),
 });
 
 const bulkDeleteMemorySchema = z.object({
@@ -94,6 +98,7 @@ const bulkDeleteMemorySchema = z.object({
     .min(1, "At least one memory ID is required")
     .max(100, "Cannot delete more than 100 memories at once"),
   scope: z.string().trim().min(1).max(200, "Scope too long").optional(),
+  workspaceId: z.string().uuid().optional(),
 });
 
 const updateMemorySchema = z.object({
@@ -104,11 +109,13 @@ const updateMemorySchema = z.object({
 
 const scopedQuerySchema = z.object({
   scope: z.string().trim().min(1).max(200, "Scope too long").optional(),
+  workspaceId: z.string().uuid().optional(),
 });
 
 const profileQuerySchema = z.object({
   scope: z.string().trim().min(1).max(200, "Scope too long").optional(),
   project: z.string().max(100, "Project name too long").optional(),
+  workspaceId: z.string().uuid().optional(),
 });
 
 const memoryIdParamSchema = z.object({
@@ -119,6 +126,43 @@ const feedbackSchema = z.object({
   type: z.enum(["helpful", "not_helpful", "outdated", "wrong"]),
   context: z.string().max(1000, "Feedback context too long").optional(),
 });
+
+async function resolveMemoryWorkspace(
+  auth: EitherAuthContext,
+  requestedWorkspaceId?: string,
+) {
+  if (auth.authType !== "session") {
+    if (requestedWorkspaceId && requestedWorkspaceId !== auth.workspaceId) {
+      throw new HTTPException(403, {
+        message: "API key is not authorized for this workspace",
+      });
+    }
+    return auth.workspaceId;
+  }
+
+  const workspaceId = requestedWorkspaceId ?? auth.workspaceId;
+  await requireWorkspaceMember(auth.userId, workspaceId);
+  return workspaceId;
+}
+
+async function resolveMemoryVisibility(
+  auth: EitherAuthContext,
+  _workspaceId: string,
+) {
+  return auth.userId;
+}
+
+async function resolveWritableMemoryWorkspace(
+  auth: EitherAuthContext,
+  requestedWorkspaceId?: string,
+) {
+  const workspaceId = await resolveMemoryWorkspace(auth, requestedWorkspaceId);
+  const membership = await requireWorkspaceMember(auth.userId, workspaceId);
+  if (membership.role === "viewer") {
+    throw new HTTPException(403, { message: "Viewers cannot modify memories" });
+  }
+  return workspaceId;
+}
 
 // === Shared Routes (API Key OR Session) ===
 
@@ -132,9 +176,12 @@ app.post(
     const auth = c.get("auth");
     const body = c.req.valid("json");
     const timing = getTimingContext(c);
+    const workspaceId = await resolveWritableMemoryWorkspace(auth, body.workspaceId);
 
     // Early limit check - saves LLM/embedding costs when user is already at limit
-    const limitCheck = await checkMemoryLimit(auth.userId);
+    const limitCheck = await checkMemoryLimit(auth.userId, {
+      workspaceId,
+    });
     if (!limitCheck.allowed) {
       throw new HTTPException(403, {
         message: `Memory limit exceeded. Current: ${limitCheck.current}, Limit: ${limitCheck.limit}. Upgrade your plan at https://app.memcontext.in/settings`,
@@ -143,6 +190,7 @@ app.post(
 
     const result = await saveMemory({
       userId: auth.userId,
+      workspaceId,
       content: body.content,
       category: body.category as MemoryCategory | undefined,
       scope: body.scope,
@@ -166,7 +214,7 @@ app.post(
       (result.status === "saved" || result.status === "extended")
     ) {
       try {
-        const sub = await getSubscriptionData(auth.userId);
+        const sub = await getSubscriptionData(auth.userId, workspaceId);
         await updateCachedMemoryCount(auth.keyHash, sub.memoryCount);
       } catch (err) {
         logger.error(
@@ -188,13 +236,15 @@ app.post(
         auth.userId,
         result.id!,
         body.scope,
+        workspaceId,
       );
       await invalidateCachedProfile(
         auth.userId,
+        workspaceId,
         persistedMemory?.scope ?? body.scope,
         persistedMemory?.project ?? body.project,
       ).catch(() => {});
-      await invalidateCachedProfile(auth.userId, body.scope).catch(() => {});
+      await invalidateCachedProfile(auth.userId, workspaceId, body.scope).catch(() => {});
     }
 
     return c.json(result, result.status === "accepted" ? 202 : 201);
@@ -211,9 +261,13 @@ app.get(
     const auth = c.get("auth");
     const query = c.req.valid("query");
     const timing = getTimingContext(c);
+    const workspaceId = await resolveMemoryWorkspace(auth, query.workspaceId);
+    const visibleUserId = await resolveMemoryVisibility(auth, workspaceId);
 
     const result = await searchMemories({
       userId: auth.userId,
+      workspaceId,
+      visibleUserId,
       query: query.query,
       limit: query.limit,
       category: query.category as MemoryCategory | undefined,
@@ -235,11 +289,15 @@ app.get(
   async (c) => {
     const auth = c.get("auth");
     const query = c.req.valid("query");
+    const workspaceId = await resolveMemoryWorkspace(auth, query.workspaceId);
+    const visibleUserId = await resolveMemoryVisibility(auth, workspaceId);
 
     const cached = await getCachedProfile(
       auth.userId,
+      workspaceId,
       query.scope,
       query.project,
+      visibleUserId,
     );
     if (cached) {
       return c.json(cached);
@@ -247,10 +305,19 @@ app.get(
 
     const profile = await getMemoryProfile(
       auth.userId,
+      workspaceId,
       query.project,
       query.scope,
+      visibleUserId,
     );
-    await cacheProfile(auth.userId, query.scope, query.project, profile);
+    await cacheProfile(
+      auth.userId,
+      workspaceId,
+      query.scope,
+      query.project,
+      visibleUserId,
+      profile,
+    );
     return c.json(profile);
   },
 );
@@ -263,7 +330,14 @@ app.get(
   async (c) => {
     const auth = c.get("auth");
     const query = c.req.valid("query");
-    const graph = await getMemoryGraph(auth.userId, query.scope);
+    const workspaceId = await resolveMemoryWorkspace(auth, query.workspaceId);
+    const visibleUserId = await resolveMemoryVisibility(auth, workspaceId);
+    const graph = await getMemoryGraph(
+      auth.userId,
+      workspaceId,
+      query.scope,
+      visibleUserId,
+    );
     return c.json(graph);
   },
 );
@@ -276,6 +350,8 @@ app.get(
   async (c) => {
     const auth = c.get("auth");
     const query = c.req.valid("query");
+    const workspaceId = await resolveMemoryWorkspace(auth, query.workspaceId);
+    const visibleUserId = await resolveMemoryVisibility(auth, workspaceId);
 
     const validCategories = new Set([
       "preference",
@@ -313,6 +389,8 @@ app.get(
 
     const result = await listMemories({
       userId: auth.userId,
+      workspaceId,
+      visibleUserId,
       limit: query.limit,
       offset: query.offset,
       categories: categories?.length ? categories : undefined,
@@ -336,8 +414,16 @@ app.get(
     const auth = c.get("auth");
     const { id: memoryId } = c.req.valid("param");
     const query = c.req.valid("query");
+    const workspaceId = await resolveMemoryWorkspace(auth, query.workspaceId);
+    const visibleUserId = await resolveMemoryVisibility(auth, workspaceId);
 
-    const result = await getMemoryHistory(auth.userId, memoryId, query.scope);
+    const result = await getMemoryHistory(
+      auth.userId,
+      workspaceId,
+      memoryId,
+      query.scope,
+      visibleUserId,
+    );
     if (!result) {
       throw new HTTPException(404, { message: "Memory not found" });
     }
@@ -359,14 +445,18 @@ app.post(
     const { id: memoryId } = c.req.valid("param");
     const query = c.req.valid("query");
     const body = c.req.valid("json");
+    const workspaceId = await resolveMemoryWorkspace(auth, query.workspaceId);
+    const visibleUserId = await resolveMemoryVisibility(auth, workspaceId);
 
     try {
       const result = await submitFeedback(
         auth.userId,
+        workspaceId,
         memoryId,
         body.type as FeedbackType,
         body.context,
         query.scope,
+        visibleUserId,
       );
       return c.json(result);
     } catch (error) {
@@ -388,22 +478,43 @@ app.post(
     const auth = c.get("auth");
     const { id: memoryId } = c.req.valid("param");
     const query = c.req.valid("query");
-    const existing = await getMemory(auth.userId, memoryId, query.scope);
+    const workspaceId = await resolveWritableMemoryWorkspace(
+      auth,
+      query.workspaceId,
+    );
+    const visibleUserId = await resolveMemoryVisibility(auth, workspaceId);
+    const existing = await getMemory(
+      auth.userId,
+      memoryId,
+      query.scope,
+      workspaceId,
+      visibleUserId,
+    );
 
-    const deleted = await deleteMemory(auth.userId, memoryId, query.scope);
+    const deleted = await deleteMemory(
+      auth.userId,
+      workspaceId,
+      memoryId,
+      query.scope,
+    );
 
     if (!deleted) {
       throw new HTTPException(404, { message: "Memory not found" });
     }
 
     await Promise.all([
-      invalidateCachedProfile(auth.userId, existing?.scope),
-      invalidateCachedProfile(auth.userId, existing?.scope, existing?.project),
+      invalidateCachedProfile(auth.userId, workspaceId, existing?.scope),
+      invalidateCachedProfile(
+        auth.userId,
+        workspaceId,
+        existing?.scope,
+        existing?.project,
+      ),
     ]).catch(() => {});
 
     if (auth.authType === "api_key" && auth.keyHash) {
       try {
-        const sub = await getSubscriptionData(auth.userId);
+        const sub = await getSubscriptionData(auth.userId, workspaceId);
         await updateCachedMemoryCount(auth.keyHash, sub.memoryCount);
       } catch (err) {
         logger.error(
@@ -430,8 +541,16 @@ app.get(
     const auth = c.get("auth");
     const { id: memoryId } = c.req.valid("param");
     const query = c.req.valid("query");
+    const workspaceId = await resolveMemoryWorkspace(auth, query.workspaceId);
+    const visibleUserId = await resolveMemoryVisibility(auth, workspaceId);
 
-    const memory = await getMemory(auth.userId, memoryId, query.scope);
+    const memory = await getMemory(
+      auth.userId,
+      memoryId,
+      query.scope,
+      workspaceId,
+      visibleUserId,
+    );
     if (!memory) {
       throw new HTTPException(404, { message: "Memory not found" });
     }
@@ -453,10 +572,20 @@ app.patch(
     const query = c.req.valid("query");
     const body = c.req.valid("json");
     const timing = getTimingContext(c);
-    const existing = await getMemory(auth.userId, memoryId, query.scope);
+    const workspaceId = await resolveWritableMemoryWorkspace(
+      auth,
+      query.workspaceId,
+    );
+    const existing = await getMemory(
+      auth.userId,
+      memoryId,
+      query.scope,
+      workspaceId,
+    );
 
     const result = await updateMemory({
       userId: auth.userId,
+      workspaceId,
       memoryId,
       content: body.content,
       category: body.category as MemoryCategory | undefined,
@@ -472,9 +601,14 @@ app.patch(
     }
 
     await Promise.all([
-      invalidateCachedProfile(auth.userId, existing?.scope),
-      invalidateCachedProfile(auth.userId, existing?.scope, existing?.project),
-      invalidateCachedProfile(auth.userId, existing?.scope, body.project),
+      invalidateCachedProfile(auth.userId, workspaceId, existing?.scope),
+      invalidateCachedProfile(
+        auth.userId,
+        workspaceId,
+        existing?.scope,
+        existing?.project,
+      ),
+      invalidateCachedProfile(auth.userId, workspaceId, existing?.scope, body.project),
     ]).catch(() => {});
 
     return c.json(result);
@@ -489,13 +623,24 @@ app.delete(
   async (c) => {
     const auth = c.get("auth");
     const body = c.req.valid("json");
+    const workspaceId = await resolveWritableMemoryWorkspace(auth, body.workspaceId);
 
-    const result = await deleteMemories(auth.userId, body.ids, body.scope);
+    const result = await deleteMemories(
+      auth.userId,
+      workspaceId,
+      body.ids,
+      body.scope,
+    );
 
     const invalidations = result.affectedMemories.flatMap((memory) => [
-      invalidateCachedProfile(auth.userId, memory.scope ?? undefined),
       invalidateCachedProfile(
         auth.userId,
+        workspaceId,
+        memory.scope ?? undefined,
+      ),
+      invalidateCachedProfile(
+        auth.userId,
+        workspaceId,
         memory.scope ?? undefined,
         memory.project ?? undefined,
       ),
@@ -504,7 +649,7 @@ app.delete(
 
     if (auth.authType === "api_key" && auth.keyHash) {
       try {
-        const sub = await getSubscriptionData(auth.userId);
+        const sub = await getSubscriptionData(auth.userId, workspaceId);
         await updateCachedMemoryCount(auth.keyHash, sub.memoryCount);
       } catch (err) {
         logger.error(
@@ -531,22 +676,41 @@ app.delete(
     const auth = c.get("auth");
     const { id: memoryId } = c.req.valid("param");
     const query = c.req.valid("query");
-    const existing = await getMemory(auth.userId, memoryId, query.scope);
+    const workspaceId = await resolveWritableMemoryWorkspace(
+      auth,
+      query.workspaceId,
+    );
+    const existing = await getMemory(
+      auth.userId,
+      memoryId,
+      query.scope,
+      workspaceId,
+    );
 
-    const deleted = await deleteMemory(auth.userId, memoryId, query.scope);
+    const deleted = await deleteMemory(
+      auth.userId,
+      workspaceId,
+      memoryId,
+      query.scope,
+    );
 
     if (!deleted) {
       throw new HTTPException(404, { message: "Memory not found" });
     }
 
     await Promise.all([
-      invalidateCachedProfile(auth.userId, existing?.scope),
-      invalidateCachedProfile(auth.userId, existing?.scope, existing?.project),
+      invalidateCachedProfile(auth.userId, workspaceId, existing?.scope),
+      invalidateCachedProfile(
+        auth.userId,
+        workspaceId,
+        existing?.scope,
+        existing?.project,
+      ),
     ]).catch(() => {});
 
     if (auth.authType === "api_key" && auth.keyHash) {
       try {
-        const sub = await getSubscriptionData(auth.userId);
+        const sub = await getSubscriptionData(auth.userId, workspaceId);
         await updateCachedMemoryCount(auth.keyHash, sub.memoryCount);
       } catch (err) {
         logger.error(
