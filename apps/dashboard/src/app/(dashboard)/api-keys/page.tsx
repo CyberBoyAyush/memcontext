@@ -27,12 +27,15 @@ import {
 } from "@/lib/queries/api-keys";
 import { formatDateTime, cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
+import { workspacesQueryOptions } from "@/lib/queries/context-vault";
+import { ThemedSelect } from "@/components/ui/themed-select";
+import { useWorkspace } from "@/providers/workspace-provider";
 
 function TableSkeleton() {
   return (
     <Card className="overflow-hidden shadow-none">
       <div className="overflow-auto">
-        <table className="w-full min-w-[640px]">
+        <table className="w-full min-w-[760px]">
           <thead className="sticky top-0 z-10 bg-surface-elevated border-b border-border">
             <tr className="h-11">
               <th className="text-center text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 border-r border-border">
@@ -43,6 +46,9 @@ function TableSkeleton() {
               </th>
               <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-32 border-r border-border">
                 Key
+              </th>
+              <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-40 border-r border-border">
+                Workspace
               </th>
               <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-44 border-r border-border">
                 Created
@@ -66,6 +72,9 @@ function TableSkeleton() {
                 </td>
                 <td className="px-4 py-2 w-32 border-r border-border">
                   <div className="h-3.5 bg-surface-elevated rounded w-20" />
+                </td>
+                <td className="px-4 py-2 w-40 border-r border-border">
+                  <div className="h-3.5 bg-surface-elevated rounded w-24" />
                 </td>
                 <td className="px-4 py-2 w-44 border-r border-border">
                   <div className="h-3.5 bg-surface-elevated rounded w-32" />
@@ -93,9 +102,22 @@ function CreateKeyModal({
   onSuccess: (result: CreateApiKeyResponse) => void;
 }) {
   const [keyName, setKeyName] = useState("");
+  const [workspaceId, setWorkspaceId] = useState("");
+  const [hasSelectedWorkspace, setHasSelectedWorkspace] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const createMutation = useCreateApiKey();
+  const { data: workspacesData } = useQuery(workspacesQueryOptions());
+  const { activeWorkspaceId } = useWorkspace();
   const toast = useToast();
+  const workspaces = workspacesData?.workspaces ?? [];
+  const selectedWorkspaceId = hasSelectedWorkspace
+    ? workspaceId
+    : activeWorkspaceId || workspaces[0]?.id || "";
+
+  function handleWorkspaceChange(nextWorkspaceId: string) {
+    setHasSelectedWorkspace(true);
+    setWorkspaceId(nextWorkspaceId);
+  }
 
   function handleClose() {
     setIsClosing(true);
@@ -107,7 +129,10 @@ function CreateKeyModal({
     if (!keyName.trim()) return;
 
     try {
-      const result = await createMutation.mutateAsync(keyName.trim());
+      const result = await createMutation.mutateAsync({
+        name: keyName.trim(),
+        workspaceId: selectedWorkspaceId || undefined,
+      });
       toast.success("API key created successfully");
       onSuccess(result);
     } catch (err) {
@@ -168,6 +193,22 @@ function CreateKeyModal({
                 Choose a descriptive name to remember where this key is used
               </p>
             </div>
+            <div className="space-y-2">
+              <Label>Workspace</Label>
+              <ThemedSelect
+                value={selectedWorkspaceId}
+                onChange={handleWorkspaceChange}
+                disabled={createMutation.isPending || workspaces.length <= 1}
+                options={workspaces.map((workspace) => ({
+                  value: workspace.id,
+                  label: workspace.name,
+                }))}
+                className="w-full"
+              />
+              <p className="text-xs text-foreground-subtle">
+                This key will save and search memories inside this workspace.
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-3 p-4 border-t border-border bg-surface/50 rounded-b-2xl">
@@ -183,7 +224,9 @@ function CreateKeyModal({
             <Button
               type="submit"
               className="flex-1 hover:translate-y-0 hover:shadow-none cursor-pointer"
-              disabled={createMutation.isPending || !keyName.trim()}
+              disabled={
+                createMutation.isPending || !keyName.trim() || !selectedWorkspaceId
+              }
             >
               {createMutation.isPending ? (
                 <>
@@ -579,7 +622,7 @@ export default function ApiKeysPage() {
       ) : (
         <Card className="overflow-hidden shadow-none">
           <div className="overflow-auto">
-            <table className="w-full min-w-[640px]">
+            <table className="w-full min-w-[760px]">
               <thead className="sticky top-0 z-10 bg-surface-elevated border-b border-border">
                 <tr className="h-11">
                   <th className="text-center text-xs font-semibold text-foreground-muted uppercase tracking-wider w-12 border-r border-border">
@@ -590,6 +633,9 @@ export default function ApiKeysPage() {
                   </th>
                   <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-32 border-r border-border">
                     Key
+                  </th>
+                  <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-40 border-r border-border">
+                    Workspace
                   </th>
                   <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider w-44 border-r border-border">
                     Created
@@ -623,6 +669,13 @@ export default function ApiKeysPage() {
                       <code className="text-sm font-mono text-foreground-muted">
                         {key.keyPrefix}...
                       </code>
+                    </td>
+
+                    {/* Workspace */}
+                    <td className="px-4 py-2 w-40 border-r border-border">
+                      <span className="text-sm text-foreground-muted truncate block">
+                        {key.workspaceName ?? "Unknown workspace"}
+                      </span>
                     </td>
 
                     {/* Created */}

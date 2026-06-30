@@ -41,7 +41,7 @@ function TableSkeleton() {
                 User
               </th>
               <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden md:table-cell">
-                Plan
+                Primary Workspace Plan
               </th>
               <th className="text-left px-4 text-xs font-semibold text-foreground-muted uppercase tracking-wider hidden lg:table-cell">
                 Memories

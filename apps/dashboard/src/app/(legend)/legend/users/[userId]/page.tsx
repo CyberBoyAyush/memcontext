@@ -22,6 +22,7 @@ import {
   MagnifyingGlass,
   Clock,
   ArrowsClockwise,
+  Buildings,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -46,6 +47,16 @@ const planColors: Record<string, string> = {
   hobby: "bg-blue-500/10 text-blue-500 border-blue-500/20",
   pro: "bg-purple-500/10 text-purple-500 border-purple-500/20",
   ultimate: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+};
+
+type AdminWorkspace = {
+  id: string;
+  name: string;
+  slug: string;
+  role: string;
+  plan: string;
+  memoryCount: number;
+  memoryLimit: number;
 };
 
 function PlanSelect({
@@ -134,10 +145,84 @@ function PlanSelect({
   );
 }
 
+function WorkspaceSelect({
+  value,
+  workspaces,
+  onChange,
+  disabled,
+}: {
+  value: string;
+  workspaces: AdminWorkspace[];
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const selectedWorkspace = workspaces.find((workspace) => workspace.id === value);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => !disabled && setOpen(!open)}
+        disabled={disabled}
+        className={cn(
+          "flex h-10 w-full items-center justify-between rounded-xl border border-border bg-surface px-4 py-2 text-sm transition-colors",
+          "focus:outline-none hover:bg-surface-elevated",
+          disabled && "cursor-not-allowed opacity-50",
+        )}
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <Buildings className="h-4 w-4 shrink-0 text-foreground-muted" weight="duotone" />
+          <span className="truncate">
+            {selectedWorkspace?.name ?? "Select workspace"}
+          </span>
+        </span>
+        <CaretDown
+          className={cn("h-4 w-4 transition-transform", open && "rotate-180")}
+          weight="bold"
+        />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute top-full mt-1 w-full rounded-xl border border-border bg-surface-elevated shadow-lg z-20 overflow-hidden animate-scale-in">
+            {workspaces.map((workspace) => (
+              <button
+                key={workspace.id}
+                onClick={() => {
+                  onChange(workspace.id);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "flex w-full items-center justify-between px-4 py-3 text-left text-sm hover:bg-surface transition-colors",
+                  value === workspace.id && "bg-surface",
+                )}
+              >
+                <span className="min-w-0">
+                  <span className="block truncate font-medium">
+                    {workspace.name}
+                  </span>
+                  <span className="block truncate text-xs text-foreground-muted">
+                    {workspace.slug} · {workspace.role} · {workspace.plan} plan
+                  </span>
+                </span>
+                {value === workspace.id && (
+                  <Check className="h-4 w-4 text-accent shrink-0" weight="bold" />
+                )}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function ConfirmDialog({
   currentPlan,
   newPlan,
   userName,
+  workspaceName,
   onClose,
   onConfirm,
   isLoading,
@@ -145,6 +230,7 @@ function ConfirmDialog({
   currentPlan: string;
   newPlan: PlanType;
   userName: string;
+  workspaceName: string;
   onClose: () => void;
   onConfirm: () => void;
   isLoading: boolean;
@@ -168,7 +254,8 @@ function ConfirmDialog({
             <h3 className="text-lg font-semibold">Confirm Plan Change</h3>
             <p className="text-sm text-foreground-muted">
               You are about to change the plan for{" "}
-              <span className="font-medium text-foreground">{userName}</span>
+              <span className="font-medium text-foreground">{workspaceName}</span>
+              , which <span className="font-medium text-foreground">{userName}</span> belongs to
             </p>
           </div>
 
@@ -461,6 +548,7 @@ export default function AdminUserDetailPage() {
   const toast = useToast();
   const userId = params.userId as string;
 
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -472,20 +560,28 @@ export default function AdminUserDetailPage() {
 
   const updatePlanMutation = useUpdateUserPlan();
 
-  const currentPlan = (user?.plan || "free") as PlanType;
+  const activeWorkspaceId = selectedWorkspaceId || user?.workspaces[0]?.id || "";
+  const activeWorkspace = user?.workspaces.find(
+    (workspace) => workspace.id === activeWorkspaceId,
+  );
+  const currentPlan = (activeWorkspace?.plan || "free") as PlanType;
   const hasChanges = selectedPlan !== null && selectedPlan !== currentPlan;
 
   function handleSave() {
-    if (!selectedPlan || selectedPlan === currentPlan) return;
+    if (!activeWorkspaceId || !selectedPlan || selectedPlan === currentPlan) return;
     setShowConfirm(true);
   }
 
   async function handleConfirm() {
-    if (!selectedPlan || !user) return;
+    if (!activeWorkspaceId || !selectedPlan || !user) return;
 
     try {
-      await updatePlanMutation.mutateAsync({ userId, plan: selectedPlan });
-      toast.success(`Plan updated to ${selectedPlan}`);
+      await updatePlanMutation.mutateAsync({
+        userId,
+        workspaceId: activeWorkspaceId,
+        plan: selectedPlan,
+      });
+      toast.success(`Workspace plan updated to ${selectedPlan}`);
       setShowConfirm(false);
       setSelectedPlan(null);
     } catch (err) {
@@ -646,13 +742,34 @@ export default function AdminUserDetailPage() {
         <Card>
           <CardContent className="p-6 space-y-6">
             <div>
-              <h3 className="text-lg font-semibold mb-1">Subscription Plan</h3>
+              <h3 className="text-lg font-semibold mb-1">Workspace Plan</h3>
               <p className="text-sm text-foreground-muted">
-                Manage the user&apos;s subscription plan and limits
+                Grant a subscription plan to one of this user&apos;s workspaces
               </p>
             </div>
 
             <div className="space-y-4">
+              {user.workspaces.length > 0 ? (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground-muted">
+                    Workspace
+                  </label>
+                  <WorkspaceSelect
+                    value={activeWorkspaceId}
+                    workspaces={user.workspaces}
+                    onChange={(workspaceId) => {
+                      setSelectedWorkspaceId(workspaceId);
+                      setSelectedPlan(null);
+                    }}
+                    disabled={updatePlanMutation.isPending}
+                  />
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-border bg-surface-elevated/30 p-4 text-sm text-foreground-muted">
+                  This user does not belong to any workspace yet.
+                </div>
+              )}
+
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground-muted">
                   Current Plan
@@ -666,7 +783,7 @@ export default function AdminUserDetailPage() {
 
               {hasChanges && (
                 <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-500">
-                  Plan will be changed from{" "}
+                  {activeWorkspace?.name ?? "Workspace"} will be changed from{" "}
                   <span className="font-medium capitalize">{currentPlan}</span>{" "}
                   to{" "}
                   <span className="font-medium capitalize">{selectedPlan}</span>
@@ -687,7 +804,7 @@ export default function AdminUserDetailPage() {
                 <Button
                   className={hasChanges ? "flex-1" : "w-full"}
                   onClick={handleSave}
-                  disabled={!hasChanges || updatePlanMutation.isPending}
+                  disabled={!activeWorkspaceId || !hasChanges || updatePlanMutation.isPending}
                 >
                   {updatePlanMutation.isPending ? (
                     <>
@@ -746,6 +863,7 @@ export default function AdminUserDetailPage() {
           currentPlan={currentPlan}
           newPlan={selectedPlan}
           userName={user.name}
+          workspaceName={activeWorkspace?.name ?? "Selected workspace"}
           onClose={() => setShowConfirm(false)}
           onConfirm={handleConfirm}
           isLoading={updatePlanMutation.isPending}

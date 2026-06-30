@@ -2,6 +2,7 @@
 
 import { Sidebar } from "@/components/sidebar";
 import { SidebarProvider, useSidebar } from "@/providers/sidebar-provider";
+import { WorkspaceProvider } from "@/providers/workspace-provider";
 import { cn } from "@/lib/utils";
 
 function AdminContent({ children }: { children: React.ReactNode }) {
@@ -38,7 +39,9 @@ export function AdminLayoutContent({
 }) {
   return (
     <SidebarProvider>
-      <AdminContent>{children}</AdminContent>
+      <WorkspaceProvider>
+        <AdminContent>{children}</AdminContent>
+      </WorkspaceProvider>
     </SidebarProvider>
   );
 }

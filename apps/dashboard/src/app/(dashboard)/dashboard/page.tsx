@@ -23,6 +23,7 @@ import {
 import { api } from "@/lib/api";
 import Link from "next/link";
 import { useToast } from "@/providers/toast-provider";
+import { useWorkspace } from "@/providers/workspace-provider";
 import {
   ChartContainer,
   ChartTooltip,
@@ -406,6 +407,7 @@ export default function DashboardPage() {
   const searchParams = useSearchParams();
   const toast = useToast();
   const hasShownError = useRef(false);
+  const { activeWorkspace, activeWorkspaceId } = useWorkspace();
 
   useEffect(() => {
     const error = searchParams.get("error");
@@ -419,8 +421,12 @@ export default function DashboardPage() {
   }, [searchParams, toast]);
 
   const { data: subscription, isLoading: subLoading } = useQuery({
-    queryKey: ["subscription"],
-    queryFn: () => api.get<SubscriptionData>("/api/user/subscription"),
+    queryKey: ["subscription", activeWorkspaceId],
+    queryFn: () =>
+      api.get<SubscriptionData>(
+        `/api/user/subscription?workspaceId=${activeWorkspaceId}`,
+      ),
+    enabled: !!activeWorkspaceId,
   });
 
   const { data: apiKeys, isLoading: keysLoading } = useQuery({
@@ -434,8 +440,12 @@ export default function DashboardPage() {
   });
 
   const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ["dashboard-stats"],
-    queryFn: () => api.get<DashboardStats>("/api/user/dashboard-stats"),
+    queryKey: ["dashboard-stats", activeWorkspaceId],
+    queryFn: () =>
+      api.get<DashboardStats>(
+        `/api/user/dashboard-stats?workspaceId=${activeWorkspaceId}`,
+      ),
+    enabled: !!activeWorkspaceId,
   });
 
   const userName = profile?.user?.name?.split(" ")[0] || "there";
@@ -457,14 +467,16 @@ export default function DashboardPage() {
               Welcome back, {userName}
             </h1>
             <p className="text-foreground-muted mt-1">
-              Here&apos;s what&apos;s happening with your memories
+              {activeWorkspace
+                ? `Mounted in ${activeWorkspace.name}. Memories, vaults, and billing follow this workspace.`
+                : "Select a workspace to mount your memories and vaults."}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <div className="px-3 py-1.5 rounded-full bg-accent/10 border border-accent/20 flex items-center gap-2">
               <Sparkle className="h-3.5 w-3.5 text-accent" weight="fill" />
               <span className="text-sm font-medium text-accent capitalize">
-                {subscription?.plan || "Free"} Plan
+                {subscription?.plan || "Free"} Workspace Plan
               </span>
             </div>
           </div>
@@ -554,12 +566,12 @@ export default function DashboardPage() {
           </div>
         </Link>
 
-        {/* Current Plan Card */}
+        {/* Workspace Plan Card */}
         <Link href="/subscription" className="group">
           <div className="h-full rounded-xl sm:rounded-2xl border border-border bg-surface group-hover:border-border-hover transition-colors p-3 sm:p-4 flex items-center justify-between gap-2 sm:gap-4">
             <div className="min-w-0">
               <p className="text-xs sm:text-sm text-foreground-muted">
-                Current Plan
+                Workspace Plan
               </p>
               <div className="text-xl sm:text-3xl font-semibold mt-0.5 sm:mt-1 capitalize">
                 {subLoading ? "..." : subscription?.plan || "Free"}
