@@ -19,6 +19,7 @@ export interface ApiResponse<T> {
 
 export interface CachedApiKeyData {
   userId: string;
+  workspaceId: string;
   keyId: string;
   plan: string;
   memoryCount: number;
@@ -28,7 +29,7 @@ export interface CachedApiKeyData {
 export type MemoryCategory = "preference" | "fact" | "decision" | "context";
 
 export type MemorySource = "mcp" | "web" | "api" | "openclaw";
-export type MemoryType = "user" | "document" | "company";
+export type MemoryType = "member" | "user" | "document" | "company";
 export type DocumentSourceType =
   | "pdf"
   | "markdown"
@@ -42,8 +43,8 @@ export type DocumentSourceType =
   | "jpeg"
   | "webp"
   | "tiff";
-export type CompanyBrainSearchMode = "memories" | "documents" | "hybrid";
-export type CompanyBrainDocumentStatus =
+export type ContextVaultSearchMode = "memories" | "documents" | "hybrid";
+export type ContextVaultDocumentStatus =
   | "pending"
   | "processing"
   | "retrying"
@@ -140,7 +141,7 @@ export interface MemoryWithRelevance {
   category?: MemoryCategory;
   scope?: string;
   project?: string;
-  memoryType?: "user" | "document" | "company";
+  memoryType?: MemoryType;
   relevance: number;
   createdAt: Date;
 }
@@ -294,8 +295,9 @@ export interface AcceptWorkspaceInvitationResponse {
   workspaceId: string;
 }
 
-export interface IngestCompanyBrainDocumentRequest {
+export interface IngestContextVaultDocumentRequest {
   workspaceId: string;
+  vaultId?: string;
   title: string;
   content?: string;
   sourceType?: DocumentSourceType;
@@ -310,8 +312,9 @@ export interface IngestCompanyBrainDocumentRequest {
   category?: MemoryCategory;
 }
 
-export interface UploadCompanyBrainDocumentRequest {
+export interface UploadContextVaultDocumentRequest {
   workspaceId: string;
+  vaultId?: string;
   title: string;
   file: Blob;
   filename?: string;
@@ -321,11 +324,11 @@ export interface UploadCompanyBrainDocumentRequest {
   content?: string;
 }
 
-export interface CompanyBrainDocument {
+export interface ContextVaultDocument {
   id: string;
   title: string | null;
   sourceType: string;
-  status: CompanyBrainDocumentStatus;
+  status: ContextVaultDocumentStatus;
   chunkCount: number;
   extractedCount: number;
   totalChunks: number;
@@ -340,32 +343,33 @@ export interface CompanyBrainDocument {
   publicUrl: string | null;
 }
 
-export interface ListCompanyBrainDocumentsResponse {
-  documents: CompanyBrainDocument[];
+export interface ListContextVaultDocumentsResponse {
+  documents: ContextVaultDocument[];
 }
 
-export interface IngestCompanyBrainDocumentResponse {
-  document: CompanyBrainDocument;
+export interface IngestContextVaultDocumentResponse {
+  document: ContextVaultDocument;
   chunkCount: number;
   extractedCount: number;
   status: "accepted";
   message: string;
 }
 
-export interface CancelCompanyBrainDocumentResponse {
+export interface CancelContextVaultDocumentResponse {
   cancelled: boolean;
   documentId: string;
 }
 
-export interface DeleteCompanyBrainDocumentResponse {
+export interface DeleteContextVaultDocumentResponse {
   deleted: boolean;
   documentId: string;
   deletedMemoryCount: number;
   preservedMemoryCount: number;
 }
 
-export interface ListCompanyBrainMemoriesRequest {
+export interface ListContextVaultMemoriesRequest {
   workspaceId: string;
+  vaultId?: string;
   scope?: string;
   project?: string;
   projects?: string[];
@@ -374,24 +378,25 @@ export interface ListCompanyBrainMemoriesRequest {
   offset?: number;
 }
 
-export interface CreateCompanyBrainMemoryRequest {
+export interface CreateContextVaultMemoryRequest {
   workspaceId: string;
+  vaultId?: string;
   content: string;
   category?: MemoryCategory;
   scope?: string;
   project?: string;
 }
 
-export interface CreateCompanyBrainMemoryResponse {
-  memory: CompanyBrainMemory;
+export interface CreateContextVaultMemoryResponse {
+  memory: ContextVaultMemory;
 }
 
-export interface DeleteCompanyBrainMemoryResponse {
+export interface DeleteContextVaultMemoryResponse {
   success: boolean;
   memoryId: string;
 }
 
-export interface CompanyBrainMemory {
+export interface ContextVaultMemory {
   id: string;
   content: string;
   category: string | null;
@@ -404,30 +409,32 @@ export interface CompanyBrainMemory {
   sourceUrl: string | null;
 }
 
-export interface ListCompanyBrainMemoriesResponse {
-  memories: CompanyBrainMemory[];
+export interface ListContextVaultMemoriesResponse {
+  memories: ContextVaultMemory[];
   total: number;
   hasMore: boolean;
 }
 
-export interface ListCompanyBrainDocumentMemoriesResponse {
+export interface ListContextVaultDocumentMemoriesResponse {
   document: {
     id: string;
     title: string | null;
     publicUrl: string | null;
   };
-  memories: CompanyBrainMemory[];
+  memories: ContextVaultMemory[];
   total: number;
 }
 
-export interface CompanyBrainMemoryFeedbackRequest {
+export interface ContextVaultMemoryFeedbackRequest {
   workspaceId: string;
+  vaultId?: string;
   type: FeedbackType;
   context?: string;
 }
 
-export interface CorrectCompanyBrainMemoryRequest {
+export interface CorrectContextVaultMemoryRequest {
   workspaceId: string;
+  vaultId?: string;
   type?: "wrong" | "outdated" | "incomplete";
   correctedContent: string;
   reason?: string;
@@ -435,13 +442,13 @@ export interface CorrectCompanyBrainMemoryRequest {
   evidenceChunkId?: string;
 }
 
-export interface CorrectCompanyBrainMemoryResponse {
+export interface CorrectContextVaultMemoryResponse {
   success: boolean;
-  memory: CompanyBrainMemory;
+  memory: ContextVaultMemory;
   updatedChunkCount: number;
 }
 
-export interface CompanyBrainMemoryEvidence {
+export interface ContextVaultMemoryEvidence {
   chunkId: string;
   sourceId: string;
   chunkIndex: number;
@@ -453,41 +460,42 @@ export interface CompanyBrainMemoryEvidence {
   confidence: number | null;
 }
 
-export interface ListCompanyBrainMemoryEvidenceResponse {
-  evidence: CompanyBrainMemoryEvidence[];
+export interface ListContextVaultMemoryEvidenceResponse {
+  evidence: ContextVaultMemoryEvidence[];
 }
 
-export interface CompanyBrainHierarchyProject {
+export interface ContextVaultHierarchyProject {
   name: string;
   value: string;
   count: number;
 }
 
-export interface CompanyBrainHierarchyScope {
+export interface ContextVaultHierarchyScope {
   name: string;
   count: number;
-  projects: CompanyBrainHierarchyProject[];
+  projects: ContextVaultHierarchyProject[];
 }
 
-export interface CompanyBrainHierarchyResponse {
+export interface ContextVaultHierarchyResponse {
   global: {
     count: number;
-    projects: CompanyBrainHierarchyProject[];
+    projects: ContextVaultHierarchyProject[];
   };
-  scopes: CompanyBrainHierarchyScope[];
+  scopes: ContextVaultHierarchyScope[];
 }
 
-export interface SearchCompanyBrainRequest {
+export interface SearchContextVaultRequest {
   workspaceId: string;
+  vaultId?: string;
   query: string;
-  mode?: CompanyBrainSearchMode;
+  mode?: ContextVaultSearchMode;
   scope?: string;
   scopes?: string[];
   project?: string;
   limit?: number;
 }
 
-export interface CompanyBrainSearchChunk {
+export interface ContextVaultSearchChunk {
   id: string;
   sourceId: string;
   title: string | null;
@@ -502,7 +510,7 @@ export interface CompanyBrainSearchChunk {
   createdAt: Date;
 }
 
-export interface CompanyBrainSearchMemory {
+export interface ContextVaultSearchMemory {
   id: string;
   content: string;
   category: string | null;
@@ -521,45 +529,12 @@ export interface CompanyBrainSearchMemory {
   }>;
 }
 
-export interface SearchCompanyBrainResponse {
-  mode: CompanyBrainSearchMode;
+export interface SearchContextVaultResponse {
+  mode: ContextVaultSearchMode;
   found: number;
-  chunks: CompanyBrainSearchChunk[];
-  memories: CompanyBrainSearchMemory[];
+  chunks: ContextVaultSearchChunk[];
+  memories: ContextVaultSearchMemory[];
 }
-
-export type ContextVaultDocument = CompanyBrainDocument;
-export type ListContextVaultDocumentsResponse =
-  ListCompanyBrainDocumentsResponse;
-export type IngestContextVaultDocumentRequest =
-  IngestCompanyBrainDocumentRequest;
-export type IngestContextVaultDocumentResponse =
-  IngestCompanyBrainDocumentResponse;
-export type UploadContextVaultDocumentRequest =
-  UploadCompanyBrainDocumentRequest;
-export type CancelContextVaultDocumentResponse =
-  CancelCompanyBrainDocumentResponse;
-export type DeleteContextVaultDocumentResponse =
-  DeleteCompanyBrainDocumentResponse;
-export type ListContextVaultMemoriesRequest = ListCompanyBrainMemoriesRequest;
-export type CreateContextVaultMemoryRequest = CreateCompanyBrainMemoryRequest;
-export type CreateContextVaultMemoryResponse = CreateCompanyBrainMemoryResponse;
-export type DeleteContextVaultMemoryResponse = DeleteCompanyBrainMemoryResponse;
-export type ContextVaultMemory = CompanyBrainMemory;
-export type ListContextVaultMemoriesResponse = ListCompanyBrainMemoriesResponse;
-export type ListContextVaultDocumentMemoriesResponse =
-  ListCompanyBrainDocumentMemoriesResponse;
-export type ContextVaultMemoryFeedbackRequest =
-  CompanyBrainMemoryFeedbackRequest;
-export type CorrectContextVaultMemoryRequest = CorrectCompanyBrainMemoryRequest;
-export type CorrectContextVaultMemoryResponse =
-  CorrectCompanyBrainMemoryResponse;
-export type ContextVaultMemoryEvidence = CompanyBrainMemoryEvidence;
-export type ListContextVaultMemoryEvidenceResponse =
-  ListCompanyBrainMemoryEvidenceResponse;
-export type ContextVaultHierarchyResponse = CompanyBrainHierarchyResponse;
-export type SearchContextVaultRequest = SearchCompanyBrainRequest;
-export type SearchContextVaultResponse = SearchCompanyBrainResponse;
 
 export interface MemoryGraphNode {
   id: string;
@@ -616,7 +591,8 @@ export type SubscriptionStatus =
 
 export interface Subscription {
   id: string;
-  userId: string;
+  userId?: string;
+  workspaceId: string;
   plan: PlanType;
   memoryCount: number;
   memoryLimit: number;
@@ -637,6 +613,8 @@ export interface MemoryLimitCheck {
 export interface ApiKey {
   id: string;
   userId: string;
+  workspaceId: string;
+  workspaceName?: string;
   keyPrefix: string;
   name: string;
   lastUsedAt?: Date;
@@ -645,12 +623,14 @@ export interface ApiKey {
 
 export interface CreateApiKeyRequest {
   name: string;
+  workspaceId?: string;
 }
 
 export interface CreateApiKeyResponse {
   id: string;
   name: string;
   keyPrefix: string;
+  workspaceId: string;
   key: string;
   createdAt: Date;
 }
