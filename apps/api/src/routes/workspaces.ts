@@ -3,9 +3,9 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { HTTPException } from "hono/http-exception";
 import {
-  eitherAuthMiddleware,
-  type EitherAuthContext,
-} from "../middleware/either-auth.js";
+  sessionAuthMiddleware,
+  type SessionContext,
+} from "../middleware/session-auth.js";
 import {
   acceptWorkspaceInvitation,
   createWorkspace,
@@ -20,11 +20,11 @@ import {
 
 const app = new Hono<{
   Variables: {
-    auth: EitherAuthContext;
+    session: SessionContext;
   };
 }>();
 
-app.use("*", eitherAuthMiddleware);
+app.use("*", sessionAuthMiddleware);
 
 const createWorkspaceSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -52,12 +52,12 @@ const invitationIdParamSchema = workspaceIdParamSchema.extend({
 });
 
 app.get("/", async (c) => {
-  const { userId } = c.get("auth");
+  const { userId } = c.get("session");
   return c.json(await listWorkspaces(userId));
 });
 
 app.post("/", zValidator("json", createWorkspaceSchema), async (c) => {
-  const { userId } = c.get("auth");
+  const { userId } = c.get("session");
   const body = c.req.valid("json");
   const workspace = await createWorkspace(userId, body.name);
   return c.json({ workspace }, 201);
@@ -68,7 +68,7 @@ app.post(
   zValidator("param", workspaceIdParamSchema),
   zValidator("json", inviteSchema),
   async (c) => {
-    const { userId } = c.get("auth");
+    const { userId } = c.get("session");
     const { workspaceId } = c.req.valid("param");
     const body = c.req.valid("json");
 
@@ -104,7 +104,7 @@ app.get(
   "/:workspaceId/team",
   zValidator("param", workspaceIdParamSchema),
   async (c) => {
-    const { userId } = c.get("auth");
+    const { userId } = c.get("session");
     const { workspaceId } = c.req.valid("param");
 
     try {
@@ -126,7 +126,7 @@ app.patch(
   zValidator("param", workspaceIdParamSchema),
   zValidator("json", z.object({ userId: z.string().min(1) })),
   async (c) => {
-    const { userId } = c.get("auth");
+    const { userId } = c.get("session");
     const { workspaceId } = c.req.valid("param");
     const body = c.req.valid("json");
 
@@ -159,7 +159,7 @@ app.patch(
   zValidator("param", memberIdParamSchema),
   zValidator("json", z.object({ role: z.enum(["admin", "member", "viewer"]) })),
   async (c) => {
-    const { userId } = c.get("auth");
+    const { userId } = c.get("session");
     const { workspaceId, memberId } = c.req.valid("param");
     const { role } = c.req.valid("json");
 
@@ -187,7 +187,7 @@ app.delete(
   "/:workspaceId/members/:memberId",
   zValidator("param", memberIdParamSchema),
   async (c) => {
-    const { userId } = c.get("auth");
+    const { userId } = c.get("session");
     const { workspaceId, memberId } = c.req.valid("param");
 
     try {
@@ -209,7 +209,7 @@ app.delete(
   "/:workspaceId/invitations/:invitationId",
   zValidator("param", invitationIdParamSchema),
   async (c) => {
-    const { userId } = c.get("auth");
+    const { userId } = c.get("session");
     const { workspaceId, invitationId } = c.req.valid("param");
 
     try {
@@ -234,7 +234,7 @@ app.post(
   "/invitations/accept",
   zValidator("json", acceptInviteSchema),
   async (c) => {
-    const { userId } = c.get("auth");
+    const { userId } = c.get("session");
     const body = c.req.valid("json");
 
     try {

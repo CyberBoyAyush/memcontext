@@ -4,15 +4,18 @@ import { db, apiKeys } from "../db/index.js";
 import {
   getCachedApiKey,
   cacheApiKey,
+  invalidateApiKey,
   type CachedApiKeyData,
 } from "../services/cache.js";
 import { getSubscriptionData } from "../services/subscription.js";
+import { getWorkspaceMembership } from "../services/workspace.js";
 import { hashApiKey } from "../utils/index.js";
 import { logger } from "../lib/logger.js";
 import { eq, sql } from "drizzle-orm";
 
 export interface AuthContext {
   userId: string;
+  workspaceId: string;
   keyId: string;
   keyHash: string;
   plan: string;
@@ -90,6 +93,51 @@ export async function validateApiKey(
 
   const cached = await getCachedApiKey(keyHash);
   if (cached) {
+    const [keyRecord] = await db
+      .select({
+        id: apiKeys.id,
+        userId: apiKeys.userId,
+        workspaceId: apiKeys.workspaceId,
+      })
+      .from(apiKeys)
+      .where(eq(apiKeys.keyHash, keyHash))
+      .limit(1);
+
+    if (
+      !keyRecord ||
+      keyRecord.id !== cached.keyId ||
+      keyRecord.userId !== cached.userId ||
+      keyRecord.workspaceId !== cached.workspaceId
+    ) {
+      await invalidateApiKey(keyHash);
+      logger.warn(
+        { keyId: cached.keyId, userId: cached.userId },
+        "api key denied - cached binding is stale",
+      );
+      return null;
+    }
+
+    const membership = await getWorkspaceMembership(
+      cached.userId,
+      cached.workspaceId,
+    );
+    if (!membership) {
+      await invalidateApiKey(keyHash);
+      logger.warn(
+        { userId: cached.userId, workspaceId: cached.workspaceId, keyId: cached.keyId },
+        "api key denied - cached user is not a workspace member",
+      );
+      return null;
+    }
+
+    const subData = await getSubscriptionData(cached.userId, cached.workspaceId);
+    await cacheApiKey(keyHash, {
+      ...cached,
+      plan: subData.plan,
+      memoryCount: subData.memoryCount,
+      memoryLimit: subData.memoryLimit,
+    });
+
     updateLastUsed(cached.keyId).catch((err) => {
       logger.error(
         {
@@ -102,11 +150,12 @@ export async function validateApiKey(
 
     return {
       userId: cached.userId,
+      workspaceId: cached.workspaceId,
       keyId: cached.keyId,
       keyHash,
-      plan: cached.plan,
-      memoryCount: cached.memoryCount,
-      memoryLimit: cached.memoryLimit,
+      plan: subData.plan,
+      memoryCount: subData.memoryCount,
+      memoryLimit: subData.memoryLimit,
     };
   }
 
@@ -115,6 +164,7 @@ export async function validateApiKey(
     .select({
       id: apiKeys.id,
       userId: apiKeys.userId,
+      workspaceId: apiKeys.workspaceId,
     })
     .from(apiKeys)
     .where(eq(apiKeys.keyHash, keyHash))
@@ -134,10 +184,30 @@ export async function validateApiKey(
     return null;
   }
 
-  const subData = await getSubscriptionData(keyRecord.userId);
+  if (!keyRecord.workspaceId) {
+    logger.warn(
+      { userId: keyRecord.userId, keyId: keyRecord.id },
+      "api key denied - missing workspace binding",
+    );
+    return null;
+  }
+
+  const workspaceId = keyRecord.workspaceId;
+
+  const membership = await getWorkspaceMembership(keyRecord.userId, workspaceId);
+  if (!membership) {
+    logger.warn(
+      { userId: keyRecord.userId, workspaceId, keyId: keyRecord.id },
+      "api key denied - user is not a workspace member",
+    );
+    return null;
+  }
+
+  const subData = await getSubscriptionData(keyRecord.userId, workspaceId);
 
   const authContext: CachedApiKeyData = {
     userId: keyRecord.userId,
+    workspaceId,
     keyId: keyRecord.id,
     plan: subData.plan,
     memoryCount: subData.memoryCount,

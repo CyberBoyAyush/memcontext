@@ -1,12 +1,16 @@
 import { createMiddleware } from "hono/factory";
 import { HTTPException } from "hono/http-exception";
+import { and, eq } from "drizzle-orm";
 import { auth } from "../lib/auth.js";
 import { validateApiKey } from "./auth.js";
 import { getSubscriptionData } from "../services/subscription.js";
+import { getOrCreateDefaultWorkspace } from "../services/subscription.js";
+import { db, mcpWorkspaceSelections, workspaceMembers } from "../db/index.js";
 import { logger } from "../lib/logger.js";
 
 export interface EitherAuthContext {
   userId: string;
+  workspaceId: string;
   authType: "api_key" | "oauth" | "session";
   // API key specific (present when authType is "api_key")
   keyId?: string;
@@ -14,6 +18,23 @@ export interface EitherAuthContext {
   plan: string;
   memoryCount: number;
   memoryLimit: number;
+}
+
+async function getSelectedMcpWorkspaceId(userId: string) {
+  const [selection] = await db
+    .select({ workspaceId: mcpWorkspaceSelections.workspaceId })
+    .from(mcpWorkspaceSelections)
+    .innerJoin(
+      workspaceMembers,
+      and(
+        eq(workspaceMembers.workspaceId, mcpWorkspaceSelections.workspaceId),
+        eq(workspaceMembers.userId, mcpWorkspaceSelections.userId),
+      ),
+    )
+    .where(eq(mcpWorkspaceSelections.userId, userId))
+    .limit(1);
+
+  return selection?.workspaceId;
 }
 
 export const eitherAuthMiddleware = createMiddleware<{
@@ -41,6 +62,7 @@ export const eitherAuthMiddleware = createMiddleware<{
       );
       c.set("auth", {
         userId: apiKeyAuth.userId,
+        workspaceId: apiKeyAuth.workspaceId,
         authType: "api_key",
         keyId: apiKeyAuth.keyId,
         keyHash: apiKeyAuth.keyHash,
@@ -65,7 +87,10 @@ export const eitherAuthMiddleware = createMiddleware<{
           .filter(Boolean);
 
         if (scopes.includes("mcp:memories")) {
-          const subData = await getSubscriptionData(mcpSession.userId);
+          const workspaceId =
+            (await getSelectedMcpWorkspaceId(mcpSession.userId)) ??
+            (await getOrCreateDefaultWorkspace(mcpSession.userId));
+          const subData = await getSubscriptionData(mcpSession.userId, workspaceId);
           const duration = Math.round(performance.now() - start);
 
           logger.debug(
@@ -80,6 +105,7 @@ export const eitherAuthMiddleware = createMiddleware<{
 
           c.set("auth", {
             userId: mcpSession.userId,
+            workspaceId,
             authType: "oauth",
             plan: subData.plan,
             memoryCount: subData.memoryCount,
@@ -97,7 +123,8 @@ export const eitherAuthMiddleware = createMiddleware<{
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
   if (session) {
     // Fetch subscription data for session user
-    const subData = await getSubscriptionData(session.user.id);
+    const workspaceId = await getOrCreateDefaultWorkspace(session.user.id);
+    const subData = await getSubscriptionData(session.user.id, workspaceId);
     const duration = Math.round(performance.now() - start);
 
     logger.debug(
@@ -107,6 +134,7 @@ export const eitherAuthMiddleware = createMiddleware<{
 
     c.set("auth", {
       userId: session.user.id,
+      workspaceId,
       authType: "session",
       plan: subData.plan,
       memoryCount: subData.memoryCount,

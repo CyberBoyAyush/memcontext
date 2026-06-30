@@ -41,7 +41,7 @@ export async function listWorkspaces(userId: string) {
     .innerJoin(workspaces, eq(workspaceMembers.workspaceId, workspaces.id))
     .leftJoin(
       subscriptions,
-      eq(workspaces.billingOwnerUserId, subscriptions.userId),
+      eq(workspaces.id, subscriptions.workspaceId),
     )
     .where(eq(workspaceMembers.userId, userId))
     .orderBy(workspaces.createdAt);
@@ -343,6 +343,14 @@ async function requireWorkspaceManager(userId: string, workspaceId: string) {
   return membership;
 }
 
+async function requireWorkspaceOwner(userId: string, workspaceId: string) {
+  const membership = await requireWorkspaceMember(userId, workspaceId);
+  if (membership.role !== "owner") {
+    throw new Error("Only workspace owners can manage billing");
+  }
+  return membership;
+}
+
 function canManageRole(managerRole: string, targetRole: string) {
   if (targetRole === "owner") return false;
   if (managerRole === "owner") return true;
@@ -354,7 +362,7 @@ export async function updateWorkspaceBillingOwner(params: {
   workspaceId: string;
   billingOwnerUserId: string;
 }) {
-  await requireWorkspaceManager(params.userId, params.workspaceId);
+  await requireWorkspaceOwner(params.userId, params.workspaceId);
 
   const [target] = await db
     .select({

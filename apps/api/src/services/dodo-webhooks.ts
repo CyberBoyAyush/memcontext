@@ -1,7 +1,13 @@
-import { db, subscriptions, apiKeys, PLAN_LIMITS } from "../db/index.js";
+import {
+  db,
+  subscriptions,
+  apiKeys,
+  PLAN_LIMITS,
+  workspaceMembers,
+} from "../db/index.js";
 import { user as userTable } from "../db/auth-schema.js";
 import type { PlanType, SubscriptionStatus } from "../db/schema.js";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 import { env } from "../env.js";
 import { invalidateApiKey } from "./cache.js";
@@ -39,7 +45,7 @@ export function mapProductToPlan(productId: string): PlanType {
   if (productId === env.DODO_PRODUCT_HOBBY) return "hobby";
   if (productId === env.DODO_PRODUCT_PRO) return "pro";
   if (productId === env.DODO_PRODUCT_ULTIMATE) return "ultimate";
-  return "free";
+  throw new Error(`Unknown Dodo product ID: ${productId}`);
 }
 
 /**
@@ -84,6 +90,83 @@ async function findUserIdFromCustomer(
   return null;
 }
 
+async function resolveWebhookSubscription(params: {
+  subscriptionId?: string;
+  customerId: string;
+  metadata?: Record<string, unknown> | null;
+  email?: string;
+}) {
+  const metadataWorkspaceId =
+    typeof params.metadata?.workspace_id === "string"
+      ? params.metadata.workspace_id
+      : typeof params.metadata?.workspaceId === "string"
+        ? params.metadata.workspaceId
+        : undefined;
+
+  if (params.subscriptionId) {
+    const [existing] = await db
+      .select({ userId: subscriptions.userId, workspaceId: subscriptions.workspaceId })
+      .from(subscriptions)
+      .where(eq(subscriptions.dodoSubscriptionId, params.subscriptionId))
+      .limit(1);
+    if (existing) return existing;
+  }
+
+  const userId = await findUserIdFromCustomer(
+    params.customerId,
+    params.metadata,
+    params.email,
+  );
+  if (!userId) return null;
+
+  if (metadataWorkspaceId) {
+    const [membership] = await db
+      .select({ workspaceId: workspaceMembers.workspaceId })
+      .from(workspaceMembers)
+      .where(
+        and(
+          eq(workspaceMembers.workspaceId, metadataWorkspaceId),
+          eq(workspaceMembers.userId, userId),
+        ),
+      )
+      .limit(1);
+
+    if (membership) return { userId, workspaceId: metadataWorkspaceId };
+
+    logger.error(
+      {
+        userId,
+        customerId: params.customerId,
+        subscriptionId: params.subscriptionId,
+        workspaceId: metadataWorkspaceId,
+      },
+      "could not resolve Dodo webhook - metadata workspace is not owned by user",
+    );
+    return null;
+  }
+
+  const customerSubscriptions = await db
+    .select({ userId: subscriptions.userId, workspaceId: subscriptions.workspaceId })
+    .from(subscriptions)
+    .where(eq(subscriptions.dodoCustomerId, params.customerId))
+    .limit(2);
+
+  if (customerSubscriptions.length === 1) return customerSubscriptions[0];
+  if (customerSubscriptions.length > 1) {
+    logger.error(
+      { userId, customerId: params.customerId, subscriptionId: params.subscriptionId },
+      "could not resolve Dodo webhook - customer maps to multiple workspaces",
+    );
+    return null;
+  }
+
+  logger.error(
+    { userId, customerId: params.customerId, subscriptionId: params.subscriptionId },
+    "could not resolve workspace for Dodo webhook - missing workspace metadata",
+  );
+  return null;
+}
+
 /**
  * Handle subscription.active webhook
  * Called when: User completes payment and subscription is activated
@@ -114,13 +197,14 @@ export async function handleSubscriptionActive(
     return;
   }
 
-  const userId = await findUserIdFromCustomer(
-    customer.customer_id,
-    customer.metadata,
-    customer.email,
-  );
+  const target = await resolveWebhookSubscription({
+    subscriptionId,
+    customerId: customer.customer_id,
+    metadata: customer.metadata,
+    email: customer.email,
+  });
 
-  if (!userId) {
+  if (!target) {
     logger.error(
       {
         customerId: customer.customer_id,
@@ -138,7 +222,7 @@ export async function handleSubscriptionActive(
   const memoryLimit = PLAN_LIMITS[plan];
 
   logger.debug(
-    { userId, productId, plan, memoryLimit },
+    { userId: target.userId, workspaceId: target.workspaceId, productId, plan, memoryLimit },
     "Mapped product to plan",
   );
 
@@ -152,14 +236,15 @@ export async function handleSubscriptionActive(
       status: "active" as SubscriptionStatus,
       updatedAt: new Date(),
     })
-    .where(eq(subscriptions.userId, userId));
+    .where(eq(subscriptions.workspaceId, target.workspaceId));
 
   // Invalidate API key cache so requests get fresh plan data
-  await invalidateUserCache(userId);
+  await invalidateUserCache(target.userId);
 
   logger.info(
     {
-      userId,
+      userId: target.userId,
+      workspaceId: target.workspaceId,
       plan,
       memoryLimit,
       subscriptionId,
@@ -249,7 +334,7 @@ export async function handleSubscriptionExpired(
       dodoSubscriptionId: null,
       updatedAt: new Date(),
     })
-    .where(eq(subscriptions.userId, sub.userId));
+    .where(eq(subscriptions.dodoSubscriptionId, subscriptionId));
 
   // Invalidate API key cache so requests get fresh plan data
   await invalidateUserCache(sub.userId);
@@ -420,13 +505,14 @@ export async function handleSubscriptionFailed(
   }
 
   // Find user by customer ID or email (user may not have dodoCustomerId yet since sub failed)
-  const userId = await findUserIdFromCustomer(
-    customer.customer_id,
-    customer.metadata,
-    customer.email,
-  );
+  const target = await resolveWebhookSubscription({
+    subscriptionId,
+    customerId: customer.customer_id,
+    metadata: customer.metadata,
+    email: customer.email,
+  });
 
-  if (!userId) {
+  if (!target) {
     logger.error(
       {
         customerId: customer.customer_id,
@@ -447,10 +533,15 @@ export async function handleSubscriptionFailed(
       dodoCustomerId: customer.customer_id,
       updatedAt: new Date(),
     })
-    .where(eq(subscriptions.userId, userId));
+    .where(eq(subscriptions.workspaceId, target.workspaceId));
 
   logger.info(
-    { userId, subscriptionId, customerId: customer.customer_id },
+    {
+      userId: target.userId,
+      workspaceId: target.workspaceId,
+      subscriptionId,
+      customerId: customer.customer_id,
+    },
     "Subscription creation failed (mandate creation failed)",
   );
 }
