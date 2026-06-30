@@ -11,7 +11,7 @@ import {
   UsersThree,
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
-import type { Workspace } from "@/lib/queries/company-brain";
+import type { Workspace } from "@/lib/queries/context-vault";
 
 interface WorkspaceSelectProps {
   workspaces: Workspace[];

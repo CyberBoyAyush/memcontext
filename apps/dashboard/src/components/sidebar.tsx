@@ -18,11 +18,14 @@ import {
   ArrowSquareOut,
   ShieldCheck,
   CaretUpDown,
+  Check,
   CreditCard,
   Envelope,
   BookOpen,
   ShareNetwork,
   Vault,
+  Buildings,
+  Plus,
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -32,6 +35,8 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { signOut } from "@/lib/auth-client";
 import { useSidebar } from "@/providers/sidebar-provider";
+import { useWorkspace } from "@/providers/workspace-provider";
+import { contextVaultVaultsQueryOptions } from "@/lib/queries/context-vault";
 
 function useIsMounted() {
   return useSyncExternalStore(
@@ -134,10 +139,18 @@ export function Sidebar() {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const { collapsed, setCollapsed, hoverPeek, setHoverPeek } = useSidebar();
+  const {
+    activeWorkspace,
+    activeWorkspaceId,
+    setActiveWorkspaceId,
+    workspaces,
+  } = useWorkspace();
   const { resolvedTheme, setTheme } = useTheme();
   const mounted = useIsMounted();
   const profileRef = useRef<HTMLDivElement>(null);
+  const workspaceRef = useRef<HTMLDivElement>(null);
 
   const { data: profile } = useQuery({
     queryKey: ["profile"],
@@ -145,9 +158,16 @@ export function Sidebar() {
   });
 
   const { data: subscription } = useQuery({
-    queryKey: ["subscription"],
-    queryFn: () => api.get<SubscriptionData>("/api/user/subscription"),
+    queryKey: ["subscription", activeWorkspaceId],
+    queryFn: () =>
+      api.get<SubscriptionData>(
+        `/api/user/subscription?workspaceId=${activeWorkspaceId}`,
+      ),
+    enabled: !!activeWorkspaceId,
   });
+  const { data: vaultsData } = useQuery(
+    contextVaultVaultsQueryOptions(activeWorkspaceId),
+  );
 
   const usagePercentage = Math.min(
     ((subscription?.memoryCount ?? 0) / (subscription?.memoryLimit ?? 1)) * 100,
@@ -162,6 +182,12 @@ export function Sidebar() {
         !profileRef.current.contains(event.target as Node)
       ) {
         setProfileOpen(false);
+      }
+      if (
+        workspaceRef.current &&
+        !workspaceRef.current.contains(event.target as Node)
+      ) {
+        setWorkspaceOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -282,6 +308,93 @@ export function Sidebar() {
             )}
             aria-label="Main navigation"
           >
+            {!collapsed && workspaces.length > 0 && (
+              <div className="relative mb-3" ref={workspaceRef}>
+                <div className="mb-1.5 flex items-center gap-2 px-1 text-[10px] font-semibold uppercase tracking-widest text-foreground-subtle">
+                  <Buildings className="h-3.5 w-3.5" weight="duotone" />
+                  Active workspace
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setWorkspaceOpen((open) => !open)}
+                  className="inline-flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-border bg-background/70 px-3 text-xs font-medium text-foreground transition-colors hover:border-border-hover hover:bg-surface-elevated focus:outline-none focus:ring-2 focus:ring-accent/20"
+                >
+                  <span className="truncate">
+                    {activeWorkspace?.name ?? "Select workspace"}
+                  </span>
+                  <CaretUpDown
+                    className="h-3.5 w-3.5 shrink-0 text-foreground-muted"
+                    weight="bold"
+                  />
+                </button>
+
+                {workspaceOpen && (
+                  <div className="absolute left-0 right-0 top-full z-[81] mt-1.5 overflow-hidden rounded-xl border border-border bg-surface-elevated p-1.5 shadow-lg animate-scale-in">
+                    <div className="max-h-56 overflow-y-auto">
+                      {workspaces.map((workspace) => {
+                        const isActive = workspace.id === activeWorkspaceId;
+                        return (
+                          <button
+                            key={workspace.id}
+                            type="button"
+                            onClick={() => {
+                              setActiveWorkspaceId(workspace.id);
+                              setWorkspaceOpen(false);
+                            }}
+                            className={cn(
+                              "flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left text-xs transition-colors",
+                              isActive
+                                ? "bg-surface text-foreground"
+                                : "text-foreground-muted hover:bg-surface hover:text-foreground",
+                            )}
+                          >
+                            <span className="flex min-w-0 items-center gap-2">
+                              <Buildings
+                                className="h-3.5 w-3.5 shrink-0 text-foreground-subtle"
+                                weight="duotone"
+                              />
+                              <span className="truncate">{workspace.name}</span>
+                            </span>
+                            {isActive && (
+                              <Check className="h-3.5 w-3.5 shrink-0" weight="bold" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-1.5 border-t border-border pt-1.5">
+                      <Link
+                        href="/settings?workspaceAction=add#workspaces"
+                        onClick={() => {
+                          setWorkspaceOpen(false);
+                          setMobileOpen(false);
+                        }}
+                        className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-xs font-medium text-foreground-muted transition-colors hover:bg-surface hover:text-foreground"
+                      >
+                        <Plus className="h-3.5 w-3.5 shrink-0" weight="bold" />
+                        Add workspace
+                      </Link>
+                      <Link
+                        href="/settings?workspaceAction=manage#workspaces"
+                        onClick={() => {
+                          setWorkspaceOpen(false);
+                          setMobileOpen(false);
+                        }}
+                        className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-xs font-medium text-foreground-muted transition-colors hover:bg-surface hover:text-foreground"
+                      >
+                        <GearSix
+                          className="h-3.5 w-3.5 shrink-0"
+                          weight="duotone"
+                        />
+                        Manage workspaces
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {navGroups.map((group, groupIndex) => (
               <div
                 key={group.title}
@@ -418,7 +531,7 @@ export function Sidebar() {
               <div className="p-2.5 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted">
-                    {subscription?.plan ?? "Free"} plan
+                    {subscription?.plan ?? activeWorkspace?.billingOwnerPlan ?? "Free"} plan
                   </span>
                   <span className="text-[10px] text-foreground-subtle">
                     {subscription?.memoryCount ?? 0}
@@ -443,7 +556,7 @@ export function Sidebar() {
                 </div>
                 <div className="flex items-center justify-between text-[10px] text-foreground-subtle pt-0.5">
                   <span>
-                    Vault{" "}
+                    Documents{" "}
                     <span className="text-foreground-muted font-medium tabular-nums">
                       {subscription?.contextDocumentsCount ?? 0}/
                       {subscription?.contextDocumentsLimit ?? 0}
@@ -451,9 +564,9 @@ export function Sidebar() {
                   </span>
                   <span className="h-2.5 w-px bg-border" />
                   <span>
-                    Workspaces{" "}
+                    Vaults{" "}
                     <span className="text-foreground-muted font-medium tabular-nums">
-                      {subscription?.workspaceCount ?? 0}/
+                      {vaultsData?.vaults.length ?? 0}/
                       {subscription?.workspaceLimit ?? 0}
                     </span>
                   </span>
@@ -465,7 +578,7 @@ export function Sidebar() {
                 className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-accent hover:bg-accent/5 border-t border-border transition-colors"
               >
                 <CreditCard size={12} weight="bold" />
-                {subscription?.plan === "free" ? "Select plan" : "Manage plan"}
+                Workspace billing
               </Link>
             </div>
 

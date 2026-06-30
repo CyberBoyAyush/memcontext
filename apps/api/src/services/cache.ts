@@ -10,6 +10,7 @@ const PROFILE_CACHE_TTL_SECONDS = 5 * 60;
 
 export interface CachedApiKeyData {
   userId: string;
+  workspaceId: string;
   keyId: string;
   plan: string;
   memoryCount: number;
@@ -21,12 +22,15 @@ function getCacheKey(keyHash: string): string {
 }
 
 function getProfileCacheKey(
-  userId: string,
+  _userId: string,
+  workspaceId?: string,
   scope?: string,
   project?: string,
+  visibleUserId?: string,
 ): string {
   const parts = {
-    userId,
+    workspaceId: workspaceId ?? null,
+    visibility: visibleUserId ?? "workspace",
     scope: normalizeScope(scope) ?? null,
     project: normalizeProjectName(project) ?? null,
   };
@@ -182,10 +186,18 @@ export async function updateCachedMemoryCount(
 
 export async function getCachedProfile(
   userId: string,
+  workspaceId: string | undefined,
   scope?: string,
   project?: string,
+  visibleUserId?: string,
 ): Promise<MemoryProfile | null> {
-  const cacheKey = getProfileCacheKey(userId, scope, project);
+  const cacheKey = getProfileCacheKey(
+    userId,
+    workspaceId,
+    scope,
+    project,
+    visibleUserId,
+  );
 
   try {
     return await redis.get<MemoryProfile>(cacheKey);
@@ -204,11 +216,19 @@ export async function getCachedProfile(
 
 export async function cacheProfile(
   userId: string,
+  workspaceId: string | undefined,
   scope: string | undefined,
   project: string | undefined,
+  visibleUserId: string | undefined,
   profile: MemoryProfile,
 ): Promise<void> {
-  const cacheKey = getProfileCacheKey(userId, scope, project);
+  const cacheKey = getProfileCacheKey(
+    userId,
+    workspaceId,
+    scope,
+    project,
+    visibleUserId,
+  );
 
   try {
     await redis.set(cacheKey, profile, { ex: PROFILE_CACHE_TTL_SECONDS });
@@ -226,12 +246,15 @@ export async function cacheProfile(
 
 export async function invalidateCachedProfile(
   userId: string,
+  workspaceId?: string,
   scope?: string,
   project?: string,
 ): Promise<void> {
   const keys = new Set<string>([
-    getProfileCacheKey(userId, scope),
-    getProfileCacheKey(userId, scope, project),
+    getProfileCacheKey(userId, workspaceId, scope),
+    getProfileCacheKey(userId, workspaceId, scope, project),
+    getProfileCacheKey(userId, workspaceId, scope, undefined, userId),
+    getProfileCacheKey(userId, workspaceId, scope, project, userId),
   ]);
 
   try {

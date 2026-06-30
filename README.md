@@ -348,7 +348,7 @@ Start free, scale as your AI memory grows. See [memcontext.in/pricing](https://m
 | **Support**          | Community | Priority  | Priority  |
 | **Early access**     | -         | -         | Yes       |
 
-These plan limits currently apply to personal/user memories. Context Vault is a beta workspace knowledge feature and its extracted document memories are tracked separately from the personal memory quota while document-specific limits are being finalized.
+These plan limits apply to each workspace's shared member-memory pool. Context Vault is a beta workspace knowledge feature, and its extracted document memories are tracked separately while document-specific limits are being finalized.
 
 ## Rate Limits
 
@@ -498,22 +498,22 @@ REST and SDK clients can pass `scope` on memory operations for hard isolation. T
 
 ### Context Vault Endpoints (API Key or Session auth)
 
-The public product name is Context Vault. The current beta API path remains `/api/company-brain/...` for compatibility.
+The public product name and API path are Context Vault: `/api/context-vault/...`.
 
 | Method | Path                                         | Description                                                                                                                         |
 | ------ | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| POST   | `/api/company-brain/documents`               | Ingest extracted text, public file URLs, or documentation/web URLs                                                                  |
-| POST   | `/api/company-brain/documents/upload`        | Upload and ingest a document file                                                                                                   |
-| GET    | `/api/company-brain/documents`               | List workspace documents and processing state                                                                                       |
-| POST   | `/api/company-brain/documents/:id/cancel`    | Stop a pending, retrying, or active document job                                                                                    |
-| DELETE | `/api/company-brain/documents/:id`           | Delete a document, chunks, citations, and exclusive extracted memories                                                              |
-| GET    | `/api/company-brain/documents/:id/memories`  | List extracted memories for a document                                                                                              |
-| GET    | `/api/company-brain/search`                  | Search workspace knowledge in `memories`, `documents`, or `hybrid` mode; hybrid returns separate `chunks[]` and `memories[]` arrays |
-| GET    | `/api/company-brain/memories`                | Browse workspace document memories                                                                                                  |
-| POST   | `/api/company-brain/memories/:id/feedback`   | Submit feedback on a workspace memory                                                                                               |
-| POST   | `/api/company-brain/memories/:id/correction` | Correct a workspace memory and optionally its cited source chunk                                                                    |
-| GET    | `/api/company-brain/memories/:id/evidence`   | Load citations/source chunks for a workspace memory                                                                                 |
-| GET    | `/api/company-brain/hierarchy`               | Scope/project hierarchy for workspace memories                                                                                      |
+| POST   | `/api/context-vault/documents`               | Ingest extracted text, public file URLs, or documentation/web URLs                                                                  |
+| POST   | `/api/context-vault/documents/upload`        | Upload and ingest a document file                                                                                                   |
+| GET    | `/api/context-vault/documents`               | List workspace documents and processing state                                                                                       |
+| POST   | `/api/context-vault/documents/:id/cancel`    | Stop a pending, retrying, or active document job                                                                                    |
+| DELETE | `/api/context-vault/documents/:id`           | Delete a document, chunks, citations, and exclusive extracted memories                                                              |
+| GET    | `/api/context-vault/documents/:id/memories`  | List extracted memories for a document                                                                                              |
+| GET    | `/api/context-vault/search`                  | Search workspace knowledge in `memories`, `documents`, or `hybrid` mode; hybrid returns separate `chunks[]` and `memories[]` arrays |
+| GET    | `/api/context-vault/memories`                | Browse workspace document memories                                                                                                  |
+| POST   | `/api/context-vault/memories/:id/feedback`   | Submit feedback on a workspace memory                                                                                               |
+| POST   | `/api/context-vault/memories/:id/correction` | Correct a workspace memory and optionally its cited source chunk                                                                    |
+| GET    | `/api/context-vault/memories/:id/evidence`   | Load citations/source chunks for a workspace memory                                                                                 |
+| GET    | `/api/context-vault/hierarchy`               | Scope/project hierarchy for workspace memories                                                                                      |
 
 For Context Vault, `workspaceId` is the hard company/team boundary, `scope` is a hard lane inside the workspace, and `project` is a soft grouping filter inside a scope. Search accepts a single `scope` or comma-separated `scopes` such as `scopes=dev,billing` for multi-scope retrieval. Corrections update extracted memories and can also update cited chunks when `correctedChunkContent` is provided.
 

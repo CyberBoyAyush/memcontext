@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Users, Brain, ChartBar, Wallet } from "@phosphor-icons/react";
+import { Users, Brain, ChartBar, Wallet, Buildings } from "@phosphor-icons/react";
 import { Card, CardContent } from "@/components/ui/card";
 import { adminStatsQueryOptions } from "@/lib/queries/admin";
 import { cn } from "@/lib/utils";
@@ -53,12 +53,12 @@ function StatCard({
 }
 
 function PlanBreakdown({
-  usersByPlan,
-  totalUsers,
+  workspacesByPlan,
+  totalWorkspaces,
   loading,
 }: {
-  usersByPlan: Record<string, number>;
-  totalUsers: number;
+  workspacesByPlan: Record<string, number>;
+  totalWorkspaces: number;
   loading?: boolean;
 }) {
   const plans = ["free", "hobby", "pro", "ultimate"];
@@ -74,9 +74,9 @@ function PlanBreakdown({
             />
           </div>
           <div>
-            <h3 className="font-semibold">Users by Plan</h3>
+            <h3 className="font-semibold">Workspaces by Plan</h3>
             <p className="text-sm text-foreground-muted">
-              Distribution across subscription tiers
+              Distribution across workspace subscription tiers
             </p>
           </div>
         </div>
@@ -93,9 +93,9 @@ function PlanBreakdown({
         ) : (
           <div className="space-y-4">
             {plans.map((plan) => {
-              const count = usersByPlan[plan] || 0;
+              const count = workspacesByPlan[plan] || 0;
               const percentage =
-                totalUsers > 0 ? (count / totalUsers) * 100 : 0;
+                totalWorkspaces > 0 ? (count / totalWorkspaces) * 100 : 0;
               const colors = planColors[plan] || planColors.free;
 
               return (
@@ -105,7 +105,7 @@ function PlanBreakdown({
                       {plan}
                     </span>
                     <span className="text-sm text-foreground-muted">
-                      {count} users ({percentage.toFixed(1)}%)
+                      {count} workspaces ({percentage.toFixed(1)}%)
                     </span>
                   </div>
                   <div className="h-3 bg-surface-elevated rounded-full overflow-hidden">
@@ -126,8 +126,8 @@ function PlanBreakdown({
         {!loading && (
           <div className="mt-6 pt-4 border-t border-border">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-foreground-muted">Total Users</span>
-              <span className="font-medium">{totalUsers}</span>
+              <span className="text-foreground-muted">Total Workspaces</span>
+              <span className="font-medium">{totalWorkspaces}</span>
             </div>
           </div>
         )}
@@ -158,11 +158,18 @@ export default function AdminStatsPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Users"
           value={data?.totalUsers ?? 0}
           icon={Users}
+          loading={isLoading}
+        />
+        <StatCard
+          title="Total Workspaces"
+          value={data?.totalWorkspaces ?? 0}
+          icon={Buildings}
+          description="Billing and plan containers"
           loading={isLoading}
         />
         <StatCard
@@ -187,8 +194,8 @@ export default function AdminStatsPage() {
       {/* Plan Breakdown */}
       <div className="grid gap-6 lg:grid-cols-2">
         <PlanBreakdown
-          usersByPlan={data?.usersByPlan || {}}
-          totalUsers={data?.totalUsers || 0}
+          workspacesByPlan={data?.workspacesByPlan || data?.usersByPlan || {}}
+          totalWorkspaces={data?.totalWorkspaces || 0}
           loading={isLoading}
         />
 
@@ -244,19 +251,22 @@ export default function AdminStatsPage() {
                 </div>
                 <div className="flex items-center justify-between py-3">
                   <span className="text-sm text-foreground-muted">
-                    Free Plan Users
+                    Free Plan Workspaces
                   </span>
                   <span className="text-sm font-medium">
-                    {data?.usersByPlan?.free || 0}
+                    {data?.workspacesByPlan?.free || data?.usersByPlan?.free || 0}
                   </span>
                 </div>
                 <div className="flex items-center justify-between py-3">
                   <span className="text-sm text-foreground-muted">
-                    Paid Plan Users
+                    Paid Plan Workspaces
                   </span>
                   <span className="text-sm font-medium">
-                    {(data?.usersByPlan?.hobby || 0) +
-                      (data?.usersByPlan?.pro || 0)}
+                    {(data?.workspacesByPlan?.hobby || data?.usersByPlan?.hobby || 0) +
+                      (data?.workspacesByPlan?.pro || data?.usersByPlan?.pro || 0) +
+                      (data?.workspacesByPlan?.ultimate ||
+                        data?.usersByPlan?.ultimate ||
+                        0)}
                   </span>
                 </div>
               </div>

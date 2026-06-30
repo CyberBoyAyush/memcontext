@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle, SpinnerGap, WarningCircle } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
-import { useAcceptWorkspaceInvitation } from "@/lib/queries/company-brain";
+import { useAcceptWorkspaceInvitation } from "@/lib/queries/context-vault";
 
 function AcceptWorkspaceInviteContent() {
   const searchParams = useSearchParams();

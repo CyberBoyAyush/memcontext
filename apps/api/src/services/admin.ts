@@ -4,12 +4,15 @@ import {
   subscriptions,
   apiKeys,
   memories,
+  workspaces,
+  workspaceMembers,
   PLAN_LIMITS,
   type PlanType,
 } from "../db/schema.js";
 import { eq, ilike, or, count, isNull, and, sql } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 import { invalidateApiKey } from "./cache.js";
+import { getOrCreateDefaultWorkspace } from "./subscription.js";
 
 export interface ListUsersParams {
   limit?: number;
@@ -33,12 +36,23 @@ export interface AdminUser {
 
 export interface AdminUserDetails extends AdminUser {
   apiKeyCount: number;
+  workspaces: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    role: string;
+    plan: string;
+    memoryCount: number;
+    memoryLimit: number;
+  }>;
 }
 
 export interface AdminStats {
   totalUsers: number;
+  totalWorkspaces: number;
   totalMemories: number;
   usersByPlan: Record<string, number>;
+  workspacesByPlan: Record<string, number>;
 }
 
 export interface ListUsersResult {
@@ -55,7 +69,7 @@ export async function listUsers(
     ? or(ilike(user.email, `%${search}%`), ilike(user.name, `%${search}%`))
     : undefined;
 
-  const [usersWithSubs, countResult] = await Promise.all([
+  const [userRows, countResult] = await Promise.all([
     db
       .select({
         id: user.id,
@@ -65,12 +79,8 @@ export async function listUsers(
         image: user.image,
         role: user.role,
         createdAt: user.createdAt,
-        plan: subscriptions.plan,
-        memoryCount: subscriptions.memoryCount,
-        memoryLimit: subscriptions.memoryLimit,
       })
       .from(user)
-      .leftJoin(subscriptions, eq(user.id, subscriptions.userId))
       .where(baseCondition)
       .orderBy(user.createdAt)
       .limit(limit)
@@ -78,18 +88,33 @@ export async function listUsers(
     db.select({ count: count() }).from(user).where(baseCondition),
   ]);
 
-  const users: AdminUser[] = usersWithSubs.map((row) => ({
-    id: row.id,
-    name: row.name,
-    email: row.email,
-    emailVerified: row.emailVerified,
-    image: row.image,
-    role: row.role,
-    createdAt: row.createdAt,
-    plan: row.plan || "free",
-    memoryCount: row.memoryCount || 0,
-    memoryLimit: row.memoryLimit || PLAN_LIMITS.free,
-  }));
+  const users: AdminUser[] = await Promise.all(
+    userRows.map(async (row) => {
+      const workspaceId = await getOrCreateDefaultWorkspace(row.id);
+      const [subscription] = await db
+        .select({
+          plan: subscriptions.plan,
+          memoryCount: subscriptions.memoryCount,
+          memoryLimit: subscriptions.memoryLimit,
+        })
+        .from(subscriptions)
+        .where(eq(subscriptions.workspaceId, workspaceId))
+        .limit(1);
+
+      return {
+        id: row.id,
+        name: row.name,
+        email: row.email,
+        emailVerified: row.emailVerified,
+        image: row.image,
+        role: row.role,
+        createdAt: row.createdAt,
+        plan: subscription?.plan || "free",
+        memoryCount: subscription?.memoryCount || 0,
+        memoryLimit: subscription?.memoryLimit || PLAN_LIMITS.free,
+      };
+    }),
+  );
 
   logger.info(
     {
@@ -119,6 +144,7 @@ export async function getUserDetails(
   params: GetUserDetailsParams,
 ): Promise<AdminUserDetails | null> {
   const { userId, adminId } = params;
+  const workspaceId = await getOrCreateDefaultWorkspace(userId);
   const [userRow] = await db
     .select({
       id: user.id,
@@ -128,12 +154,8 @@ export async function getUserDetails(
       image: user.image,
       role: user.role,
       createdAt: user.createdAt,
-      plan: subscriptions.plan,
-      memoryCount: subscriptions.memoryCount,
-      memoryLimit: subscriptions.memoryLimit,
     })
     .from(user)
-    .leftJoin(subscriptions, eq(user.id, subscriptions.userId))
     .where(eq(user.id, userId))
     .limit(1);
 
@@ -145,6 +167,29 @@ export async function getUserDetails(
     .select({ count: count() })
     .from(apiKeys)
     .where(eq(apiKeys.userId, userId));
+  const workspaceRows = await db
+    .select({
+      id: workspaces.id,
+      name: workspaces.name,
+      slug: workspaces.slug,
+      role: workspaceMembers.role,
+      plan: subscriptions.plan,
+      memoryCount: subscriptions.memoryCount,
+      memoryLimit: subscriptions.memoryLimit,
+    })
+    .from(workspaceMembers)
+    .innerJoin(workspaces, eq(workspaceMembers.workspaceId, workspaces.id))
+    .leftJoin(subscriptions, eq(subscriptions.workspaceId, workspaces.id))
+    .where(eq(workspaceMembers.userId, userId));
+  const [subscription] = await db
+    .select({
+      plan: subscriptions.plan,
+      memoryCount: subscriptions.memoryCount,
+      memoryLimit: subscriptions.memoryLimit,
+    })
+    .from(subscriptions)
+    .where(eq(subscriptions.workspaceId, workspaceId))
+    .limit(1);
 
   const userDetails = {
     id: userRow.id,
@@ -154,10 +199,19 @@ export async function getUserDetails(
     image: userRow.image,
     role: userRow.role,
     createdAt: userRow.createdAt,
-    plan: userRow.plan || "free",
-    memoryCount: userRow.memoryCount || 0,
-    memoryLimit: userRow.memoryLimit || PLAN_LIMITS.free,
+    plan: subscription?.plan || "free",
+    memoryCount: subscription?.memoryCount || 0,
+    memoryLimit: subscription?.memoryLimit || PLAN_LIMITS.free,
     apiKeyCount: apiKeyResult?.count || 0,
+    workspaces: workspaceRows.map((workspace) => ({
+      id: workspace.id,
+      name: workspace.name,
+      slug: workspace.slug,
+      role: workspace.role,
+      plan: workspace.plan || "free",
+      memoryCount: workspace.memoryCount || 0,
+      memoryLimit: workspace.memoryLimit || PLAN_LIMITS.free,
+    })),
   };
 
   logger.info(
@@ -175,6 +229,7 @@ export async function getUserDetails(
 
 export interface UpdateUserPlanParams {
   userId: string;
+  workspaceId: string;
   plan: PlanType;
   adminId: string;
 }
@@ -182,13 +237,28 @@ export interface UpdateUserPlanParams {
 export async function updateUserPlan(
   params: UpdateUserPlanParams,
 ): Promise<{ success: boolean; previousPlan: string }> {
-  const { userId, plan, adminId } = params;
+  const { userId, workspaceId, plan, adminId } = params;
+
+  const [membership] = await db
+    .select({ workspaceId: workspaceMembers.workspaceId })
+    .from(workspaceMembers)
+    .where(
+      and(
+        eq(workspaceMembers.userId, userId),
+        eq(workspaceMembers.workspaceId, workspaceId),
+      ),
+    )
+    .limit(1);
+
+  if (!membership) {
+    throw new Error("Workspace not found for user");
+  }
 
   // Get previous plan for logging (before upsert)
   const [existing] = await db
     .select({ plan: subscriptions.plan })
     .from(subscriptions)
-    .where(eq(subscriptions.userId, userId))
+    .where(eq(subscriptions.workspaceId, workspaceId))
     .limit(1);
 
   const previousPlan = existing?.plan || "free";
@@ -199,12 +269,13 @@ export async function updateUserPlan(
     .insert(subscriptions)
     .values({
       userId,
+      workspaceId,
       plan,
       memoryLimit: newLimit,
       memoryCount: 0,
     })
     .onConflictDoUpdate({
-      target: subscriptions.userId,
+      target: subscriptions.workspaceId,
       set: {
         plan,
         memoryLimit: newLimit,
@@ -226,21 +297,23 @@ export async function updateUserPlan(
     {
       adminId,
       targetUserId: userId,
+      workspaceId,
       previousPlan,
       newPlan: plan,
       newLimit,
       invalidatedKeys: userApiKeys.length,
     },
-    "admin updated user plan",
+    "admin updated workspace plan",
   );
 
   return { success: true, previousPlan };
 }
 
 export async function getStats(adminId: string): Promise<AdminStats> {
-  const [totalUsersResult, totalMemoriesResult, planBreakdown] =
+  const [totalUsersResult, totalWorkspacesResult, totalMemoriesResult, planBreakdown] =
     await Promise.all([
       db.select({ count: count() }).from(user),
+      db.select({ count: count() }).from(workspaces),
       db
         .select({ count: count() })
         .from(memories)
@@ -254,26 +327,30 @@ export async function getStats(adminId: string): Promise<AdminStats> {
         .groupBy(subscriptions.plan),
     ]);
 
-  const usersByPlan: Record<string, number> = {};
+  const workspacesByPlan: Record<string, number> = {};
   for (const row of planBreakdown) {
-    usersByPlan[row.plan] = row.count;
+    workspacesByPlan[row.plan] = row.count;
   }
 
-  const totalUsersWithSubs = Object.values(usersByPlan).reduce(
+  const totalWorkspacesWithSubs = Object.values(workspacesByPlan).reduce(
     (a, b) => a + b,
     0,
   );
-  const totalUsers = totalUsersResult[0]?.count || 0;
-  const usersWithoutSubs = totalUsers - totalUsersWithSubs;
+  const totalWorkspaces = totalWorkspacesResult[0]?.count || 0;
+  const workspacesWithoutSubs = totalWorkspaces - totalWorkspacesWithSubs;
 
-  if (usersWithoutSubs > 0) {
-    usersByPlan["free"] = (usersByPlan["free"] || 0) + usersWithoutSubs;
+  if (workspacesWithoutSubs > 0) {
+    workspacesByPlan["free"] =
+      (workspacesByPlan["free"] || 0) + workspacesWithoutSubs;
   }
 
+  const totalUsers = totalUsersResult[0]?.count || 0;
   const stats = {
     totalUsers,
+    totalWorkspaces,
     totalMemories: totalMemoriesResult[0]?.count || 0,
-    usersByPlan,
+    usersByPlan: workspacesByPlan,
+    workspacesByPlan,
   };
 
   logger.info(
@@ -281,6 +358,7 @@ export async function getStats(adminId: string): Promise<AdminStats> {
       adminId,
       action: "view_stats",
       totalUsers: stats.totalUsers,
+      totalWorkspaces: stats.totalWorkspaces,
       totalMemories: stats.totalMemories,
     },
     "admin viewed system stats",

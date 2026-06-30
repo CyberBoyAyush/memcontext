@@ -19,11 +19,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { api, ApiError } from "@/lib/api";
-import { authClient } from "@/lib/auth-client";
 import { useToast } from "@/providers/toast-provider";
 import { cn } from "@/lib/utils";
+import { ThemedSelect } from "@/components/ui/themed-select";
+import { useWorkspace } from "@/providers/workspace-provider";
 
 interface SubscriptionData {
+  workspaceId: string;
   plan: string;
   memoryCount: number;
   memoryLimit: number;
@@ -232,6 +234,7 @@ function PlanCard({
   isUpgrade,
   isOnHold,
   loadingPlan,
+  canManageBilling,
   onUpgrade,
 }: {
   plan: (typeof PLANS)[number];
@@ -240,6 +243,7 @@ function PlanCard({
   isDowngrade: boolean;
   isOnHold: boolean;
   loadingPlan: string | null;
+  canManageBilling: boolean;
   onUpgrade: (slug: string) => void;
 }) {
   const isHighlighted = isCurrent;
@@ -385,7 +389,7 @@ function PlanCard({
                       "bg-background text-foreground border border-border/70 font-semibold hover:bg-background-secondary hover:text-foreground",
                   )}
                   onClick={() => plan.slug && onUpgrade(plan.slug)}
-                  disabled={loadingPlan !== null}
+                  disabled={loadingPlan !== null || !canManageBilling}
                 >
                   {loadingPlan === plan.slug ? (
                     <>
@@ -397,7 +401,9 @@ function PlanCard({
                     </>
                   ) : (
                     <>
-                      {isUpgrade ? "Upgrade" : "Switch"} to {plan.name}
+                      {canManageBilling
+                        ? `${isUpgrade ? "Upgrade" : "Switch"} to ${plan.name}`
+                        : "Owner access required"}
                       <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
                     </>
                   )}
@@ -453,9 +459,21 @@ export default function SubscriptionPage() {
     "success" | "cancelled" | "on_hold" | "failed" | null
   >(null);
 
+  const {
+    activeWorkspace,
+    activeWorkspaceId,
+    setActiveWorkspaceId,
+    workspaces,
+  } = useWorkspace();
+  const canManageBilling = activeWorkspace?.role === "owner";
+
   const { data: subscription, isLoading: subLoading } = useQuery({
-    queryKey: ["subscription"],
-    queryFn: () => api.get<SubscriptionData>("/api/user/subscription"),
+    queryKey: ["subscription", activeWorkspaceId],
+    queryFn: () =>
+      api.get<SubscriptionData>(
+        `/api/subscription/current?workspaceId=${activeWorkspaceId}`,
+      ),
+    enabled: !!activeWorkspaceId,
   });
 
   const { data: profile } = useQuery({
@@ -470,10 +488,10 @@ export default function SubscriptionPage() {
     if (success === "true") {
       hasShownToast.current = true;
       setShowBanner("success");
-      queryClient.invalidateQueries({ queryKey: ["subscription"] });
+      queryClient.invalidateQueries({ queryKey: ["subscription", activeWorkspaceId] });
       window.history.replaceState({}, "", "/subscription");
     }
-  }, [searchParams, queryClient]);
+  }, [activeWorkspaceId, searchParams, queryClient]);
 
   useEffect(() => {
     if (subscription?.status === "cancelled") {
@@ -490,6 +508,10 @@ export default function SubscriptionPage() {
       toast.error("Please sign in to upgrade");
       return;
     }
+    if (!activeWorkspaceId) {
+      toast.error("Select a workspace to manage billing");
+      return;
+    }
 
     setLoadingPlan(slug);
     try {
@@ -499,7 +521,7 @@ export default function SubscriptionPage() {
       ) {
         const response = await api.post<{ success: boolean; message: string }>(
           "/api/subscription/change-plan",
-          { plan: slug },
+          { plan: slug, workspaceId: activeWorkspaceId },
         );
 
         if (response.success) {
@@ -510,9 +532,12 @@ export default function SubscriptionPage() {
 
           const pollForUpdate = async () => {
             attempts++;
-            await queryClient.invalidateQueries({ queryKey: ["subscription"] });
+            await queryClient.invalidateQueries({
+              queryKey: ["subscription", activeWorkspaceId],
+            });
             const newData = queryClient.getQueryData<SubscriptionData>([
               "subscription",
+              activeWorkspaceId,
             ]);
 
             if (newData?.plan !== originalPlan) {
@@ -528,23 +553,11 @@ export default function SubscriptionPage() {
           setTimeout(pollForUpdate, 1500);
         }
       } else {
-        const { data, error } = await authClient.dodopayments.checkoutSession({
-          slug,
-          customer: {
-            email: profile.user.email,
-            name: profile.user.name || "",
-          },
-        });
-
-        if (error) {
-          toast.error("Failed to create checkout session");
-          console.error("Checkout error:", error);
-          return;
-        }
-
-        if (data?.url) {
-          window.location.href = data.url;
-        }
+        const checkout = await api.post<{ url: string }>(
+          "/api/subscription/checkout",
+          { plan: slug, workspaceId: activeWorkspaceId },
+        );
+        window.location.href = checkout.url;
       }
     } catch (err) {
       if (err instanceof ApiError) {
@@ -559,21 +572,24 @@ export default function SubscriptionPage() {
   };
 
   const handleManageBilling = async () => {
+    if (!canManageBilling) {
+      toast.error("Only workspace owners can manage billing");
+      return;
+    }
+
     setPortalLoading(true);
     try {
-      const { data, error } = await authClient.dodopayments.customer.portal();
+      const portal = await api.post<{ url: string }>("/api/subscription/portal", {
+        workspaceId: activeWorkspaceId,
+      });
 
-      if (error) {
-        toast.error("Failed to open billing portal");
-        console.error("Portal error:", error);
-        return;
-      }
-
-      if (data?.url) {
-        window.open(data.url, "_blank", "noopener,noreferrer");
-      }
+      window.open(portal.url, "_blank", "noopener,noreferrer");
     } catch (err) {
-      toast.error("Something went wrong. Please try again.");
+      if (err instanceof ApiError) {
+        toast.error(err.message);
+      } else {
+        toast.error("Something went wrong. Please try again.");
+      }
       console.error("Portal error:", err);
     } finally {
       setPortalLoading(false);
@@ -622,6 +638,34 @@ export default function SubscriptionPage() {
           </Button>
         )}
       </div>
+
+      <Card className="shadow-none rounded-lg">
+        <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold">Billing workspace</h2>
+            <p className="mt-1 text-xs text-foreground-muted">
+              This plan applies to the selected workspace memory pool.
+            </p>
+          </div>
+          <div className="flex min-w-0 flex-col gap-2 sm:w-80">
+            <ThemedSelect
+              value={activeWorkspaceId}
+              onChange={setActiveWorkspaceId}
+              disabled={workspaces.length <= 1 || loadingPlan !== null}
+              options={workspaces.map((workspace) => ({
+                value: workspace.id,
+                label: workspace.name,
+              }))}
+              className="w-full"
+            />
+            {!canManageBilling && activeWorkspace && (
+              <p className="text-xs text-warning">
+                Only workspace owners can change this workspace&apos;s billing.
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Status Banner */}
       {showBanner && (
@@ -787,6 +831,7 @@ export default function SubscriptionPage() {
                   isDowngrade={isDowngrade}
                   isOnHold={isOnHold}
                   loadingPlan={loadingPlan}
+                  canManageBilling={canManageBilling}
                   onUpgrade={handleUpgrade}
                 />
               </div>

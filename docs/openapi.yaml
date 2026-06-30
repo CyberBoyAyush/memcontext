@@ -20,7 +20,11 @@ tags:
   - name: Profiles
     description: Pre-aggregated user context from memory.
   - name: Workspaces
-    description: Company/team containers for shared memory.
+    description: Company/team account boundaries for billing, members, API keys, and vaults.
+  - name: API Keys
+    description: Workspace-bound API keys for server-side integrations.
+  - name: Subscription
+    description: Workspace-owned billing and member-memory limits.
   - name: Context Vault
     description: Document ingestion and workspace RAG retrieval.
 paths:
@@ -223,11 +227,11 @@ paths:
       responses:
         "200":
           description: Invitation accepted and workspace membership created.
-  /api/company-brain/documents:
+  /api/context-vault/documents:
     get:
       tags: [Context Vault]
       summary: List context vault documents
-      operationId: listCompanyBrainDocuments
+      operationId: listContextVaultDocuments
       security:
         - ApiKeyAuth: []
         - CookieAuth: []
@@ -238,17 +242,24 @@ paths:
           schema:
             type: string
             format: uuid
+        - in: query
+          name: vaultId
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Optional vault inside the workspace. Defaults to the workspace's default vault.
       responses:
         "200":
           description: Uploaded document sources for a workspace.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ListCompanyBrainDocumentsResponse"
+                $ref: "#/components/schemas/ListContextVaultDocumentsResponse"
     post:
       tags: [Context Vault]
       summary: Ingest context vault document
-      operationId: ingestCompanyBrainDocument
+      operationId: ingestContextVaultDocument
       description: |
         Adds workspace knowledge from extracted text, a public file URL, or a
         documentation/web URL.
@@ -265,19 +276,19 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/IngestCompanyBrainDocumentRequest"
+              $ref: "#/components/schemas/IngestContextVaultDocumentRequest"
       responses:
         "202":
           description: Document accepted and added to the workspace document list.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/IngestCompanyBrainDocumentResponse"
-  /api/company-brain/documents/upload:
+                $ref: "#/components/schemas/IngestContextVaultDocumentResponse"
+  /api/context-vault/documents/upload:
     post:
       tags: [Context Vault]
       summary: Upload and ingest context vault document
-      operationId: uploadCompanyBrainDocument
+      operationId: uploadContextVaultDocument
       description: |
         Uploads a local file and adds it to Context Vault. Supports PDFs,
         Markdown, TXT, DOCX, CSV, and image files. OCR is available for formats
@@ -296,6 +307,10 @@ paths:
                 workspaceId:
                   type: string
                   format: uuid
+                vaultId:
+                  type: string
+                  format: uuid
+                  description: Optional vault inside the workspace. Defaults to the workspace's default vault.
                 title:
                   type: string
                 file:
@@ -316,12 +331,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/IngestCompanyBrainDocumentResponse"
-  /api/company-brain/documents/{documentId}/cancel:
+                $ref: "#/components/schemas/IngestContextVaultDocumentResponse"
+  /api/context-vault/documents/{documentId}/cancel:
     post:
       tags: [Context Vault]
       summary: Cancel context vault document processing
-      operationId: cancelCompanyBrainDocument
+      operationId: cancelContextVaultDocument
       security:
         - ApiKeyAuth: []
         - CookieAuth: []
@@ -338,12 +353,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CancelCompanyBrainDocumentResponse"
-  /api/company-brain/documents/{documentId}/memories:
+                $ref: "#/components/schemas/CancelContextVaultDocumentResponse"
+  /api/context-vault/documents/{documentId}/memories:
     get:
       tags: [Context Vault]
       summary: List memories extracted from one context vault document
-      operationId: listCompanyBrainDocumentMemories
+      operationId: listContextVaultDocumentMemories
       security:
         - ApiKeyAuth: []
         - CookieAuth: []
@@ -360,18 +375,25 @@ paths:
           schema:
             type: string
             format: uuid
+        - in: query
+          name: vaultId
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Optional vault inside the workspace. Defaults to the workspace's default vault.
       responses:
         "200":
           description: Extracted memories for this document.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ListCompanyBrainDocumentMemoriesResponse"
-  /api/company-brain/documents/{documentId}:
+                $ref: "#/components/schemas/ListContextVaultDocumentMemoriesResponse"
+  /api/context-vault/documents/{documentId}:
     delete:
       tags: [Context Vault]
       summary: Delete context vault document
-      operationId: deleteCompanyBrainDocument
+      operationId: deleteContextVaultDocument
       description: |
         Deletes the document and its citations. Extracted memories stop
         appearing only when this document is their only source; memories also
@@ -392,12 +414,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DeleteCompanyBrainDocumentResponse"
-  /api/company-brain/search:
+                $ref: "#/components/schemas/DeleteContextVaultDocumentResponse"
+  /api/context-vault/search:
     get:
       tags: [Context Vault]
       summary: Search context vault
-      operationId: searchCompanyBrain
+      operationId: searchContextVault
       description: |
         Returns ranked retrieval results for workspace knowledge. The endpoint
         does not synthesize a single final answer; callers should use returned
@@ -416,10 +438,18 @@ paths:
       parameters:
         - in: query
           name: workspaceId
-          required: true
+          required: false
           schema:
             type: string
             format: uuid
+          description: Optional for API-key calls because the key is bound to one workspace. Required for session callers selecting a workspace.
+        - in: query
+          name: vaultId
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Optional vault inside the workspace. Defaults to the workspace's default vault.
         - in: query
           name: query
           required: true
@@ -462,12 +492,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SearchCompanyBrainResponse"
-  /api/company-brain/memories:
+                $ref: "#/components/schemas/SearchContextVaultResponse"
+  /api/context-vault/memories:
     get:
       tags: [Context Vault]
       summary: Browse context vault memories
-      operationId: listCompanyBrainMemories
+      operationId: listContextVaultMemories
       security:
         - ApiKeyAuth: []
         - CookieAuth: []
@@ -478,6 +508,13 @@ paths:
           schema:
             type: string
             format: uuid
+        - in: query
+          name: vaultId
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Optional vault inside the workspace. Defaults to the workspace's default vault.
         - in: query
           name: scope
           schema:
@@ -517,11 +554,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ListCompanyBrainMemoriesResponse"
+                $ref: "#/components/schemas/ListContextVaultMemoriesResponse"
     post:
       tags: [Context Vault]
       summary: Add a curated company fact
-      operationId: createCompanyBrainMemory
+      operationId: createContextVaultMemory
       description: Adds atomic workspace context that may not be backed by an uploaded document.
       security:
         - ApiKeyAuth: []
@@ -531,19 +568,19 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateCompanyBrainMemoryRequest"
+              $ref: "#/components/schemas/CreateContextVaultMemoryRequest"
       responses:
         "201":
           description: Curated company fact created.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CreateCompanyBrainMemoryResponse"
-  /api/company-brain/memories/{memoryId}/feedback:
+                $ref: "#/components/schemas/CreateContextVaultMemoryResponse"
+  /api/context-vault/memories/{memoryId}/feedback:
     post:
       tags: [Context Vault]
       summary: Submit feedback on a context vault memory
-      operationId: submitCompanyBrainMemoryFeedback
+      operationId: submitContextVaultMemoryFeedback
       security:
         - ApiKeyAuth: []
         - CookieAuth: []
@@ -559,7 +596,7 @@ paths:
         content:
           application/json:
             schema:
-                $ref: "#/components/schemas/CompanyBrainMemoryFeedbackRequest"
+                $ref: "#/components/schemas/ContextVaultMemoryFeedbackRequest"
       responses:
         "200":
           description: Feedback recorded.
@@ -567,11 +604,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MemoryFeedbackResponse"
-  /api/company-brain/memories/{memoryId}:
+  /api/context-vault/memories/{memoryId}:
     delete:
       tags: [Context Vault]
       summary: Delete a curated company fact
-      operationId: deleteCompanyBrainMemory
+      operationId: deleteContextVaultMemory
       description: Soft-deletes a curated company fact. Document-extracted memories are removed through document deletion instead.
       security:
         - ApiKeyAuth: []
@@ -589,18 +626,25 @@ paths:
           schema:
             type: string
             format: uuid
+        - in: query
+          name: vaultId
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Optional vault inside the workspace. Defaults to the workspace's default vault.
       responses:
         "200":
           description: Curated company fact deleted.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DeleteCompanyBrainMemoryResponse"
-  /api/company-brain/memories/{memoryId}/correction:
+                $ref: "#/components/schemas/DeleteContextVaultMemoryResponse"
+  /api/context-vault/memories/{memoryId}/correction:
     post:
       tags: [Context Vault]
       summary: Correct a context vault memory
-      operationId: correctCompanyBrainMemory
+      operationId: correctContextVaultMemory
       description: |
         Applies a correction to an extracted workspace memory. When
         `correctedChunkContent` is provided, the cited source chunk is updated
@@ -621,19 +665,19 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CorrectCompanyBrainMemoryRequest"
+              $ref: "#/components/schemas/CorrectContextVaultMemoryRequest"
       responses:
         "200":
           description: Memory corrected.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CorrectCompanyBrainMemoryResponse"
-  /api/company-brain/memories/{memoryId}/evidence:
+                $ref: "#/components/schemas/CorrectContextVaultMemoryResponse"
+  /api/context-vault/memories/{memoryId}/evidence:
     get:
       tags: [Context Vault]
       summary: List source evidence for a context vault memory
-      operationId: listCompanyBrainMemoryEvidence
+      operationId: listContextVaultMemoryEvidence
       security:
         - ApiKeyAuth: []
         - CookieAuth: []
@@ -650,18 +694,25 @@ paths:
           schema:
             type: string
             format: uuid
+        - in: query
+          name: vaultId
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Optional vault inside the workspace. Defaults to the workspace's default vault.
       responses:
         "200":
           description: Source chunks for this extracted memory.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ListCompanyBrainMemoryEvidenceResponse"
-  /api/company-brain/hierarchy:
+                $ref: "#/components/schemas/ListContextVaultMemoryEvidenceResponse"
+  /api/context-vault/hierarchy:
     get:
       tags: [Context Vault]
       summary: Context vault scope/project hierarchy
-      operationId: getCompanyBrainHierarchy
+      operationId: getContextVaultHierarchy
       security:
         - ApiKeyAuth: []
         - CookieAuth: []
@@ -672,13 +723,20 @@ paths:
           schema:
             type: string
             format: uuid
+        - in: query
+          name: vaultId
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Optional vault inside the workspace. Defaults to the workspace's default vault.
       responses:
         "200":
           description: Scope and project counts for workspace memories.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CompanyBrainHierarchyResponse"
+                $ref: "#/components/schemas/ContextVaultHierarchyResponse"
   /api/memories:
     post:
       tags: [Memories]
@@ -1058,6 +1116,156 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/api-keys:
+    get:
+      tags: [API Keys]
+      summary: List API keys
+      operationId: listApiKeys
+      security:
+        - CookieAuth: []
+      responses:
+        "200":
+          description: Workspace-bound API keys owned by the signed-in user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListApiKeysResponse"
+    post:
+      tags: [API Keys]
+      summary: Create API key
+      operationId: createApiKey
+      security:
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateApiKeyRequest"
+      responses:
+        "201":
+          description: API key created. The raw key is only returned once.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateApiKeyResponse"
+  /api/api-keys/{id}:
+    delete:
+      tags: [API Keys]
+      summary: Delete API key
+      operationId: deleteApiKey
+      security:
+        - CookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: API key deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success:
+                    type: boolean
+  /api/subscription/current:
+    get:
+      tags: [Subscription]
+      summary: Get workspace subscription
+      operationId: getCurrentSubscription
+      security:
+        - CookieAuth: []
+      parameters:
+        - in: query
+          name: workspaceId
+          schema:
+            type: string
+            format: uuid
+          description: Workspace to read. Defaults to the user's default workspace.
+      responses:
+        "200":
+          description: Workspace subscription and member-memory usage.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+  /api/subscription/checkout:
+    post:
+      tags: [Subscription]
+      summary: Create workspace checkout session
+      operationId: createCheckoutSession
+      security:
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionPlanRequest"
+      responses:
+        "200":
+          description: Checkout session URL. Only workspace owners can create one.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutSessionResponse"
+  /api/subscription/change-plan:
+    post:
+      tags: [Subscription]
+      summary: Change workspace subscription plan
+      operationId: changeSubscriptionPlan
+      security:
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionPlanRequest"
+      responses:
+        "200":
+          description: Plan change initiated. Only workspace owners can change billing.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, message]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+  /api/subscription/portal:
+    post:
+      tags: [Subscription]
+      summary: Create billing portal session
+      operationId: createBillingPortalSession
+      security:
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BillingPortalRequest"
+      responses:
+        "200":
+          description: Billing portal URL. Only workspace owners can manage billing.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url]
+                properties:
+                  url:
+                    type: string
+                    format: uri
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -1065,7 +1273,7 @@ components:
       in: header
       name: X-API-Key
       description: |
-        API key created from the MemContext dashboard. Keys are prefixed with `mc_`.
+        API key created from the MemContext dashboard. Keys are prefixed with `mc_`, bound to one workspace, and API-key requests cannot override that workspace.
     CookieAuth:
       type: apiKey
       in: cookie
@@ -1098,6 +1306,133 @@ components:
         - `web` - Saved from the dashboard.
         - `api` - Saved via REST API (default).
         - `openclaw` - Saved via OpenClaw integration.
+    PlanType:
+      type: string
+      enum: [free, hobby, pro, ultimate]
+    SubscriptionStatus:
+      type: string
+      enum: [active, cancelled, expired, on_hold, failed]
+    Subscription:
+      type: object
+      required: [workspaceId, plan, memoryCount, memoryLimit, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+        workspaceId:
+          type: string
+          format: uuid
+        plan:
+          $ref: "#/components/schemas/PlanType"
+        memoryCount:
+          type: integer
+          minimum: 0
+        memoryLimit:
+          type: integer
+          minimum: 0
+        status:
+          $ref: "#/components/schemas/SubscriptionStatus"
+        renewsAt:
+          type: string
+          format: date-time
+          nullable: true
+        cancelledAt:
+          type: string
+          format: date-time
+          nullable: true
+    ApiKey:
+      type: object
+      required: [id, userId, workspaceId, keyPrefix, name, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+        workspaceId:
+          type: string
+          format: uuid
+        workspaceName:
+          type: string
+        keyPrefix:
+          type: string
+        name:
+          type: string
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    ListApiKeysResponse:
+      type: object
+      required: [keys]
+      properties:
+        keys:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApiKey"
+    CreateApiKeyRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        workspaceId:
+          type: string
+          format: uuid
+          description: Workspace to bind the key to. Defaults to the user's default workspace.
+    CreateApiKeyResponse:
+      type: object
+      required: [id, name, keyPrefix, workspaceId, key, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        keyPrefix:
+          type: string
+        workspaceId:
+          type: string
+          format: uuid
+        key:
+          type: string
+          description: Raw API key. It is only returned once.
+        createdAt:
+          type: string
+          format: date-time
+    SubscriptionPlanRequest:
+      type: object
+      required: [plan, workspaceId]
+      properties:
+        plan:
+          type: string
+          enum: [hobby, pro, ultimate]
+        workspaceId:
+          type: string
+          format: uuid
+    CheckoutSessionResponse:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+        sessionId:
+          type: string
+    BillingPortalRequest:
+      type: object
+      required: [workspaceId]
+      properties:
+        workspaceId:
+          type: string
+          format: uuid
     Workspace:
       type: object
       required: [id, name, slug, role, billingOwnerPlan, createdAt]
@@ -1244,13 +1579,17 @@ components:
       type: string
       enum:
         [pdf, markdown, text, docx, html, url, csv, png, jpg, jpeg, webp, tiff]
-    IngestCompanyBrainDocumentRequest:
+    IngestContextVaultDocumentRequest:
       type: object
       required: [workspaceId, title]
       properties:
         workspaceId:
           type: string
           format: uuid
+        vaultId:
+          type: string
+          format: uuid
+          description: Optional vault inside the workspace. Defaults to the workspace's default vault.
         title:
           type: string
           maxLength: 200
@@ -1293,7 +1632,7 @@ components:
           description: Terms to prioritize when crawling subpages.
         category:
           $ref: "#/components/schemas/MemoryCategory"
-    CompanyBrainDocument:
+    ContextVaultDocument:
       type: object
       required:
         [
@@ -1316,7 +1655,7 @@ components:
         sourceType:
           type: string
         status:
-          $ref: "#/components/schemas/CompanyBrainDocumentStatus"
+          $ref: "#/components/schemas/ContextVaultDocumentStatus"
         chunkCount:
           type: integer
         extractedCount:
@@ -1351,15 +1690,15 @@ components:
         publicUrl:
           type: string
           nullable: true
-    CompanyBrainDocumentStatus:
+    ContextVaultDocumentStatus:
       type: string
       enum: [pending, processing, retrying, completed, failed, cancelled]
-    IngestCompanyBrainDocumentResponse:
+    IngestContextVaultDocumentResponse:
       type: object
       required: [document, chunkCount, extractedCount, status, message]
       properties:
         document:
-          $ref: "#/components/schemas/CompanyBrainDocument"
+          $ref: "#/components/schemas/ContextVaultDocument"
         chunkCount:
           type: integer
         extractedCount:
@@ -1369,7 +1708,7 @@ components:
           enum: [accepted]
         message:
           type: string
-    CancelCompanyBrainDocumentResponse:
+    CancelContextVaultDocumentResponse:
       type: object
       required: [cancelled, documentId]
       properties:
@@ -1378,7 +1717,7 @@ components:
         documentId:
           type: string
           format: uuid
-    DeleteCompanyBrainDocumentResponse:
+    DeleteContextVaultDocumentResponse:
       type: object
       required: [deleted, documentId, deletedMemoryCount, preservedMemoryCount]
       properties:
@@ -1391,7 +1730,7 @@ components:
           type: integer
         preservedMemoryCount:
           type: integer
-    CompanyBrainMemory:
+    ContextVaultMemory:
       type: object
       required: [id, content, memoryType, createdAt]
       properties:
@@ -1426,13 +1765,17 @@ components:
         sourceUrl:
           type: string
           nullable: true
-    CreateCompanyBrainMemoryRequest:
+    CreateContextVaultMemoryRequest:
       type: object
       required: [workspaceId, content]
       properties:
         workspaceId:
           type: string
           format: uuid
+        vaultId:
+          type: string
+          format: uuid
+          description: Optional vault inside the workspace. Defaults to the workspace's default vault.
         content:
           type: string
           minLength: 1
@@ -1447,13 +1790,13 @@ components:
         project:
           type: string
           maxLength: 100
-    CreateCompanyBrainMemoryResponse:
+    CreateContextVaultMemoryResponse:
       type: object
       required: [memory]
       properties:
         memory:
-          $ref: "#/components/schemas/CompanyBrainMemory"
-    DeleteCompanyBrainMemoryResponse:
+          $ref: "#/components/schemas/ContextVaultMemory"
+    DeleteContextVaultMemoryResponse:
       type: object
       required: [success, memoryId]
       properties:
@@ -1462,19 +1805,19 @@ components:
         memoryId:
           type: string
           format: uuid
-    ListCompanyBrainMemoriesResponse:
+    ListContextVaultMemoriesResponse:
       type: object
       required: [memories, total, hasMore]
       properties:
         memories:
           type: array
           items:
-            $ref: "#/components/schemas/CompanyBrainMemory"
+            $ref: "#/components/schemas/ContextVaultMemory"
         total:
           type: integer
         hasMore:
           type: boolean
-    ListCompanyBrainDocumentMemoriesResponse:
+    ListContextVaultDocumentMemoriesResponse:
       type: object
       required: [document, memories, total]
       properties:
@@ -1494,29 +1837,37 @@ components:
         memories:
           type: array
           items:
-            $ref: "#/components/schemas/CompanyBrainMemory"
+            $ref: "#/components/schemas/ContextVaultMemory"
         total:
           type: integer
-    CompanyBrainMemoryFeedbackRequest:
+    ContextVaultMemoryFeedbackRequest:
       type: object
       required: [workspaceId, type]
       properties:
         workspaceId:
           type: string
           format: uuid
+        vaultId:
+          type: string
+          format: uuid
+          description: Optional vault inside the workspace. Defaults to the workspace's default vault.
         type:
           type: string
           enum: [helpful, not_helpful, outdated, wrong]
         context:
           type: string
           maxLength: 1000
-    CorrectCompanyBrainMemoryRequest:
+    CorrectContextVaultMemoryRequest:
       type: object
       required: [workspaceId, correctedContent]
       properties:
         workspaceId:
           type: string
           format: uuid
+        vaultId:
+          type: string
+          format: uuid
+          description: Optional vault inside the workspace. Defaults to the workspace's default vault.
         type:
           type: string
           enum: [wrong, outdated, incomplete]
@@ -1537,18 +1888,18 @@ components:
           type: string
           format: uuid
           description: Optional evidence chunk to update. Omit to update all cited chunks when `correctedChunkContent` is supplied.
-    CorrectCompanyBrainMemoryResponse:
+    CorrectContextVaultMemoryResponse:
       type: object
       required: [success, memory, updatedChunkCount]
       properties:
         success:
           type: boolean
         memory:
-          $ref: "#/components/schemas/CompanyBrainMemory"
+          $ref: "#/components/schemas/ContextVaultMemory"
         updatedChunkCount:
           type: integer
           description: Number of source chunks updated by the correction.
-    CompanyBrainMemoryEvidence:
+    ContextVaultMemoryEvidence:
       type: object
       required: [chunkId, sourceId, chunkIndex, content]
       properties:
@@ -1577,15 +1928,15 @@ components:
         confidence:
           type: number
           nullable: true
-    ListCompanyBrainMemoryEvidenceResponse:
+    ListContextVaultMemoryEvidenceResponse:
       type: object
       required: [evidence]
       properties:
         evidence:
           type: array
           items:
-            $ref: "#/components/schemas/CompanyBrainMemoryEvidence"
-    CompanyBrainHierarchyResponse:
+            $ref: "#/components/schemas/ContextVaultMemoryEvidence"
+    ContextVaultHierarchyResponse:
       type: object
       required: [global, scopes]
       properties:
@@ -1629,15 +1980,15 @@ components:
                       type: string
                     count:
                       type: integer
-    ListCompanyBrainDocumentsResponse:
+    ListContextVaultDocumentsResponse:
       type: object
       required: [documents]
       properties:
         documents:
           type: array
           items:
-            $ref: "#/components/schemas/CompanyBrainDocument"
-    CompanyBrainSearchChunk:
+            $ref: "#/components/schemas/ContextVaultDocument"
+    ContextVaultSearchChunk:
       type: object
       required:
         [
@@ -1686,7 +2037,7 @@ components:
         createdAt:
           type: string
           format: date-time
-    CompanyBrainSearchMemory:
+    ContextVaultSearchMemory:
       type: object
       required:
         [id, content, category, scope, project, memoryType, createdAt, evidence]
@@ -1747,7 +2098,7 @@ components:
                 nullable: true
               chunkIndex:
                 type: integer
-    SearchCompanyBrainResponse:
+    SearchContextVaultResponse:
       type: object
       required: [mode, found, chunks, memories]
       description: >-
@@ -1769,14 +2120,14 @@ components:
           description: >-
             Source document chunks/passages. Empty when mode is `memories`.
           items:
-            $ref: "#/components/schemas/CompanyBrainSearchChunk"
+            $ref: "#/components/schemas/ContextVaultSearchChunk"
         memories:
           type: array
           description: >-
             Extracted atomic memories with source evidence. Empty when mode is
             `documents`.
           items:
-            $ref: "#/components/schemas/CompanyBrainSearchMemory"
+            $ref: "#/components/schemas/ContextVaultSearchMemory"
     Memory:
       type: object
       required: [id, userId, content, source, isCurrent, version, createdAt]

@@ -8,25 +8,29 @@ import {
   type EitherAuthContext,
 } from "../middleware/either-auth.js";
 import {
-  cancelCompanyBrainDocument,
-  correctCompanyBrainMemory,
-  deleteCompanyBrainDocument,
-  deleteCompanyBrainMemory,
-  getCompanyBrainHierarchy,
-  ingestCompanyBrainDocument,
-  listCompanyBrainDocumentMemories,
-  listCompanyBrainDocuments,
-  listCompanyBrainMemories,
-  listCompanyBrainMemoryEvidence,
-  saveCompanyBrainMemory,
-  searchCompanyBrain,
-  submitCompanyBrainMemoryFeedback,
-} from "../services/company-brain.js";
+  cancelContextVaultDocument,
+  correctContextVaultMemory,
+  deleteContextVaultDocument,
+  deleteContextVaultMemory,
+  getContextVaultHierarchy,
+  ingestContextVaultDocument,
+  listContextVaultDocumentMemories,
+  listContextVaultDocuments,
+  listContextVaultMemories,
+  listContextVaultMemoryEvidence,
+  saveContextVaultMemory,
+  searchContextVault,
+  submitContextVaultMemoryFeedback,
+} from "../services/context-vault.js";
 import {
   deleteDocumentObject,
   uploadDocumentObject,
 } from "../services/document-storage.js";
 import { requireWorkspaceMember } from "../services/workspace.js";
+import {
+  createVaultForWorkspace,
+  listVaultsForWorkspace,
+} from "../services/subscription.js";
 import { rateLimitFeedback } from "../middleware/rate-limit.js";
 import { logger } from "../lib/logger.js";
 
@@ -58,6 +62,7 @@ const sourceTypeSchema = z.enum([
 const ingestDocumentSchema = z
   .object({
     workspaceId: z.string().uuid(),
+    vaultId: z.string().uuid().optional(),
     title: z.string().trim().min(1).max(200),
     content: z.string().trim().min(1).max(250_000).optional(),
     sourceType: sourceTypeSchema.optional(),
@@ -78,14 +83,26 @@ const ingestDocumentSchema = z
 
 const documentsQuerySchema = z.object({
   workspaceId: z.string().uuid(),
+  vaultId: z.string().uuid().optional(),
 });
 
 const hierarchyQuerySchema = z.object({
   workspaceId: z.string().uuid(),
+  vaultId: z.string().uuid().optional(),
+});
+
+const vaultsQuerySchema = z.object({
+  workspaceId: z.string().uuid(),
+});
+
+const createVaultSchema = z.object({
+  workspaceId: z.string().uuid(),
+  name: z.string().trim().min(1).max(100),
 });
 
 const memoriesQuerySchema = z.object({
   workspaceId: z.string().uuid(),
+  vaultId: z.string().uuid().optional(),
   scope: z.string().trim().min(1).max(200).optional(),
   project: z.string().max(100).optional(),
   search: z.string().trim().min(1).max(200).optional(),
@@ -114,12 +131,14 @@ function parseScopesParam(value: string | undefined): string[] | undefined {
 
 const memoryFeedbackSchema = z.object({
   workspaceId: z.string().uuid(),
+  vaultId: z.string().uuid().optional(),
   type: z.enum(["helpful", "not_helpful", "outdated", "wrong"]),
   context: z.string().max(1000).optional(),
 });
 
 const createCompanyMemorySchema = z.object({
   workspaceId: z.string().uuid(),
+  vaultId: z.string().uuid().optional(),
   content: z.string().trim().min(1).max(800),
   category: z
     .enum(["preference", "fact", "decision", "context"])
@@ -130,6 +149,7 @@ const createCompanyMemorySchema = z.object({
 
 const memoryCorrectionSchema = z.object({
   workspaceId: z.string().uuid(),
+  vaultId: z.string().uuid().optional(),
   type: z.enum(["wrong", "outdated", "incomplete"]).default("wrong"),
   correctedContent: z.string().trim().min(1).max(10_000),
   reason: z.string().trim().max(1000).optional(),
@@ -138,7 +158,8 @@ const memoryCorrectionSchema = z.object({
 });
 
 const searchSchema = z.object({
-  workspaceId: z.string().uuid(),
+  workspaceId: z.string().uuid().optional(),
+  vaultId: z.string().uuid().optional(),
   query: z.string().trim().min(1).max(1000),
   mode: z.enum(["memories", "documents", "hybrid"]).default("hybrid"),
   scope: z.string().trim().min(1).max(200).optional(),
@@ -153,6 +174,7 @@ const documentIdParamSchema = z.object({
 
 const uploadFieldsSchema = z.object({
   workspaceId: z.string().uuid(),
+  vaultId: z.string().uuid().optional(),
   title: z.string().trim().min(1).max(200),
   scope: z.string().trim().min(1).max(200).optional(),
   project: z.string().max(100).optional(),
@@ -312,12 +334,34 @@ async function requireWorkspaceWriter(userId: string, workspaceId: string) {
   }
 }
 
+async function resolveRequestWorkspace(
+  auth: EitherAuthContext,
+  requestedWorkspaceId?: string,
+): Promise<string> {
+  if (auth.authType !== "session") {
+    if (requestedWorkspaceId && requestedWorkspaceId !== auth.workspaceId) {
+      throw new HTTPException(403, {
+        message: "API key is not authorized for this workspace",
+      });
+    }
+    return auth.workspaceId;
+  }
+
+  const workspaceId = requestedWorkspaceId ?? auth.workspaceId;
+  await requireWorkspaceMember(auth.userId, workspaceId);
+  return workspaceId;
+}
+
 app.get("/documents", zValidator("query", documentsQuerySchema), async (c) => {
-  const { userId } = c.get("auth");
+  const auth = c.get("auth");
+  const { userId } = auth;
   const query = c.req.valid("query");
+  const workspaceId = await resolveRequestWorkspace(auth, query.workspaceId);
 
   try {
-    return c.json(await listCompanyBrainDocuments(userId, query.workspaceId));
+    return c.json(
+      await listContextVaultDocuments(userId, workspaceId, query.vaultId),
+    );
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to list documents";
@@ -329,12 +373,55 @@ app.get("/documents", zValidator("query", documentsQuerySchema), async (c) => {
   }
 });
 
-app.get("/hierarchy", zValidator("query", hierarchyQuerySchema), async (c) => {
-  const { userId } = c.get("auth");
+app.get("/vaults", zValidator("query", vaultsQuerySchema), async (c) => {
+  const auth = c.get("auth");
   const query = c.req.valid("query");
+  const workspaceId = await resolveRequestWorkspace(auth, query.workspaceId);
 
   try {
-    return c.json(await getCompanyBrainHierarchy(userId, query.workspaceId));
+    return c.json({ vaults: await listVaultsForWorkspace(workspaceId) });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to list vaults";
+    if (message === "Workspace not found") {
+      throw new HTTPException(404, { message });
+    }
+    logger.error({ userId: auth.userId, workspaceId, error: message }, "list vaults failed");
+    throw new HTTPException(500, { message: "Failed to list vaults" });
+  }
+});
+
+app.post("/vaults", zValidator("json", createVaultSchema), async (c) => {
+  const auth = c.get("auth");
+  const body = c.req.valid("json");
+  const workspaceId = await resolveRequestWorkspace(auth, body.workspaceId);
+  const membership = await requireWorkspaceMember(auth.userId, workspaceId);
+  if (membership.role === "viewer") {
+    throw new HTTPException(403, { message: "Viewers cannot create vaults" });
+  }
+
+  try {
+    const vault = await createVaultForWorkspace(workspaceId, auth.userId, body.name);
+    return c.json({ vault }, 201);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to create vault";
+    if (message === "Vault limit reached") {
+      throw new HTTPException(403, { message });
+    }
+    logger.error({ userId: auth.userId, workspaceId, error: message }, "create vault failed");
+    throw new HTTPException(500, { message: "Failed to create vault" });
+  }
+});
+
+app.get("/hierarchy", zValidator("query", hierarchyQuerySchema), async (c) => {
+  const auth = c.get("auth");
+  const { userId } = auth;
+  const query = c.req.valid("query");
+  const workspaceId = await resolveRequestWorkspace(auth, query.workspaceId);
+
+  try {
+    return c.json(
+      await getContextVaultHierarchy(userId, workspaceId, query.vaultId),
+    );
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to load hierarchy";
@@ -347,13 +434,20 @@ app.get("/hierarchy", zValidator("query", hierarchyQuerySchema), async (c) => {
 });
 
 app.get("/memories", zValidator("query", memoriesQuerySchema), async (c) => {
-  const { userId } = c.get("auth");
+  const auth = c.get("auth");
+  const { userId } = auth;
   const query = c.req.valid("query");
+  const workspaceId = await resolveRequestWorkspace(auth, query.workspaceId);
   const projects = parseProjectsParam(c.req.query("projects"));
 
   try {
     return c.json(
-      await listCompanyBrainMemories({ userId, ...query, projects }),
+      await listContextVaultMemories({
+        userId,
+        ...query,
+        workspaceId,
+        projects,
+      }),
     );
   } catch (error) {
     const message =
@@ -371,14 +465,17 @@ app.post(
   "/memories",
   zValidator("json", createCompanyMemorySchema),
   async (c) => {
-    const { userId } = c.get("auth");
+    const auth = c.get("auth");
+    const { userId } = auth;
     const body = c.req.valid("json");
+    const workspaceId = await resolveRequestWorkspace(auth, body.workspaceId);
 
     try {
       return c.json(
-        await saveCompanyBrainMemory({
+        await saveContextVaultMemory({
           userId,
-          workspaceId: body.workspaceId,
+          workspaceId,
+          vaultId: body.vaultId,
           content: body.content,
           category: body.category,
           scope: body.scope,
@@ -407,15 +504,18 @@ app.post(
   zValidator("param", z.object({ memoryId: z.string().uuid() })),
   zValidator("json", memoryFeedbackSchema),
   async (c) => {
-    const { userId } = c.get("auth");
+    const auth = c.get("auth");
+    const { userId } = auth;
     const { memoryId } = c.req.valid("param");
     const body = c.req.valid("json");
+    const workspaceId = await resolveRequestWorkspace(auth, body.workspaceId);
 
     try {
       return c.json(
-        await submitCompanyBrainMemoryFeedback({
+        await submitContextVaultMemoryFeedback({
           userId,
-          workspaceId: body.workspaceId,
+          workspaceId,
+          vaultId: body.vaultId,
           memoryId,
           type: body.type,
           context: body.context,
@@ -442,15 +542,18 @@ app.post(
   zValidator("param", z.object({ memoryId: z.string().uuid() })),
   zValidator("json", memoryCorrectionSchema),
   async (c) => {
-    const { userId } = c.get("auth");
+    const auth = c.get("auth");
+    const { userId } = auth;
     const { memoryId } = c.req.valid("param");
     const body = c.req.valid("json");
+    const workspaceId = await resolveRequestWorkspace(auth, body.workspaceId);
 
     try {
       return c.json(
-        await correctCompanyBrainMemory({
+        await correctContextVaultMemory({
           userId,
-          workspaceId: body.workspaceId,
+          workspaceId,
+          vaultId: body.vaultId,
           memoryId,
           type: body.type,
           correctedContent: body.correctedContent,
@@ -485,13 +588,20 @@ app.delete(
   zValidator("param", z.object({ memoryId: z.string().uuid() })),
   zValidator("query", hierarchyQuerySchema),
   async (c) => {
-    const { userId } = c.get("auth");
+    const auth = c.get("auth");
+    const { userId } = auth;
     const { memoryId } = c.req.valid("param");
-    const { workspaceId } = c.req.valid("query");
+    const query = c.req.valid("query");
+    const workspaceId = await resolveRequestWorkspace(auth, query.workspaceId);
 
     try {
       return c.json(
-        await deleteCompanyBrainMemory({ userId, workspaceId, memoryId }),
+        await deleteContextVaultMemory({
+          userId,
+          workspaceId,
+          vaultId: query.vaultId,
+          memoryId,
+        }),
       );
     } catch (error) {
       const message =
@@ -516,13 +626,20 @@ app.get(
   zValidator("param", z.object({ memoryId: z.string().uuid() })),
   zValidator("query", hierarchyQuerySchema),
   async (c) => {
-    const { userId } = c.get("auth");
+    const auth = c.get("auth");
+    const { userId } = auth;
     const { memoryId } = c.req.valid("param");
-    const { workspaceId } = c.req.valid("query");
+    const query = c.req.valid("query");
+    const workspaceId = await resolveRequestWorkspace(auth, query.workspaceId);
 
     try {
       return c.json(
-        await listCompanyBrainMemoryEvidence({ userId, workspaceId, memoryId }),
+        await listContextVaultMemoryEvidence({
+          userId,
+          workspaceId,
+          vaultId: query.vaultId,
+          memoryId,
+        }),
       );
     } catch (error) {
       const message =
@@ -540,12 +657,14 @@ app.get(
 );
 
 app.post("/documents", zValidator("json", ingestDocumentSchema), async (c) => {
-  const { userId } = c.get("auth");
+  const auth = c.get("auth");
+  const { userId } = auth;
   const body = c.req.valid("json");
+  const workspaceId = await resolveRequestWorkspace(auth, body.workspaceId);
   let uploadedStorageKey: string | undefined;
 
   try {
-    await requireWorkspaceWriter(userId, body.workspaceId);
+    await requireWorkspaceWriter(userId, workspaceId);
     const normalizedUri = normalizeDocumentUrl(body.uri);
     const explicitSourceType = body.sourceType;
     const inferredUriSourceType = normalizedUri
@@ -580,7 +699,7 @@ app.post("/documents", zValidator("json", ingestDocumentSchema), async (c) => {
             "remote-document",
         );
       const storage = await uploadDocumentObject({
-        workspaceId: body.workspaceId,
+        workspaceId,
         userId,
         filename,
         contentType: getMimeTypeForExtraction(
@@ -594,9 +713,10 @@ app.post("/documents", zValidator("json", ingestDocumentSchema), async (c) => {
         remoteDocument.bytes,
         finalSourceType,
       );
-      const result = await ingestCompanyBrainDocument({
+      const result = await ingestContextVaultDocument({
         userId,
         ...body,
+        workspaceId,
         content,
         sourceType: finalSourceType,
         uri: normalizedUri,
@@ -614,9 +734,10 @@ app.post("/documents", zValidator("json", ingestDocumentSchema), async (c) => {
     }
 
     const isUrlOnlyIngestion = !!normalizedUri && !body.content;
-    const result = await ingestCompanyBrainDocument({
-      userId,
-      ...body,
+      const result = await ingestContextVaultDocument({
+        userId,
+        ...body,
+      workspaceId,
       content: body.content,
       sourceType: isUrlOnlyIngestion
         ? "url"
@@ -643,7 +764,8 @@ app.post("/documents", zValidator("json", ingestDocumentSchema), async (c) => {
 });
 
 app.post("/documents/upload", async (c) => {
-  const { userId } = c.get("auth");
+  const auth = c.get("auth");
+  const { userId } = auth;
   const body = await c.req.parseBody();
   const file = body.file;
 
@@ -653,6 +775,7 @@ app.post("/documents/upload", async (c) => {
 
   const parsedFields = uploadFieldsSchema.safeParse({
     workspaceId: String(body.workspaceId ?? ""),
+    vaultId: body.vaultId ? String(body.vaultId) : undefined,
     title: String(body.title || file.name || "Uploaded document"),
     scope: body.scope ? String(body.scope) : undefined,
     project: body.project ? String(body.project) : undefined,
@@ -664,7 +787,8 @@ app.post("/documents/upload", async (c) => {
   if (!parsedFields.success) {
     throw new HTTPException(400, { message: "Invalid upload fields" });
   }
-  const { workspaceId, title, scope, project } = parsedFields.data;
+  const { workspaceId, vaultId, title, scope, project } = parsedFields.data;
+  const resolvedWorkspaceId = await resolveRequestWorkspace(auth, workspaceId);
   const sourceType =
     parsedFields.data.sourceType ?? inferSourceType(file.name, file.type);
   if (file.size > MAX_UPLOAD_BYTES) {
@@ -674,10 +798,10 @@ app.post("/documents/upload", async (c) => {
   let uploadedStorageKey: string | undefined;
 
   try {
-    await requireWorkspaceWriter(userId, workspaceId);
+    await requireWorkspaceWriter(userId, resolvedWorkspaceId);
     const bytes = new Uint8Array(await file.arrayBuffer());
     const storage = await uploadDocumentObject({
-      workspaceId,
+      workspaceId: resolvedWorkspaceId,
       userId,
       filename: file.name,
       contentType: file.type || "application/octet-stream",
@@ -687,9 +811,10 @@ app.post("/documents/upload", async (c) => {
     const fallbackContent = parsedFields.data.content;
     const content =
       fallbackContent ?? (await extractTextFromBytes(bytes, sourceType));
-    const result = await ingestCompanyBrainDocument({
-      userId,
-      workspaceId,
+      const result = await ingestContextVaultDocument({
+        userId,
+        workspaceId: resolvedWorkspaceId,
+        vaultId,
       title,
       content,
       sourceType,
@@ -718,15 +843,18 @@ app.get(
   zValidator("param", documentIdParamSchema),
   zValidator("query", documentsQuerySchema),
   async (c) => {
-    const { userId } = c.get("auth");
+    const auth = c.get("auth");
+    const { userId } = auth;
     const { documentId } = c.req.valid("param");
-    const { workspaceId } = c.req.valid("query");
+    const query = c.req.valid("query");
+    const workspaceId = await resolveRequestWorkspace(auth, query.workspaceId);
 
     try {
       return c.json(
-        await listCompanyBrainDocumentMemories({
+        await listContextVaultDocumentMemories({
           userId,
           workspaceId,
+          vaultId: query.vaultId,
           documentId,
         }),
       );
@@ -751,12 +879,23 @@ app.get(
 app.post(
   "/documents/:documentId/cancel",
   zValidator("param", documentIdParamSchema),
+  zValidator("query", documentsQuerySchema),
   async (c) => {
-    const { userId } = c.get("auth");
+    const auth = c.get("auth");
+    const { userId } = auth;
     const { documentId } = c.req.valid("param");
+    const query = c.req.valid("query");
+    const workspaceId = await resolveRequestWorkspace(auth, query.workspaceId);
 
     try {
-      return c.json(await cancelCompanyBrainDocument({ userId, documentId }));
+      return c.json(
+        await cancelContextVaultDocument({
+          userId,
+          workspaceId,
+          vaultId: query.vaultId,
+          documentId,
+        }),
+      );
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to cancel document";
@@ -770,12 +909,23 @@ app.post(
 app.delete(
   "/documents/:documentId",
   zValidator("param", documentIdParamSchema),
+  zValidator("query", documentsQuerySchema),
   async (c) => {
-    const { userId } = c.get("auth");
+    const auth = c.get("auth");
+    const { userId } = auth;
     const { documentId } = c.req.valid("param");
+    const query = c.req.valid("query");
+    const workspaceId = await resolveRequestWorkspace(auth, query.workspaceId);
 
     try {
-      return c.json(await deleteCompanyBrainDocument({ userId, documentId }));
+      return c.json(
+        await deleteContextVaultDocument({
+          userId,
+          workspaceId,
+          vaultId: query.vaultId,
+          documentId,
+        }),
+      );
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to delete document";
@@ -787,12 +937,16 @@ app.delete(
 );
 
 app.get("/search", zValidator("query", searchSchema), async (c) => {
-  const { userId } = c.get("auth");
+  const auth = c.get("auth");
+  const { userId } = auth;
   const query = c.req.valid("query");
   const scopes = parseScopesParam(c.req.query("scopes"));
+  const workspaceId = await resolveRequestWorkspace(auth, query.workspaceId);
 
   try {
-    return c.json(await searchCompanyBrain({ userId, ...query, scopes }));
+    return c.json(
+      await searchContextVault({ userId, ...query, workspaceId, scopes }),
+    );
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to search context vault";

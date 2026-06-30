@@ -34,6 +34,7 @@ interface ListMemoriesResponse {
 }
 
 interface ListMemoriesParams {
+  workspaceId?: string;
   limit?: number;
   offset?: number;
   category?: string;
@@ -64,11 +65,17 @@ export interface MemoryHierarchyResponse {
 
 export type { MemoryGraphNode, MemoryGraphLink, MemoryGraphResponse };
 
-export const memoryHierarchyQueryOptions = () =>
+export const memoryHierarchyQueryOptions = (workspaceId?: string) =>
   queryOptions({
-    queryKey: ["memory-hierarchy"] as const,
-    queryFn: async () =>
-      api.get<MemoryHierarchyResponse>("/api/user/memory-hierarchy"),
+    queryKey: ["memory-hierarchy", workspaceId ?? null] as const,
+    queryFn: async () => {
+      const query = workspaceId
+        ? `?workspaceId=${encodeURIComponent(workspaceId)}`
+        : "";
+      return api.get<MemoryHierarchyResponse>(
+        `/api/user/memory-hierarchy${query}`,
+      );
+    },
     staleTime: 60_000,
   });
 
@@ -77,6 +84,9 @@ export const memoriesQueryOptions = (params?: ListMemoriesParams) =>
     queryKey: ["memories", params] as const,
     queryFn: async () => {
       const searchParams = new URLSearchParams();
+      if (params?.workspaceId) {
+        searchParams.set("workspaceId", params.workspaceId);
+      }
       if (params?.limit) searchParams.set("limit", String(params.limit));
       if (params?.offset) searchParams.set("offset", String(params.offset));
 
@@ -103,12 +113,17 @@ export const memoriesQueryOptions = (params?: ListMemoriesParams) =>
     },
   });
 
-export const memoryGraphQueryOptions = (scope?: string) =>
+export const memoryGraphQueryOptions = (scope?: string, workspaceId?: string) =>
   queryOptions({
-    queryKey: ["memory-graph", scope ?? null] as const,
+    queryKey: ["memory-graph", scope ?? null, workspaceId ?? null] as const,
     queryFn: async () => {
-      const query = scope ? `?scope=${encodeURIComponent(scope)}` : "";
-      return api.get<MemoryGraphResponse>(`/api/memories/graph${query}`);
+      const searchParams = new URLSearchParams();
+      if (scope) searchParams.set("scope", scope);
+      if (workspaceId) searchParams.set("workspaceId", workspaceId);
+      const query = searchParams.toString();
+      return api.get<MemoryGraphResponse>(
+        `/api/memories/graph${query ? `?${query}` : ""}`,
+      );
     },
     staleTime: 60_000,
     gcTime: 5 * 60_000,
@@ -117,25 +132,30 @@ export const memoryGraphQueryOptions = (scope?: string) =>
 
 interface UpdateMemoryParams {
   id: string;
+  workspaceId?: string;
   content?: string;
   category?: string;
   project?: string;
   scope?: string;
 }
 
-function appendScope(path: string, scope?: string) {
-  if (scope === undefined) return path;
+function appendMemoryContext(path: string, scope?: string, workspaceId?: string) {
+  const searchParams = new URLSearchParams();
+  if (scope !== undefined) searchParams.set("scope", scope);
+  if (workspaceId) searchParams.set("workspaceId", workspaceId);
+  const query = searchParams.toString();
+  if (!query) return path;
   const sep = path.includes("?") ? "&" : "?";
-  return `${path}${sep}scope=${encodeURIComponent(scope)}`;
+  return `${path}${sep}${query}`;
 }
 
 export function useUpdateMemory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, scope, ...data }: UpdateMemoryParams) => {
+    mutationFn: async ({ id, scope, workspaceId, ...data }: UpdateMemoryParams) => {
       return api.patch<{ success: boolean }>(
-        appendScope(`/api/memories/${id}`, scope),
+        appendMemoryContext(`/api/memories/${id}`, scope, workspaceId),
         data,
       );
     },
@@ -154,9 +174,17 @@ export function useDeleteMemory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, scope }: { id: string; scope?: string }) => {
+    mutationFn: async ({
+      id,
+      scope,
+      workspaceId,
+    }: {
+      id: string;
+      scope?: string;
+      workspaceId?: string;
+    }) => {
       return api.delete<{ success: boolean }>(
-        appendScope(`/api/memories/${id}`, scope),
+        appendMemoryContext(`/api/memories/${id}`, scope, workspaceId),
       );
     },
     onSuccess: () => {
@@ -171,10 +199,18 @@ export function useDeleteMemories() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ ids, scope }: { ids: string[]; scope?: string }) => {
+    mutationFn: async ({
+      ids,
+      scope,
+      workspaceId,
+    }: {
+      ids: string[];
+      scope?: string;
+      workspaceId?: string;
+    }) => {
       return api.delete<{ success: boolean; deletedCount: number }>(
         "/api/memories/bulk",
-        { ids, scope },
+        { ids, scope, workspaceId },
       );
     },
     onSuccess: () => {
@@ -185,12 +221,16 @@ export function useDeleteMemories() {
   });
 }
 
-export const memoryHistoryQueryOptions = (id: string, scope?: string) =>
+export const memoryHistoryQueryOptions = (
+  id: string,
+  scope?: string,
+  workspaceId?: string,
+) =>
   queryOptions({
-    queryKey: ["memory-history", id, scope ?? null] as const,
+    queryKey: ["memory-history", id, scope ?? null, workspaceId ?? null] as const,
     queryFn: async () => {
       return api.get<MemoryHistoryResponse>(
-        appendScope(`/api/memories/${id}/history`, scope),
+        appendMemoryContext(`/api/memories/${id}/history`, scope, workspaceId),
       );
     },
     enabled: !!id,
@@ -203,14 +243,16 @@ export function useSubmitFeedback() {
       type,
       context,
       scope,
+      workspaceId,
     }: {
       id: string;
       type: "helpful" | "not_helpful" | "outdated" | "wrong";
       context?: string;
       scope?: string;
+      workspaceId?: string;
     }) => {
       return api.post<{ success: boolean }>(
-        appendScope(`/api/memories/${id}/feedback`, scope),
+        appendMemoryContext(`/api/memories/${id}/feedback`, scope, workspaceId),
         {
           type,
           context,
@@ -224,9 +266,17 @@ export function useForgetMemory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, scope }: { id: string; scope?: string }) => {
+    mutationFn: async ({
+      id,
+      scope,
+      workspaceId,
+    }: {
+      id: string;
+      scope?: string;
+      workspaceId?: string;
+    }) => {
       return api.post<{ success: boolean; message: string }>(
-        appendScope(`/api/memories/${id}/forget`, scope),
+        appendMemoryContext(`/api/memories/${id}/forget`, scope, workspaceId),
         {},
       );
     },

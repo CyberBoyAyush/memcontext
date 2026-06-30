@@ -10,9 +10,11 @@ Use `scope` when your API key serves more than one user, tenant, organization, o
 workspace. Use `project` when you want to group related memories inside that
 scope.
 
-For Context Vault, there is one additional field: `workspaceId`. The workspace
-is the hard company/team boundary. `scope` is a hard lane inside that workspace.
-`project` is a soft grouping inside the selected scope.
+For Context Vault, there are two additional fields: `workspaceId` and optional
+`vaultId`. The workspace is the hard company/team/account boundary. A vault is
+the shared knowledge container inside that workspace. `scope` is a hard lane
+inside the selected workspace or vault. `project` is a soft grouping inside the
+selected scope.
 
 ## Scope
 
@@ -62,6 +64,7 @@ For company knowledge bases:
 | Field | Meaning | Example |
 | --- | --- | --- |
 | `workspaceId` | Hard company, team, customer, or tenant boundary | `acme_workspace_id` |
+| `vaultId` | Optional Context Vault container inside the workspace | `engineering_vault_id` |
 | `scope` | Hard lane inside the workspace | `hr`, `engineering`, `billing` |
 | `project` | Soft grouping inside the scope | `onboarding`, `api-platform` |
 
@@ -71,11 +74,11 @@ you only need a helpful filter or collection label.
 Context Vault search also supports multi-scope retrieval with `scopes`.
 
 ```bash
-GET /api/company-brain/search?workspaceId=...&query=trial&scopes=dev,billing
+GET /api/context-vault/search?workspaceId=...&vaultId=...&query=trial&scopes=dev,billing
 ```
 
 When `scopes` is provided, MemContext searches those named lanes inside the
-workspace. It does not search other workspaces.
+selected workspace vault. It does not search other workspaces or vaults.
 
 ## Which Field Should I Use?
 

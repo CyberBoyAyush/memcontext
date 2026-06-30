@@ -1,10 +1,27 @@
 ---
-title: "Workspace Model"
-description: "How Context Vault organizes team knowledge."
+title: "Workspace and Vault Model"
+description: "How MemContext organizes team memory, billing, and shared knowledge."
 ---
 
-A workspace is the top-level Context Vault boundary. Members can only ingest,
-search, browse, correct, or review knowledge for workspaces they belong to.
+A workspace is the top-level team, billing, and memory-pool boundary. A vault is
+the shared Context Vault container inside a workspace.
+
+```txt
+Workspace
+  members
+  billing/subscription
+  member memories
+  vaults
+    documents
+    shared company/document memories
+```
+
+`workspace_id` always identifies the team/account boundary. `vault_id` identifies
+a Context Vault inside that workspace.
+
+In the dashboard, create workspaces, invite teammates, and manage billing owners
+from **Settings → Workspaces**. Context Vault is focused on selecting a workspace,
+adding knowledge, browsing documents, and searching vault content.
 
 ## Roles
 
@@ -25,21 +42,64 @@ the same email address.
 Each workspace has one billing owner. By default, the billing owner is the user
 who created the workspace.
 
-The billing owner's plan controls the workspace's Context Vault document
-allowance. Invited admins and members can upload documents when their role
-allows it, but those documents count against the workspace billing owner's
-allowance, not the uploader's personal plan.
+The workspace subscription controls the workspace memory pool and Context Vault
+allowances. Invited admins and members can upload documents when their role
+allows it, but usage is charged to the workspace, not to the uploader's personal
+account.
 
-For example, if a workspace is owned by an Ultimate user, a Free-plan member can
-upload documents into that workspace until the owner's Context Vault document
-limit is reached. If an invited admin upgrades their own plan, that does not
-automatically transfer billing ownership for an existing workspace.
+Only workspace owners can change billing state such as checkout, cancellation,
+or plan changes. Admins can view usage and billing status.
+
+## Member memories
+
+Member memories are saved inside the selected workspace and belong to the user
+who created them.
+
+```txt
+workspace_id = selected workspace
+vault_id = null
+user_id = current user
+memory_type = member
+```
+
+Normal REST, SDK, API-key, OAuth, and MCP memory calls only search the caller's
+own member memories within the selected workspace, even for workspace owners and
+admins. Workspace-wide member-memory visibility is reserved for
+dashboard-specific owner/admin surfaces. Update and delete operations remain
+owner-scoped, and viewers cannot create, update, or delete member memories.
+
+## Vault memories
+
+Context Vault knowledge is saved inside a vault.
+
+```txt
+workspace_id = selected workspace
+vault_id = selected or default vault
+memory_type = document | company
+```
+
+If a workspace has one default vault, dashboard and API flows can resolve it
+automatically. If a workspace has multiple vaults, callers should select the
+vault they want to search or ingest into.
+
+## API keys
+
+API keys are bound to one workspace. Existing keys are assigned to the user's
+default workspace during migration. The dashboard prompts for a workspace when
+creating keys; API calls that omit `workspaceId` use the user's default
+workspace.
+
+MCP and API-key calls resolve the workspace from the key, so normal memory tools
+do not need a `workspaceId` parameter. Context Vault REST endpoints still accept
+`workspaceId` for session callers; API-key callers must omit it or pass the same
+workspace bound to the key.
 
 ## Workspace isolation
 
-Every Context Vault document, chunk, memory, citation, feedback item, and
-correction is checked against `workspaceId`. A query for one workspace never
-returns another workspace's knowledge.
+Every member memory, vault document, chunk, citation, feedback item, and
+correction is checked against `workspace_id`. Vault retrieval additionally
+checks `vault_id`. A query for one workspace never returns another workspace's
+knowledge.
 
 Use separate workspaces when the data belongs to different companies, customers,
 tenants, or legal entities.

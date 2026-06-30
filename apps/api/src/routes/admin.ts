@@ -84,6 +84,7 @@ app.get("/users/:userId", zValidator("param", userIdParamSchema), async (c) => {
 });
 
 const updatePlanSchema = z.object({
+  workspaceId: z.string().uuid("Invalid workspace ID"),
   plan: z.enum(["free", "hobby", "pro", "ultimate"]),
 });
 
@@ -93,16 +94,20 @@ app.patch(
   zValidator("json", updatePlanSchema),
   async (c) => {
     const { userId } = c.req.valid("param");
-    const { plan } = c.req.valid("json");
+    const { workspaceId, plan } = c.req.valid("json");
     const admin = c.get("admin");
 
     const userDetails = await getUserDetails({ userId, adminId: admin.userId });
     if (!userDetails) {
       return c.json({ error: "User not found" }, 404);
     }
+    if (!userDetails.workspaces.some((workspace) => workspace.id === workspaceId)) {
+      return c.json({ error: "Workspace not found for user" }, 404);
+    }
 
     const result = await updateUserPlan({
       userId,
+      workspaceId,
       plan: plan as PlanType,
       adminId: admin.userId,
     });
@@ -112,6 +117,7 @@ app.patch(
       previousPlan: result.previousPlan,
       newPlan: plan,
       newLimit: PLAN_LIMITS[plan as PlanType],
+      workspaceId,
     });
   },
 );

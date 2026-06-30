@@ -104,7 +104,7 @@ await client.uploadContextVaultDocument({
 Use this when your client has the file bytes.
 
 ```bash
-curl -X POST https://api.memcontext.in/api/company-brain/documents/upload \
+curl -X POST https://api.memcontext.in/api/context-vault/documents/upload \
   -H "X-API-Key: mc_your_key" \
   -F "workspaceId=8b3b8f4c-..." \
   -F "title=Employee Handbook" \
@@ -117,7 +117,7 @@ curl -X POST https://api.memcontext.in/api/company-brain/documents/upload \
 Use this when the file is already available at a public URL.
 
 ```bash
-curl -X POST https://api.memcontext.in/api/company-brain/documents \
+curl -X POST https://api.memcontext.in/api/context-vault/documents \
   -H "Content-Type: application/json" \
   -H "X-API-Key: mc_your_key" \
   -d '{
@@ -134,7 +134,7 @@ curl -X POST https://api.memcontext.in/api/company-brain/documents \
 Use this for documentation sites, help centers, or public web pages.
 
 ```bash
-curl -X POST https://api.memcontext.in/api/company-brain/documents \
+curl -X POST https://api.memcontext.in/api/context-vault/documents \
   -H "Content-Type: application/json" \
   -H "X-API-Key: mc_your_key" \
   -d '{
@@ -157,7 +157,7 @@ and rank useful pages, then ingests only the selected priority pages.
 Use this when your app already has clean text.
 
 ```bash
-curl -X POST https://api.memcontext.in/api/company-brain/documents \
+curl -X POST https://api.memcontext.in/api/context-vault/documents \
   -H "Content-Type: application/json" \
   -H "X-API-Key: mc_your_key" \
   -d '{
@@ -178,7 +178,7 @@ const docs = await client.listContextVaultDocuments("8b3b8f4c-...");
 ```
 
 ```bash
-curl "https://api.memcontext.in/api/company-brain/documents?workspaceId=8b3b8f4c-..." \
+curl "https://api.memcontext.in/api/context-vault/documents?workspaceId=8b3b8f4c-..." \
   -H "X-API-Key: mc_your_key"
 ```
 
@@ -214,7 +214,7 @@ const results = await client.searchContextVault({
 ```
 
 ```bash
-curl "https://api.memcontext.in/api/company-brain/search?workspaceId=8b3b8f4c-...&query=leave%20policy&mode=hybrid" \
+curl "https://api.memcontext.in/api/context-vault/search?workspaceId=8b3b8f4c-...&query=leave%20policy&mode=hybrid" \
   -H "X-API-Key: mc_your_key"
 ```
 

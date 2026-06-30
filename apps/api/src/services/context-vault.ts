@@ -34,7 +34,10 @@ import {
   searchMemories,
 } from "./memory.js";
 import { requireWorkspaceMember } from "./workspace.js";
-import { checkContextDocumentLimit } from "./subscription.js";
+import {
+  checkContextDocumentLimit,
+  resolveVaultForWorkspace,
+} from "./subscription.js";
 import { scrapeUrlWithExa } from "./exa.js";
 import { extractDocumentWithOcr } from "./ocr.js";
 import { deleteDocumentObject } from "./document-storage.js";
@@ -50,19 +53,19 @@ const CHUNK_CHAR_OVERLAP = 600;
 const SEMANTIC_CHUNK_MIN_CHARS = 350;
 const SEMANTIC_CHUNK_SOFT_CHARS = 2_200;
 const SEMANTIC_CHUNK_HARD_CHARS = 4_500;
-const COMPANY_BRAIN_PARSER_VERSION = "company-brain-v1";
-const COMPANY_BRAIN_CHUNKER_VERSION = "structure-v2";
-const COMPANY_BRAIN_EXTRACTOR_VERSION = "atomic-v1";
+const CONTEXT_VAULT_PARSER_VERSION = "context-vault-v1";
+const CONTEXT_VAULT_CHUNKER_VERSION = "structure-v2";
+const CONTEXT_VAULT_EXTRACTOR_VERSION = "atomic-v1";
 const MAX_DOCUMENT_CHARS = 250_000;
 const DOCUMENT_SEARCH_THRESHOLD = 0.75;
-const COMPANY_BRAIN_POLL_INTERVAL_MS = 2500;
+const CONTEXT_VAULT_POLL_INTERVAL_MS = 2500;
 // Context Vault document processing can legitimately run for several minutes,
 // so stale-lock recovery should stay conservative to avoid reclaiming active
 // jobs mid-flight.
-const COMPANY_BRAIN_STALE_AFTER_MS = 20 * 60 * 1000;
-const COMPANY_BRAIN_MAX_ATTEMPTS = 3;
-const COMPANY_BRAIN_RERANK_CANDIDATES = 30;
-const COMPANY_BRAIN_DOC_TYPES = [
+const CONTEXT_VAULT_STALE_AFTER_MS = 20 * 60 * 1000;
+const CONTEXT_VAULT_MAX_ATTEMPTS = 3;
+const CONTEXT_VAULT_RERANK_CANDIDATES = 30;
+const CONTEXT_VAULT_DOC_TYPES = [
   "pdf",
   "markdown",
   "text",
@@ -95,6 +98,7 @@ type SearchMode = "memories" | "documents" | "hybrid";
 interface IngestDocumentParams {
   userId: string;
   workspaceId: string;
+  vaultId?: string;
   title: string;
   content?: string;
   sourceType: DocumentSourceType;
@@ -110,7 +114,7 @@ interface IngestDocumentParams {
   priorityPageLimit?: number;
 }
 
-type CompanyBrainPayload =
+type ContextVaultPayload =
   | {
       ingestionKind: "content";
       content: string;
@@ -142,9 +146,10 @@ interface CreateDocumentJobParams extends IngestDocumentParams {
   subpageTarget?: string[];
 }
 
-interface SearchCompanyBrainParams {
+interface SearchContextVaultParams {
   userId: string;
   workspaceId: string;
+  vaultId?: string;
   query: string;
   mode: SearchMode;
   scope?: string;
@@ -153,18 +158,20 @@ interface SearchCompanyBrainParams {
   limit: number;
 }
 
-interface SaveCompanyBrainMemoryParams {
+interface SaveContextVaultMemoryParams {
   userId: string;
   workspaceId: string;
+  vaultId?: string;
   content: string;
   category?: MemoryCategory;
   scope?: string;
   project?: string;
 }
 
-interface CorrectCompanyBrainMemoryParams {
+interface CorrectContextVaultMemoryParams {
   userId: string;
   workspaceId: string;
+  vaultId?: string;
   memoryId: string;
   type: "wrong" | "outdated" | "incomplete";
   correctedContent: string;
@@ -173,14 +180,15 @@ interface CorrectCompanyBrainMemoryParams {
   evidenceChunkId?: string;
 }
 
-interface DeleteCompanyBrainMemoryParams {
+interface DeleteContextVaultMemoryParams {
   userId: string;
   workspaceId: string;
+  vaultId?: string;
   memoryId: string;
 }
 
-export async function saveCompanyBrainMemory(
-  params: SaveCompanyBrainMemoryParams,
+export async function saveContextVaultMemory(
+  params: SaveContextVaultMemoryParams,
 ) {
   const membership = await requireWorkspaceMember(
     params.userId,
@@ -189,10 +197,15 @@ export async function saveCompanyBrainMemory(
   if (membership.role === "viewer") {
     throw new Error("Viewers cannot add company facts");
   }
+  const vaultId = await resolveVaultForWorkspace(
+    params.workspaceId,
+    params.vaultId,
+  );
 
   const result = await saveCuratedCompanyMemory({
     userId: params.userId,
     workspaceId: params.workspaceId,
+    vaultId,
     content: params.content,
     category: params.category ?? "fact",
     scope: params.scope,
@@ -222,6 +235,7 @@ export async function saveCompanyBrainMemory(
       and(
         eq(memories.id, result.id),
         eq(memories.workspaceId, params.workspaceId),
+        eq(memories.vaultId, vaultId),
         eq(memories.memoryType, "company"),
         eq(memories.isCurrent, true),
         isNull(memories.deletedAt),
@@ -244,8 +258,8 @@ export async function saveCompanyBrainMemory(
   };
 }
 
-export async function deleteCompanyBrainMemory(
-  params: DeleteCompanyBrainMemoryParams,
+export async function deleteContextVaultMemory(
+  params: DeleteContextVaultMemoryParams,
 ) {
   const membership = await requireWorkspaceMember(
     params.userId,
@@ -254,6 +268,10 @@ export async function deleteCompanyBrainMemory(
   if (membership.role === "viewer") {
     throw new Error("Viewers cannot delete company facts");
   }
+  const vaultId = await resolveVaultForWorkspace(
+    params.workspaceId,
+    params.vaultId,
+  );
 
   const [deletedMemory] = await db
     .update(memories)
@@ -262,6 +280,7 @@ export async function deleteCompanyBrainMemory(
       and(
         eq(memories.id, params.memoryId),
         eq(memories.workspaceId, params.workspaceId),
+        eq(memories.vaultId, vaultId),
         eq(memories.memoryType, "company"),
         eq(memories.isCurrent, true),
         isNull(memories.deletedAt),
@@ -298,7 +317,7 @@ interface ChunkSearchRow {
   sourceType: string;
 }
 
-interface CompanyBrainChunkResult {
+interface ContextVaultChunkResult {
   id: string;
   sourceId: string;
   title: string | null;
@@ -689,20 +708,20 @@ function buildContextualContent(title: string, chunk: ParsedBlock): string {
     .join("\n");
 }
 
-class CompanyBrainCancelledError extends Error {
+class ContextVaultCancelledError extends Error {
   constructor() {
     super("Document processing was cancelled");
   }
 }
 
-const COMPANY_BRAIN_PROCESSOR_CONCURRENCY = 2;
+const CONTEXT_VAULT_PROCESSOR_CONCURRENCY = 2;
 
-let companyBrainProcessorStarted = false;
-let companyBrainProcessorActiveCount = 0;
+let contextVaultProcessorStarted = false;
+let contextVaultProcessorActiveCount = 0;
 
 function buildQueuedPayload(
   params: CreateDocumentJobParams,
-): CompanyBrainPayload {
+): ContextVaultPayload {
   const metadata = params.metadata ?? {};
 
   if (params.content) {
@@ -758,7 +777,7 @@ function getChunkExtractionCompleted(metadata: unknown) {
   );
 }
 
-function getExtractionLimitPerChunk(payload: CompanyBrainPayload) {
+function getExtractionLimitPerChunk(payload: ContextVaultPayload) {
   if (
     payload.ingestionKind === "exa-url" &&
     payload.scraper === "exa" &&
@@ -780,7 +799,7 @@ function mergeChunkMetadata(
   };
 }
 
-function toCompanyBrainDocument(source: {
+function toContextVaultDocument(source: {
   id: string;
   title: string | null;
   sourceType: string;
@@ -822,7 +841,7 @@ function getRetryDelayMs(attempts: number) {
   return Math.min(60_000, 10_000 * 2 ** Math.max(0, attempts - 1));
 }
 
-function isRetryableCompanyBrainError(error: unknown) {
+function isRetryableContextVaultError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
   return ![
     "Document content is too large",
@@ -832,7 +851,7 @@ function isRetryableCompanyBrainError(error: unknown) {
   ].some((nonRetryable) => message.includes(nonRetryable));
 }
 
-async function updateCompanyBrainProgress(
+async function updateContextVaultProgress(
   sourceId: string,
   updates: {
     processingPhase?: string | null;
@@ -920,7 +939,7 @@ async function softDeleteExclusiveDocumentMemoriesForSource(params: {
   return exclusiveMemoryIds.length;
 }
 
-async function assertCompanyBrainNotCancelled(sourceId: string) {
+async function assertContextVaultNotCancelled(sourceId: string) {
   const [row] = await db
     .select({ status: memorySources.status })
     .from(memorySources)
@@ -928,11 +947,11 @@ async function assertCompanyBrainNotCancelled(sourceId: string) {
     .limit(1);
 
   if (row?.status === "cancelled") {
-    throw new CompanyBrainCancelledError();
+    throw new ContextVaultCancelledError();
   }
 }
 
-export async function ingestCompanyBrainDocument(
+export async function ingestContextVaultDocument(
   params: CreateDocumentJobParams,
 ) {
   const membership = await requireWorkspaceMember(
@@ -942,6 +961,10 @@ export async function ingestCompanyBrainDocument(
   if (membership.role === "viewer") {
     throw new Error("Viewers cannot ingest workspace documents");
   }
+  const vaultId = await resolveVaultForWorkspace(
+    params.workspaceId,
+    params.vaultId,
+  );
   const limitCheck = await checkContextDocumentLimit(params.userId, {
     workspaceId: params.workspaceId,
   });
@@ -964,6 +987,7 @@ export async function ingestCompanyBrainDocument(
     .values({
       userId: params.userId,
       workspaceId: params.workspaceId,
+      vaultId,
       scope,
       project,
       category: params.category,
@@ -975,9 +999,9 @@ export async function ingestCompanyBrainDocument(
       mimeType: params.mimeType,
       storageKey: params.storageKey,
       contentHash,
-      parserVersion: COMPANY_BRAIN_PARSER_VERSION,
-      chunkerVersion: COMPANY_BRAIN_CHUNKER_VERSION,
-      extractorVersion: COMPANY_BRAIN_EXTRACTOR_VERSION,
+      parserVersion: CONTEXT_VAULT_PARSER_VERSION,
+      chunkerVersion: CONTEXT_VAULT_CHUNKER_VERSION,
+      extractorVersion: CONTEXT_VAULT_EXTRACTOR_VERSION,
       payload,
       processingPhase: "queued",
       totalChunks: 0,
@@ -991,10 +1015,10 @@ export async function ingestCompanyBrainDocument(
     throw new Error("Failed to create document processing job");
   }
 
-  kickCompanyBrainProcessor();
+  kickContextVaultProcessor();
 
   return {
-    document: toCompanyBrainDocument(source),
+    document: toContextVaultDocument(source),
     chunkCount: 0,
     extractedCount: 0,
     status: "accepted",
@@ -1002,8 +1026,8 @@ export async function ingestCompanyBrainDocument(
   };
 }
 
-async function resolveCompanyBrainContent(source: MemorySourceRow) {
-  const payload = source.payload as CompanyBrainPayload;
+async function resolveContextVaultContent(source: MemorySourceRow) {
+  const payload = source.payload as ContextVaultPayload;
 
   if (payload.ingestionKind === "content") {
     return {
@@ -1066,18 +1090,18 @@ async function resolveCompanyBrainContent(source: MemorySourceRow) {
   throw new Error("Unsupported context vault payload");
 }
 
-async function processCompanyBrainSource(source: MemorySourceRow) {
+async function processContextVaultSource(source: MemorySourceRow) {
   try {
     if (!source.workspaceId) {
       throw new Error("Workspace document source is missing workspace ID");
     }
 
-    await updateCompanyBrainProgress(source.id, {
+    await updateContextVaultProgress(source.id, {
       processingPhase: "resolving_source",
     });
-    await assertCompanyBrainNotCancelled(source.id);
-    const resolved = await resolveCompanyBrainContent(source);
-    await assertCompanyBrainNotCancelled(source.id);
+    await assertContextVaultNotCancelled(source.id);
+    const resolved = await resolveContextVaultContent(source);
+    await assertContextVaultNotCancelled(source.id);
 
     const normalizedContent = normalizeText(resolved.content);
     if (normalizedContent.length > MAX_DOCUMENT_CHARS) {
@@ -1089,13 +1113,13 @@ async function processCompanyBrainSource(source: MemorySourceRow) {
     const scope = source.scope ?? undefined;
     const project = source.project ?? undefined;
     const extractionLimitPerChunk = getExtractionLimitPerChunk(
-      resolved.metadata as CompanyBrainPayload,
+      resolved.metadata as ContextVaultPayload,
     );
     const normalizedContentHash = hashContent(normalizedContent);
     const contentChanged =
       !!source.contentHash && source.contentHash !== normalizedContentHash;
     const chunkerChanged =
-      source.chunkerVersion !== COMPANY_BRAIN_CHUNKER_VERSION;
+      source.chunkerVersion !== CONTEXT_VAULT_CHUNKER_VERSION;
 
     if (contentChanged || chunkerChanged) {
       await softDeleteExclusiveDocumentMemoriesForSource({
@@ -1117,8 +1141,8 @@ async function processCompanyBrainSource(source: MemorySourceRow) {
           publicUrl: resolved.publicUrl,
         },
         processingPhase: "chunking",
-        chunkerVersion: COMPANY_BRAIN_CHUNKER_VERSION,
-        extractorVersion: COMPANY_BRAIN_EXTRACTOR_VERSION,
+        chunkerVersion: CONTEXT_VAULT_CHUNKER_VERSION,
+        extractorVersion: CONTEXT_VAULT_EXTRACTOR_VERSION,
         heartbeatAt: new Date(),
         updatedAt: new Date(),
       })
@@ -1127,7 +1151,7 @@ async function processCompanyBrainSource(source: MemorySourceRow) {
     const blockChunks = mergeSemanticBlocks(
       parseBlocks(normalizedContent, sourceType),
     ).flatMap(chunkBlock);
-    await updateCompanyBrainProgress(source.id, {
+    await updateContextVaultProgress(source.id, {
       processingPhase: "embedding_chunks",
       totalChunks: blockChunks.length,
       processedChunks: 0,
@@ -1136,7 +1160,7 @@ async function processCompanyBrainSource(source: MemorySourceRow) {
     const persistedChunks: PersistedDocumentChunk[] = [];
 
     for (const [index, chunk] of blockChunks.entries()) {
-      await assertCompanyBrainNotCancelled(source.id);
+      await assertContextVaultNotCancelled(source.id);
       const contextualContent = buildContextualContent(title, chunk);
       const chunkHash = hashContent(chunk.text);
       const [existingChunk] = await db
@@ -1157,7 +1181,7 @@ async function processCompanyBrainSource(source: MemorySourceRow) {
 
       if (existingChunk?.contentHash === chunkHash) {
         persistedChunks.push(existingChunk);
-        await updateCompanyBrainProgress(source.id, {
+        await updateContextVaultProgress(source.id, {
           chunkCount: persistedChunks.length,
           processedChunks: persistedChunks.length,
         });
@@ -1171,13 +1195,14 @@ async function processCompanyBrainSource(source: MemorySourceRow) {
       }
 
       const embedding = await generateEmbedding(contextualContent);
-      await assertCompanyBrainNotCancelled(source.id);
+      await assertContextVaultNotCancelled(source.id);
       const [persistedChunk] = await db
         .insert(memorySourceChunks)
         .values({
           sourceId: source.id,
           userId: source.userId,
           workspaceId: source.workspaceId,
+          vaultId: source.vaultId,
           scope,
           project,
           chunkIndex: index,
@@ -1199,14 +1224,14 @@ async function processCompanyBrainSource(source: MemorySourceRow) {
         throw new Error("Failed to persist document chunk");
       }
       persistedChunks.push(persistedChunk);
-      await updateCompanyBrainProgress(source.id, {
+      await updateContextVaultProgress(source.id, {
         chunkCount: persistedChunks.length,
         processedChunks: persistedChunks.length,
       });
     }
 
-    await assertCompanyBrainNotCancelled(source.id);
-    await updateCompanyBrainProgress(source.id, {
+    await assertContextVaultNotCancelled(source.id);
+    await updateContextVaultProgress(source.id, {
       processingPhase: "extracting_memories",
       totalChunks: blockChunks.length,
       processedChunks: persistedChunks.length,
@@ -1215,14 +1240,14 @@ async function processCompanyBrainSource(source: MemorySourceRow) {
     let extractedCount = 0;
 
     for (const [index, chunk] of persistedChunks.entries()) {
-      await assertCompanyBrainNotCancelled(source.id);
+      await assertContextVaultNotCancelled(source.id);
       if (getChunkExtractionCompleted(chunk.metadata)) {
         const [{ count = 0 } = { count: 0 }] = await db
           .select({ count: sql<number>`count(*)::int` })
           .from(memoryEvidence)
           .where(eq(memoryEvidence.chunkId, chunk.id));
         extractedCount += count;
-        await updateCompanyBrainProgress(source.id, { extractedCount });
+        await updateContextVaultProgress(source.id, { extractedCount });
         continue;
       }
 
@@ -1235,16 +1260,17 @@ async function processCompanyBrainSource(source: MemorySourceRow) {
         .filter(Boolean);
 
       for (const fact of extractedCandidates) {
-        await assertCompanyBrainNotCancelled(source.id);
+        await assertContextVaultNotCancelled(source.id);
         const saveResult = await saveExtractedDocumentMemory({
           userId: source.userId,
           workspaceId: source.workspaceId,
+          vaultId: source.vaultId ?? undefined,
           content: fact,
           category: (source.category as MemoryCategory | null) ?? "fact",
           scope,
           project,
         });
-        await assertCompanyBrainNotCancelled(source.id);
+        await assertContextVaultNotCancelled(source.id);
         const memoryId = saveResult.id ?? saveResult.existingId;
         if (memoryId) {
           await db
@@ -1255,6 +1281,7 @@ async function processCompanyBrainSource(source: MemorySourceRow) {
               chunkId: chunk.id,
               userId: source.userId,
               workspaceId: source.workspaceId,
+              vaultId: source.vaultId,
               scope,
               quote: chunk.content.slice(0, 1000),
               confidence: 0.7,
@@ -1279,7 +1306,7 @@ async function processCompanyBrainSource(source: MemorySourceRow) {
         .set({ metadata: completedMetadata })
         .where(eq(memorySourceChunks.id, chunk.id));
       chunk.metadata = completedMetadata;
-      await updateCompanyBrainProgress(source.id, { extractedCount });
+      await updateContextVaultProgress(source.id, { extractedCount });
     }
 
     const [updatedSource] = await db
@@ -1311,15 +1338,15 @@ async function processCompanyBrainSource(source: MemorySourceRow) {
       extractedCount,
     };
   } catch (error) {
-    if (error instanceof CompanyBrainCancelledError) {
+    if (error instanceof ContextVaultCancelledError) {
       return;
     }
     throw error;
   }
 }
 
-async function claimNextCompanyBrainSource() {
-  const staleBefore = new Date(Date.now() - COMPANY_BRAIN_STALE_AFTER_MS);
+async function claimNextContextVaultSource() {
+  const staleBefore = new Date(Date.now() - CONTEXT_VAULT_STALE_AFTER_MS);
   const now = new Date();
   const [candidate] = await db
     .select({ id: memorySources.id })
@@ -1327,7 +1354,7 @@ async function claimNextCompanyBrainSource() {
     .where(
       and(
         sql`${memorySources.workspaceId} IS NOT NULL`,
-        inArray(memorySources.sourceType, [...COMPANY_BRAIN_DOC_TYPES]),
+        inArray(memorySources.sourceType, [...CONTEXT_VAULT_DOC_TYPES]),
         or(
           eq(memorySources.status, "pending"),
           and(
@@ -1390,14 +1417,14 @@ async function claimNextCompanyBrainSource() {
   return claimed ?? null;
 }
 
-async function markCompanyBrainFailure(
+async function markContextVaultFailure(
   source: MemorySourceRow,
   error: unknown,
 ) {
   const attempts = source.attempts;
   const retryable =
-    attempts < COMPANY_BRAIN_MAX_ATTEMPTS &&
-    isRetryableCompanyBrainError(error);
+    attempts < CONTEXT_VAULT_MAX_ATTEMPTS &&
+    isRetryableContextVaultError(error);
   const message = error instanceof Error ? error.message : String(error);
   const nextRunAt = retryable
     ? new Date(Date.now() + getRetryDelayMs(attempts))
@@ -1429,38 +1456,38 @@ async function markCompanyBrainFailure(
   );
 }
 
-async function runCompanyBrainProcessorWorker() {
-  companyBrainProcessorActiveCount += 1;
+async function runContextVaultProcessorWorker() {
+  contextVaultProcessorActiveCount += 1;
   try {
     while (true) {
-      const source = await claimNextCompanyBrainSource();
+      const source = await claimNextContextVaultSource();
       if (!source) break;
 
       try {
-        await processCompanyBrainSource(source);
+        await processContextVaultSource(source);
       } catch (error) {
-        await markCompanyBrainFailure(source, error);
+        await markContextVaultFailure(source, error);
       }
     }
   } finally {
-    companyBrainProcessorActiveCount -= 1;
+    contextVaultProcessorActiveCount -= 1;
   }
 }
 
-async function drainPendingCompanyBrainSources() {
+async function drainPendingContextVaultSources() {
   const availableSlots =
-    COMPANY_BRAIN_PROCESSOR_CONCURRENCY - companyBrainProcessorActiveCount;
+    CONTEXT_VAULT_PROCESSOR_CONCURRENCY - contextVaultProcessorActiveCount;
   if (availableSlots <= 0) return;
 
   await Promise.all(
     Array.from({ length: availableSlots }, () =>
-      runCompanyBrainProcessorWorker(),
+      runContextVaultProcessorWorker(),
     ),
   );
 }
 
-function scheduleDrainCompanyBrainSources() {
-  void drainPendingCompanyBrainSources().catch((error) => {
+function scheduleDrainContextVaultSources() {
+  void drainPendingContextVaultSources().catch((error) => {
     logger.error(
       { errorMessage: error instanceof Error ? error.message : String(error) },
       "context vault processor loop failed",
@@ -1468,31 +1495,43 @@ function scheduleDrainCompanyBrainSources() {
   });
 }
 
-function kickCompanyBrainProcessor() {
-  if (companyBrainProcessorStarted) {
-    scheduleDrainCompanyBrainSources();
+function kickContextVaultProcessor() {
+  if (contextVaultProcessorStarted) {
+    scheduleDrainContextVaultSources();
   }
 }
 
-export function startCompanyBrainProcessor() {
-  if (companyBrainProcessorStarted) return;
+export function startContextVaultProcessor() {
+  if (contextVaultProcessorStarted) return;
 
-  companyBrainProcessorStarted = true;
+  contextVaultProcessorStarted = true;
   const timer = setInterval(() => {
-    scheduleDrainCompanyBrainSources();
-  }, COMPANY_BRAIN_POLL_INTERVAL_MS);
+    scheduleDrainContextVaultSources();
+  }, CONTEXT_VAULT_POLL_INTERVAL_MS);
   timer.unref();
-  scheduleDrainCompanyBrainSources();
+  scheduleDrainContextVaultSources();
 }
 
-export async function cancelCompanyBrainDocument(params: {
+export async function cancelContextVaultDocument(params: {
   userId: string;
   documentId: string;
+  workspaceId: string;
+  vaultId?: string;
 }) {
+  const resolvedVaultId = await resolveVaultForWorkspace(
+    params.workspaceId,
+    params.vaultId,
+  );
   const [document] = await db
     .select()
     .from(memorySources)
-    .where(eq(memorySources.id, params.documentId))
+    .where(
+      and(
+        eq(memorySources.id, params.documentId),
+        eq(memorySources.workspaceId, params.workspaceId),
+        eq(memorySources.vaultId, resolvedVaultId),
+      ),
+    )
     .limit(1);
 
   if (!document?.workspaceId) {
@@ -1501,7 +1540,7 @@ export async function cancelCompanyBrainDocument(params: {
 
   const membership = await requireWorkspaceMember(
     params.userId,
-    document.workspaceId,
+    params.workspaceId,
   );
   if (membership.role === "viewer") {
     throw new Error("Viewers cannot cancel workspace document processing");
@@ -1521,6 +1560,8 @@ export async function cancelCompanyBrainDocument(params: {
     .where(
       and(
         eq(memorySources.id, params.documentId),
+        eq(memorySources.workspaceId, params.workspaceId),
+        eq(memorySources.vaultId, resolvedVaultId),
         inArray(memorySources.status, ["pending", "processing", "retrying"]),
       ),
     )
@@ -1532,14 +1573,26 @@ export async function cancelCompanyBrainDocument(params: {
   };
 }
 
-export async function deleteCompanyBrainDocument(params: {
+export async function deleteContextVaultDocument(params: {
   userId: string;
   documentId: string;
+  workspaceId: string;
+  vaultId?: string;
 }) {
+  const resolvedVaultId = await resolveVaultForWorkspace(
+    params.workspaceId,
+    params.vaultId,
+  );
   const [document] = await db
     .select()
     .from(memorySources)
-    .where(eq(memorySources.id, params.documentId))
+    .where(
+      and(
+        eq(memorySources.id, params.documentId),
+        eq(memorySources.workspaceId, params.workspaceId),
+        eq(memorySources.vaultId, resolvedVaultId),
+      ),
+    )
     .limit(1);
 
   if (!document?.workspaceId) {
@@ -1548,12 +1601,12 @@ export async function deleteCompanyBrainDocument(params: {
 
   const membership = await requireWorkspaceMember(
     params.userId,
-    document.workspaceId,
+    params.workspaceId,
   );
   if (membership.role === "viewer") {
     throw new Error("Viewers cannot delete workspace documents");
   }
-  const workspaceId = document.workspaceId;
+  const workspaceId = params.workspaceId;
 
   const result = await db.transaction(async (tx) => {
     const evidenceRows = await tx
@@ -1564,6 +1617,7 @@ export async function deleteCompanyBrainDocument(params: {
         and(
           eq(memoryEvidence.sourceId, params.documentId),
           eq(memorySources.workspaceId, workspaceId),
+          eq(memorySources.vaultId, resolvedVaultId),
         ),
       );
     const memoryIds = Array.from(
@@ -1611,6 +1665,7 @@ export async function deleteCompanyBrainDocument(params: {
           and(
             inArray(memories.id, exclusiveMemoryIds),
             eq(memories.workspaceId, workspaceId),
+            eq(memories.vaultId, resolvedVaultId),
             eq(memories.memoryType, "document"),
             isNull(memories.deletedAt),
           ),
@@ -1619,7 +1674,13 @@ export async function deleteCompanyBrainDocument(params: {
 
     const [deletedDocument] = await tx
       .delete(memorySources)
-      .where(eq(memorySources.id, params.documentId))
+      .where(
+        and(
+          eq(memorySources.id, params.documentId),
+          eq(memorySources.workspaceId, workspaceId),
+          eq(memorySources.vaultId, resolvedVaultId),
+        ),
+      )
       .returning();
 
     if (!deletedDocument) {
@@ -1654,11 +1715,13 @@ export async function deleteCompanyBrainDocument(params: {
   };
 }
 
-export async function listCompanyBrainDocuments(
+export async function listContextVaultDocuments(
   userId: string,
   workspaceId: string,
+  vaultId?: string,
 ) {
   await requireWorkspaceMember(userId, workspaceId);
+  const resolvedVaultId = await resolveVaultForWorkspace(workspaceId, vaultId);
 
   const documents = await db
     .select({
@@ -1683,19 +1746,21 @@ export async function listCompanyBrainDocuments(
     .where(
       and(
         eq(memorySources.workspaceId, workspaceId),
+        eq(memorySources.vaultId, resolvedVaultId),
         sql`${memorySources.sourceType} IN ('pdf', 'markdown', 'text', 'docx', 'html', 'url', 'csv', 'png', 'jpg', 'jpeg', 'webp', 'tiff')`,
       ),
     )
     .orderBy(desc(memorySources.createdAt));
 
   return {
-    documents: documents.map(toCompanyBrainDocument),
+    documents: documents.map(toContextVaultDocument),
   };
 }
 
-interface ListCompanyBrainMemoriesParams {
+interface ListContextVaultMemoriesParams {
   userId: string;
   workspaceId: string;
+  vaultId?: string;
   scope?: string;
   project?: string;
   projects?: string[];
@@ -1705,10 +1770,14 @@ interface ListCompanyBrainMemoriesParams {
   sort?: "asc" | "desc";
 }
 
-export async function listCompanyBrainMemories(
-  params: ListCompanyBrainMemoriesParams,
+export async function listContextVaultMemories(
+  params: ListContextVaultMemoriesParams,
 ) {
   await requireWorkspaceMember(params.userId, params.workspaceId);
+  const vaultId = await resolveVaultForWorkspace(
+    params.workspaceId,
+    params.vaultId,
+  );
 
   const scope = normalizeScope(params.scope);
   const limit = Math.min(Math.max(params.limit ?? 25, 1), 100);
@@ -1731,6 +1800,7 @@ export async function listCompanyBrainMemories(
 
   const conditions = [
     eq(memories.workspaceId, params.workspaceId),
+    eq(memories.vaultId, vaultId),
     inArray(memories.memoryType, ["document", "company"]),
     eq(memories.isCurrent, true),
     isNull(memories.deletedAt),
@@ -1843,6 +1913,7 @@ async function getMemorySourceMap(memoryIds: string[]) {
 interface ListDocumentMemoriesParams {
   userId: string;
   workspaceId: string;
+  vaultId?: string;
   documentId: string;
 }
 
@@ -1850,23 +1921,32 @@ interface ListDocumentMemoriesParams {
  * Lists every memory extracted from a single document (memory source),
  * resolved through the `memory_evidence` linkage.
  */
-export async function listCompanyBrainDocumentMemories(
+export async function listContextVaultDocumentMemories(
   params: ListDocumentMemoriesParams,
 ) {
   await requireWorkspaceMember(params.userId, params.workspaceId);
+  const vaultId = await resolveVaultForWorkspace(
+    params.workspaceId,
+    params.vaultId,
+  );
 
   const [source] = await db
     .select({
       id: memorySources.id,
       title: memorySources.title,
       workspaceId: memorySources.workspaceId,
+      vaultId: memorySources.vaultId,
       payload: memorySources.payload,
     })
     .from(memorySources)
     .where(eq(memorySources.id, params.documentId))
     .limit(1);
 
-  if (!source || source.workspaceId !== params.workspaceId) {
+  if (
+    !source ||
+    source.workspaceId !== params.workspaceId ||
+    source.vaultId !== vaultId
+  ) {
     throw new Error("Document not found");
   }
 
@@ -1889,6 +1969,7 @@ export async function listCompanyBrainDocumentMemories(
         eq(memoryEvidence.sourceId, params.documentId),
         // Defense-in-depth: keep results inside this workspace's vault.
         eq(memories.workspaceId, params.workspaceId),
+        eq(memories.vaultId, vaultId),
         inArray(memories.memoryType, ["document", "company"]),
         eq(memories.isCurrent, true),
         isNull(memories.deletedAt),
@@ -1912,9 +1993,10 @@ export async function listCompanyBrainDocumentMemories(
   };
 }
 
-interface CompanyBrainFeedbackParams {
+interface ContextVaultFeedbackParams {
   userId: string;
   workspaceId: string;
+  vaultId?: string;
   memoryId: string;
   type: FeedbackType;
   context?: string;
@@ -1924,10 +2006,14 @@ interface CompanyBrainFeedbackParams {
  * Submits feedback on a workspace (vault) memory. Authorized to any workspace
  * member; the memory must belong to this workspace's vault.
  */
-export async function submitCompanyBrainMemoryFeedback(
-  params: CompanyBrainFeedbackParams,
+export async function submitContextVaultMemoryFeedback(
+  params: ContextVaultFeedbackParams,
 ) {
   await requireWorkspaceMember(params.userId, params.workspaceId);
+  const vaultId = await resolveVaultForWorkspace(
+    params.workspaceId,
+    params.vaultId,
+  );
 
   const [memory] = await db
     .select({ id: memories.id })
@@ -1936,6 +2022,7 @@ export async function submitCompanyBrainMemoryFeedback(
       and(
         eq(memories.id, params.memoryId),
         eq(memories.workspaceId, params.workspaceId),
+        eq(memories.vaultId, vaultId),
         inArray(memories.memoryType, ["document", "company"]),
         eq(memories.isCurrent, true),
         isNull(memories.deletedAt),
@@ -1957,8 +2044,8 @@ export async function submitCompanyBrainMemoryFeedback(
   return { success: true };
 }
 
-export async function correctCompanyBrainMemory(
-  params: CorrectCompanyBrainMemoryParams,
+export async function correctContextVaultMemory(
+  params: CorrectContextVaultMemoryParams,
 ) {
   const membership = await requireWorkspaceMember(
     params.userId,
@@ -1972,6 +2059,10 @@ export async function correctCompanyBrainMemory(
   if (!correctedContent) {
     throw new Error("Corrected content is required");
   }
+  const vaultId = await resolveVaultForWorkspace(
+    params.workspaceId,
+    params.vaultId,
+  );
 
   const [memory] = await db
     .select({
@@ -1985,6 +2076,7 @@ export async function correctCompanyBrainMemory(
       and(
         eq(memories.id, params.memoryId),
         eq(memories.workspaceId, params.workspaceId),
+        eq(memories.vaultId, vaultId),
         inArray(memories.memoryType, ["document", "company"]),
         eq(memories.isCurrent, true),
         isNull(memories.deletedAt),
@@ -2027,6 +2119,7 @@ export async function correctCompanyBrainMemory(
         and(
           eq(memories.id, params.memoryId),
           eq(memories.workspaceId, params.workspaceId),
+          eq(memories.vaultId, vaultId),
           inArray(memories.memoryType, ["document", "company"]),
           eq(memories.isCurrent, true),
           isNull(memories.deletedAt),
@@ -2062,8 +2155,11 @@ export async function correctCompanyBrainMemory(
     if (correctedChunkContent && correctedChunkEmbedding) {
       const evidenceConditions = [
         eq(memoryEvidence.memoryId, params.memoryId),
+        eq(memoryEvidence.vaultId, vaultId),
         eq(memorySources.workspaceId, params.workspaceId),
+        eq(memorySources.vaultId, vaultId),
         eq(memorySourceChunks.workspaceId, params.workspaceId),
+        eq(memorySourceChunks.vaultId, vaultId),
         eq(memorySourceChunks.sourceId, memoryEvidence.sourceId),
       ];
       if (params.evidenceChunkId) {
@@ -2161,6 +2257,7 @@ export async function correctCompanyBrainMemory(
 interface ListMemoryEvidenceParams {
   userId: string;
   workspaceId: string;
+  vaultId?: string;
   memoryId: string;
 }
 
@@ -2169,10 +2266,14 @@ interface ListMemoryEvidenceParams {
  * `memory_evidence` linkage. Authorized to workspace members; the memory must
  * belong to this workspace's vault.
  */
-export async function listCompanyBrainMemoryEvidence(
+export async function listContextVaultMemoryEvidence(
   params: ListMemoryEvidenceParams,
 ) {
   await requireWorkspaceMember(params.userId, params.workspaceId);
+  const vaultId = await resolveVaultForWorkspace(
+    params.workspaceId,
+    params.vaultId,
+  );
 
   const [memory] = await db
     .select({ id: memories.id })
@@ -2181,6 +2282,7 @@ export async function listCompanyBrainMemoryEvidence(
       and(
         eq(memories.id, params.memoryId),
         eq(memories.workspaceId, params.workspaceId),
+        eq(memories.vaultId, vaultId),
         inArray(memories.memoryType, ["document", "company"]),
         isNull(memories.deletedAt),
       ),
@@ -2212,8 +2314,11 @@ export async function listCompanyBrainMemoryEvidence(
     .where(
       and(
         eq(memoryEvidence.memoryId, params.memoryId),
+        eq(memoryEvidence.vaultId, vaultId),
         eq(memorySourceChunks.workspaceId, params.workspaceId),
+        eq(memorySourceChunks.vaultId, vaultId),
         eq(memorySources.workspaceId, params.workspaceId),
+        eq(memorySources.vaultId, vaultId),
         eq(memorySourceChunks.sourceId, memoryEvidence.sourceId),
       ),
     )
@@ -2222,11 +2327,13 @@ export async function listCompanyBrainMemoryEvidence(
   return { evidence: rows };
 }
 
-export async function getCompanyBrainHierarchy(
+export async function getContextVaultHierarchy(
   userId: string,
   workspaceId: string,
+  vaultId?: string,
 ) {
   await requireWorkspaceMember(userId, workspaceId);
+  const resolvedVaultId = await resolveVaultForWorkspace(workspaceId, vaultId);
 
   const rows = await db
     .select({
@@ -2238,6 +2345,7 @@ export async function getCompanyBrainHierarchy(
     .where(
       and(
         eq(memories.workspaceId, workspaceId),
+        eq(memories.vaultId, resolvedVaultId),
         inArray(memories.memoryType, ["document", "company"]),
         eq(memories.isCurrent, true),
         isNull(memories.deletedAt),
@@ -2290,8 +2398,12 @@ export async function getCompanyBrainHierarchy(
   };
 }
 
-export async function searchCompanyBrain(params: SearchCompanyBrainParams) {
+export async function searchContextVault(params: SearchContextVaultParams) {
   await requireWorkspaceMember(params.userId, params.workspaceId);
+  const vaultId = await resolveVaultForWorkspace(
+    params.workspaceId,
+    params.vaultId,
+  );
 
   const scope = normalizeScope(params.scope);
   const scopes = params.scopes
@@ -2300,8 +2412,9 @@ export async function searchCompanyBrain(params: SearchCompanyBrainParams) {
   const chunks =
     params.mode === "memories"
       ? []
-      : await searchCompanyBrainChunks({
+      : await searchContextVaultChunks({
           workspaceId: params.workspaceId,
+          vaultId,
           query: params.query,
           scope,
           scopes,
@@ -2316,6 +2429,7 @@ export async function searchCompanyBrain(params: SearchCompanyBrainParams) {
           await searchMemories({
             userId: params.userId,
             workspaceId: params.workspaceId,
+            vaultId,
             query: params.query,
             limit: params.limit,
             scope,
@@ -2350,6 +2464,11 @@ export async function searchCompanyBrain(params: SearchCompanyBrainParams) {
           .where(
             and(
               eq(memoryEvidence.workspaceId, params.workspaceId),
+              eq(memoryEvidence.vaultId, vaultId),
+              eq(memorySources.workspaceId, params.workspaceId),
+              eq(memorySources.vaultId, vaultId),
+              eq(memorySourceChunks.workspaceId, params.workspaceId),
+              eq(memorySourceChunks.vaultId, vaultId),
               eq(memorySources.status, "completed"),
               inArray(
                 memoryEvidence.memoryId,
@@ -2462,7 +2581,7 @@ function getDocumentChunkBoost(
 
 function getDocumentChunkQueryCoverage(
   query: string,
-  chunk: Pick<CompanyBrainChunkResult, "content" | "sectionPath" | "title">,
+  chunk: Pick<ContextVaultChunkResult, "content" | "sectionPath" | "title">,
 ) {
   const terms = getSearchTerms(query);
   if (terms.length === 0) return 0;
@@ -2476,15 +2595,15 @@ function getDocumentChunkQueryCoverage(
   return matchedTerms.length / terms.length;
 }
 
-function shouldRerankCompanyBrainChunks(
+function shouldRerankContextVaultChunks(
   query: string,
-  candidates: CompanyBrainChunkResult[],
+  candidates: ContextVaultChunkResult[],
   limit: number,
 ) {
   if (candidates.length <= 1) return false;
   const minimumRerankCandidates = Math.min(
     Math.max(10, limit * 2),
-    Math.max(limit, COMPANY_BRAIN_RERANK_CANDIDATES),
+    Math.max(limit, CONTEXT_VAULT_RERANK_CANDIDATES),
   );
   if (candidates.length < minimumRerankCandidates) return false;
 
@@ -2494,15 +2613,16 @@ function shouldRerankCompanyBrainChunks(
   return getDocumentChunkQueryCoverage(query, topCandidate) < 0.55;
 }
 
-function shouldExpandCompanyBrainQuery(
-  candidates: CompanyBrainChunkResult[],
+function shouldExpandContextVaultQuery(
+  candidates: ContextVaultChunkResult[],
   limit: number,
 ) {
   return candidates.length < Math.min(limit, 3);
 }
 
-async function searchCompanyBrainChunks(params: {
+async function searchContextVaultChunks(params: {
   workspaceId: string;
+  vaultId: string;
   query: string;
   scope?: string;
   scopes?: string[];
@@ -2515,6 +2635,7 @@ async function searchCompanyBrainChunks(params: {
   const distance = cosineDistance(memorySourceChunks.embedding, queryEmbedding);
   const baseChunkConditions = [
     eq(memorySourceChunks.workspaceId, params.workspaceId),
+    eq(memorySourceChunks.vaultId, params.vaultId),
     params.scopes && params.scopes.length > 0
       ? inArray(memorySourceChunks.scope, params.scopes)
       : params.scope
@@ -2610,7 +2731,7 @@ async function searchCompanyBrainChunks(params: {
           candidate.score + getDocumentChunkBoost(params.query, candidate.row),
       }))
       .sort((a, b) => b.score - a.score)
-      .slice(0, Math.max(params.limit, COMPANY_BRAIN_RERANK_CANDIDATES))
+      .slice(0, Math.max(params.limit, CONTEXT_VAULT_RERANK_CANDIDATES))
       .map(({ row, score }) => ({
         id: row.id,
         sourceId: row.sourceId,
@@ -2631,7 +2752,7 @@ async function searchCompanyBrainChunks(params: {
   let ftsResultSets = [originalFtsResults];
   let candidates = buildCandidates(ftsResultSets);
 
-  if (shouldExpandCompanyBrainQuery(candidates, params.limit)) {
+  if (shouldExpandContextVaultQuery(candidates, params.limit)) {
     const originalTopCoverage = candidates[0]
       ? getDocumentChunkQueryCoverage(params.query, candidates[0])
       : 0;
@@ -2653,15 +2774,15 @@ async function searchCompanyBrainChunks(params: {
     }
   }
 
-  return rerankCompanyBrainChunks(params.query, candidates, params.limit);
+  return rerankContextVaultChunks(params.query, candidates, params.limit);
 }
 
-async function rerankCompanyBrainChunks(
+async function rerankContextVaultChunks(
   query: string,
-  candidates: CompanyBrainChunkResult[],
+  candidates: ContextVaultChunkResult[],
   limit: number,
 ) {
-  if (!shouldRerankCompanyBrainChunks(query, candidates, limit)) {
+  if (!shouldRerankContextVaultChunks(query, candidates, limit)) {
     return candidates.slice(0, limit);
   }
 
@@ -2693,7 +2814,7 @@ async function rerankCompanyBrainChunks(
           relevance: Math.round(result.relevanceScore * 1000) / 1000,
         };
       })
-      .filter((candidate): candidate is CompanyBrainChunkResult => !!candidate);
+      .filter((candidate): candidate is ContextVaultChunkResult => !!candidate);
 
     return ordered.slice(0, limit);
   } catch (error) {

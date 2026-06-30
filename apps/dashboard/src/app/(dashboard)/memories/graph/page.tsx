@@ -27,6 +27,7 @@ import { ThemedSelect } from "@/components/ui/themed-select";
 import { Tooltip } from "@/components/ui/tooltip";
 import { AnimatedTabs } from "@/components/ui/animated-tabs";
 import { cn, formatDateTime } from "@/lib/utils";
+import { useWorkspace } from "@/providers/workspace-provider";
 
 const LINK_TYPE_LABELS: Record<MemoryGraphLink["type"], string> = {
   extends: "Extends",
@@ -256,6 +257,7 @@ function GraphEmptyState() {
 }
 
 export default function MemoryGraphPage() {
+  const { activeWorkspace, activeWorkspaceId } = useWorkspace();
   const [search, setSearch] = useState("");
   const [selectedScope, setSelectedScope] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -265,13 +267,14 @@ export default function MemoryGraphPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("full");
 
   const { data: hierarchy, isLoading: hierarchyLoading } = useQuery(
-    memoryHierarchyQueryOptions(),
+    memoryHierarchyQueryOptions(activeWorkspaceId),
   );
 
   const { data, isLoading, isError, error } = useQuery({
-    ...memoryGraphQueryOptions(selectedScope ?? undefined),
+    ...memoryGraphQueryOptions(selectedScope ?? undefined, activeWorkspaceId),
     staleTime: 60_000,
     refetchOnWindowFocus: false,
+    enabled: !!activeWorkspaceId,
   });
 
   function handleScopeChange(next: string | null) {
@@ -286,8 +289,8 @@ export default function MemoryGraphPage() {
 
   const scopeContextLabel =
     selectedScope === null
-      ? "Viewing Global"
-      : `Viewing scope: ${selectedScope}`;
+      ? `Viewing ${activeWorkspace?.name ?? "workspace"} global memories`
+      : `Viewing ${activeWorkspace?.name ?? "workspace"} scope: ${selectedScope}`;
 
   const nodes = useMemo<CanvasNode[]>(() => {
     return (

@@ -8,6 +8,8 @@ import { api } from "../api";
 interface ApiKey {
   id: string;
   userId: string;
+  workspaceId?: string;
+  workspaceName?: string;
   keyPrefix: string;
   name: string;
   lastUsedAt?: string;
@@ -22,6 +24,7 @@ interface CreateApiKeyResponse {
   id: string;
   name: string;
   keyPrefix: string;
+  workspaceId: string;
   key: string;
   createdAt: string;
 }
@@ -38,8 +41,8 @@ export function useCreateApiKey() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (name: string) => {
-      return api.post<CreateApiKeyResponse>("/api/api-keys", { name });
+    mutationFn: async (data: { name: string; workspaceId?: string }) => {
+      return api.post<CreateApiKeyResponse>("/api/api-keys", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["api-keys"] });

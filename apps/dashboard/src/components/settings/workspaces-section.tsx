@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   Buildings,
   Check,
@@ -18,7 +20,6 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { ThemedSelect } from "@/components/ui/themed-select";
-import { AnimatedTabs } from "@/components/ui/animated-tabs";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
 import {
@@ -32,9 +33,11 @@ import {
   workspacesQueryOptions,
   type InvitableWorkspaceRole,
   type WorkspaceRole,
-} from "@/lib/queries/company-brain";
+} from "@/lib/queries/context-vault";
+import { useWorkspace } from "@/providers/workspace-provider";
 
 type InviteRole = InvitableWorkspaceRole;
+type WorkspaceDialogMode = "add" | "manage";
 
 const roleOptions: Array<{ value: InviteRole; label: string }> = [
   { value: "admin", label: "Admin" },
@@ -76,20 +79,25 @@ function workspaceTierLabel(workspace: { billingOwnerPlan?: string | null }) {
   return `${plan.charAt(0).toUpperCase()}${plan.slice(1)} Workspace`;
 }
 
-export function WorkspacesSection({
-  embedded,
-  initialTab = "team",
-}: { embedded?: boolean; initialTab?: "team" | "workspaces" } = {}) {
+export function WorkspacesSection({ embedded }: { embedded?: boolean } = {}) {
   const toast = useToast();
+  const searchParams = useSearchParams();
+  const requestedWorkspaceAction = searchParams.get("workspaceAction");
+  const initialDialogMode: WorkspaceDialogMode =
+    requestedWorkspaceAction === "add" ? "add" : "manage";
+  const { activeWorkspaceId: mountedWorkspaceId, setActiveWorkspaceId } =
+    useWorkspace();
   const [workspaceName, setWorkspaceName] = useState("");
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("");
+  const createWorkspaceInputRef = useRef<HTMLInputElement | null>(null);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<InviteRole>("member");
+  const [manageOpen, setManageOpen] = useState(
+    requestedWorkspaceAction === "add" || requestedWorkspaceAction === "manage",
+  );
+  const [dialogMode, setDialogMode] =
+    useState<WorkspaceDialogMode>(initialDialogMode);
   const [copiedWorkspaceId, setCopiedWorkspaceId] = useState<string | null>(
     null,
-  );
-  const [activeTab, setActiveTab] = useState<"team" | "workspaces">(
-    initialTab,
   );
   const [pendingRemoval, setPendingRemoval] = useState<
     | {
@@ -113,17 +121,20 @@ export function WorkspacesSection({
   const updateMember = useUpdateWorkspaceMember();
   const removeMember = useRemoveWorkspaceMember();
   const revokeInvitation = useRevokeWorkspaceInvitation();
-  const { data: subscription } = useQuery({
-    queryKey: ["subscription"],
-    queryFn: () => api.get<SubscriptionData>("/api/user/subscription"),
-  });
-
   const workspaces = useMemo(
     () => workspaceData?.workspaces ?? [],
     [workspaceData],
   );
-  const activeWorkspaceId = selectedWorkspaceId || workspaces[0]?.id || "";
+  const activeWorkspaceId = mountedWorkspaceId || "";
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
+  const { data: subscription } = useQuery({
+    queryKey: ["subscription", activeWorkspaceId],
+    queryFn: () =>
+      api.get<SubscriptionData>(
+        `/api/user/subscription?workspaceId=${activeWorkspaceId}`,
+      ),
+    enabled: !!activeWorkspaceId,
+  });
   const canInvite =
     activeWorkspace?.role === "owner" || activeWorkspace?.role === "admin";
   const { data: teamData, isLoading: teamLoading } = useQuery(
@@ -137,6 +148,27 @@ export function WorkspacesSection({
     subscription.workspaceLimit > 0 &&
     subscription.workspaceCount >= subscription.workspaceLimit;
 
+  useEffect(() => {
+    if (!manageOpen || dialogMode !== "add") return;
+    window.setTimeout(() => createWorkspaceInputRef.current?.focus(), 0);
+  }, [dialogMode, manageOpen]);
+
+  useEffect(() => {
+    if (requestedWorkspaceAction !== "add" && requestedWorkspaceAction !== "manage") {
+      return;
+    }
+    const id = window.setTimeout(() => {
+      setDialogMode(requestedWorkspaceAction);
+      setManageOpen(true);
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [requestedWorkspaceAction]);
+
+  function openWorkspaceDialog(mode: WorkspaceDialogMode) {
+    setDialogMode(mode);
+    setManageOpen(true);
+  }
+
   async function handleCreateWorkspace() {
     if (!workspaceName.trim()) return;
     if (workspaceLimitReached) {
@@ -145,8 +177,9 @@ export function WorkspacesSection({
     }
     try {
       const result = await createWorkspace.mutateAsync(workspaceName.trim());
-      setSelectedWorkspaceId(result.workspace.id);
+      setActiveWorkspaceId(result.workspace.id);
       setWorkspaceName("");
+      setManageOpen(false);
       toast.success(`Workspace "${result.workspace.name}" created`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
@@ -253,17 +286,18 @@ export function WorkspacesSection({
     }
   }
 
-  const workspacesTab = (
+  const workspaceManagement = (
     <div className="space-y-6">
       {/* Create workspace */}
       <div>
         <h3 className="text-sm font-semibold">Create a workspace</h3>
         <p className="mt-0.5 text-xs text-foreground-subtle">
-          Each workspace is isolated. Your plan controls how many workspaces you
-          can own.
+          Workspaces are separate accounts. Create another one only when you need
+          a separate team, billing boundary, and memory pool.
         </p>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           <input
+            ref={createWorkspaceInputRef}
             value={workspaceName}
             onChange={(event) => setWorkspaceName(event.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleCreateWorkspace()}
@@ -286,8 +320,7 @@ export function WorkspacesSection({
         </div>
         {workspaceLimitReached && (
           <div className="mt-3 rounded-lg border border-accent/20 bg-accent/10 px-3 py-2 text-xs text-accent">
-            {formatPlanName(subscription.plan)} includes{" "}
-            {subscription.workspaceLimit} workspace
+            {formatPlanName(subscription.plan)} includes {subscription.workspaceLimit} workspace
             {subscription.workspaceLimit === 1 ? "" : "s"}.{" "}
             <Link href="/subscription" className="font-semibold underline">
               Upgrade your plan
@@ -300,6 +333,9 @@ export function WorkspacesSection({
       {workspaces.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold">Your workspaces</h3>
+          <p className="mt-0.5 text-xs text-foreground-subtle">
+            Switch the active workspace from the sidebar workspace switcher.
+          </p>
           <div className="mt-3 divide-y divide-border rounded-xl border border-border">
             {workspaces.map((workspace) => (
               <div
@@ -367,9 +403,23 @@ export function WorkspacesSection({
           variant="secondary"
           size="sm"
           className="mt-3"
-          onClick={() => setActiveTab("workspaces")}
+          onClick={() => openWorkspaceDialog("add")}
         >
-          Go to Workspaces
+          Create workspace
+        </Button>
+      </div>
+    ) : !activeWorkspaceId ? (
+      <div className="rounded-xl border border-dashed border-border bg-surface-elevated/30 p-6 text-center">
+        <p className="text-sm text-foreground-muted">
+          Select an active workspace from the sidebar to manage its team.
+        </p>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="mt-3"
+          onClick={() => openWorkspaceDialog("manage")}
+        >
+          Manage workspaces
         </Button>
       </div>
     ) : (
@@ -380,21 +430,38 @@ export function WorkspacesSection({
               <div>
                 <h3 className="text-sm font-semibold">Manage team</h3>
                 <p className="mt-0.5 text-xs text-foreground-subtle">
-                  {canInvite
-                    ? "Invite teammates, update roles, or remove access."
-                    : "Only owners and admins can invite or manage members."}
+                  {activeWorkspace?.name
+                    ? `Active workspace: ${activeWorkspace.name}`
+                    : "Manage the currently mounted workspace."}
                 </p>
               </div>
-              <ThemedSelect
-                value={activeWorkspaceId}
-                onChange={setSelectedWorkspaceId}
-                className="w-full shrink-0 sm:w-44"
-                options={workspaces.map((workspace) => ({
-                  value: workspace.id,
-                  label: workspace.name,
-                }))}
-              />
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => openWorkspaceDialog("add")}
+                  className="sm:w-auto"
+                >
+                  <Plus className="h-4 w-4" weight="bold" />
+                  Add workspace
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openWorkspaceDialog("manage")}
+                  className="sm:w-auto"
+                >
+                  <Buildings className="h-4 w-4" weight="duotone" />
+                  Manage workspaces
+                </Button>
+              </div>
             </div>
+
+            <p className="mt-2 text-xs text-foreground-subtle">
+              {canInvite
+                ? "Invite teammates, update roles, or remove access for this workspace."
+                : "Only owners and admins can invite or manage members in this workspace."}
+            </p>
 
             {/* Invite row */}
             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -642,18 +709,16 @@ export function WorkspacesSection({
 
   const inner = (
     <div className="space-y-4">
-      {/* Tab switcher */}
-      <AnimatedTabs<"team" | "workspaces">
-        ariaLabel="Workspaces section"
-        value={activeTab}
-        onChange={setActiveTab}
-        tabs={[
-          { value: "team", label: "Team" },
-          { value: "workspaces", label: "Workspaces" },
-        ]}
-      />
+      {teamTab}
 
-      {activeTab === "team" ? teamTab : workspacesTab}
+      {manageOpen && (
+        <ManageWorkspacesDialog
+          mode={dialogMode}
+          onClose={() => setManageOpen(false)}
+        >
+          {workspaceManagement}
+        </ManageWorkspacesDialog>
+      )}
 
       {pendingRemoval && (
         <RemoveConfirmDialog
@@ -674,6 +739,80 @@ export function WorkspacesSection({
     <Card className="shadow-none">
       <CardContent className="p-6">{inner}</CardContent>
     </Card>
+  );
+}
+
+function ManageWorkspacesDialog({
+  children,
+  mode,
+  onClose,
+}: {
+  children: ReactNode;
+  mode: WorkspaceDialogMode;
+  onClose: () => void;
+}) {
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    closeButtonRef.current?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="manage-workspaces-dialog-title"
+        className="relative w-full max-w-2xl max-h-[85vh] overflow-hidden rounded-xl border border-border bg-background shadow-2xl animate-scale-in"
+      >
+        <div className="flex items-start justify-between border-b border-border p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/10">
+              <Buildings className="h-5 w-5 text-accent" weight="duotone" />
+            </div>
+            <div className="min-w-0 pt-1">
+              <h3
+                id="manage-workspaces-dialog-title"
+                className="text-base font-semibold leading-tight"
+              >
+                Manage workspaces
+              </h3>
+              <p className="mt-0.5 text-xs text-foreground-muted">
+                {mode === "add"
+                  ? "Name a new workspace to create a separate team, billing boundary, and memory pool."
+                  : "Review your workspaces. Switch the active one from the sidebar."}
+              </p>
+            </div>
+          </div>
+          <button
+            ref={closeButtonRef}
+            onClick={onClose}
+            className="rounded-md p-1 text-foreground-muted transition-colors hover:bg-surface hover:text-foreground"
+            aria-label="Close manage workspaces dialog"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="max-h-[calc(85vh-84px)] overflow-y-auto p-4">
+          {children}
+        </div>
+      </div>
+    </div>
   );
 }
 

@@ -2,31 +2,31 @@ import type {
   ApiError,
   AcceptWorkspaceInvitationRequest,
   AcceptWorkspaceInvitationResponse,
-  CancelCompanyBrainDocumentResponse,
-  CompanyBrainDocument,
-  CompanyBrainHierarchyResponse,
-  CompanyBrainMemory,
-  CompanyBrainMemoryFeedbackRequest,
-  CorrectCompanyBrainMemoryRequest,
-  CorrectCompanyBrainMemoryResponse,
-  CompanyBrainSearchChunk,
-  CompanyBrainSearchMemory,
-  CreateCompanyBrainMemoryRequest,
-  CreateCompanyBrainMemoryResponse,
+  CancelContextVaultDocumentResponse,
+  ContextVaultDocument,
+  ContextVaultHierarchyResponse,
+  ContextVaultMemory,
+  ContextVaultMemoryFeedbackRequest,
+  CorrectContextVaultMemoryRequest,
+  CorrectContextVaultMemoryResponse,
+  ContextVaultSearchChunk,
+  ContextVaultSearchMemory,
+  CreateContextVaultMemoryRequest,
+  CreateContextVaultMemoryResponse,
   CreateWorkspaceRequest,
   CreateWorkspaceResponse,
-  DeleteCompanyBrainDocumentResponse,
-  DeleteCompanyBrainMemoryResponse,
+  DeleteContextVaultDocumentResponse,
+  DeleteContextVaultMemoryResponse,
   HealthResponse,
-  IngestCompanyBrainDocumentRequest,
-  IngestCompanyBrainDocumentResponse,
+  IngestContextVaultDocumentRequest,
+  IngestContextVaultDocumentResponse,
   InviteWorkspaceMemberRequest,
   InviteWorkspaceMemberResponse,
-  ListCompanyBrainDocumentMemoriesResponse,
-  ListCompanyBrainDocumentsResponse,
-  ListCompanyBrainMemoriesRequest,
-  ListCompanyBrainMemoriesResponse,
-  ListCompanyBrainMemoryEvidenceResponse,
+  ListContextVaultDocumentMemoriesResponse,
+  ListContextVaultDocumentsResponse,
+  ListContextVaultMemoriesRequest,
+  ListContextVaultMemoriesResponse,
+  ListContextVaultMemoryEvidenceResponse,
   ListMemoriesRequest,
   ListMemoriesResponse,
   ListWorkspaceTeamResponse,
@@ -40,14 +40,14 @@ import type {
   SaveMemoryResponse,
   SearchMemoryRequest,
   SearchMemoryResponse,
-  SearchCompanyBrainRequest,
-  SearchCompanyBrainResponse,
+  SearchContextVaultRequest,
+  SearchContextVaultResponse,
   SuccessResponse,
   UpdateMemoryRequest,
   UpdateMemoryResponse,
   UpdateWorkspaceMemberRequest,
   UpdateWorkspaceMemberResponse,
-  UploadCompanyBrainDocumentRequest,
+  UploadContextVaultDocumentRequest,
   Memory,
   ListMemoryItem,
   MemoryWithRelevance,
@@ -194,8 +194,8 @@ type JsonListWorkspaceTeamResponse = Omit<
   >;
 };
 
-type JsonCompanyBrainDocument = Omit<
-  CompanyBrainDocument,
+type JsonContextVaultDocument = Omit<
+  ContextVaultDocument,
   "createdAt" | "completedAt" | "heartbeatAt"
 > & {
   createdAt: string;
@@ -203,19 +203,19 @@ type JsonCompanyBrainDocument = Omit<
   heartbeatAt: string | null;
 };
 
-type JsonCompanyBrainMemory = Omit<CompanyBrainMemory, "createdAt"> & {
+type JsonContextVaultMemory = Omit<ContextVaultMemory, "createdAt"> & {
   createdAt: string;
 };
 
-type JsonCompanyBrainSearchChunk = Omit<
-  CompanyBrainSearchChunk,
+type JsonContextVaultSearchChunk = Omit<
+  ContextVaultSearchChunk,
   "createdAt"
 > & {
   createdAt: string;
 };
 
-type JsonCompanyBrainSearchMemory = Omit<
-  CompanyBrainSearchMemory,
+type JsonContextVaultSearchMemory = Omit<
+  ContextVaultSearchMemory,
   "createdAt"
 > & {
   createdAt: string;
@@ -252,9 +252,9 @@ function hydrateListMemory(memory: JsonListMemoryItem): ListMemoryItem {
   };
 }
 
-function hydrateCompanyBrainDocument(
-  document: JsonCompanyBrainDocument,
-): CompanyBrainDocument {
+function hydrateContextVaultDocument(
+  document: JsonContextVaultDocument,
+): ContextVaultDocument {
   return {
     ...document,
     createdAt: new Date(document.createdAt),
@@ -263,27 +263,27 @@ function hydrateCompanyBrainDocument(
   };
 }
 
-function hydrateCompanyBrainMemory(
-  memory: JsonCompanyBrainMemory,
-): CompanyBrainMemory {
+function hydrateContextVaultMemory(
+  memory: JsonContextVaultMemory,
+): ContextVaultMemory {
   return {
     ...memory,
     createdAt: new Date(memory.createdAt),
   };
 }
 
-function hydrateCompanyBrainSearchMemory(
-  memory: JsonCompanyBrainSearchMemory,
-): CompanyBrainSearchMemory {
+function hydrateContextVaultSearchMemory(
+  memory: JsonContextVaultSearchMemory,
+): ContextVaultSearchMemory {
   return {
     ...memory,
     createdAt: new Date(memory.createdAt),
   };
 }
 
-function hydrateCompanyBrainSearchChunk(
-  chunk: JsonCompanyBrainSearchChunk,
-): CompanyBrainSearchChunk {
+function hydrateContextVaultSearchChunk(
+  chunk: JsonContextVaultSearchChunk,
+): ContextVaultSearchChunk {
   return {
     ...chunk,
     createdAt: new Date(chunk.createdAt),
@@ -667,29 +667,34 @@ export class MemContextClient {
 
   async listContextVaultDocuments(
     workspaceId: string,
+    vaultIdOrOptions?: string | SaveOptions,
     options?: SaveOptions,
-  ): Promise<ListCompanyBrainDocumentsResponse> {
+  ): Promise<ListContextVaultDocumentsResponse> {
+    const vaultId =
+      typeof vaultIdOrOptions === "string" ? vaultIdOrOptions : undefined;
+    const requestOptions =
+      typeof vaultIdOrOptions === "string" ? options : vaultIdOrOptions;
     const response = await this.request<{
-      documents: JsonCompanyBrainDocument[];
-    }>(`/api/company-brain/documents${buildQuery({ workspaceId })}`, {
+      documents: JsonContextVaultDocument[];
+    }>(`/api/context-vault/documents${buildQuery({ workspaceId, vaultId })}`, {
       method: "GET",
-      signal: options?.signal,
+      signal: requestOptions?.signal,
     });
 
     return {
-      documents: response.documents.map(hydrateCompanyBrainDocument),
+      documents: response.documents.map(hydrateContextVaultDocument),
     };
   }
 
   async ingestContextVaultDocument(
-    request: IngestCompanyBrainDocumentRequest,
+    request: IngestContextVaultDocumentRequest,
     options?: SaveOptions,
-  ): Promise<IngestCompanyBrainDocumentResponse> {
+  ): Promise<IngestContextVaultDocumentResponse> {
     const response = await this.request<
-      Omit<IngestCompanyBrainDocumentResponse, "document"> & {
-        document: JsonCompanyBrainDocument;
+      Omit<IngestContextVaultDocumentResponse, "document"> & {
+        document: JsonContextVaultDocument;
       }
-    >("/api/company-brain/documents", {
+    >("/api/context-vault/documents", {
       method: "POST",
       body: {
         ...request,
@@ -701,16 +706,17 @@ export class MemContextClient {
 
     return {
       ...response,
-      document: hydrateCompanyBrainDocument(response.document),
+      document: hydrateContextVaultDocument(response.document),
     };
   }
 
   async uploadContextVaultDocument(
-    request: UploadCompanyBrainDocumentRequest,
+    request: UploadContextVaultDocumentRequest,
     options?: SaveOptions,
-  ): Promise<IngestCompanyBrainDocumentResponse> {
+  ): Promise<IngestContextVaultDocumentResponse> {
     const form = new FormData();
     form.set("workspaceId", request.workspaceId);
+    if (request.vaultId) form.set("vaultId", request.vaultId);
     form.set("title", request.title);
     if (request.filename) {
       form.set("file", request.file, request.filename);
@@ -725,48 +731,57 @@ export class MemContextClient {
     if (request.content) form.set("content", request.content);
 
     const response = await this.requestForm<
-      Omit<IngestCompanyBrainDocumentResponse, "document"> & {
-        document: JsonCompanyBrainDocument;
+      Omit<IngestContextVaultDocumentResponse, "document"> & {
+        document: JsonContextVaultDocument;
       }
-    >("/api/company-brain/documents/upload", form, options?.signal);
+    >("/api/context-vault/documents/upload", form, options?.signal);
 
     return {
       ...response,
-      document: hydrateCompanyBrainDocument(response.document),
+      document: hydrateContextVaultDocument(response.document),
     };
   }
 
   async cancelContextVaultDocument(
     documentId: string,
+    request: { workspaceId: string; vaultId?: string },
     options?: SaveOptions,
-  ): Promise<CancelCompanyBrainDocumentResponse> {
-    return this.request<CancelCompanyBrainDocumentResponse>(
-      `/api/company-brain/documents/${documentId}/cancel`,
+  ): Promise<CancelContextVaultDocumentResponse> {
+    return this.request<CancelContextVaultDocumentResponse>(
+      `/api/context-vault/documents/${documentId}/cancel${buildQuery({
+        workspaceId: request.workspaceId,
+        vaultId: request.vaultId,
+      })}`,
       { method: "POST", signal: options?.signal },
     );
   }
 
   async deleteContextVaultDocument(
     documentId: string,
+    request: { workspaceId: string; vaultId?: string },
     options?: SaveOptions,
-  ): Promise<DeleteCompanyBrainDocumentResponse> {
-    return this.request<DeleteCompanyBrainDocumentResponse>(
-      `/api/company-brain/documents/${documentId}`,
+  ): Promise<DeleteContextVaultDocumentResponse> {
+    return this.request<DeleteContextVaultDocumentResponse>(
+      `/api/context-vault/documents/${documentId}${buildQuery({
+        workspaceId: request.workspaceId,
+        vaultId: request.vaultId,
+      })}`,
       { method: "DELETE", signal: options?.signal },
     );
   }
 
   async listContextVaultMemories(
-    request: ListCompanyBrainMemoriesRequest,
+    request: ListContextVaultMemoriesRequest,
     options?: SaveOptions,
-  ): Promise<ListCompanyBrainMemoriesResponse> {
+  ): Promise<ListContextVaultMemoriesResponse> {
     const response = await this.request<
-      Omit<ListCompanyBrainMemoriesResponse, "memories"> & {
-        memories: JsonCompanyBrainMemory[];
+      Omit<ListContextVaultMemoriesResponse, "memories"> & {
+        memories: JsonContextVaultMemory[];
       }
     >(
-      `/api/company-brain/memories${buildQuery({
+      `/api/context-vault/memories${buildQuery({
         workspaceId: request.workspaceId,
+        vaultId: request.vaultId,
         scope: normalizeScope(request.scope) ?? this.defaultScope,
         project: normalizeProject(request.project) ?? this.defaultProject,
         projects: request.projects,
@@ -779,39 +794,45 @@ export class MemContextClient {
 
     return {
       ...response,
-      memories: response.memories.map(hydrateCompanyBrainMemory),
+      memories: response.memories.map(hydrateContextVaultMemory),
     };
   }
 
   async listContextVaultDocumentMemories(
     workspaceId: string,
     documentId: string,
+    vaultIdOrOptions?: string | SaveOptions,
     options?: SaveOptions,
-  ): Promise<ListCompanyBrainDocumentMemoriesResponse> {
+  ): Promise<ListContextVaultDocumentMemoriesResponse> {
+    const vaultId =
+      typeof vaultIdOrOptions === "string" ? vaultIdOrOptions : undefined;
+    const requestOptions =
+      typeof vaultIdOrOptions === "string" ? options : vaultIdOrOptions;
     const response = await this.request<
-      Omit<ListCompanyBrainDocumentMemoriesResponse, "memories"> & {
-        memories: JsonCompanyBrainMemory[];
+      Omit<ListContextVaultDocumentMemoriesResponse, "memories"> & {
+        memories: JsonContextVaultMemory[];
       }
     >(
-      `/api/company-brain/documents/${documentId}/memories${buildQuery({
+      `/api/context-vault/documents/${documentId}/memories${buildQuery({
         workspaceId,
+        vaultId,
       })}`,
-      { method: "GET", signal: options?.signal },
+      { method: "GET", signal: requestOptions?.signal },
     );
 
     return {
       ...response,
-      memories: response.memories.map(hydrateCompanyBrainMemory),
+      memories: response.memories.map(hydrateContextVaultMemory),
     };
   }
 
   async createContextVaultMemory(
-    request: CreateCompanyBrainMemoryRequest,
+    request: CreateContextVaultMemoryRequest,
     options?: SaveOptions,
-  ): Promise<CreateCompanyBrainMemoryResponse> {
+  ): Promise<CreateContextVaultMemoryResponse> {
     const response = await this.request<{
-      memory: JsonCompanyBrainMemory;
-    }>("/api/company-brain/memories", {
+      memory: JsonContextVaultMemory;
+    }>("/api/context-vault/memories", {
       method: "POST",
       body: {
         ...request,
@@ -822,17 +843,17 @@ export class MemContextClient {
     });
 
     return {
-      memory: hydrateCompanyBrainMemory(response.memory),
+      memory: hydrateContextVaultMemory(response.memory),
     };
   }
 
   async submitContextVaultMemoryFeedback(
     memoryId: string,
-    request: CompanyBrainMemoryFeedbackRequest,
+    request: ContextVaultMemoryFeedbackRequest,
     options?: SaveOptions,
   ): Promise<MemoryFeedbackResponse> {
     return this.request<MemoryFeedbackResponse>(
-      `/api/company-brain/memories/${memoryId}/feedback`,
+      `/api/context-vault/memories/${memoryId}/feedback`,
       {
         method: "POST",
         body: request,
@@ -844,24 +865,29 @@ export class MemContextClient {
   async deleteContextVaultMemory(
     workspaceId: string,
     memoryId: string,
+    vaultIdOrOptions?: string | SaveOptions,
     options?: SaveOptions,
-  ): Promise<DeleteCompanyBrainMemoryResponse> {
-    return this.request<DeleteCompanyBrainMemoryResponse>(
-      `/api/company-brain/memories/${memoryId}${buildQuery({ workspaceId })}`,
-      { method: "DELETE", signal: options?.signal },
+  ): Promise<DeleteContextVaultMemoryResponse> {
+    const vaultId =
+      typeof vaultIdOrOptions === "string" ? vaultIdOrOptions : undefined;
+    const requestOptions =
+      typeof vaultIdOrOptions === "string" ? options : vaultIdOrOptions;
+    return this.request<DeleteContextVaultMemoryResponse>(
+      `/api/context-vault/memories/${memoryId}${buildQuery({ workspaceId, vaultId })}`,
+      { method: "DELETE", signal: requestOptions?.signal },
     );
   }
 
   async correctContextVaultMemory(
     memoryId: string,
-    request: CorrectCompanyBrainMemoryRequest,
+    request: CorrectContextVaultMemoryRequest,
     options?: SaveOptions,
-  ): Promise<CorrectCompanyBrainMemoryResponse> {
+  ): Promise<CorrectContextVaultMemoryResponse> {
     const response = await this.request<
-      Omit<CorrectCompanyBrainMemoryResponse, "memory"> & {
-        memory: JsonCompanyBrainMemory;
+      Omit<CorrectContextVaultMemoryResponse, "memory"> & {
+        memory: JsonContextVaultMemory;
       }
-    >(`/api/company-brain/memories/${memoryId}/correction`, {
+    >(`/api/context-vault/memories/${memoryId}/correction`, {
       method: "POST",
       body: request,
       signal: options?.signal,
@@ -869,48 +895,60 @@ export class MemContextClient {
 
     return {
       ...response,
-      memory: hydrateCompanyBrainMemory(response.memory),
+      memory: hydrateContextVaultMemory(response.memory),
     };
   }
 
   async listContextVaultMemoryEvidence(
     workspaceId: string,
     memoryId: string,
+    vaultIdOrOptions?: string | SaveOptions,
     options?: SaveOptions,
-  ): Promise<ListCompanyBrainMemoryEvidenceResponse> {
-    return this.request<ListCompanyBrainMemoryEvidenceResponse>(
-      `/api/company-brain/memories/${memoryId}/evidence${buildQuery({
+  ): Promise<ListContextVaultMemoryEvidenceResponse> {
+    const vaultId =
+      typeof vaultIdOrOptions === "string" ? vaultIdOrOptions : undefined;
+    const requestOptions =
+      typeof vaultIdOrOptions === "string" ? options : vaultIdOrOptions;
+    return this.request<ListContextVaultMemoryEvidenceResponse>(
+      `/api/context-vault/memories/${memoryId}/evidence${buildQuery({
         workspaceId,
+        vaultId,
       })}`,
-      { method: "GET", signal: options?.signal },
+      { method: "GET", signal: requestOptions?.signal },
     );
   }
 
   async getContextVaultHierarchy(
     workspaceId: string,
+    vaultIdOrOptions?: string | SaveOptions,
     options?: SaveOptions,
-  ): Promise<CompanyBrainHierarchyResponse> {
-    return this.request<CompanyBrainHierarchyResponse>(
-      `/api/company-brain/hierarchy${buildQuery({ workspaceId })}`,
-      { method: "GET", signal: options?.signal },
+  ): Promise<ContextVaultHierarchyResponse> {
+    const vaultId =
+      typeof vaultIdOrOptions === "string" ? vaultIdOrOptions : undefined;
+    const requestOptions =
+      typeof vaultIdOrOptions === "string" ? options : vaultIdOrOptions;
+    return this.request<ContextVaultHierarchyResponse>(
+      `/api/context-vault/hierarchy${buildQuery({ workspaceId, vaultId })}`,
+      { method: "GET", signal: requestOptions?.signal },
     );
   }
 
   async searchContextVault(
-    request: SearchCompanyBrainRequest,
+    request: SearchContextVaultRequest,
     options?: SaveOptions,
-  ): Promise<SearchCompanyBrainResponse> {
+  ): Promise<SearchContextVaultResponse> {
     const scopes = request.scopes
       ?.map(normalizeScope)
       .filter((scope): scope is string => !!scope);
     const response = await this.request<
-      Omit<SearchCompanyBrainResponse, "chunks" | "memories"> & {
-        chunks: JsonCompanyBrainSearchChunk[];
-        memories: JsonCompanyBrainSearchMemory[];
+      Omit<SearchContextVaultResponse, "chunks" | "memories"> & {
+        chunks: JsonContextVaultSearchChunk[];
+        memories: JsonContextVaultSearchMemory[];
       }
     >(
-      `/api/company-brain/search${buildQuery({
+      `/api/context-vault/search${buildQuery({
         workspaceId: request.workspaceId,
+        vaultId: request.vaultId,
         query: request.query,
         mode: request.mode,
         scope: normalizeScope(request.scope) ?? this.defaultScope,
@@ -923,8 +961,8 @@ export class MemContextClient {
 
     return {
       ...response,
-      chunks: response.chunks.map(hydrateCompanyBrainSearchChunk),
-      memories: response.memories.map(hydrateCompanyBrainSearchMemory),
+      chunks: response.chunks.map(hydrateContextVaultSearchChunk),
+      memories: response.memories.map(hydrateContextVaultSearchMemory),
     };
   }
 

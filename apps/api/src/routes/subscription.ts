@@ -10,7 +10,11 @@ import { dodoClient } from "../lib/auth.js";
 import { env } from "../env.js";
 import { logger } from "../lib/logger.js";
 import type { PlanType } from "../db/schema.js";
-import { getSubscriptionData } from "../services/subscription.js";
+import {
+  getOrCreateDefaultWorkspace,
+  getSubscriptionData,
+} from "../services/subscription.js";
+import { requireWorkspaceMember } from "../services/workspace.js";
 
 const app = new Hono<{
   Variables: {
@@ -23,6 +27,20 @@ app.use("*", sessionAuthMiddleware);
 
 const changePlanSchema = z.object({
   plan: z.enum(["hobby", "pro", "ultimate"]),
+  workspaceId: z.string().uuid().optional(),
+});
+
+const checkoutSchema = z.object({
+  plan: z.enum(["hobby", "pro", "ultimate"]),
+  workspaceId: z.string().uuid(),
+});
+
+const portalSchema = z.object({
+  workspaceId: z.string().uuid(),
+});
+
+const currentQuerySchema = z.object({
+  workspaceId: z.string().uuid().optional(),
 });
 
 function getProductIdForPlan(plan: Exclude<PlanType, "free">) {
@@ -30,6 +48,111 @@ function getProductIdForPlan(plan: Exclude<PlanType, "free">) {
   if (plan === "pro") return env.DODO_PRODUCT_PRO;
   return env.DODO_PRODUCT_ULTIMATE;
 }
+
+// POST /checkout - Create a workspace-scoped checkout session
+app.post("/checkout", async (c) => {
+  const { userId, user } = c.get("session");
+
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body", code: "INVALID_JSON" }, 400);
+  }
+
+  const parsed = checkoutSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json(
+      { error: "Invalid request. Plan and workspaceId are required" },
+      400,
+    );
+  }
+
+  const { plan, workspaceId } = parsed.data;
+  const membership = await requireWorkspaceMember(userId, workspaceId);
+  if (membership.role !== "owner") {
+    return c.json(
+      { error: "Only workspace owners can change billing", code: "FORBIDDEN" },
+      403,
+    );
+  }
+
+  const productId = getProductIdForPlan(plan);
+  if (!productId) {
+    return c.json(
+      { error: "Ultimate plan is not configured yet.", code: "PLAN_NOT_CONFIGURED" },
+      400,
+    );
+  }
+
+  const session = await dodoClient.checkoutSessions.create({
+    product_cart: [{ product_id: productId, quantity: 1 }],
+    customer: {
+      email: user.email,
+      name: user.name || undefined,
+    },
+    metadata: {
+      user_id: userId,
+      workspace_id: workspaceId,
+      workspaceId,
+    },
+    return_url: `${env.DASHBOARD_URL}/subscription?success=true&workspaceId=${workspaceId}`,
+  });
+
+  if (!session.checkout_url) {
+    return c.json(
+      { error: "Failed to create checkout session", code: "CHECKOUT_FAILED" },
+      502,
+    );
+  }
+
+  return c.json({ url: session.checkout_url, sessionId: session.session_id });
+});
+
+// POST /portal - Create a workspace-scoped billing portal session
+app.post("/portal", async (c) => {
+  const { userId } = c.get("session");
+
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body", code: "INVALID_JSON" }, 400);
+  }
+
+  const parsed = portalSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "Invalid request. workspaceId is required" }, 400);
+  }
+
+  const { workspaceId } = parsed.data;
+  const membership = await requireWorkspaceMember(userId, workspaceId);
+  if (membership.role !== "owner") {
+    return c.json(
+      { error: "Only workspace owners can manage billing", code: "FORBIDDEN" },
+      403,
+    );
+  }
+
+  const [subscription] = await db
+    .select({ dodoCustomerId: subscriptions.dodoCustomerId })
+    .from(subscriptions)
+    .where(eq(subscriptions.workspaceId, workspaceId))
+    .limit(1);
+
+  if (!subscription?.dodoCustomerId) {
+    return c.json(
+      { error: "No billing customer found for this workspace", code: "NO_CUSTOMER" },
+      404,
+    );
+  }
+
+  const portalSession = await dodoClient.customers.customerPortal.create(
+    subscription.dodoCustomerId,
+  );
+
+  return c.json({ url: portalSession.link });
+});
 
 // POST /change-plan - Change subscription plan (upgrade/downgrade)
 app.post("/change-plan", async (c) => {
@@ -52,6 +175,15 @@ app.post("/change-plan", async (c) => {
   }
 
   const { plan: newPlan } = parsed.data;
+  const workspaceId =
+    parsed.data.workspaceId ?? (await getOrCreateDefaultWorkspace(userId));
+  const membership = await requireWorkspaceMember(userId, workspaceId);
+  if (membership.role !== "owner") {
+    return c.json(
+      { error: "Only workspace owners can change billing", code: "FORBIDDEN" },
+      403,
+    );
+  }
 
   // Get user's current subscription
   const [subscription] = await db
@@ -61,11 +193,11 @@ app.post("/change-plan", async (c) => {
       dodoSubscriptionId: subscriptions.dodoSubscriptionId,
     })
     .from(subscriptions)
-    .where(eq(subscriptions.userId, userId))
+    .where(eq(subscriptions.workspaceId, workspaceId))
     .limit(1);
 
   if (!subscription) {
-    logger.warn({ userId }, "No subscription found for user");
+    logger.warn({ userId, workspaceId }, "No subscription found for workspace");
     return c.json({ error: "No subscription found" }, 404);
   }
 
@@ -124,6 +256,7 @@ app.post("/change-plan", async (c) => {
   logger.info(
     {
       userId,
+      workspaceId,
       currentPlan: subscription.plan,
       newPlan,
       subscriptionId: subscription.dodoSubscriptionId,
@@ -143,6 +276,7 @@ app.post("/change-plan", async (c) => {
     logger.info(
       {
         userId,
+        workspaceId,
         subscriptionId: subscription.dodoSubscriptionId,
         newPlan,
       },
@@ -160,6 +294,7 @@ app.post("/change-plan", async (c) => {
     logger.error(
       {
         userId,
+        workspaceId,
         subscriptionId: subscription.dodoSubscriptionId,
         newPlan,
         error: errorMessage,
@@ -203,7 +338,16 @@ app.post("/change-plan", async (c) => {
 // GET /current - Get current subscription (alternative to /api/user/subscription)
 app.get("/current", async (c) => {
   const { userId } = c.get("session");
-  return c.json(await getSubscriptionData(userId));
+  const parsed = currentQuerySchema.safeParse({
+    workspaceId: c.req.query("workspaceId"),
+  });
+  if (!parsed.success) {
+    return c.json({ error: "Invalid workspaceId", code: "INVALID_WORKSPACE_ID" }, 400);
+  }
+  const workspaceId =
+    parsed.data.workspaceId ?? (await getOrCreateDefaultWorkspace(userId));
+  await requireWorkspaceMember(userId, workspaceId);
+  return c.json(await getSubscriptionData(userId, workspaceId));
 });
 
 export default app;

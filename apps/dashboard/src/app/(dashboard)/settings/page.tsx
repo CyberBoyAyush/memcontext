@@ -43,6 +43,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { WorkspacesSection } from "@/components/settings/workspaces-section";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 const TURNSTILE_SCRIPT_SRC =
@@ -795,10 +796,10 @@ export default function SettingsPage() {
                       </div>
                     </div>
                     <Link
-                      href="/context-vault"
+                      href="#workspaces"
                       className="mt-3 text-xs text-foreground-subtle hover:text-foreground-muted flex items-center gap-1 transition-colors"
                     >
-                      Manage Context Vault
+                      Manage workspaces
                       <ArrowRight className="h-3 w-3" weight="bold" />
                     </Link>
                   </div>
@@ -861,10 +862,24 @@ export default function SettingsPage() {
         </Card>
       </div>
 
+      {/* Workspaces Section */}
+      <div
+        id="workspaces"
+        className="animate-fade-in-up scroll-mt-6"
+        style={{ animationDelay: "240ms", animationFillMode: "backwards" }}
+      >
+        <SectionHeader
+          icon={Buildings}
+          title="Mounted workspace"
+          description="Manage the team and billing ownership for the active workspace"
+        />
+        <WorkspacesSection />
+      </div>
+
       {/* Appearance Section */}
       <div
         className="animate-fade-in-up"
-        style={{ animationDelay: "300ms", animationFillMode: "backwards" }}
+        style={{ animationDelay: "360ms", animationFillMode: "backwards" }}
       >
         <SectionHeader
           icon={PaintBrush}
@@ -967,7 +982,7 @@ export default function SettingsPage() {
       {/* Danger Zone */}
       <div
         className="animate-fade-in-up"
-        style={{ animationDelay: "360ms", animationFillMode: "backwards" }}
+        style={{ animationDelay: "420ms", animationFillMode: "backwards" }}
       >
         <SectionHeader
           icon={Warning}

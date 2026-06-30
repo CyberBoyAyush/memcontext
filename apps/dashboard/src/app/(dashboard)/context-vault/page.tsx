@@ -1,9 +1,10 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowSquareOut,
   Brain,
@@ -13,9 +14,9 @@ import {
   CaretRight,
   ChatCircleDots,
   Check,
+  Copy,
   FileText,
   Gear,
-  GearSix,
   Link as LinkIcon,
   MagnifyingGlass,
   Plus,
@@ -39,22 +40,23 @@ import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
 import {
-  companyBrainDocumentMemoriesQueryOptions,
-  companyBrainDocumentsQueryOptions,
-  companyBrainHierarchyQueryOptions,
-  companyBrainSearchQueryOptions,
-  useCancelCompanyBrainDocument,
-  useCreateCompanyBrainMemory,
-  useDeleteCompanyBrainDocument,
-  useIngestCompanyBrainDocument,
-  useUploadCompanyBrainDocument,
-  workspacesQueryOptions,
-  type CompanyBrainMemory,
-  type CompanyBrainDocument,
-} from "@/lib/queries/company-brain";
+  contextVaultDocumentMemoriesQueryOptions,
+  contextVaultDocumentsQueryOptions,
+  contextVaultHierarchyQueryOptions,
+  contextVaultSearchQueryOptions,
+  contextVaultVaultsQueryOptions,
+  useCancelContextVaultDocument,
+  useCreateContextVaultVault,
+  useCreateContextVaultMemory,
+  useDeleteContextVaultDocument,
+  useIngestContextVaultDocument,
+  useUploadContextVaultDocument,
+  type ContextVaultMemory,
+  type ContextVaultDocument,
+  type Vault as VaultInfo,
+} from "@/lib/queries/context-vault";
 import { VaultMemoryDetailPanel } from "@/components/vault-memory-detail-panel";
-import { WorkspaceSelect } from "@/components/workspace-select";
-import { WorkspacesSection } from "@/components/settings/workspaces-section";
+import { useWorkspace } from "@/providers/workspace-provider";
 
 type SearchMode = "memories" | "documents" | "hybrid";
 type IngestMode = "upload" | "paste" | "url";
@@ -418,7 +420,7 @@ function formatProcessingPhase(phase: string | null, status: string) {
   return labels[phase ?? ""] ?? (status === "retrying" ? "Retrying" : status);
 }
 
-function getProcessingSummary(document: CompanyBrainDocument) {
+function getProcessingSummary(document: ContextVaultDocument) {
   const total = document.totalChunks || document.chunkCount;
   const processed = Math.min(
     document.processedChunks ?? document.chunkCount,
@@ -458,9 +460,191 @@ function StatCard({
   );
 }
 
-export default function CompanyBrainPage() {
+function VaultSwitcher({
+  vaults,
+  activeVaultId,
+  activeVaultLabel,
+  workspaceId,
+  onSelect,
+}: {
+  vaults: VaultInfo[];
+  activeVaultId: string | null;
+  activeVaultLabel: string;
+  workspaceId?: string;
+  onSelect: (vaultId: string | null) => void;
+}) {
   const toast = useToast();
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("");
+  const createVault = useCreateContextVaultVault();
+  const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [name, setName] = useState("");
+
+  function close() {
+    setOpen(false);
+    setCreating(false);
+    setName("");
+  }
+
+  async function handleCreate() {
+    const trimmed = name.trim();
+    if (!trimmed || !workspaceId) return;
+    try {
+      const { vault } = await createVault.mutateAsync({
+        workspaceId,
+        name: trimmed,
+      });
+      onSelect(vault.id);
+      toast.success("Vault created");
+      close();
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Could not create vault"));
+    }
+  }
+
+  async function handleCopyVaultId(vaultId: string) {
+    try {
+      await navigator.clipboard.writeText(vaultId);
+      toast.success("Vault ID copied");
+    } catch {
+      toast.error("Could not copy vault ID");
+    }
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        disabled={!workspaceId}
+        className={cn(
+          "inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-surface px-3 text-sm text-foreground transition-colors",
+          "hover:bg-surface-elevated hover:border-border-hover",
+          "focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent/50",
+          !workspaceId && "cursor-not-allowed opacity-50",
+        )}
+      >
+        <Vault className="h-4 w-4 shrink-0 text-accent" weight="duotone" />
+        <span className="flex min-w-0 flex-col text-left leading-tight">
+          <span className="max-w-[160px] truncate font-medium">
+            {activeVaultLabel}
+          </span>
+          <span className="truncate text-[10px] font-normal text-foreground-subtle">
+            Context Vault
+          </span>
+        </span>
+        <CaretDown
+          className={cn(
+            "h-3 w-3 shrink-0 text-foreground-muted transition-transform",
+            open && "rotate-180",
+          )}
+          weight="bold"
+        />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={close} />
+          <div className="absolute right-0 top-full z-50 mt-1.5 w-64 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border bg-surface-elevated shadow-lg animate-scale-in">
+            <div className="p-1">
+              <div className="px-2 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-foreground-subtle">
+                Vaults
+              </div>
+              <div className="max-h-60 overflow-y-auto scrollbar-hide">
+                {vaults.map((vault) => {
+                  const active = vault.id === activeVaultId;
+                  return (
+                    <div
+                      key={vault.id}
+                      className={cn(
+                        "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors",
+                        active
+                          ? "bg-surface text-foreground"
+                          : "text-foreground-muted hover:bg-surface hover:text-foreground",
+                      )}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onSelect(vault.isDefault ? null : vault.id);
+                          close();
+                        }}
+                        className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                      >
+                        <Vault className="h-3.5 w-3.5 shrink-0 text-accent" weight="duotone" />
+                        <span className="min-w-0 flex-1 truncate">{vault.name}</span>
+                        {vault.isDefault && (
+                          <span className="shrink-0 rounded-full bg-surface px-1.5 py-0.5 text-[9px] font-medium text-foreground-subtle">
+                            Default
+                          </span>
+                        )}
+                        {active && <Check className="h-3 w-3 shrink-0" weight="bold" />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleCopyVaultId(vault.id)}
+                        className="rounded p-1 text-foreground-subtle transition-colors hover:bg-surface hover:text-foreground"
+                        aria-label={`Copy vault ID for ${vault.name}`}
+                      >
+                        <Copy className="h-3.5 w-3.5" weight="duotone" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="border-t border-border p-1">
+              {creating ? (
+                <div className="flex items-center gap-1.5 p-1">
+                  <input
+                    autoFocus
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") void handleCreate();
+                      if (event.key === "Escape") {
+                        setCreating(false);
+                        setName("");
+                      }
+                    }}
+                    placeholder="New vault name"
+                    className="h-8 w-full rounded-md border border-border bg-surface px-2 text-[13px] placeholder:text-foreground-subtle focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCreate}
+                    disabled={!name.trim() || createVault.isPending}
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent text-white transition-colors hover:bg-accent/90 disabled:opacity-50"
+                  >
+                    {createVault.isPending ? (
+                      <SpinnerGap className="h-4 w-4 animate-spin" weight="bold" />
+                    ) : (
+                      <Check className="h-4 w-4" weight="bold" />
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setCreating(true)}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-foreground-muted transition-colors hover:bg-surface hover:text-foreground"
+                >
+                  <Plus className="h-3.5 w-3.5 shrink-0" weight="bold" />
+                  Create new vault
+                </button>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function ContextVaultPage() {
+  const router = useRouter();
+  const toast = useToast();
+  const { activeWorkspaceId } = useWorkspace();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -484,41 +668,59 @@ export default function CompanyBrainPage() {
   const [memoriesDocument, setMemoriesDocument] = useState<DocumentRef | null>(
     null,
   );
-  const [manageOpen, setManageOpen] = useState<
-    null | "team" | "workspaces"
-  >(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [selectedVaultId, setSelectedVaultId] = useState<string | null>(null);
   const [docPage, setDocPage] = useState(1);
   const [docsPerPage, setDocsPerPage] = useState<number>(DEFAULT_DOCS_PER_PAGE);
 
-  const { data: workspaceData } = useQuery(workspacesQueryOptions());
   const { data: subscription } = useQuery({
-    queryKey: ["subscription"],
-    queryFn: () => api.get<SubscriptionData>("/api/user/subscription"),
+    queryKey: ["subscription", activeWorkspaceId],
+    queryFn: () =>
+      api.get<SubscriptionData>(
+        `/api/user/subscription?workspaceId=${activeWorkspaceId}`,
+      ),
+    enabled: !!activeWorkspaceId,
   });
-  const ingestDocument = useIngestCompanyBrainDocument();
-  const uploadDocument = useUploadCompanyBrainDocument();
-  const createCompanyMemory = useCreateCompanyBrainMemory();
-  const cancelDocument = useCancelCompanyBrainDocument();
-  const deleteDocument = useDeleteCompanyBrainDocument();
+  const ingestDocument = useIngestContextVaultDocument();
+  const uploadDocument = useUploadContextVaultDocument();
+  const createCompanyMemory = useCreateContextVaultMemory();
+  const cancelDocument = useCancelContextVaultDocument();
+  const deleteDocument = useDeleteContextVaultDocument();
 
-  const workspaces = useMemo(
-    () => workspaceData?.workspaces ?? [],
-    [workspaceData],
-  );
-  const activeWorkspaceId = selectedWorkspaceId || workspaces[0]?.id || "";
   const hasWorkspace = !!activeWorkspaceId;
 
+  const { data: vaultsData } = useQuery(
+    contextVaultVaultsQueryOptions(activeWorkspaceId),
+  );
+  const vaults = vaultsData?.vaults ?? [];
+  const selectedVaultBelongsToWorkspace = vaults.some(
+    (vault) => vault.id === selectedVaultId,
+  );
+  const effectiveVaultId =
+    selectedVaultId && selectedVaultBelongsToWorkspace
+      ? selectedVaultId
+      : (vaults.find((vault) => vault.isDefault)?.id ?? null);
+  const activeVault =
+    vaults.find((vault) => vault.id === effectiveVaultId) ??
+    vaults.find((vault) => vault.isDefault) ??
+    vaults[0] ??
+    null;
+  const activeVaultLabel = activeVault?.name ?? "Default vault";
+  const queryVaultId = activeVault?.isDefault ? undefined : activeVault?.id;
   const { data: documentsData } = useQuery(
-    companyBrainDocumentsQueryOptions(activeWorkspaceId),
+    contextVaultDocumentsQueryOptions(activeWorkspaceId, queryVaultId),
   );
   const { data: hierarchyData } = useQuery(
-    companyBrainHierarchyQueryOptions(activeWorkspaceId),
+    contextVaultHierarchyQueryOptions(
+      activeWorkspaceId,
+      queryVaultId,
+    ),
   );
 
   const { data: searchData, isFetching: searchLoading } = useQuery(
-    companyBrainSearchQueryOptions({
+    contextVaultSearchQueryOptions({
       workspaceId: activeWorkspaceId,
+      vaultId: queryVaultId,
       query,
       mode,
       scopes: searchScopes.length > 0 ? searchScopes : undefined,
@@ -552,6 +754,14 @@ export default function CompanyBrainPage() {
     }
     setDocsPerPage(next);
     setDocPage(1);
+  }
+
+  function handleSelectVault(vaultId: string | null) {
+    setSelectedVaultId(vaultId);
+    setDocPage(1);
+    setQuery("");
+    setSearchScopes([]);
+    setSearchProject("");
   }
   const availableScopes = hierarchyData?.scopes ?? [];
   const selectedScopeProjects =
@@ -602,6 +812,7 @@ export default function CompanyBrainPage() {
       if (ingestMode === "upload" && file) {
         await uploadDocument.mutateAsync({
           workspaceId: activeWorkspaceId,
+          vaultId: queryVaultId,
           title: title.trim() || file.name,
           file,
           scope: scope || undefined,
@@ -616,6 +827,7 @@ export default function CompanyBrainPage() {
       if (ingestMode === "paste") {
         await ingestDocument.mutateAsync({
           workspaceId: activeWorkspaceId,
+          vaultId: queryVaultId,
           title: title.trim(),
           content: content.trim(),
           scope: scope || undefined,
@@ -631,6 +843,7 @@ export default function CompanyBrainPage() {
         const normalizedUri = normalizeDocumentationUrl(uri);
         await ingestDocument.mutateAsync({
           workspaceId: activeWorkspaceId,
+          vaultId: queryVaultId,
           title: title.trim(),
           uri: normalizedUri,
           crawlSubpages,
@@ -665,6 +878,7 @@ export default function CompanyBrainPage() {
     try {
       await createCompanyMemory.mutateAsync({
         workspaceId: activeWorkspaceId,
+        vaultId: queryVaultId,
         content: companyFact.trim(),
         category: "fact",
         scope: companyFactScope || undefined,
@@ -693,6 +907,7 @@ export default function CompanyBrainPage() {
     try {
       const result = await cancelDocument.mutateAsync({
         workspaceId: activeWorkspaceId,
+        vaultId: effectiveVaultId ?? undefined,
         documentId,
       });
       if (result.cancelled) {
@@ -710,6 +925,7 @@ export default function CompanyBrainPage() {
     try {
       await deleteDocument.mutateAsync({
         workspaceId: activeWorkspaceId,
+        vaultId: effectiveVaultId ?? undefined,
         documentId,
       });
       toast.success("Document removed");
@@ -748,26 +964,13 @@ export default function CompanyBrainPage() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap sm:justify-end">
-          <WorkspaceSelect
-            workspaces={workspaces}
-            value={activeWorkspaceId}
-            onChange={(id) => {
-              setSelectedWorkspaceId(id);
-              setDocPage(1);
-            }}
-            onAdd={() => setManageOpen("workspaces")}
-            onManage={() => setManageOpen("workspaces")}
-            onManageTeam={() => setManageOpen("team")}
+          <VaultSwitcher
+            vaults={vaults}
+            activeVaultId={effectiveVaultId}
+            activeVaultLabel={activeVaultLabel}
+            workspaceId={activeWorkspaceId}
+            onSelect={handleSelectVault}
           />
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setManageOpen("workspaces")}
-            className="shrink-0"
-          >
-            <GearSix className="h-4 w-4" weight="duotone" />
-            Manage
-          </Button>
           <Button
             size="sm"
             onClick={() => setAddOpen(true)}
@@ -806,7 +1009,7 @@ export default function CompanyBrainPage() {
               <Button
                 variant="secondary"
                 className="mt-4"
-                onClick={() => setManageOpen("workspaces")}
+                onClick={() => router.push("/settings#workspaces")}
               >
                 <Gear className="h-4 w-4" weight="duotone" />
                 Create a workspace
@@ -1335,15 +1538,9 @@ export default function CompanyBrainPage() {
       {memoriesDocument && (
         <DocumentMemoriesDialog
           workspaceId={activeWorkspaceId}
+          vaultId={effectiveVaultId ?? undefined}
           document={memoriesDocument}
           onClose={() => setMemoriesDocument(null)}
-        />
-      )}
-
-      {manageOpen && (
-        <ManageWorkspacesDialog
-          initialTab={manageOpen}
-          onClose={() => setManageOpen(null)}
         />
       )}
 
@@ -1671,71 +1868,26 @@ function AddKnowledgeDialogShell({
   );
 }
 
-function ManageWorkspacesDialog({
-  onClose,
-  initialTab = "workspaces",
-}: {
-  onClose: () => void;
-  initialTab?: "team" | "workspaces";
-}) {
-  const isTeam = initialTab === "team";
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      <div className="relative flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl animate-scale-in">
-        <div className="flex items-center justify-between gap-4 border-b border-border p-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/10">
-              <Buildings className="h-4 w-4 text-accent" weight="duotone" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold">
-                {isTeam ? "Manage team" : "Manage workspaces"}
-              </h3>
-              <p className="text-xs text-foreground-muted">
-                {isTeam
-                  ? "Invite teammates and manage roles"
-                  : "Create workspaces and invite members"}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-md p-1.5 text-foreground-muted transition-colors hover:bg-surface hover:text-foreground"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-5 sm:p-6">
-          <WorkspacesSection embedded initialTab={initialTab} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function DocumentMemoriesDialog({
   workspaceId,
+  vaultId,
   document,
   onClose,
 }: {
   workspaceId: string;
+  vaultId?: string;
   document: DocumentRef;
   onClose: () => void;
 }) {
   const { data, isLoading } = useQuery(
-    companyBrainDocumentMemoriesQueryOptions({
+    contextVaultDocumentMemoriesQueryOptions({
       workspaceId,
+      vaultId,
       documentId: document.id,
     }),
   );
   const memories = data?.memories ?? [];
-  const [detailMemory, setDetailMemory] = useState<CompanyBrainMemory | null>(
+  const [detailMemory, setDetailMemory] = useState<ContextVaultMemory | null>(
     null,
   );
 
@@ -1839,6 +1991,7 @@ function DocumentMemoriesDialog({
           key={`${detailMemory.id}:${detailMemory.content}`}
           memory={detailMemory}
           workspaceId={workspaceId}
+          vaultId={vaultId}
           onClose={() => setDetailMemory(null)}
         />
       )}

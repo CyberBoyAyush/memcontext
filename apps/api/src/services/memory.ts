@@ -21,6 +21,7 @@ import {
   incrementMemoryCount,
   decrementMemoryCount,
   checkMemoryLimit,
+  getOrCreateDefaultWorkspace,
 } from "./subscription.js";
 import { invalidateApiKey, invalidateCachedProfile } from "./cache.js";
 import { normalizeProjectName, normalizeScope } from "../utils/index.js";
@@ -75,12 +76,13 @@ let memorySourceProcessorRunning = false;
 interface SaveMemoryParams {
   userId: string;
   workspaceId?: string;
+  vaultId?: string;
   content: string;
   category?: MemoryCategory;
   scope?: string;
   project?: string;
   source: MemorySource;
-  memoryType?: "user" | "document" | "company";
+  memoryType?: "member" | "user" | "document" | "company";
   timing?: TimingContext;
   validUntil?: string;
 }
@@ -97,14 +99,15 @@ type SaveMemoryResult =
 interface MemorySourcePayload {
   content: string;
   validUntil?: string | null;
-  memoryType?: "user" | "document" | "company";
+  memoryType?: "member" | "user" | "document" | "company";
 }
 
 interface AtomicSaveOptions {
   scope?: string;
   project?: string;
   workspaceId?: string;
-  memoryType?: "user" | "document" | "company";
+  vaultId?: string;
+  memoryType?: "member" | "user" | "document" | "company";
   skipLimitCheck?: boolean;
   countTowardsUserLimit?: boolean;
 }
@@ -112,7 +115,9 @@ interface AtomicSaveOptions {
 interface SearchMemoriesParams {
   userId: string;
   workspaceId?: string;
-  memoryTypes?: Array<"user" | "document" | "company">;
+  visibleUserId?: string;
+  vaultId?: string;
+  memoryTypes?: Array<"member" | "user" | "document" | "company">;
   query: string;
   limit?: number;
   category?: MemoryCategory;
@@ -130,13 +135,17 @@ export async function saveMemory(
   const scope = normalizeScope(params.scope);
   const noProject = params.project === NO_PROJECT_FILTER_VALUE;
   const project = noProject ? undefined : normalizeProjectName(params.project);
-  const workspaceId = params.workspaceId;
-  const memoryType = params.memoryType ?? "user";
+  const workspaceId =
+    params.workspaceId ?? (await getOrCreateDefaultWorkspace(params.userId));
+  const vaultId = params.vaultId;
+  const memoryType =
+    params.memoryType === "user" ? "member" : (params.memoryType ?? "member");
 
   if (content.length > LONG_CONTENT_THRESHOLD) {
     return enqueueLongMemorySource({
       userId,
       workspaceId,
+      vaultId,
       content,
       category,
       source,
@@ -149,24 +158,26 @@ export async function saveMemory(
 
   return saveAtomicMemory(
     {
-      userId,
+      userId: params.userId,
       content,
       category,
       scope,
       project,
       source,
       workspaceId,
+      vaultId,
       memoryType,
       timing,
       validUntil,
     },
-    { scope, project, workspaceId, memoryType },
+    { scope, project, workspaceId, vaultId, memoryType },
   );
 }
 
 export async function saveExtractedDocumentMemory(params: {
   userId: string;
   workspaceId: string;
+  vaultId?: string;
   content: string;
   category?: MemoryCategory;
   scope?: string;
@@ -181,6 +192,7 @@ export async function saveExtractedDocumentMemory(params: {
     {
       userId: params.userId,
       workspaceId: params.workspaceId,
+      vaultId: params.vaultId,
       content: params.content,
       category: params.category,
       scope,
@@ -193,6 +205,7 @@ export async function saveExtractedDocumentMemory(params: {
       scope,
       project,
       workspaceId: params.workspaceId,
+      vaultId: params.vaultId,
       memoryType: "document",
       skipLimitCheck: true,
       countTowardsUserLimit: false,
@@ -203,6 +216,7 @@ export async function saveExtractedDocumentMemory(params: {
 export async function saveCuratedCompanyMemory(params: {
   userId: string;
   workspaceId: string;
+  vaultId?: string;
   content: string;
   category?: MemoryCategory;
   scope?: string;
@@ -218,6 +232,7 @@ export async function saveCuratedCompanyMemory(params: {
     {
       userId: params.userId,
       workspaceId: params.workspaceId,
+      vaultId: params.vaultId,
       content: params.content,
       category: params.category,
       scope,
@@ -230,6 +245,7 @@ export async function saveCuratedCompanyMemory(params: {
       scope,
       project,
       workspaceId: params.workspaceId,
+      vaultId: params.vaultId,
       memoryType: "company",
       skipLimitCheck: true,
       countTowardsUserLimit: false,
@@ -246,7 +262,8 @@ async function saveAtomicMemory(
     scope,
     project,
     workspaceId,
-    memoryType = "user",
+    vaultId,
+    memoryType = "member",
     skipLimitCheck = false,
     countTowardsUserLimit = true,
   } = options;
@@ -268,12 +285,14 @@ async function saveAtomicMemory(
     ? withTiming(timing, "find_similar", () =>
         findSimilarMemories(userId, embedding, undefined, scope, {
           workspaceId,
+          vaultId,
           memoryType,
           project,
         }),
       )
     : findSimilarMemories(userId, embedding, undefined, scope, {
         workspaceId,
+        vaultId,
         memoryType,
         project,
       }));
@@ -286,6 +305,7 @@ async function saveAtomicMemory(
               const limitCheck = await checkMemoryLimit(userId, {
                 incrementBy: 1,
                 tx,
+                workspaceId,
               });
               if (!limitCheck.allowed) {
                 return {
@@ -300,6 +320,7 @@ async function saveAtomicMemory(
               .values({
                 userId,
                 workspaceId,
+                vaultId,
                 scope,
                 memoryType,
                 content,
@@ -311,7 +332,8 @@ async function saveAtomicMemory(
                 validUntil: validUntilDate,
               })
               .returning({ id: memories.id });
-            if (countTowardsUserLimit) await incrementMemoryCount(userId, tx);
+            if (countTowardsUserLimit)
+              await incrementMemoryCount(userId, tx, workspaceId);
             return { limitExceeded: false, id: newMemory.id };
           }),
         )
@@ -320,6 +342,7 @@ async function saveAtomicMemory(
             const limitCheck = await checkMemoryLimit(userId, {
               incrementBy: 1,
               tx,
+              workspaceId,
             });
             if (!limitCheck.allowed) {
               return {
@@ -334,6 +357,7 @@ async function saveAtomicMemory(
             .values({
               userId,
               workspaceId,
+              vaultId,
               scope,
               memoryType,
               content,
@@ -345,7 +369,8 @@ async function saveAtomicMemory(
               validUntil: validUntilDate,
             })
             .returning({ id: memories.id });
-          if (countTowardsUserLimit) await incrementMemoryCount(userId, tx);
+          if (countTowardsUserLimit)
+            await incrementMemoryCount(userId, tx, workspaceId);
           return { limitExceeded: false, id: newMemory.id };
         }));
 
@@ -454,6 +479,7 @@ async function saveAtomicMemory(
               .values({
                 userId,
                 workspaceId,
+                vaultId,
                 scope: scope ?? targetMemory.scope,
                 memoryType,
                 content,
@@ -471,7 +497,17 @@ async function saveAtomicMemory(
             await tx
               .update(memories)
               .set({ isCurrent: false })
-              .where(eq(memories.id, targetMemory.id));
+              .where(
+                and(
+                  eq(memories.id, targetMemory.id),
+                  workspaceId
+                    ? eq(memories.workspaceId, workspaceId)
+                    : isNull(memories.workspaceId),
+                  vaultId ? eq(memories.vaultId, vaultId) : isNull(memories.vaultId),
+                  eq(memories.memoryType, memoryType),
+                  memoryType === "member" ? eq(memories.userId, userId) : undefined,
+                ),
+              );
             return newMemory.id;
           }),
         )
@@ -481,6 +517,7 @@ async function saveAtomicMemory(
             .values({
               userId,
               workspaceId,
+              vaultId,
               scope: scope ?? targetMemory.scope,
               memoryType,
               content,
@@ -498,7 +535,17 @@ async function saveAtomicMemory(
           await tx
             .update(memories)
             .set({ isCurrent: false })
-            .where(eq(memories.id, targetMemory.id));
+            .where(
+              and(
+                eq(memories.id, targetMemory.id),
+                workspaceId
+                  ? eq(memories.workspaceId, workspaceId)
+                  : isNull(memories.workspaceId),
+                vaultId ? eq(memories.vaultId, vaultId) : isNull(memories.vaultId),
+                eq(memories.memoryType, memoryType),
+                memoryType === "member" ? eq(memories.userId, userId) : undefined,
+              ),
+            );
           return newMemory.id;
         }));
 
@@ -535,6 +582,7 @@ async function saveAtomicMemory(
             const limitCheck = await checkMemoryLimit(userId, {
               incrementBy: 1,
               tx,
+              workspaceId,
             });
             if (!limitCheck.allowed) {
               return {
@@ -549,6 +597,7 @@ async function saveAtomicMemory(
             .values({
               userId,
               workspaceId,
+              vaultId,
               scope,
               memoryType,
               content,
@@ -563,13 +612,15 @@ async function saveAtomicMemory(
           await tx.insert(memoryRelations).values({
             userId,
             workspaceId,
+            vaultId,
             scope,
             sourceId: newMemory.id,
             targetId: targetMemory.id,
             relationType,
             strength: 1 - targetMemory.distance,
           });
-          if (countTowardsUserLimit) await incrementMemoryCount(userId, tx);
+          if (countTowardsUserLimit)
+            await incrementMemoryCount(userId, tx, workspaceId);
           return { limitExceeded: false, id: newMemory.id };
         }),
       )
@@ -578,6 +629,7 @@ async function saveAtomicMemory(
           const limitCheck = await checkMemoryLimit(userId, {
             incrementBy: 1,
             tx,
+            workspaceId,
           });
           if (!limitCheck.allowed) {
             return {
@@ -592,6 +644,7 @@ async function saveAtomicMemory(
           .values({
             userId,
             workspaceId,
+            vaultId,
             scope,
             memoryType,
             content,
@@ -606,13 +659,15 @@ async function saveAtomicMemory(
         await tx.insert(memoryRelations).values({
           userId,
           workspaceId,
+          vaultId,
           scope,
           sourceId: newMemory.id,
           targetId: targetMemory.id,
           relationType,
           strength: 1 - targetMemory.distance,
         });
-        if (countTowardsUserLimit) await incrementMemoryCount(userId, tx);
+        if (countTowardsUserLimit)
+          await incrementMemoryCount(userId, tx, workspaceId);
         return { limitExceeded: false, id: newMemory.id };
       }));
 
@@ -670,6 +725,7 @@ async function enqueueLongMemorySource(
     const limitCheck = await checkMemoryLimit(params.userId, {
       incrementBy: reservedSlots,
       tx,
+      workspaceId: params.workspaceId,
     });
     if (!limitCheck.allowed) {
       return {
@@ -684,6 +740,7 @@ async function enqueueLongMemorySource(
       .values({
         userId: params.userId,
         workspaceId: params.workspaceId,
+        vaultId: params.vaultId,
         scope: params.scope,
         project: params.project,
         category: params.category,
@@ -693,7 +750,7 @@ async function enqueueLongMemorySource(
         reservedSlots,
         payload: {
           ...payload,
-          memoryType: params.memoryType ?? "user",
+          memoryType: params.memoryType === "user" ? "member" : (params.memoryType ?? "member"),
         },
         updatedAt: new Date(),
       })
@@ -759,7 +816,7 @@ async function claimNextPendingMemorySource() {
     .where(
       and(
         eq(memorySources.sourceType, "text"),
-        isNull(memorySources.workspaceId),
+        isNull(memorySources.vaultId),
         or(
           eq(memorySources.status, "pending"),
           and(
@@ -836,14 +893,16 @@ async function processMemorySource(memorySource: MemorySourceRow) {
         scope: memorySource.scope ?? undefined,
         project: memorySource.project ?? undefined,
         source: memorySource.source as MemorySource,
-        memoryType: payload.memoryType ?? "user",
+        memoryType: payload.memoryType === "user" ? "member" : (payload.memoryType ?? "member"),
         validUntil: payload.validUntil ?? undefined,
+        vaultId: memorySource.vaultId ?? undefined,
       },
       {
         scope: memorySource.scope ?? undefined,
         project: memorySource.project ?? undefined,
         workspaceId: memorySource.workspaceId ?? undefined,
-        memoryType: payload.memoryType ?? "user",
+        vaultId: memorySource.vaultId ?? undefined,
+        memoryType: payload.memoryType === "user" ? "member" : (payload.memoryType ?? "member"),
         skipLimitCheck: true,
       },
     );
@@ -881,6 +940,7 @@ async function processMemorySource(memorySource: MemorySourceRow) {
 
     await invalidateCachedProfile(
       memorySource.userId,
+      memorySource.workspaceId ?? undefined,
       memorySource.scope ?? undefined,
       memorySource.project ?? undefined,
     );
@@ -995,13 +1055,16 @@ export async function findSimilarMemories(
   scope?: string,
   namespace?: {
     workspaceId?: string;
-    memoryType?: "user" | "document" | "company";
+    vaultId?: string;
+    memoryType?: "member" | "user" | "document" | "company";
     project?: string;
   },
 ): Promise<SimilarMemoryResult[]> {
   const start = performance.now();
   const distance = cosineDistance(memories.embedding, embedding);
   const normalizedScope = normalizeScope(scope);
+  const effectiveMemoryType =
+    namespace?.memoryType === "user" ? "member" : (namespace?.memoryType ?? "member");
 
   const conditions = [
     namespace?.workspaceId
@@ -1011,11 +1074,23 @@ export async function findSimilarMemories(
     isNull(memories.deletedAt),
     sql`(${memories.validUntil} IS NULL OR ${memories.validUntil} > NOW())`,
     lt(distance, SIMILARITY_THRESHOLD),
-    eq(memories.memoryType, namespace?.memoryType ?? "user"),
+    eq(
+      memories.memoryType,
+      effectiveMemoryType,
+    ),
   ];
+
+  if (effectiveMemoryType === "member") {
+    conditions.push(eq(memories.userId, userId));
+  }
 
   if (!namespace?.workspaceId) {
     conditions.push(isNull(memories.workspaceId));
+  }
+  if (namespace?.vaultId) {
+    conditions.push(eq(memories.vaultId, namespace.vaultId));
+  } else if (effectiveMemoryType === "member") {
+    conditions.push(isNull(memories.vaultId));
   }
 
   conditions.push(
@@ -1076,7 +1151,8 @@ export async function findSimilarMemories(
 export async function searchMemories(
   params: SearchMemoriesParams,
 ): Promise<SearchMemoryResponse> {
-  const { userId, workspaceId, query, limit = 5, category, timing } = params;
+  const { userId, workspaceId, vaultId, query, limit = 5, category, timing } =
+    params;
   const scope = normalizeScope(params.scope);
   const scopes = params.scopes
     ?.map((value) => normalizeScope(value))
@@ -1086,7 +1162,7 @@ export async function searchMemories(
   const threshold = params.threshold ?? SEARCH_THRESHOLD;
   const memoryTypes = params.memoryTypes?.length
     ? params.memoryTypes
-    : ["user"];
+    : ["member"];
   const activeMemoryCondition = sql`(${memories.validUntil} IS NULL OR ${memories.validUntil} > NOW())`;
 
   // Step 1: Search the original query first. Variants are only used as fallback.
@@ -1108,7 +1184,14 @@ export async function searchMemories(
           ? eq(memories.scope, scope)
           : isNull(memories.scope),
     ];
+    if (params.visibleUserId) {
+      conditions.push(eq(memories.userId, params.visibleUserId));
+    }
     if (!workspaceId) conditions.push(isNull(memories.workspaceId));
+    if (vaultId) conditions.push(eq(memories.vaultId, vaultId));
+    else if (memoryTypes.includes("member")) {
+      conditions.push(isNull(memories.vaultId));
+    }
     conditions.push(
       memoryTypes.length === 1
         ? eq(memories.memoryType, memoryTypes[0])
@@ -1152,7 +1235,14 @@ export async function searchMemories(
           ? eq(memories.scope, scope)
           : isNull(memories.scope),
     ];
+    if (params.visibleUserId) {
+      conditions.push(eq(memories.userId, params.visibleUserId));
+    }
     if (!workspaceId) conditions.push(isNull(memories.workspaceId));
+    if (vaultId) conditions.push(eq(memories.vaultId, vaultId));
+    else if (memoryTypes.includes("member")) {
+      conditions.push(isNull(memories.vaultId));
+    }
     conditions.push(
       memoryTypes.length === 1
         ? eq(memories.memoryType, memoryTypes[0])
@@ -1371,6 +1461,7 @@ export async function searchMemories(
 
 interface UpdateMemoryParams {
   userId: string;
+  workspaceId: string;
   memoryId: string;
   content?: string;
   category?: MemoryCategory;
@@ -1396,7 +1487,7 @@ interface UpdateMemoryResult {
 export async function updateMemory(
   params: UpdateMemoryParams,
 ): Promise<UpdateMemoryResult> {
-  const { userId, memoryId, content, category, timing } = params;
+  const { userId, workspaceId, memoryId, content, category, timing } = params;
   const scope = normalizeScope(params.scope);
   const project = normalizeProjectName(params.project);
   const start = performance.now();
@@ -1409,8 +1500,9 @@ export async function updateMemory(
       and(
         eq(memories.id, memoryId),
         eq(memories.userId, userId),
-        isNull(memories.workspaceId),
-        eq(memories.memoryType, "user"),
+        eq(memories.workspaceId, workspaceId),
+        isNull(memories.vaultId),
+        eq(memories.memoryType, "member"),
         eq(memories.isCurrent, true),
         isNull(memories.deletedAt),
         scope ? eq(memories.scope, scope) : isNull(memories.scope),
@@ -1465,6 +1557,7 @@ export async function updateMemory(
     embedding,
     memoryId,
     scope,
+    { workspaceId, memoryType: "member" },
   );
 
   // 4. If no similar memories, just update in place
@@ -1569,6 +1662,10 @@ export async function updateMemory(
       .where(eq(memories.id, memoryId));
 
     await tx.insert(memoryRelations).values({
+      userId,
+      workspaceId,
+      vaultId: null,
+      scope,
       sourceId: memoryId,
       targetId: targetMemory.id,
       relationType,
@@ -1594,6 +1691,8 @@ export async function updateMemory(
 
 interface ListMemoriesParams {
   userId: string;
+  workspaceId: string;
+  visibleUserId?: string;
   limit?: number;
   offset?: number;
   category?: MemoryCategory;
@@ -1686,8 +1785,10 @@ function addGroupedDerivedLinks(
 }
 
 export async function getMemoryGraph(
-  userId: string,
+  _userId: string,
+  workspaceId: string,
   scope?: string,
+  visibleUserId?: string,
 ): Promise<MemoryGraphResponse> {
   const normalizedScope = normalizeScope(scope);
   const memoryRows = await db
@@ -1703,14 +1804,15 @@ export async function getMemoryGraph(
     .from(memories)
     .where(
       and(
-        eq(memories.userId, userId),
-        isNull(memories.workspaceId),
-        eq(memories.memoryType, "user"),
+        eq(memories.workspaceId, workspaceId),
+        isNull(memories.vaultId),
+        eq(memories.memoryType, "member"),
         eq(memories.isCurrent, true),
         isNull(memories.deletedAt),
         normalizedScope
           ? eq(memories.scope, normalizedScope)
           : isNull(memories.scope),
+        ...(visibleUserId ? [eq(memories.userId, visibleUserId)] : []),
       ),
     )
     .orderBy(desc(memories.createdAt));
@@ -1865,7 +1967,7 @@ export async function listMemories(
   params: ListMemoriesParams,
 ): Promise<ListMemoriesResult> {
   const {
-    userId,
+    workspaceId,
     limit = 20,
     offset = 0,
     category,
@@ -1881,13 +1983,16 @@ export async function listMemories(
   const start = performance.now();
 
   const conditions = [
-    eq(memories.userId, userId),
-    isNull(memories.workspaceId),
-    eq(memories.memoryType, "user"),
+    eq(memories.workspaceId, workspaceId),
+    isNull(memories.vaultId),
+    eq(memories.memoryType, "member"),
     eq(memories.isCurrent, true),
     isNull(memories.deletedAt),
     scope ? eq(memories.scope, scope) : isNull(memories.scope),
   ];
+  if (params.visibleUserId) {
+    conditions.push(eq(memories.userId, params.visibleUserId));
+  }
 
   // Multi-value category filter
   const effectiveCategories = categories ?? (category ? [category] : undefined);
@@ -1986,7 +2091,7 @@ export async function listMemories(
 
   logger.debug(
     {
-      userId,
+      userId: params.userId,
       limit,
       offset,
       categories: effectiveCategories,
@@ -2012,7 +2117,11 @@ export async function getMemory(
   userId: string,
   memoryId: string,
   scope?: string,
+  workspaceId?: string,
+  visibleUserId?: string,
 ): Promise<Memory | null> {
+  const resolvedWorkspaceId =
+    workspaceId ?? (await getOrCreateDefaultWorkspace(userId));
   const normalizedScope = normalizeScope(scope);
   const [memory] = await db
     .select()
@@ -2020,13 +2129,14 @@ export async function getMemory(
     .where(
       and(
         eq(memories.id, memoryId),
-        eq(memories.userId, userId),
-        isNull(memories.workspaceId),
-        eq(memories.memoryType, "user"),
+        eq(memories.workspaceId, resolvedWorkspaceId),
+        isNull(memories.vaultId),
+        eq(memories.memoryType, "member"),
         isNull(memories.deletedAt),
         normalizedScope
           ? eq(memories.scope, normalizedScope)
           : isNull(memories.scope),
+        ...(visibleUserId ? [eq(memories.userId, visibleUserId)] : []),
       ),
     );
 
@@ -2055,12 +2165,14 @@ export async function getMemory(
 
 export async function submitFeedback(
   userId: string,
+  workspaceId: string,
   memoryId: string,
   type: FeedbackType,
   context?: string,
   scope?: string,
+  visibleUserId?: string,
 ): Promise<MemoryFeedbackResponse> {
-  const memory = await getMemory(userId, memoryId, scope);
+  const memory = await getMemory(userId, memoryId, scope, workspaceId, visibleUserId);
   if (!memory) {
     throw new Error("Memory not found");
   }
@@ -2076,17 +2188,19 @@ export async function submitFeedback(
 }
 
 export async function getMemoryProfile(
-  userId: string,
+  _userId: string,
+  workspaceId: string,
   project?: string,
   scope?: string,
+  visibleUserId?: string,
 ): Promise<MemoryProfile> {
   const normalizedProject = normalizeProjectName(project);
   const normalizedScope = normalizeScope(scope);
 
   const staticConditions = [
-    eq(memories.userId, userId),
-    isNull(memories.workspaceId),
-    eq(memories.memoryType, "user"),
+    eq(memories.workspaceId, workspaceId),
+    isNull(memories.vaultId),
+    eq(memories.memoryType, "member"),
     eq(memories.isCurrent, true),
     isNull(memories.deletedAt),
     normalizedScope
@@ -2100,11 +2214,14 @@ export async function getMemoryProfile(
   if (normalizedProject) {
     staticConditions.push(eq(memories.project, normalizedProject));
   }
+  if (visibleUserId) {
+    staticConditions.push(eq(memories.userId, visibleUserId));
+  }
 
   const dynamicConditions = [
-    eq(memories.userId, userId),
-    isNull(memories.workspaceId),
-    eq(memories.memoryType, "user"),
+    eq(memories.workspaceId, workspaceId),
+    isNull(memories.vaultId),
+    eq(memories.memoryType, "member"),
     eq(memories.isCurrent, true),
     isNull(memories.deletedAt),
     normalizedScope
@@ -2116,6 +2233,9 @@ export async function getMemoryProfile(
 
   if (normalizedProject) {
     dynamicConditions.push(eq(memories.project, normalizedProject));
+  }
+  if (visibleUserId) {
+    dynamicConditions.push(eq(memories.userId, visibleUserId));
   }
 
   const [staticMemories, dynamicMemories] = await Promise.all([
@@ -2141,11 +2261,19 @@ export async function getMemoryProfile(
 
 export async function getMemoryHistory(
   userId: string,
+  workspaceId: string,
   memoryId: string,
   scope?: string,
+  visibleUserId?: string,
 ): Promise<MemoryHistoryResponse | null> {
   const normalizedScope = normalizeScope(scope);
-  const memory = await getMemory(userId, memoryId, normalizedScope);
+  const memory = await getMemory(
+    userId,
+    memoryId,
+    normalizedScope,
+    workspaceId,
+    visibleUserId,
+  );
   if (!memory) {
     return null;
   }
@@ -2156,14 +2284,15 @@ export async function getMemoryHistory(
     .from(memories)
     .where(
       and(
-        eq(memories.userId, userId),
-        isNull(memories.workspaceId),
-        eq(memories.memoryType, "user"),
+        eq(memories.workspaceId, workspaceId),
+        isNull(memories.vaultId),
+        eq(memories.memoryType, "member"),
         isNull(memories.deletedAt),
         normalizedScope
           ? eq(memories.scope, normalizedScope)
           : isNull(memories.scope),
         sql`(${memories.rootId} = ${rootId} OR ${memories.id} = ${rootId})`,
+        ...(visibleUserId ? [eq(memories.userId, visibleUserId)] : []),
       ),
     )
     .orderBy(desc(memories.version), desc(memories.createdAt));
@@ -2196,6 +2325,7 @@ export async function getMemoryHistory(
 
 export async function deleteMemory(
   userId: string,
+  workspaceId: string,
   memoryId: string,
   scope?: string,
 ): Promise<boolean> {
@@ -2210,8 +2340,9 @@ export async function deleteMemory(
         and(
           eq(memories.id, memoryId),
           eq(memories.userId, userId),
-          isNull(memories.workspaceId),
-          eq(memories.memoryType, "user"),
+          eq(memories.workspaceId, workspaceId),
+          isNull(memories.vaultId),
+          eq(memories.memoryType, "member"),
           isNull(memories.deletedAt),
           normalizedScope
             ? eq(memories.scope, normalizedScope)
@@ -2223,7 +2354,7 @@ export async function deleteMemory(
     const wasDeleted = !!deletedRow;
 
     if (deletedRow?.isCurrent) {
-      await decrementMemoryCount(userId, tx);
+      await decrementMemoryCount(userId, tx, workspaceId);
     }
 
     return wasDeleted;
@@ -2258,6 +2389,7 @@ export async function deleteMemory(
 
 export async function deleteMemories(
   userId: string,
+  workspaceId: string,
   memoryIds: string[],
   scope?: string,
 ): Promise<{
@@ -2280,8 +2412,9 @@ export async function deleteMemories(
         and(
           inArray(memories.id, uniqueMemoryIds),
           eq(memories.userId, userId),
-          isNull(memories.workspaceId),
-          eq(memories.memoryType, "user"),
+          eq(memories.workspaceId, workspaceId),
+          isNull(memories.vaultId),
+          eq(memories.memoryType, "member"),
           isNull(memories.deletedAt),
           normalizedScope
             ? eq(memories.scope, normalizedScope)
@@ -2296,7 +2429,7 @@ export async function deleteMemories(
 
     const currentDeletedCount = rows.filter((row) => row.isCurrent).length;
     for (let i = 0; i < currentDeletedCount; i += 1) {
-      await decrementMemoryCount(userId, tx);
+      await decrementMemoryCount(userId, tx, workspaceId);
     }
 
     return rows;

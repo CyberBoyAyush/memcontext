@@ -20,12 +20,23 @@ interface AdminUser {
 
 interface AdminUserDetails extends AdminUser {
   apiKeyCount: number;
+  workspaces: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    role: string;
+    plan: string;
+    memoryCount: number;
+    memoryLimit: number;
+  }>;
 }
 
 interface AdminStats {
   totalUsers: number;
+  totalWorkspaces: number;
   totalMemories: number;
   usersByPlan: Record<string, number>;
+  workspacesByPlan: Record<string, number>;
 }
 
 interface ListUsersResponse {
@@ -40,6 +51,7 @@ interface UpdatePlanResponse {
   previousPlan: string;
   newPlan: string;
   newLimit: number;
+  workspaceId: string;
 }
 
 interface UserUsageStats {
@@ -106,12 +118,15 @@ export function useUpdateUserPlan() {
   return useMutation({
     mutationFn: async ({
       userId,
+      workspaceId,
       plan,
     }: {
       userId: string;
+      workspaceId: string;
       plan: PlanType;
     }) => {
       return api.patch<UpdatePlanResponse>(`/api/admin/users/${userId}/plan`, {
+        workspaceId,
         plan,
       });
     },

@@ -21,7 +21,8 @@ export type SubscriptionStatus =
 
 export interface Subscription {
   id: string;
-  userId: string;
+  userId?: string;
+  workspaceId: string;
   plan: PlanType;
   memoryCount: number;
   memoryLimit: number;
@@ -43,6 +44,8 @@ export interface MemoryLimitCheck {
 export interface ApiKey {
   id: string;
   userId: string;
+  workspaceId: string;
+  workspaceName?: string;
   keyPrefix: string;
   name: string;
   lastUsedAt?: Date;
@@ -51,12 +54,14 @@ export interface ApiKey {
 
 export interface CreateApiKeyRequest {
   name: string;
+  workspaceId?: string;
 }
 
 export interface CreateApiKeyResponse {
   id: string;
   name: string;
   keyPrefix: string;
+  workspaceId: string;
   key: string;
   createdAt: Date;
 }
