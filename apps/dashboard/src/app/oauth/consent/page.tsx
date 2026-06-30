@@ -13,6 +13,9 @@ import {
   AlertTriangle,
   ArrowLeftRight,
   BrainCircuit,
+  Building2,
+  Check,
+  ChevronDown,
   Loader2,
   Lock,
   Search,
@@ -112,6 +115,20 @@ interface ConsentResponse {
   message?: string;
 }
 
+interface WorkspaceOption {
+  id: string;
+  name: string;
+  role: string;
+}
+
+interface WorkspacesResponse {
+  workspaces?: WorkspaceOption[];
+}
+
+interface McpWorkspaceResponse {
+  workspaceId?: string;
+}
+
 function ConsentInner() {
   const searchParams = useSearchParams();
   const session = useSession();
@@ -134,6 +151,10 @@ function ConsentInner() {
 
   const [submitting, setSubmitting] = useState<"accept" | "deny" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [workspaces, setWorkspaces] = useState<WorkspaceOption[]>([]);
+  const [workspaceId, setWorkspaceId] = useState("");
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [workspacesLoading, setWorkspacesLoading] = useState(true);
 
   // Redirect to /login while preserving the full consent URL.
   useEffect(() => {
@@ -144,14 +165,71 @@ function ConsentInner() {
     window.location.replace(`/login?from=${encodeURIComponent(here)}`);
   }, [session.data, session.isPending]);
 
+  useEffect(() => {
+    if (!session.data) return;
+    let cancelled = false;
+
+    Promise.all([
+      fetch(`${API_URL}/api/workspaces`, { credentials: "include" }).then(
+        async (res) => (res.ok ? ((await res.json()) as WorkspacesResponse) : {}),
+      ),
+      fetch(`${API_URL}/api/user/mcp-workspace`, {
+        credentials: "include",
+      }).then(
+        async (res) =>
+          res.ok ? ((await res.json()) as McpWorkspaceResponse) : {},
+      ),
+    ])
+      .then(([workspaceData, mcpWorkspace]) => {
+        if (cancelled) return;
+        const nextWorkspaces = workspaceData.workspaces ?? [];
+        setWorkspaces(nextWorkspaces);
+        setWorkspaceId(
+          mcpWorkspace.workspaceId ?? nextWorkspaces[0]?.id ?? "",
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setError("Failed to load workspaces.");
+      })
+      .finally(() => {
+        if (!cancelled) setWorkspacesLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session.data]);
+
   const missingRequired = !clientId || !scope;
 
   const submit = useCallback(
     async (accept: boolean) => {
       if (missingRequired) return;
+      if (accept && !workspaceId) {
+        setError("Select a workspace before authorizing Claude.");
+        return;
+      }
       setSubmitting(accept ? "accept" : "deny");
       setError(null);
       try {
+        if (accept && workspaceId) {
+          const workspaceRes = await fetch(`${API_URL}/api/user/mcp-workspace`, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ workspaceId }),
+          });
+
+          if (!workspaceRes.ok) {
+            const data: ConsentResponse = await workspaceRes
+              .json()
+              .catch(() => ({}));
+            setError(data.message || data.error || "Failed to select workspace.");
+            setSubmitting(null);
+            return;
+          }
+        }
+
         const res = await fetch(`${API_URL}/api/auth/oauth2/consent`, {
           method: "POST",
           credentials: "include",
@@ -192,7 +270,7 @@ function ConsentInner() {
         setSubmitting(null);
       }
     },
-    [consentCode, missingRequired],
+    [consentCode, missingRequired, workspaceId],
   );
 
   // Session loading state.
@@ -213,6 +291,8 @@ function ConsentInner() {
   const userEmail = session.data.user.email;
   const userName = session.data.user.name;
   const isBusy = submitting !== null;
+  const selectedWorkspace = workspaces.find((workspace) => workspace.id === workspaceId);
+  const canAuthorize = !isBusy && !workspacesLoading && Boolean(workspaceId);
 
   return (
     <ConsentCard
@@ -265,6 +345,95 @@ function ConsentInner() {
           >
             {userName || userEmail}
           </p>
+        </div>
+      </div>
+
+      {/* Workspace selection is saved before consent so MCP OAuth uses it. */}
+      <div className="mt-4">
+        <p
+          className="text-[10px] uppercase tracking-[0.22em]"
+          style={{ color: "#6b6b6b" }}
+        >
+          Workspace
+        </p>
+        <div className="relative mt-2">
+          <button
+            type="button"
+            disabled={isBusy || workspacesLoading || workspaces.length === 0}
+            onClick={() => setWorkspaceOpen((open) => !open)}
+            className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-all disabled:cursor-not-allowed disabled:opacity-60"
+            style={{
+              backgroundColor: "rgba(255,255,255,0.02)",
+              border: "1px solid #1f1f1f",
+            }}
+          >
+            <div
+              className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md"
+              style={{
+                backgroundColor: "#171717",
+                border: "1px solid #2a2a2a",
+              }}
+            >
+              <Building2 className="h-3 w-3" style={{ color: "#d4d4d4" }} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p
+                className="truncate text-[13px] font-medium leading-tight"
+                style={{ color: "#fafafa" }}
+              >
+                 {selectedWorkspace?.name ??
+                   (workspacesLoading ? "Loading workspaces..." : "No workspace found")}
+              </p>
+              <p
+                className="mt-1 text-[11.5px] leading-snug"
+                style={{ color: "#a1a1a1" }}
+              >
+                Claude will save and search memories in this workspace.
+              </p>
+            </div>
+            {workspaces.length > 1 && (
+              <ChevronDown
+                className="h-3.5 w-3.5 flex-shrink-0"
+                style={{ color: "#a1a1a1" }}
+              />
+            )}
+          </button>
+
+          {workspaceOpen && workspaces.length > 1 && (
+            <div
+              className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-lg py-1 shadow-2xl"
+              style={{
+                backgroundColor: "#111111",
+                border: "1px solid #1f1f1f",
+              }}
+            >
+              {workspaces.map((workspace) => {
+                const active = workspace.id === workspaceId;
+                return (
+                  <button
+                    key={workspace.id}
+                    type="button"
+                    onClick={() => {
+                      setWorkspaceId(workspace.id);
+                      setWorkspaceOpen(false);
+                    }}
+                    className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-2 text-left text-[13px] transition-colors"
+                    style={{
+                      color: active ? "#fafafa" : "#a1a1a1",
+                      backgroundColor: active
+                        ? "rgba(232, 97, 60, 0.1)"
+                        : "transparent",
+                    }}
+                  >
+                    <span className="truncate">{workspace.name}</span>
+                    {active && (
+                      <Check className="h-3.5 w-3.5" style={{ color: "#e8613c" }} />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -395,7 +564,7 @@ function ConsentInner() {
         </button>
         <button
           type="button"
-          disabled={isBusy}
+          disabled={!canAuthorize}
           onClick={() => submit(true)}
           className="inline-flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-lg text-[13px] font-medium transition-all duration-200 disabled:pointer-events-none disabled:opacity-50"
           style={{ backgroundColor: "#fafafa", color: "#0a0a0a" }}

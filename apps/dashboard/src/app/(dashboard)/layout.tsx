@@ -2,6 +2,7 @@
 
 import { Sidebar } from "@/components/sidebar";
 import { SidebarProvider, useSidebar } from "@/providers/sidebar-provider";
+import { WorkspaceProvider } from "@/providers/workspace-provider";
 import { cn } from "@/lib/utils";
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
@@ -31,7 +32,9 @@ export default function DashboardLayout({
 }) {
   return (
     <SidebarProvider>
-      <DashboardContent>{children}</DashboardContent>
+      <WorkspaceProvider>
+        <DashboardContent>{children}</DashboardContent>
+      </WorkspaceProvider>
     </SidebarProvider>
   );
 }
