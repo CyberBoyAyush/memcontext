@@ -22,12 +22,13 @@ import {
   VaultChunkMarkdown,
 } from "@/components/vault-chunk-markdown";
 import {
-  companyBrainMemoryEvidenceQueryOptions,
+  contextVaultMemoryEvidenceQueryOptions,
   useCorrectVaultMemory,
   useSubmitVaultMemoryFeedback,
-  type CompanyBrainMemory,
+  type ContextVaultMemory,
   type VaultFeedbackType,
-} from "@/lib/queries/company-brain";
+} from "@/lib/queries/context-vault";
+import { ThemedSelect } from "@/components/ui/themed-select";
 
 const categoryTone: Record<string, string> = {
   preference: "bg-accent/10 text-accent",
@@ -59,8 +60,9 @@ function formatDate(value: string) {
 }
 
 interface VaultMemoryDetailPanelProps {
-  memory: CompanyBrainMemory;
+  memory: ContextVaultMemory;
   workspaceId: string;
+  vaultId?: string | null;
   onClose: () => void;
 }
 
@@ -71,6 +73,7 @@ interface VaultMemoryDetailPanelProps {
 export function VaultMemoryDetailPanel({
   memory,
   workspaceId,
+  vaultId,
   onClose,
 }: VaultMemoryDetailPanelProps) {
   const toast = useToast();
@@ -91,10 +94,12 @@ export function VaultMemoryDetailPanel({
   const [correctedChunkContent, setCorrectedChunkContent] = useState("");
   const [evidenceChunkId, setEvidenceChunkId] = useState("");
   const created = formatDate(memory.createdAt);
+  const effectiveVaultId = vaultId ?? memory.vaultId ?? undefined;
 
   const { data: evidenceData, isLoading: evidenceLoading } = useQuery(
-    companyBrainMemoryEvidenceQueryOptions({
+    contextVaultMemoryEvidenceQueryOptions({
       workspaceId,
+      vaultId: effectiveVaultId,
       memoryId: memory.id,
     }),
   );
@@ -109,6 +114,7 @@ export function VaultMemoryDetailPanel({
     try {
       await feedbackMutation.mutateAsync({
         workspaceId,
+        vaultId: effectiveVaultId,
         memoryId: memory.id,
         type,
       });
@@ -128,6 +134,7 @@ export function VaultMemoryDetailPanel({
     try {
       const result = await correctionMutation.mutateAsync({
         workspaceId,
+        vaultId: effectiveVaultId,
         memoryId: memory.id,
         type: correctionType,
         correctedContent: correctedContent.trim(),
@@ -360,25 +367,24 @@ export function VaultMemoryDetailPanel({
 
               {evidence.length > 0 && (
                 <div className="space-y-2">
-                  <select
+                  <ThemedSelect
                     value={evidenceChunkId}
-                    onChange={(event) => {
-                      const chunkId = event.target.value;
+                    onChange={(chunkId) => {
                       setEvidenceChunkId(chunkId);
                       const chunk = evidence.find(
                         (item) => item.chunkId === chunkId,
                       );
                       setCorrectedChunkContent(chunk?.content ?? "");
                     }}
-                    className="h-9 w-full rounded-md border border-border bg-surface px-2 text-xs text-foreground-muted focus:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent/20"
-                  >
-                    <option value="">Do not update source chunk</option>
-                    {evidence.map((item) => (
-                      <option key={item.chunkId} value={item.chunkId}>
-                        Update chunk #{item.chunkIndex}
-                      </option>
-                    ))}
-                  </select>
+                    options={[
+                      { value: "", label: "Do not update source chunk" },
+                      ...evidence.map((item) => ({
+                        value: item.chunkId,
+                        label: `Update chunk #${item.chunkIndex}`,
+                      })),
+                    ]}
+                    className="w-full"
+                  />
                   {evidenceChunkId && (
                     <textarea
                       value={correctedChunkContent}

@@ -37,10 +37,10 @@ import {
   type MemoryHierarchyProject,
 } from "@/lib/queries/memories";
 import {
-  companyBrainHierarchyQueryOptions,
-  companyBrainMemoriesQueryOptions,
-  type CompanyBrainMemory,
-} from "@/lib/queries/company-brain";
+  contextVaultHierarchyQueryOptions,
+  contextVaultMemoriesQueryOptions,
+  type ContextVaultMemory,
+} from "@/lib/queries/context-vault";
 import { formatDateTime, cn } from "@/lib/utils";
 import { useToast } from "@/providers/toast-provider";
 import { ScopePicker } from "@/components/scope-picker";
@@ -51,6 +51,7 @@ import {
 import { VaultMemoryDetailPanel } from "@/components/vault-memory-detail-panel";
 import { ThemedSelect } from "@/components/ui/themed-select";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useWorkspace } from "@/providers/workspace-provider";
 
 interface Memory {
   id: string;
@@ -275,6 +276,7 @@ function TableSkeleton({
 function MemoryDetailPanel({
   memory,
   scope,
+  workspaceId,
   onClose,
   onSuccess,
   onError,
@@ -282,6 +284,7 @@ function MemoryDetailPanel({
 }: {
   memory: Memory;
   scope: string | null;
+  workspaceId?: string;
   onClose: () => void;
   onSuccess: (message: string) => void;
   onError: (message: string) => void;
@@ -301,7 +304,7 @@ function MemoryDetailPanel({
   const [feedbackSent, setFeedbackSent] = useState<string | null>(null);
 
   const { data: historyData } = useQuery(
-    memoryHistoryQueryOptions(memory.id, scope ?? undefined),
+    memoryHistoryQueryOptions(memory.id, scope ?? undefined, workspaceId),
   );
 
   async function handleFeedback(
@@ -312,6 +315,7 @@ function MemoryDetailPanel({
         id: memory.id,
         type,
         scope: scope ?? undefined,
+        workspaceId,
       });
       setFeedbackSent(type);
       onSuccess(`Marked as ${type.replace("_", " ")}`);
@@ -332,6 +336,7 @@ function MemoryDetailPanel({
       await updateMutation.mutateAsync({
         id: memory.id,
         scope: scope ?? undefined,
+        workspaceId,
         content: content !== memory.content ? content : undefined,
         category:
           editCategory !== (memory.category || "")
@@ -1131,22 +1136,23 @@ export default function MemoriesPage() {
   const [selectedMemoryIds, setSelectedMemoryIds] = useState<string[]>([]);
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
   const [selectedVaultMemory, setSelectedVaultMemory] =
-    useState<CompanyBrainMemory | null>(null);
+    useState<ContextVaultMemory | null>(null);
   const [deletingMemory, setDeletingMemory] = useState<Memory | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const toast = useToast();
   const queryClient = useQueryClient();
+  const { activeWorkspace, activeWorkspaceId } = useWorkspace();
   const offset = page * pageSize;
   const isWorkspace = source.type === "workspace";
-  const workspaceId = source.type === "workspace" ? source.id : undefined;
+  const workspaceId = source.type === "workspace" ? source.id : activeWorkspaceId;
 
   const { data: userHierarchy, isLoading: userHierarchyLoading } = useQuery(
-    memoryHierarchyQueryOptions(),
+    memoryHierarchyQueryOptions(activeWorkspaceId),
   );
   const { data: workspaceHierarchy, isLoading: workspaceHierarchyLoading } =
-    useQuery(companyBrainHierarchyQueryOptions(workspaceId));
+    useQuery(contextVaultHierarchyQueryOptions(workspaceId));
 
   const hierarchy = isWorkspace ? workspaceHierarchy : userHierarchy;
   const hierarchyLoading = isWorkspace
@@ -1219,6 +1225,24 @@ export default function MemoriesPage() {
     setPage(0);
   }, [sortOrder]);
 
+  useEffect(() => {
+    if (source.type !== "workspace" || !activeWorkspace) return;
+    if (source.id !== activeWorkspace.id) {
+      setSource({
+        type: "workspace",
+        id: activeWorkspace.id,
+        name: activeWorkspace.name,
+      });
+      setSelectedScope(null);
+      setSelectedProjects([]);
+      setSelectedCategories([]);
+      setSelectedMemoryIds([]);
+      setSelectedMemory(null);
+      setSelectedVaultMemory(null);
+      setPage(0);
+    }
+  }, [activeWorkspace, source]);
+
   // Build API params for multi-value filters
   const apiCategories =
     selectedCategories.length > 0 ? selectedCategories : undefined;
@@ -1234,13 +1258,14 @@ export default function MemoriesPage() {
       search: search || undefined,
       scope: selectedScope ?? undefined,
       sort: sortOrder,
+      workspaceId: activeWorkspaceId,
     }),
-    enabled: !isWorkspace,
+    enabled: !isWorkspace && !!activeWorkspaceId,
   });
 
   // Workspace memories are read-only; scope + (multi) project + search apply.
   const workspaceMemories = useQuery(
-    companyBrainMemoriesQueryOptions({
+    contextVaultMemoriesQueryOptions({
       workspaceId,
       scope: selectedScope ?? undefined,
       projects: apiProjects,
@@ -1299,6 +1324,7 @@ export default function MemoriesPage() {
       await deleteMutation.mutateAsync({
         id: deletingMemory.id,
         scope: selectedScope ?? undefined,
+        workspaceId: activeWorkspaceId,
       });
       toast.success("Memory deleted successfully");
       setDeletingMemory(null);
@@ -1322,6 +1348,7 @@ export default function MemoriesPage() {
       const result = await bulkDeleteMutation.mutateAsync({
         ids: selectedMemoryIds,
         scope: selectedScope ?? undefined,
+        workspaceId: activeWorkspaceId,
       });
       if (result.deletedCount === 0) {
         toast.success("No selected memories needed deletion");
@@ -1357,8 +1384,8 @@ export default function MemoriesPage() {
 
   function handleRefresh() {
     if (isWorkspace) {
-      queryClient.invalidateQueries({ queryKey: ["company-brain-memories"] });
-      queryClient.invalidateQueries({ queryKey: ["company-brain-hierarchy"] });
+      queryClient.invalidateQueries({ queryKey: ["context-vault-memories"] });
+      queryClient.invalidateQueries({ queryKey: ["context-vault-hierarchy"] });
     } else {
       queryClient.invalidateQueries({ queryKey: ["memories"] });
     }
@@ -1616,7 +1643,7 @@ export default function MemoriesPage() {
                           isWorkspace
                             ? () =>
                                 setSelectedVaultMemory(
-                                  memory as CompanyBrainMemory,
+                                  memory as ContextVaultMemory,
                                 )
                             : () => setSelectedMemory(memory as Memory)
                         }
@@ -1903,6 +1930,7 @@ export default function MemoriesPage() {
           key={selectedMemory.id}
           memory={selectedMemory}
           scope={selectedScope}
+          workspaceId={activeWorkspaceId}
           onClose={() => setSelectedMemory(null)}
           onSuccess={(message) => toast.success(message)}
           onError={(message) => toast.error(message)}

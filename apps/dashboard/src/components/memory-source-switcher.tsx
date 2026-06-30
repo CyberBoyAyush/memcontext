@@ -2,13 +2,9 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useQuery } from "@tanstack/react-query";
 import { Buildings, CaretDown, Check, User } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
-import {
-  workspacesQueryOptions,
-  type Workspace,
-} from "@/lib/queries/company-brain";
+import { useWorkspace } from "@/providers/workspace-provider";
 
 export type MemorySource =
   | { type: "user" }
@@ -20,15 +16,9 @@ interface MemorySourceSwitcherProps {
   className?: string;
 }
 
-function workspaceTierLabel(workspace: Workspace) {
-  const plan = workspace.billingOwnerPlan ?? "free";
-  return `${plan.charAt(0).toUpperCase()}${plan.slice(1)} Workspace`;
-}
-
 /**
- * Switches the memories view between personal ("My memories") and a workspace's
- * Context Vault memories. The menu renders in a portal so it is never clipped
- * by ancestor `overflow-hidden` containers.
+ * Switches between personal memories and the mounted workspace's vault memories.
+ * Workspace switching itself stays centralized in the sidebar.
  */
 export function MemorySourceSwitcher({
   value,
@@ -38,11 +28,10 @@ export function MemorySourceSwitcher({
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
-  const { data } = useQuery(workspacesQueryOptions());
-  const workspaces = data?.workspaces ?? [];
+  const { activeWorkspace } = useWorkspace();
 
   const isUser = value.type === "user";
-  const label = isUser ? "My memories" : value.name;
+  const label = isUser ? "My memories" : "Context Vault";
 
   // Position the menu under the trigger using viewport coordinates.
   useLayoutEffect(() => {
@@ -138,59 +127,47 @@ export function MemorySourceSwitcher({
               {/* Workspaces */}
               <div className="border-t border-border p-1">
                 <div className="px-2 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-foreground-subtle">
-                  Workspaces
+                  Mounted workspace
                 </div>
-                {workspaces.length === 0 ? (
+                {!activeWorkspace ? (
                   <div className="px-2.5 py-2.5 text-[11px] text-foreground-subtle">
-                    No workspaces yet. Create one in Settings.
+                    No active workspace selected.
                   </div>
                 ) : (
-                  <div className="max-h-52 overflow-y-auto scrollbar-hide">
-                    {workspaces.map((workspace) => {
-                      const active =
-                        value.type === "workspace" && value.id === workspace.id;
-                      return (
-                        <button
-                          key={workspace.id}
-                          type="button"
-                          onClick={() =>
-                            select({
-                              type: "workspace",
-                              id: workspace.id,
-                              name: workspace.name,
-                            })
-                          }
-                          className={cn(
-                            "w-full flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-[13px] text-left transition-colors",
-                            active
-                              ? "bg-surface text-foreground"
-                              : "text-foreground-muted hover:bg-surface hover:text-foreground",
-                          )}
-                        >
-                          <span className="flex items-center gap-2 min-w-0">
-                            <Buildings
-                              className="h-3.5 w-3.5 text-accent shrink-0"
-                              weight="duotone"
-                            />
-                            <span className="flex min-w-0 flex-col">
-                              <span className="truncate leading-tight">
-                                {workspace.name}
-                              </span>
-                              <span className="truncate text-[10px] leading-tight text-foreground-subtle">
-                                {workspaceTierLabel(workspace)}
-                              </span>
-                            </span>
-                          </span>
-                          {active && (
-                            <Check
-                              className="h-3 w-3 shrink-0"
-                              weight="bold"
-                            />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      select({
+                        type: "workspace",
+                        id: activeWorkspace.id,
+                        name: activeWorkspace.name,
+                      })
+                    }
+                    className={cn(
+                      "w-full flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-[13px] text-left transition-colors",
+                      value.type === "workspace"
+                        ? "bg-surface text-foreground"
+                        : "text-foreground-muted hover:bg-surface hover:text-foreground",
+                    )}
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      <Buildings
+                        className="h-3.5 w-3.5 text-accent shrink-0"
+                        weight="duotone"
+                      />
+                      <span className="flex min-w-0 flex-col">
+                        <span className="truncate leading-tight">
+                          Context Vault
+                        </span>
+                        <span className="truncate text-[10px] leading-tight text-foreground-subtle">
+                          {activeWorkspace.name}
+                        </span>
+                      </span>
+                    </span>
+                    {value.type === "workspace" && (
+                      <Check className="h-3 w-3 shrink-0" weight="bold" />
+                    )}
+                  </button>
                 )}
               </div>
             </div>
