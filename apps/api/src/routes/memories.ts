@@ -169,8 +169,8 @@ async function resolveWritableMemoryWorkspace(
 // POST / - Save memory (MCP + Dashboard)
 app.post(
   "/",
-  rateLimitSaveMemory,
   eitherAuthMiddleware,
+  rateLimitSaveMemory,
   zValidator("json", saveMemorySchema),
   async (c) => {
     const auth = c.get("auth");
@@ -254,8 +254,8 @@ app.post(
 // GET /search - Search memories (MCP + Dashboard)
 app.get(
   "/search",
-  rateLimitSearchMemory,
   eitherAuthMiddleware,
+  rateLimitSearchMemory,
   zValidator("query", searchMemorySchema),
   async (c) => {
     const auth = c.get("auth");
@@ -435,8 +435,8 @@ app.get(
 // POST /:id/feedback - Submit feedback for a memory
 app.post(
   "/:id/feedback",
-  rateLimitFeedback,
   eitherAuthMiddleware,
+  rateLimitFeedback,
   zValidator("param", memoryIdParamSchema),
   zValidator("query", scopedQuerySchema),
   zValidator("json", feedbackSchema),

@@ -46,14 +46,16 @@ This path is intended for everyday Claude usage. API-key headers and config file
 
 ## Rate limits
 
-MemContext rate-limits requests per endpoint using a sliding window:
+MemContext rate-limits requests per endpoint using a sliding 1-minute window. Authenticated memory endpoint limits scale with the workspace plan:
 
-| Endpoint                                            | Limit        | Window   |
-| --------------------------------------------------- | ------------ | -------- |
-| Save memory (`POST /api/memories`)                  | 30 requests  | 1 minute |
-| Search memories (`GET /api/memories/search`)        | 60 requests  | 1 minute |
-| Submit feedback (`POST /api/memories/:id/feedback`) | 30 requests  | 1 minute |
-| Global (all `/api/*` endpoints)                     | 100 requests | 1 minute |
+| Plan     | Save memory | Search memories | Submit feedback |
+| -------- | ----------- | --------------- | --------------- |
+| Free     | 30/min      | 60/min          | 30/min          |
+| Hobby    | 100/min     | 200/min         | 60/min          |
+| Pro      | 300/min     | 600/min         | 120/min         |
+| Ultimate | 1,000/min   | 2,000/min       | 300/min         |
+
+API traffic may also be protected by a global abuse backstop of 3,000 requests per minute.
 
 Rate-limited responses include headers to help you manage request timing:
 
