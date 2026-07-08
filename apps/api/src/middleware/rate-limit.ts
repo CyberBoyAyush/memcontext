@@ -2,6 +2,10 @@ import { createMiddleware } from "hono/factory";
 import { HTTPException } from "hono/http-exception";
 import { redis } from "../lib/redis.js";
 import { logger } from "../lib/logger.js";
+import type { PlanType } from "../db/schema.js";
+import type { EitherAuthContext } from "./either-auth.js";
+import { getSubscriptionData } from "../services/subscription.js";
+import { requireWorkspaceMember } from "../services/workspace.js";
 
 interface RateLimitConfig {
   windowMs: number;
@@ -14,9 +18,19 @@ const RATE_LIMIT_CONFIGS = {
   searchMemory: { windowMs: 60_000, max: 60, keyPrefix: "rl:search:" },
   feedback: { windowMs: 60_000, max: 30, keyPrefix: "rl:feedback:" },
   health: { windowMs: 60_000, max: 60, keyPrefix: "rl:health:" },
-  global: { windowMs: 60_000, max: 100, keyPrefix: "rl:global:" },
+  global: { windowMs: 60_000, max: 3_000, keyPrefix: "rl:global:" },
   waitlist: { windowMs: 3_600_000, max: 5, keyPrefix: "rl:waitlist:" },
 } as const;
+
+const PLAN_RATE_LIMITS: Record<
+  PlanType,
+  { saveMemory: number; searchMemory: number; feedback: number }
+> = {
+  free: { saveMemory: 30, searchMemory: 60, feedback: 30 },
+  hobby: { saveMemory: 100, searchMemory: 200, feedback: 60 },
+  pro: { saveMemory: 300, searchMemory: 600, feedback: 120 },
+  ultimate: { saveMemory: 1_000, searchMemory: 2_000, feedback: 300 },
+};
 
 async function checkRateLimit(
   key: string,
@@ -56,11 +70,34 @@ function getClientIdentifier(
   return "ip:unknown";
 }
 
+function getIpIdentifier(
+  c: Parameters<Parameters<typeof createMiddleware>[0]>[0],
+): string {
+  const trustedIp =
+    c.req.header("CF-Connecting-IP") || c.req.header("True-Client-IP");
+  if (trustedIp) {
+    return `ip:${trustedIp.trim()}`;
+  }
+
+  const forwarded = c.req.header("X-Forwarded-For");
+  if (forwarded) {
+    return `ip:${forwarded.split(",")[0].trim()}`;
+  }
+
+  const realIp = c.req.header("X-Real-IP");
+  if (realIp) {
+    return `ip:${realIp.trim()}`;
+  }
+
+  return "ip:unknown";
+}
+
 export function createRateLimiter(configKey: keyof typeof RATE_LIMIT_CONFIGS) {
   const config = RATE_LIMIT_CONFIGS[configKey];
 
   return createMiddleware(async (c, next) => {
-    const identifier = getClientIdentifier(c);
+    const identifier =
+      configKey === "global" ? getIpIdentifier(c) : getClientIdentifier(c);
     const requestId = c.get("requestId") || "unknown";
 
     const start = performance.now();
@@ -107,9 +144,119 @@ export function createRateLimiter(configKey: keyof typeof RATE_LIMIT_CONFIGS) {
   });
 }
 
-export const rateLimitSaveMemory = createRateLimiter("saveMemory");
-export const rateLimitSearchMemory = createRateLimiter("searchMemory");
-export const rateLimitFeedback = createRateLimiter("feedback");
+function getValidatedWorkspaceId(
+  c: Parameters<Parameters<typeof createMiddleware>[0]>[0],
+): string | undefined {
+  const request = c.req as unknown as {
+    valid: (target: "json" | "query") => unknown;
+  };
+
+  for (const target of ["json", "query"] as const) {
+    try {
+      const value = request.valid(target) as { workspaceId?: string } | undefined;
+      if (value?.workspaceId) return value.workspaceId;
+    } catch {
+      // Not every route validates both locations before rate limiting.
+    }
+  }
+  return undefined;
+}
+
+async function getEffectiveRateLimitContext(
+  auth: EitherAuthContext | undefined,
+  c: Parameters<Parameters<typeof createMiddleware>[0]>[0],
+) {
+  if (!auth) {
+    return { plan: undefined, workspaceId: undefined };
+  }
+
+  if (auth.authType !== "session") {
+    return { plan: auth.plan, workspaceId: auth.workspaceId };
+  }
+
+  const workspaceId = getValidatedWorkspaceId(c) ?? auth.workspaceId;
+  if (workspaceId === auth.workspaceId) {
+    return { plan: auth.plan, workspaceId };
+  }
+
+  await requireWorkspaceMember(auth.userId, workspaceId);
+  const subscription = await getSubscriptionData(auth.userId, workspaceId);
+  return { plan: subscription.plan, workspaceId };
+}
+
+function getPlanAwareConfig(
+  configKey: "saveMemory" | "searchMemory" | "feedback",
+  plan: string | undefined,
+): RateLimitConfig {
+  const planLimits =
+    PLAN_RATE_LIMITS[(plan as PlanType) || "free"] ?? PLAN_RATE_LIMITS.free;
+  return {
+    ...RATE_LIMIT_CONFIGS[configKey],
+    max: planLimits[configKey],
+  };
+}
+
+export function createPlanAwareRateLimiter(
+  configKey: "saveMemory" | "searchMemory" | "feedback",
+) {
+  return createMiddleware(async (c, next) => {
+    const auth = c.get("auth") as EitherAuthContext | undefined;
+    const context = await getEffectiveRateLimitContext(auth, c);
+    const config = getPlanAwareConfig(configKey, context.plan);
+    const identifier = auth?.userId
+      ? `user:${auth.userId}:workspace:${context.workspaceId ?? "default"}`
+      : getClientIdentifier(c);
+    const requestId = c.get("requestId") || "unknown";
+
+    const start = performance.now();
+    const result = await checkRateLimit(identifier, config);
+    const duration = Math.round(performance.now() - start);
+
+    c.header("X-RateLimit-Limit", config.max.toString());
+    c.header("X-RateLimit-Remaining", result.remaining.toString());
+    c.header("X-RateLimit-Reset", result.resetAt.toString());
+
+    if (!result.allowed) {
+      const retryAfter = Math.ceil((result.resetAt - Date.now()) / 1000);
+
+      logger.warn(
+        {
+          requestId,
+          rateLimitType: configKey,
+          rateLimitKey: identifier.substring(0, 20),
+          plan: context.plan ?? "free",
+          limit: config.max,
+          remaining: 0,
+          resetAt: result.resetAt,
+          retryAfter,
+          duration,
+        },
+        "rate limit exceeded",
+      );
+
+      throw new HTTPException(429, {
+        message: `Rate limit exceeded. Try again in ${retryAfter} seconds.`,
+      });
+    }
+
+    logger.debug(
+      {
+        requestId,
+        rateLimitType: configKey,
+        plan: context.plan ?? "free",
+        remaining: result.remaining,
+        duration,
+      },
+      "rate limit check passed",
+    );
+
+    await next();
+  });
+}
+
+export const rateLimitSaveMemory = createPlanAwareRateLimiter("saveMemory");
+export const rateLimitSearchMemory = createPlanAwareRateLimiter("searchMemory");
+export const rateLimitFeedback = createPlanAwareRateLimiter("feedback");
 export const rateLimitHealth = createRateLimiter("health");
 export const rateLimitGlobal = createRateLimiter("global");
 export const rateLimitWaitlist = createRateLimiter("waitlist");
