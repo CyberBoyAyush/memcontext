@@ -500,9 +500,9 @@ app.post(
 
 app.post(
   "/memories/:memoryId/feedback",
-  rateLimitFeedback,
   zValidator("param", z.object({ memoryId: z.string().uuid() })),
   zValidator("json", memoryFeedbackSchema),
+  rateLimitFeedback,
   async (c) => {
     const auth = c.get("auth");
     const { userId } = auth;
@@ -538,9 +538,9 @@ app.post(
 
 app.post(
   "/memories/:memoryId/correction",
-  rateLimitFeedback,
   zValidator("param", z.object({ memoryId: z.string().uuid() })),
   zValidator("json", memoryCorrectionSchema),
+  rateLimitFeedback,
   async (c) => {
     const auth = c.get("auth");
     const { userId } = auth;

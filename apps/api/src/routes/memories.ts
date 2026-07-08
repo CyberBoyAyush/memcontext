@@ -170,8 +170,8 @@ async function resolveWritableMemoryWorkspace(
 app.post(
   "/",
   eitherAuthMiddleware,
-  rateLimitSaveMemory,
   zValidator("json", saveMemorySchema),
+  rateLimitSaveMemory,
   async (c) => {
     const auth = c.get("auth");
     const body = c.req.valid("json");
@@ -255,8 +255,8 @@ app.post(
 app.get(
   "/search",
   eitherAuthMiddleware,
-  rateLimitSearchMemory,
   zValidator("query", searchMemorySchema),
+  rateLimitSearchMemory,
   async (c) => {
     const auth = c.get("auth");
     const query = c.req.valid("query");
@@ -436,10 +436,10 @@ app.get(
 app.post(
   "/:id/feedback",
   eitherAuthMiddleware,
-  rateLimitFeedback,
   zValidator("param", memoryIdParamSchema),
   zValidator("query", scopedQuerySchema),
   zValidator("json", feedbackSchema),
+  rateLimitFeedback,
   async (c) => {
     const auth = c.get("auth");
     const { id: memoryId } = c.req.valid("param");

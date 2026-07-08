@@ -4,6 +4,8 @@ import { redis } from "../lib/redis.js";
 import { logger } from "../lib/logger.js";
 import type { PlanType } from "../db/schema.js";
 import type { EitherAuthContext } from "./either-auth.js";
+import { getSubscriptionData } from "../services/subscription.js";
+import { requireWorkspaceMember } from "../services/workspace.js";
 
 interface RateLimitConfig {
   windowMs: number;
@@ -68,11 +70,34 @@ function getClientIdentifier(
   return "ip:unknown";
 }
 
+function getIpIdentifier(
+  c: Parameters<Parameters<typeof createMiddleware>[0]>[0],
+): string {
+  const trustedIp =
+    c.req.header("CF-Connecting-IP") || c.req.header("True-Client-IP");
+  if (trustedIp) {
+    return `ip:${trustedIp.trim()}`;
+  }
+
+  const forwarded = c.req.header("X-Forwarded-For");
+  if (forwarded) {
+    return `ip:${forwarded.split(",")[0].trim()}`;
+  }
+
+  const realIp = c.req.header("X-Real-IP");
+  if (realIp) {
+    return `ip:${realIp.trim()}`;
+  }
+
+  return "ip:unknown";
+}
+
 export function createRateLimiter(configKey: keyof typeof RATE_LIMIT_CONFIGS) {
   const config = RATE_LIMIT_CONFIGS[configKey];
 
   return createMiddleware(async (c, next) => {
-    const identifier = getClientIdentifier(c);
+    const identifier =
+      configKey === "global" ? getIpIdentifier(c) : getClientIdentifier(c);
     const requestId = c.get("requestId") || "unknown";
 
     const start = performance.now();
@@ -119,6 +144,46 @@ export function createRateLimiter(configKey: keyof typeof RATE_LIMIT_CONFIGS) {
   });
 }
 
+function getValidatedWorkspaceId(
+  c: Parameters<Parameters<typeof createMiddleware>[0]>[0],
+): string | undefined {
+  const request = c.req as unknown as {
+    valid: (target: "json" | "query") => unknown;
+  };
+
+  for (const target of ["json", "query"] as const) {
+    try {
+      const value = request.valid(target) as { workspaceId?: string } | undefined;
+      if (value?.workspaceId) return value.workspaceId;
+    } catch {
+      // Not every route validates both locations before rate limiting.
+    }
+  }
+  return undefined;
+}
+
+async function getEffectiveRateLimitContext(
+  auth: EitherAuthContext | undefined,
+  c: Parameters<Parameters<typeof createMiddleware>[0]>[0],
+) {
+  if (!auth) {
+    return { plan: undefined, workspaceId: undefined };
+  }
+
+  if (auth.authType !== "session") {
+    return { plan: auth.plan, workspaceId: auth.workspaceId };
+  }
+
+  const workspaceId = getValidatedWorkspaceId(c) ?? auth.workspaceId;
+  if (workspaceId === auth.workspaceId) {
+    return { plan: auth.plan, workspaceId };
+  }
+
+  await requireWorkspaceMember(auth.userId, workspaceId);
+  const subscription = await getSubscriptionData(auth.userId, workspaceId);
+  return { plan: subscription.plan, workspaceId };
+}
+
 function getPlanAwareConfig(
   configKey: "saveMemory" | "searchMemory" | "feedback",
   plan: string | undefined,
@@ -136,9 +201,10 @@ export function createPlanAwareRateLimiter(
 ) {
   return createMiddleware(async (c, next) => {
     const auth = c.get("auth") as EitherAuthContext | undefined;
-    const config = getPlanAwareConfig(configKey, auth?.plan);
+    const context = await getEffectiveRateLimitContext(auth, c);
+    const config = getPlanAwareConfig(configKey, context.plan);
     const identifier = auth?.userId
-      ? `user:${auth.userId}:workspace:${auth.workspaceId ?? "default"}`
+      ? `user:${auth.userId}:workspace:${context.workspaceId ?? "default"}`
       : getClientIdentifier(c);
     const requestId = c.get("requestId") || "unknown";
 
@@ -158,7 +224,7 @@ export function createPlanAwareRateLimiter(
           requestId,
           rateLimitType: configKey,
           rateLimitKey: identifier.substring(0, 20),
-          plan: auth?.plan ?? "free",
+          plan: context.plan ?? "free",
           limit: config.max,
           remaining: 0,
           resetAt: result.resetAt,
@@ -177,7 +243,7 @@ export function createPlanAwareRateLimiter(
       {
         requestId,
         rateLimitType: configKey,
-        plan: auth?.plan ?? "free",
+        plan: context.plan ?? "free",
         remaining: result.remaining,
         duration,
       },
