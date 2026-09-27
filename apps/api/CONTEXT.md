@@ -99,7 +99,7 @@ created_at      TIMESTAMP
 ### embedding.ts
 
 - `generateEmbedding(text: string): Promise<number[]>`
-- `expandMemory(content: string): Promise<ExpandMemoryResult>` - LLM enriches content, classifies temporal category, and suggests TTL
+- `expandMemory(content: string): Promise<ExpandMemoryResult>` - Jev first checks if content is already clear (skips the rewrite, sets temporal category directly); otherwise Gemini rewrites content for searchability and classifies temporal category, suggesting TTL
 - `generateQueryVariants(query: string): Promise<string[]>` - LLM generates 3 query variants for multi-query search
 - Uses OpenRouter with text-embedding-3-large (1536 dimensions)
 
@@ -114,8 +114,8 @@ created_at      TIMESTAMP
 - `classifyWithSimilarMemories(existingMemories[], newContent): Promise<ClassificationResult>`
 - Compares new memory against top-5 similar existing memories
 - Returns: `{ action: "update" | "extend" | "similar" | "noop", targetIndex?, reason }`
-- Uses OpenRouter LLM (gemini-2.5-flash) with JSON Schema
-- Default to "similar" on parse failure
+- Uses TypeSafe Jev (typesafe/jev-1.13) via OpenRouter's Decisions API - no LLM fallback
+- Action and target are picked together in one combined choice (e.g. `update_2`); defaults to "similar" on failure
 
 ## Auth Middleware Logic
 
@@ -135,7 +135,7 @@ if (apiKey) {
 
 ## Similarity Threshold
 
-- Distance < 0.30 = Similarity > 0.70 (trigger LLM classification, compares top-5)
+- Distance < 0.30 = Similarity > 0.70 (trigger Jev classification, compares top-5)
 - Distance < 0.40 = Similarity > 0.60 (search result threshold)
 - Search returns top 5 results by default
 

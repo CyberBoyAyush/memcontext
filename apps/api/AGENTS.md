@@ -139,7 +139,7 @@ import { memories } from "../db/schema";
 export async function saveMemory(userId: string, content: string) {
   // 1. Generate embedding
   // 2. Check for similar memories
-  // 3. If similar > 0.80, call LLM for classification
+  // 3. If similar > 0.80, ask Jev to classify the relationship
   // 4. Insert/update based on classification
 }
 

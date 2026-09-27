@@ -11,7 +11,8 @@ const EMBEDDING_MODEL = "openai/text-embedding-3-large";
 const LLM_MODEL = "google/gemini-2.5-flash";
 const REQUEST_TIMEOUT_MS = 30_000;
 // Keeps each rerank question well inside the decision model's context budget.
-const RERANK_MAX_DOCUMENT_CHARS = 3_000;
+// Covers the largest Context Vault chunk (6,000 chars) plus its title/section prefix.
+const RERANK_MAX_DOCUMENT_CHARS = 6_500;
 
 function getApiKey(): string {
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -170,68 +171,54 @@ const RELATIONSHIP_ACTIONS: readonly RelationshipClassification[] = [
   "similar",
   "noop",
 ];
-const NO_TARGET = "none";
+const ACTION_DESCRIPTIONS: Record<Exclude<RelationshipClassification, "similar">, string> = {
+  update: "contradicts or replaces this memory (a preference, fact, or decision changed)",
+  extend: "adds detail or elaborates on this memory without contradicting it",
+  noop: "is already captured by this memory - redundant, a duplicate, or a less specific restatement",
+};
 
 export async function classifyWithMultipleMemories(
   existingMemories: SimilarMemoryForClassification[],
   newContent: string,
 ): Promise<ClassificationResult> {
-  const targetOptions: Record<string, string> = {};
+  // One combined choice ("update_2", "noop_0", "similar", ...) so the action
+  // and its target memory are decided together and can never disagree.
+  const criteria: Record<string, string> = {
+    similar:
+      "The new memory is related to the existing memories' topic area but is a separate, genuinely new fact worth saving on its own.",
+  };
   for (const memory of existingMemories) {
-    targetOptions[String(memory.index)] = memory.content;
+    for (const [action, description] of Object.entries(ACTION_DESCRIPTIONS)) {
+      criteria[`${action}_${memory.index}`] =
+        `The new memory ${description}: "${memory.content}"`;
+    }
   }
-  targetOptions[NO_TARGET] =
-    "The new memory does not target any specific existing memory.";
 
   try {
     const { answers } = await decide(
       { existingMemories, newMemory: newContent },
       {
-        action: {
+        relationship: {
           type: "choice",
           instructions:
-            "How should the new memory be handled relative to the existing memories?",
-          criteria: {
-            update:
-              "The new memory contradicts or replaces an existing memory (a preference, fact, or decision changed).",
-            extend:
-              "The new memory adds detail or elaborates on an existing memory without contradicting it.",
-            similar:
-              "The new memory is related to the existing memories' topic area but is a separate, genuinely new fact worth saving on its own.",
-            noop: "The new memory is already captured by an existing memory - it is redundant, a duplicate, or a less specific restatement. Do not save it.",
-          },
-        },
-        target: {
-          type: "choice",
-          instructions:
-            "Which existing memory (by index) does the new memory most directly concern, if any? Pick 'none' if it is a separate fact not tied to one specific existing memory.",
-          criteria: targetOptions,
+            "How should the new memory be handled relative to the existing memories? Pick the single option matching both the relationship and the specific existing memory it concerns.",
+          criteria,
         },
       },
       { operation: "classify_relationship" },
     );
 
-    const action = answers.action.choice as RelationshipClassification;
+    const { choice, confidence } = answers.relationship;
+    const [rawAction, rawIndex] = choice.split("_");
+    const action = rawAction as RelationshipClassification;
     if (!RELATIONSHIP_ACTIONS.includes(action)) {
-      throw new Error(`Unexpected relationship action: ${answers.action.choice}`);
-    }
-    const target = answers.target.choice;
-    const targetIndex = target === NO_TARGET ? undefined : Number(target);
-    const hasValidTarget = existingMemories.some((m) => m.index === targetIndex);
-
-    // Action and target are answered independently; never let a destructive
-    // action (update/extend/noop) fall back to an arbitrary memory.
-    if (action !== "similar" && !hasValidTarget) {
-      return {
-        action: "similar",
-        reason: `Classified as ${action} without a target, saving as similar`,
-      };
+      throw new Error(`Unexpected relationship choice: ${choice}`);
     }
 
     return {
       action,
-      targetIndex: hasValidTarget ? targetIndex : undefined,
-      reason: `Classified as ${action} (confidence ${answers.action.confidence.toFixed(2)})`,
+      targetIndex: action === "similar" ? undefined : Number(rawIndex),
+      reason: `Classified as ${action} (confidence ${confidence.toFixed(2)})`,
     };
   } catch {
     return {
@@ -282,7 +269,7 @@ const TEMPORAL_CATEGORIES: readonly TemporalCategory[] = [
 ];
 // Mirrors the "when in doubt, permanent" rule: only accept a TTL category
 // the decision model is confident about.
-const TEMPORAL_MIN_CONFIDENCE = 0.6;
+const TEMPORAL_MIN_CONFIDENCE = 0.8;
 
 /**
  * Decides whether a memory is already clear and self-contained. Returns the
@@ -308,16 +295,16 @@ async function classifyIfAlreadyClear(
         temporalCategory: {
           type: "choice",
           instructions:
-            "Classify the temporal nature of this memory. When in doubt, choose permanent.",
+            "Classify the temporal nature of this memory. When in doubt, ALWAYS choose permanent - keeping a memory too long is far better than losing it early. Only choose a temporal category when the content contains explicit time-sensitive language.",
           criteria: {
             permanent:
-              "Stable facts, preferences, decisions, identity - won't change unless explicitly updated.",
+              "Stable facts, preferences, decisions, identity - won't change unless explicitly updated. E.g. 'User prefers TypeScript', 'Chose PostgreSQL for database'.",
             short_term:
-              "Events or facts valid for only a few days, e.g. a meeting tomorrow or a deploy tonight.",
+              "Explicitly time-bound events valid for a few days. E.g. 'Meeting tomorrow at 3pm', 'Deploy scheduled for tonight'.",
             medium_term:
-              "Current observations, strategies, or trends that change over weeks to a month.",
+              "Explicitly current, changing observations over weeks to a month. E.g. 'LinkedIn favors long posts right now', 'Testing carousels this month'.",
             long_term:
-              "Plans, goals, or contexts valid for months but not permanent.",
+              "Explicitly time-bounded plans or goals over months. E.g. 'Q2 goal is 10K users', 'Migration planned for summer'.",
           },
         },
       },

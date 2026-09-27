@@ -78,7 +78,7 @@ function isProbability(value: unknown): value is number {
 }
 
 /** Rejects malformed answers so callers' error fallbacks run instead. */
-function isValidAnswer(question: DecisionQuestion, answer: unknown): boolean {
+export function isValidAnswer(question: DecisionQuestion, answer: unknown): boolean {
   if (!answer || typeof answer !== "object") return false;
   const a = answer as Record<string, unknown>;
   if (a.type !== question.type) return false;
