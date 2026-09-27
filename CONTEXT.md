@@ -289,7 +289,7 @@ This approach catches:
 **Behavior:**
 
 1. Check subscription: memory_count < memory_limit (reject with LIMIT_EXCEEDED if over)
-2. Jev gate: decide if the content is already clear. If so, skip the rewrite and use Jev's temporal classification directly; otherwise Gemini rewrites for searchability and classifies temporal category
+2. Jev gate: decide if the content is already clear. If it is clear and permanent, skip the rewrite (no TTL); otherwise (unclear or possibly time-sensitive) Gemini rewrites for searchability and classifies temporal category
 3. Auto-TTL: if user did NOT pass validUntil, set it based on temporal classification:
    - permanent → null, short_term → 7 days, medium_term → 30 days, long_term → 90 days
 4. Generate embedding via OpenRouter

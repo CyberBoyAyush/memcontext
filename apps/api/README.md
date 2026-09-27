@@ -237,7 +237,7 @@ Links extracted document memories back to their source document and chunk for ci
 When a memory is saved:
 
 1. Check if user is within their plan limit
-2. Jev decides whether the memory text needs rewriting: if it's already clear, skip straight to its temporal classification; otherwise Gemini rewrites the text for searchability and classifies temporal category (permanent/short_term/medium_term/long_term)
+2. Jev decides whether the memory text needs rewriting: if it's already clear and permanent, skip the rewrite (no TTL); otherwise (unclear or possibly time-sensitive) Gemini rewrites the text for searchability and classifies temporal category (permanent/short_term/medium_term/long_term)
 3. Auto-TTL: if user did NOT provide validUntil, set it from temporal classification (7d/30d/90d/null)
 4. Generate vector embedding using text-embedding-3-large
 5. Search for similar existing memories (cosine similarity above 0.70, not expired)

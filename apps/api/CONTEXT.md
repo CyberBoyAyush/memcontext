@@ -99,7 +99,7 @@ created_at      TIMESTAMP
 ### embedding.ts
 
 - `generateEmbedding(text: string): Promise<number[]>`
-- `expandMemory(content: string): Promise<ExpandMemoryResult>` - Jev first checks if content is already clear (skips the rewrite, sets temporal category directly); otherwise Gemini rewrites content for searchability and classifies temporal category, suggesting TTL
+- `expandMemory(content: string): Promise<ExpandMemoryResult>` - Jev first checks if content is already clear and permanent (skips the rewrite, no TTL); otherwise Gemini rewrites content for searchability and classifies temporal category, suggesting TTL
 - `generateQueryVariants(query: string): Promise<string[]>` - LLM generates 3 query variants for multi-query search
 - Uses OpenRouter with text-embedding-3-large (1536 dimensions)
 
