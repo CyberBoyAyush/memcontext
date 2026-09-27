@@ -109,7 +109,7 @@ function SavePipelineCard() {
           </div>
           <div className="space-y-1 pl-6">
             <p className="text-[11px] text-foreground-muted leading-relaxed">
-              &ndash; LLM rewrites content for searchability
+              &ndash; Rewrites content for searchability when needed
             </p>
             <p className="text-[11px] text-foreground-muted leading-relaxed">
               &ndash; Routes to permanent / short / medium / long buckets
@@ -430,7 +430,7 @@ function SavePipelineCardInline() {
         </div>
         <div className="space-y-1 pl-6">
           <p className="text-[11px] text-foreground-muted leading-relaxed">
-            &ndash; LLM rewrites content for searchability
+            &ndash; Rewrites content for searchability when needed
           </p>
           <p className="text-[11px] text-foreground-muted leading-relaxed">
             &ndash; Routes to permanent / short / medium / long buckets

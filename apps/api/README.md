@@ -9,7 +9,7 @@ This is the core of MemContext. MCP, dashboard, website, and SDK clients call th
 - Storing and retrieving memories
 - Ingesting workspace documents into Context Vault
 - Generating vector embeddings for semantic search
-- Processing memory relationships using LLM
+- Classifying memory relationships, gating rewrites, and reranking using a decision model (Jev), plus LLM content processing (Gemini)
 - Managing API keys, subscriptions, waitlist, and admin views
 - Enforcing rate limits and plan quotas
 
@@ -237,11 +237,11 @@ Links extracted document memories back to their source document and chunk for ci
 When a memory is saved:
 
 1. Check if user is within their plan limit
-2. Expand the memory text using LLM for searchability + classify temporal category (permanent/short_term/medium_term/long_term)
+2. Jev decides whether the memory text needs rewriting: if it's already clear and permanent, skip the rewrite (no TTL); otherwise (unclear or possibly time-sensitive) Gemini rewrites the text for searchability and classifies temporal category (permanent/short_term/medium_term/long_term)
 3. Auto-TTL: if user did NOT provide validUntil, set it from temporal classification (7d/30d/90d/null)
 4. Generate vector embedding using text-embedding-3-large
 5. Search for similar existing memories (cosine similarity above 0.70, not expired)
-6. If similar found, classify relationship using LLM (update, extend, or similar)
+6. If similar found, classify relationship using Jev (update, extend, or similar)
 7. Store memory with appropriate relations and temporal metadata
 
 When searching:

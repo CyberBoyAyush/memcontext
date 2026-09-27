@@ -423,7 +423,7 @@ Create `.env` files in `apps/api`, `apps/mcp`, `apps/dashboard`, and `apps/websi
 | Variable                                                                         | Description                                  |
 | -------------------------------------------------------------------------------- | -------------------------------------------- |
 | `DATABASE_URL`                                                                   | PostgreSQL connection string (with pgvector) |
-| `OPENROUTER_API_KEY`                                                             | For embeddings and LLM classification        |
+| `OPENROUTER_API_KEY`                                                             | For embeddings, LLM rewriting, and Jev decisions |
 | `UPSTASH_REDIS_REST_URL`                                                         | Redis for rate limiting and caching          |
 | `UPSTASH_REDIS_REST_TOKEN`                                                       | Redis auth token                             |
 | `BETTER_AUTH_SECRET`                                                             | Auth secret (min 32 chars)                   |

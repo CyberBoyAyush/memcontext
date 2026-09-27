@@ -55,7 +55,7 @@ Upstash Redis      Neon Postgres
 
 **Database:** PostgreSQL with pgvector extension (hosted on Neon Singapore)
 
-**AI Provider:** OpenRouter for both embeddings (text-embedding-3-large) and LLM classification (gemini-2.5-flash)
+**AI Provider:** OpenRouter for embeddings (text-embedding-3-large), content rewriting/extraction/query variants (gemini-2.5-flash), and structured decisions - relationship classification, rewrite-necessity gating, and reranking (typesafe/jev-1.13 via the Decisions API)
 
 ---
 
@@ -202,7 +202,7 @@ Both resolve to the same user. API middleware checks X-API-Key first, falls back
 
 ---
 
-## Relationship Detection (LLM Layer)
+## Relationship Detection (Decision Layer)
 
 When a new memory has similarity > 0.70 to an existing memory, we compare against top-5 similar memories and classify:
 
@@ -213,11 +213,11 @@ When a new memory has similarity > 0.70 to an existing memory, we compare agains
 | SIMILAR | Related but separate facts      | Both stay current, add to memory_relations (type: similar) |
 | NOOP    | New already covered by existing | Skip save, return existing memory ID                       |
 
-**LLM Call:** OpenRouter with gemini-2.5-flash, JSON Schema response format.
+**Decision Call:** OpenRouter Decisions API with typesafe/jev-1.13 - one combined `choice` question whose options pair each action with a specific memory (e.g. `update_2`, `noop_0`, `similar`), so the action and its target can never disagree.
 
-**Fallback:** Default to SIMILAR if LLM fails (keeps both, safe option).
+**Fallback:** Default to SIMILAR if the decision call fails. No Gemini fallback - evaluated against Gemini and won on accuracy, cost, and latency.
 
-**Performance:** ~80% of saves have no similar match (0ms overhead). ~20% trigger LLM (~200-400ms).
+**Performance:** ~80% of saves have no similar match (0ms overhead). ~20% trigger a decision call (~300-400ms, versus ~1000ms+ for the LLM this replaced).
 
 ---
 
@@ -227,7 +227,7 @@ pgvector uses cosine distance, not similarity:
 
 ```
 similarity = 1 - distance
-distance < 0.30 = similarity > 0.70 (LLM classification threshold for saves)
+distance < 0.30 = similarity > 0.70 (Jev classification threshold for saves)
 distance < 0.50 = similarity > 0.50 (search result threshold)
 ```
 
@@ -289,12 +289,12 @@ This approach catches:
 **Behavior:**
 
 1. Check subscription: memory_count < memory_limit (reject with LIMIT_EXCEEDED if over)
-2. Expand memory via LLM (rewrite for searchability + classify temporal category)
+2. Jev gate: decide if the content is already clear. If it is clear and permanent, skip the rewrite (no TTL); otherwise (unclear or possibly time-sensitive) Gemini rewrites for searchability and classifies temporal category
 3. Auto-TTL: if user did NOT pass validUntil, set it based on temporal classification:
    - permanent → null, short_term → 7 days, medium_term → 30 days, long_term → 90 days
 4. Generate embedding via OpenRouter
 5. Search for similar memories (distance < 0.30, is_current = true, not expired)
-6. If match found, classify via LLM (update/extend/similar)
+6. If match found, classify via Jev (update/extend/similar)
 7. Insert accordingly, update relations/versions
 8. Increment subscription.memory_count (+1 for all inserts)
 
