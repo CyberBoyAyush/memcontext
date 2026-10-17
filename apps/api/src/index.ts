@@ -25,6 +25,7 @@ import adminRoutes from "./routes/admin.js";
 import subscriptionRoutes from "./routes/subscription.js";
 import workspacesRoutes from "./routes/workspaces.js";
 import contextVaultRoutes from "./routes/context-vault.js";
+import mcpConnectionsRoutes from "./routes/mcp-connections.js";
 import { startMemorySourceProcessor } from "./services/memory.js";
 import { startContextVaultProcessor } from "./services/context-vault.js";
 import type { HealthResponse } from "@memcontext/types";
@@ -146,6 +147,7 @@ app.route("/api/admin", adminRoutes);
 app.route("/api/subscription", subscriptionRoutes);
 app.route("/api/workspaces", workspacesRoutes);
 app.route("/api/context-vault", contextVaultRoutes);
+app.route("/api/mcp-connections", mcpConnectionsRoutes);
 
 app.onError((err, c) => {
   const requestId = getRequestId(c);
