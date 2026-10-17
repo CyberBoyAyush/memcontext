@@ -15,7 +15,7 @@ import {
   randomUUID,
 } from "node:crypto";
 import { request as httpRequest } from "node:http";
-import { and, eq, inArray, notInArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { fileURLToPath } from "node:url";
 import {
   Client,
@@ -108,10 +108,6 @@ const signature = createHmac("sha256", ctx.secret)
   .update(session.token)
   .digest("base64");
 const cookie = `${ctx.authCookies.sessionToken.name}=${encodeURIComponent(`${session.token}.${signature}`)}`;
-const preexistingClients = (
-  await db.select({ clientId: oauthClient.clientId }).from(oauthClient)
-).map((row) => row.clientId);
-
 const workspaceA = await getOrCreateDefaultWorkspace(testUser.id);
 const [workspaceBRow] = await db
   .insert(workspaces)
@@ -1082,18 +1078,12 @@ try {
   );
 } finally {
   // ---------- cleanup ----------
-  const createdCimd = (
-    await db.select({ clientId: oauthClient.clientId }).from(oauthClient)
-  )
-    .map((row) => row.clientId)
-    .filter(
-      (clientId) =>
-        clientId.startsWith("https://claude.ai/") &&
-        !preexistingClients.includes(clientId),
-    );
-  const toDelete = [...createdClientIds, ...createdCimd];
-  if (toDelete.length)
-    await db.delete(oauthClient).where(inArray(oauthClient.clientId, toDelete));
+  // Only this run's DCR clients and user; shared CIMD clients (e.g. Claude) are
+  // left in place, and the user's consents/tokens on them cascade with the user.
+  if (createdClientIds.length)
+    await db
+      .delete(oauthClient)
+      .where(inArray(oauthClient.clientId, createdClientIds));
   await db
     .delete(workspaces)
     .where(inArray(workspaces.id, [workspaceA, workspaceB]));
@@ -1101,15 +1091,7 @@ try {
   const leftovers = await db
     .select({ id: oauthConsent.id })
     .from(oauthConsent)
-    .where(
-      and(
-        eq(oauthConsent.userId, testUser.id),
-        notInArray(
-          oauthConsent.clientId,
-          preexistingClients.length ? preexistingClients : [""],
-        ),
-      ),
-    );
+    .where(eq(oauthConsent.userId, testUser.id));
   results.push({
     name: "Cleanup removed all test data",
     ok: leftovers.length === 0,

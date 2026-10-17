@@ -187,7 +187,10 @@ export async function verifyMcpAccessToken(
         ),
       )
       .limit(1);
-    if (!consent || consent.createdAt.getTime() > payload.iat * 1000)
+    if (
+      !consent ||
+      Math.floor(consent.createdAt.getTime() / 1000) > payload.iat
+    )
       return null;
 
     if (!(await isWorkspaceMember(userId, workspaceId))) return null;

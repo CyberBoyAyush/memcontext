@@ -880,13 +880,17 @@ function LoginInner() {
   const searchParams = useSearchParams();
   // MCP OAuth (Better Auth) sends unauthenticated users here with a signed
   // authorization query; continue to the consent screen with it after sign-in.
+  // The consent page may also send signed-out users here as ?from=/oauth/consent?...
+  const fromConsent = searchParams.get("from")?.match(/^\/oauth\/consent\?(.*)$/)?.[1];
   const oauthQuery = searchParams.has("sig")
     ? (() => {
         const params = new URLSearchParams(searchParams.toString());
         params.delete("verified");
         return params.toString();
       })()
-    : null;
+    : fromConsent && new URLSearchParams(fromConsent).has("sig")
+      ? fromConsent
+      : null;
   const from = oauthQuery
     ? `/oauth/consent?${oauthQuery}`
     : safeRedirectPath(searchParams.get("from"));
