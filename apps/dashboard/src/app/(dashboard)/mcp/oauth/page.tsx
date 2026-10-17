@@ -136,7 +136,9 @@ function DeepLinkButton({ deepLink }: { deepLink: OAuthDeepLink }) {
   const toast = useToast();
 
   function handleOpen() {
-    window.location.href = deepLink.getHref();
+    const href = deepLink.getHref();
+    if (href.startsWith("https://")) window.open(href, "_blank", "noopener");
+    else window.location.href = href;
     toast.success(`Opening ${deepLink.label.replace(/^Add to /, "")}...`);
   }
 

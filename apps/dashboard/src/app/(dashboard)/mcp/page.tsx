@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { oauthClients } from "@/lib/mcp-config";
 import { McpSetupBadge } from "@/components/mcp-setup-badge";
+import { McpConnections } from "@/components/mcp-connections";
 
 const OAUTH_BENEFITS = [
   "Sign in with your browser, no keys to copy.",
@@ -228,6 +229,10 @@ export default function McpPage() {
 
         <div className="mt-6">
           <ComparisonStrip />
+        </div>
+
+        <div className="mt-10">
+          <McpConnections />
         </div>
       </div>
     </div>
