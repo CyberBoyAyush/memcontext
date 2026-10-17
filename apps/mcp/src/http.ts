@@ -2,24 +2,33 @@
 import "./env.js";
 
 import express from "express";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { createRemoteJWKSet, errors as joseErrors, jwtVerify } from "jose";
+import {
+  createMcpHandler,
+  McpServer,
+  type AuthInfo,
+} from "@modelcontextprotocol/server";
+import { toNodeHandler } from "@modelcontextprotocol/node";
 import { createApiClient } from "./lib/api-client.js";
 import { registerTools } from "./tools.js";
 
 const app = express();
 const port = parseInt(process.env.MCP_HTTP_PORT || "3001", 10);
 const apiBase = process.env.MEMCONTEXT_API_URL || "https://api.memcontext.in";
-const DEFAULT_SCOPES = "openid offline_access mcp:memories";
+// Per MCP spec the challenge names only resource scopes (never offline_access).
+const MCP_SCOPE = "mcp:memories";
 
 app.use((_req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
   res.header(
     "Access-Control-Allow-Headers",
-    "Content-Type, Accept, Authorization, X-API-Key, MEMCONTEXT-API-Key, Mcp-Session-Id",
+    "Content-Type, Accept, Authorization, DPoP, X-API-Key, MEMCONTEXT-API-Key, Mcp-Session-Id, MCP-Protocol-Version, Mcp-Method, Mcp-Name",
   );
-  res.header("Access-Control-Expose-Headers", "Mcp-Session-Id, WWW-Authenticate");
+  res.header(
+    "Access-Control-Expose-Headers",
+    "Mcp-Session-Id, MCP-Protocol-Version, WWW-Authenticate",
+  );
   if (_req.method === "OPTIONS") {
     res.sendStatus(204);
     return;
@@ -35,12 +44,15 @@ function extractApiKey(req: express.Request): string | null {
   return key || null;
 }
 
-function extractBearerToken(req: express.Request): string | null {
-  const authorization = req.header("authorization");
-  if (!authorization?.startsWith("Bearer ")) return null;
-
-  const token = authorization.slice("Bearer ".length).trim();
-  return token || null;
+function extractAccessToken(
+  req: express.Request,
+): { scheme: "Bearer" | "DPoP"; token: string } | null {
+  const match = req.header("authorization")?.match(/^(Bearer|DPoP)\s+(.+)$/i);
+  if (!match?.[2]?.trim()) return null;
+  return {
+    scheme: match[1].toLowerCase() === "dpop" ? "DPoP" : "Bearer",
+    token: match[2].trim(),
+  };
 }
 
 function getRequestOrigin(req: express.Request): string {
@@ -53,44 +65,87 @@ function getProtectedResourceUrl(req: express.Request): string {
   return `${getRequestOrigin(req)}/.well-known/oauth-protected-resource/mcp`;
 }
 
+function getResourceUrl(req: express.Request): string {
+  return process.env.MCP_SERVER_URL || `${getRequestOrigin(req)}/mcp`;
+}
+
 function sendOAuthChallenge(
   req: express.Request,
   res: express.Response,
+  status: 401 | 403,
+  error: "invalid_token" | "insufficient_scope" | null,
   message: string,
 ) {
-  res.setHeader(
-    "WWW-Authenticate",
-    `Bearer resource_metadata="${getProtectedResourceUrl(req)}", scope="${DEFAULT_SCOPES}"`,
-  );
-  res.status(401).json({ error: message });
+  const params = [
+    ...(error ? [`error="${error}"`, `error_description="${message}"`] : []),
+    `scope="${MCP_SCOPE}"`,
+    `resource_metadata="${getProtectedResourceUrl(req)}"`,
+  ];
+  res.setHeader("WWW-Authenticate", `Bearer ${params.join(", ")}`);
+  res.status(status).json({ error: error ?? "unauthorized", error_description: message });
 }
 
-async function validateBearerToken(token: string): Promise<boolean> {
-  const res = await fetch(`${apiBase}/api/auth/mcp/get-session`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/json",
-    },
-  });
+interface AuthServerMetadata {
+  issuer: string;
+  jwks_uri: string;
+}
 
-  if (!res.ok) {
-    return false;
+let authServer: Promise<{
+  issuer: string;
+  jwks: ReturnType<typeof createRemoteJWKSet>;
+}> | null = null;
+
+function getAuthServer() {
+  authServer ??= fetch(`${apiBase}/.well-known/oauth-authorization-server/api/auth`)
+    .then(async (res) => {
+      if (!res.ok) throw new Error(`Authorization server metadata: ${res.status}`);
+      const metadata = (await res.json()) as AuthServerMetadata;
+      return {
+        issuer: metadata.issuer,
+        jwks: createRemoteJWKSet(new URL(metadata.jwks_uri)),
+      };
+    })
+    .catch((error: unknown) => {
+      authServer = null;
+      throw error;
+    });
+  return authServer;
+}
+
+// Validates the access token was issued by MemContext for this MCP resource.
+// The API re-checks consent, workspace membership, and revocation per call.
+async function verifyAccessToken(
+  req: express.Request,
+  { scheme, token }: { scheme: "Bearer" | "DPoP"; token: string },
+  resource: string,
+): Promise<{ authInfo: AuthInfo } | { error: "invalid_token" | "insufficient_scope" }> {
+  try {
+    const { issuer, jwks } = await getAuthServer();
+    const { payload } = await jwtVerify(token, jwks, { issuer, audience: resource });
+    const jkt = (payload.cnf as { jkt?: unknown } | undefined)?.jkt;
+    const proof = req.header("dpop");
+    // DPoP-bound tokens need the DPoP scheme and a proof; the API verifies the
+    // forwarded proof (key binding + single use) on every tool call.
+    if ((jkt !== undefined || scheme === "DPoP") && (scheme !== "DPoP" || !proof)) {
+      return { error: "invalid_token" };
+    }
+
+    const scopes = typeof payload.scope === "string" ? payload.scope.split(" ") : [];
+    if (!scopes.includes(MCP_SCOPE)) return { error: "insufficient_scope" };
+    return {
+      authInfo: {
+        token,
+        clientId: typeof payload.azp === "string" ? payload.azp : "",
+        scopes,
+        expiresAt: payload.exp,
+        // Forwarded to the API, which verifies the proof for DPoP-bound tokens.
+        extra: jkt !== undefined && proof ? { dpopProof: proof } : undefined,
+      },
+    };
+  } catch (error) {
+    if (error instanceof joseErrors.JOSEError) return { error: "invalid_token" };
+    throw error;
   }
-
-  const session = (await res.json()) as
-    | { userId?: string; scopes?: string }
-    | null;
-
-  if (!session?.userId || !session.scopes) {
-    return false;
-  }
-
-  const scopes = session.scopes
-    .split(" ")
-    .map((scope) => scope.trim())
-    .filter(Boolean);
-
-  return scopes.includes("mcp:memories");
 }
 
 async function proxyAuthMetadata(
@@ -98,7 +153,7 @@ async function proxyAuthMetadata(
   res: express.Response,
   path: string,
 ) {
-  const response = await fetch(`${apiBase}/api/auth${path}`, {
+  const response = await fetch(`${apiBase}${path}`, {
     headers: { Accept: "application/json" },
   });
 
@@ -110,110 +165,85 @@ async function proxyAuthMetadata(
 
 app.get("/.well-known/oauth-authorization-server", async (req, res) => {
   try {
-    await proxyAuthMetadata(req, res, "/.well-known/oauth-authorization-server");
+    await proxyAuthMetadata(req, res, "/.well-known/oauth-authorization-server/api/auth");
   } catch {
     res.status(502).json({ error: "Failed to fetch OAuth authorization metadata" });
   }
 });
 
-app.get("/.well-known/oauth-protected-resource", async (req, res) => {
-  try {
-    await proxyAuthMetadata(req, res, "/.well-known/oauth-protected-resource");
-  } catch {
-    res.status(502).json({ error: "Failed to fetch protected resource metadata" });
-  }
-});
+app.get(
+  ["/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp"],
+  async (req, res) => {
+    try {
+      await proxyAuthMetadata(req, res, "/.well-known/oauth-protected-resource/mcp");
+    } catch {
+      res.status(502).json({ error: "Failed to fetch protected resource metadata" });
+    }
+  },
+);
 
-app.get("/.well-known/oauth-protected-resource/mcp", async (req, res) => {
-  try {
-    await proxyAuthMetadata(req, res, "/.well-known/oauth-protected-resource");
-  } catch {
-    res.status(502).json({ error: "Failed to fetch protected resource metadata" });
-  }
-});
+// Stateless: serves MCP 2026-07-28 plus 2025-era clients (initialize handshake).
+const mcpHandler = createMcpHandler(
+  ({ authInfo }) => {
+    const server = new McpServer({ name: "memcontext", version: "1.0.0" });
+    const credentials = authInfo?.extra as
+      | { apiKey?: string; dpopProof?: string }
+      | undefined;
+    registerTools(
+      server,
+      createApiClient({
+        apiBase,
+        apiKey: credentials?.apiKey,
+        accessToken: credentials?.apiKey ? undefined : authInfo?.token,
+        dpopProof: credentials?.dpopProof,
+      }),
+    );
+    return server;
+  },
+  { legacy: "stateless" },
+);
 
-app.post("/mcp", async (req, res) => {
+app.all("/mcp", async (req, res) => {
   const apiKey = extractApiKey(req);
-  const accessToken = extractBearerToken(req);
+  const accessToken = extractAccessToken(req);
+  let authInfo: AuthInfo;
 
-  if (!apiKey && !accessToken) {
+  if (apiKey) {
+    authInfo = { token: apiKey, clientId: "api-key", scopes: [], extra: { apiKey } };
+  } else if (accessToken) {
+    try {
+      const result = await verifyAccessToken(req, accessToken, getResourceUrl(req));
+      if ("error" in result) {
+        sendOAuthChallenge(
+          req,
+          res,
+          result.error === "insufficient_scope" ? 403 : 401,
+          result.error,
+          result.error === "insufficient_scope"
+            ? "Token is missing the mcp:memories scope."
+            : "Invalid or expired OAuth token.",
+        );
+        return;
+      }
+      authInfo = result.authInfo;
+    } catch {
+      res.status(503).json({ error: "Authorization server unavailable" });
+      return;
+    }
+  } else {
     sendOAuthChallenge(
       req,
       res,
-      "Authentication required. Provide an API key or complete OAuth in Claude.",
+      401,
+      null,
+      "Authentication required. Provide an API key or connect with OAuth.",
     );
     return;
   }
 
-  if (!apiKey && accessToken && !(await validateBearerToken(accessToken))) {
-    sendOAuthChallenge(req, res, "Invalid or expired OAuth token.");
-    return;
-  }
-
-  const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: undefined,
-    enableJsonResponse: true,
-  });
-
-  const server = new McpServer({
-    name: "memcontext",
-    version: "1.0.0",
-  });
-
-  res.on("close", () => {
-    transport.close();
-    server.close();
-  });
-
-  const apiClient = createApiClient({
-    apiBase,
-    apiKey: apiKey || undefined,
-    accessToken: accessToken || undefined,
-  });
-  registerTools(server, apiClient);
-
-  try {
-    await server.connect(transport);
-    await transport.handleRequest(req, res, req.body);
-  } catch {
-    transport.close();
-    server.close();
-    if (!res.headersSent) {
-      const requestId = req.body?.id ?? null;
-      res.status(500).json({
-        jsonrpc: "2.0",
-        error: {
-          code: -32603,
-          message: "Internal server error",
-        },
-        id: requestId,
-      });
-    }
-  }
-});
-
-app.get("/mcp", (_req, res) => {
-  res.status(405).json({
-    jsonrpc: "2.0",
-    error: {
-      code: -32000,
-      message:
-        "SSE streams not supported. This server operates in stateless mode.",
-    },
-    id: null,
-  });
-});
-
-app.delete("/mcp", (_req, res) => {
-  res.status(405).json({
-    jsonrpc: "2.0",
-    error: {
-      code: -32000,
-      message:
-        "Session termination not supported. This server operates in stateless mode.",
-    },
-    id: null,
-  });
+  await toNodeHandler({
+    fetch: (request, options) => mcpHandler.fetch(request, { ...options, authInfo }),
+  })(req, res, req.body);
 });
 
 app.get("/health", (_req, res) => {

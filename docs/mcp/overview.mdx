@@ -17,7 +17,12 @@ MCP tools intentionally do not expose a free-form `scope` parameter. AI agents c
 https://mcp.memcontext.in/mcp
 ```
 
-Authenticate with your API key via the `MEMCONTEXT-API-KEY` or `X-API-Key` header. See [MCP Setup](/guides/mcp-setup) for client-specific configs.
+Authenticate in one of two ways:
+
+- **OAuth**: connect without any key. OAuth-capable clients (Claude, ChatGPT, Claude Code, Codex CLI, Cursor, VS Code, OpenCode) discover MemContext's authorization server automatically, open a sign-in and consent screen, and refresh their access in the background.
+- **API key**: send your key in the `MEMCONTEXT-API-KEY` or `X-API-Key` header. When both are present, the API key is used.
+
+The server speaks the Streamable HTTP transport and supports MCP protocol version `2026-07-28` as well as earlier (2025) clients. See [MCP Setup](/guides/mcp-setup) for client-specific configs.
 
 ## Tools
 

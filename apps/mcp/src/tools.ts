@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import type { ApiClient } from "./lib/api-client.js";
 import type {
   SaveMemoryResponse,
@@ -126,7 +126,7 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
         "Long notes may be accepted for background extraction into multiple atomic memories while shorter notes are saved immediately. " +
         "MCP memories use automatic TTL; use REST/SDK/dashboard for exact expiry. " +
         "The system handles duplicates and updates automatically — re-saving an already-known fact is safe, the system deduplicates automatically.",
-      inputSchema: saveMemorySchema,
+      inputSchema: z.object(saveMemorySchema),
     },
     async (args: SaveMemoryInput) => {
       try {
@@ -178,7 +178,7 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
         "(4) The user references past context ('do you remember', 'what did we decide', 'last time'). " +
         "Prefer searching over assuming — it is faster than making wrong assumptions. " +
         "If no results are found, proceed normally.",
-      inputSchema: searchMemorySchema,
+      inputSchema: z.object(searchMemorySchema),
     },
     async (args: SearchMemoryInput) => {
       try {
@@ -245,7 +245,7 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
         "Rate a memory as helpful or not helpful to improve future retrieval quality. " +
         "Use after search results when a memory was particularly useful, irrelevant, outdated, or wrong. " +
         "If feedback is outdated or wrong and you know the corrected fact, call update_memory with the corrected content; feedback alone does not edit memory content.",
-      inputSchema: {
+      inputSchema: z.object({
         memoryId: z
           .string()
           .describe(
@@ -260,7 +260,7 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
           .describe(
             "Optional context explaining why this feedback is being submitted.",
           ),
-      },
+      }),
     },
     async (args) => {
       try {
@@ -300,7 +300,7 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
       description:
         "Correct or refine an existing saved memory. Use when search_memory returns a memory that is outdated, wrong, incomplete, or needs better wording, and you know the corrected content. " +
         "This updates the saved memory and refreshes retrieval embeddings. Use memory_feedback separately to rate retrieval quality.",
-      inputSchema: updateMemorySchema,
+      inputSchema: z.object(updateMemorySchema),
     },
     async (args: UpdateMemoryInput) => {
       try {
@@ -343,13 +343,13 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
       title: "Delete Memory",
       description:
         "Soft-delete a specific memory by ID. Use when a memory was saved incorrectly or the user explicitly asks to remove it from future retrieval.",
-      inputSchema: {
+      inputSchema: z.object({
         memoryId: z
           .string()
           .describe(
             "The memory ID to delete. Use the ID returned by search_memory.",
           ),
-      },
+      }),
     },
     async (args) => {
       try {

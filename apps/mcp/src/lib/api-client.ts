@@ -2,6 +2,7 @@ interface ApiClientConfig {
   apiBase: string;
   apiKey?: string;
   accessToken?: string;
+  dpopProof?: string;
 }
 
 interface ApiError {
@@ -32,12 +33,13 @@ async function parseErrorResponse(res: Response): Promise<string> {
 }
 
 export function createApiClient(config: ApiClientConfig): ApiClient {
-  const { apiBase, apiKey, accessToken } = config;
+  const { apiBase, apiKey, accessToken, dpopProof } = config;
 
   function getAuthHeaders(): Record<string, string> {
     if (accessToken) {
       return {
         Authorization: `Bearer ${accessToken}`,
+        ...(dpopProof ? { DPoP: dpopProof } : {}),
       };
     }
 

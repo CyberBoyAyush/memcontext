@@ -1,34 +1,24 @@
 #!/usr/bin/env node
 import "./env.js";
 
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { McpServer } from "@modelcontextprotocol/server";
+import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import { createApiClient } from "./lib/api-client.js";
 import { registerTools } from "./tools.js";
-
-const server = new McpServer({
-  name: "memcontext",
-  version: "1.0.0",
-});
 
 const apiClient = createApiClient({
   apiBase: process.env.MEMCONTEXT_API_URL || "https://api.memcontext.in",
   apiKey: process.env.MEMCONTEXT_API_KEY || "",
 });
 
-registerTools(server, apiClient);
-
-async function main(): Promise<void> {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-
-  console.error("MemContext MCP server running on stdio");
-}
-
-main().catch((error) => {
-  console.error("Failed to start MCP server:", error);
-  process.exit(1);
+// Serves both MCP 2026-07-28 and 2025-era (initialize handshake) clients.
+serveStdio(() => {
+  const server = new McpServer({ name: "memcontext", version: "1.0.0" });
+  registerTools(server, apiClient);
+  return server;
 });
+
+console.error("MemContext MCP server running on stdio");
 
 process.on("SIGINT", () => {
   console.error("\nShutting down MCP server...");

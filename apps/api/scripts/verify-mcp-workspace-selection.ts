@@ -33,13 +33,21 @@ async function main() {
     details: "Consent approval should persist selected workspaceId before completing OAuth consent.",
   });
 
-  const eitherAuth = await readFile(resolve(root, "apps/api/src/middleware/either-auth.ts"), "utf8");
   checks.push({
-    name: "OAuth bearer auth uses selected MCP workspace",
+    name: "OAuth grants bind the selected MCP workspace at consent time",
     ok:
-      eitherAuth.includes("mcpWorkspaceSelections") &&
-      eitherAuth.includes("getSelectedMcpWorkspaceId"),
-    details: "Bearer-token auth should resolve the user's selected MCP workspace before falling back to default.",
+      (await includes("apps/api/src/lib/auth.ts", "consentReferenceId")) &&
+      (await includes("apps/api/src/lib/auth.ts", "resolveMcpWorkspaceId")) &&
+      (await includes("apps/api/src/services/mcp-workspace.ts", "mcpWorkspaceSelections")),
+    details: "Consent should snapshot the selected workspace into the grant (referenceId + workspace_id claim).",
+  });
+
+  checks.push({
+    name: "OAuth bearer auth uses the token-bound workspace",
+    ok:
+      (await includes("apps/api/src/middleware/either-auth.ts", "verifyMcpAccessToken")) &&
+      (await includes("apps/api/src/lib/mcp-oauth.ts", "MCP_WORKSPACE_CLAIM")),
+    details: "Bearer-token auth should use the workspace bound to the grant, not the current selection.",
   });
 
   checks.push({

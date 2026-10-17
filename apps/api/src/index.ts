@@ -5,7 +5,6 @@ import { serve } from "@hono/node-server";
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
-import { oAuthDiscoveryMetadata } from "better-auth/plugins";
 import { checkDbConnection, closeDb } from "./db/index.js";
 import { rateLimitHealth, rateLimitGlobal } from "./middleware/rate-limit.js";
 import { requestLogger, getRequestId } from "./middleware/request-logger.js";
@@ -16,6 +15,7 @@ import {
   serializeError,
 } from "./utils/app-error.js";
 import { auth } from "./lib/auth.js";
+import { normalizeMcpOAuthRequest } from "./lib/mcp-oauth.js";
 import { env } from "./env.js";
 import memoriesRoutes from "./routes/memories.js";
 import apiKeysRoutes from "./routes/api-keys.js";
@@ -49,23 +49,47 @@ function isAllowedOrigin(origin: string): boolean {
   return false;
 }
 
-app.use(
-  "*",
-  cors({
-    origin: (origin) => {
-      if (!origin) return "*";
-      if (isAllowedOrigin(origin)) return origin;
-      return null;
-    },
-    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowHeaders: [
-      "Content-Type",
-      "Authorization",
-      "X-API-Key",
-      "x-captcha-response",
-    ],
-    credentials: true,
-  }),
+const appCors = cors({
+  origin: (origin) => {
+    if (!origin) return "*";
+    if (isAllowedOrigin(origin)) return origin;
+    return null;
+  },
+  allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-API-Key",
+    "x-captcha-response",
+  ],
+  credentials: true,
+});
+
+// Credential-less OAuth endpoints that browser-based MCP clients call directly.
+const publicOAuthCors = cors({
+  origin: "*",
+  allowMethods: ["GET", "POST", "OPTIONS"],
+  allowHeaders: [
+    "Content-Type",
+    "Authorization",
+    "DPoP",
+    "MCP-Protocol-Version",
+  ],
+});
+
+const PUBLIC_OAUTH_PATHS = new Set([
+  "/api/auth/jwks",
+  "/api/auth/oauth2/token",
+  "/api/auth/oauth2/register",
+  "/api/auth/oauth2/revoke",
+]);
+
+app.use("*", (c, next) =>
+  c.req.path.startsWith("/.well-known/") ||
+  c.req.path.startsWith("/api/auth/.well-known/") ||
+  PUBLIC_OAUTH_PATHS.has(c.req.path)
+    ? publicOAuthCors(c, next)
+    : appCors(c, next),
 );
 
 app.use("*", (c, next) => {
@@ -106,18 +130,13 @@ app.get("/health", rateLimitHealth, async (c) => {
 });
 
 // Mount Better Auth handler (BEFORE other /api routes)
-app.on(["POST", "GET"], "/api/auth/*", (c) => {
-  return auth.handler(c.req.raw);
+app.on(["POST", "GET"], "/api/auth/*", async (c) => {
+  return auth.handler(await normalizeMcpOAuthRequest(c.req.raw));
 });
 
-// Path-inserted RFC 8414 alias for issuers hosted under /api/auth.
-app.get("/.well-known/oauth-authorization-server", (c) => {
-  return oAuthDiscoveryMetadata(auth)(c.req.raw);
-});
-
-app.get("/.well-known/oauth-authorization-server/api/auth", (c) => {
-  return oAuthDiscoveryMetadata(auth)(c.req.raw);
-});
+// RFC 8414 / RFC 9728 / OIDC discovery must live at the domain root, with the
+// issuer path (/api/auth) inserted after the well-known segment.
+app.get("/.well-known/*", (c) => auth.handler(c.req.raw));
 
 app.route("/api/memories", memoriesRoutes);
 app.route("/api/api-keys", apiKeysRoutes);

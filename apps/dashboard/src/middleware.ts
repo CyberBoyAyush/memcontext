@@ -39,8 +39,11 @@ export function middleware(request: NextRequest) {
 
   // Redirect to dashboard if accessing auth pages with session
   // BUT don't redirect if 'from' param exists (means session expired, need to re-login)
+  // Also keep signed MCP OAuth continuations (sig) on the login page.
   if (isPublicRoute && sessionCookie) {
-    const hasFromParam = request.nextUrl.searchParams.has("from");
+    const hasFromParam =
+      request.nextUrl.searchParams.has("from") ||
+      request.nextUrl.searchParams.has("sig");
     if (!hasFromParam) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
