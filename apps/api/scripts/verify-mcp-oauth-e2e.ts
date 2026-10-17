@@ -785,6 +785,64 @@ try {
     },
   );
 
+  // ---------- dashboard connection management ----------
+  await check("Connections API lists and disconnects clients", async () => {
+    assert(codex?.tokens.refresh_token, "codex flow failed");
+    const listUrl = `${API}/api/mcp-connections?workspaceId=${workspaceA}`;
+    const list = (await (
+      await fetch(listUrl, { headers: sessionHeaders })
+    ).json()) as {
+      canManageAll: boolean;
+      connections: Array<{
+        id: string;
+        clientId: string;
+        clientName: string | null;
+        lastActiveAt: string;
+      }>;
+    };
+    const codexClientId = String(
+      decodeJwt(codex.tokens.access_token).client_id,
+    );
+    const codexConnection = list.connections.find(
+      (x) => x.clientId === codexClientId,
+    );
+    assert(list.canManageAll, "owner should manage all connections");
+    assert(codexConnection?.clientName === "Codex", "codex connection missing");
+    assert(
+      list.connections.every((x) => x.lastActiveAt),
+      "lastActiveAt missing",
+    );
+
+    const outsider = await fetch(
+      `${API}/api/mcp-connections?workspaceId=${randomUUID()}`,
+      {
+        headers: sessionHeaders,
+      },
+    );
+    assert(outsider.status === 404, `non-member workspace: ${outsider.status}`);
+
+    const removed = await fetch(
+      `${API}/api/mcp-connections/${codexConnection.id}?workspaceId=${workspaceA}`,
+      { method: "DELETE", headers: sessionHeaders },
+    );
+    assert(removed.ok, `disconnect failed: ${removed.status}`);
+    assert(
+      (await apiStatusWithBearer(codex.tokens.access_token)) === 401,
+      "access token survived disconnect",
+    );
+    const refresh = await fetch(`${ISSUER}/oauth2/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: codex.tokens.refresh_token,
+        client_id: codexClientId,
+      }),
+    });
+    assert(!refresh.ok, "refresh token survived disconnect");
+    return `${list.connections.length} connections listed`;
+  });
+
   // ---------- negative cases ----------
   await check(
     "Tampered, wrong-audience, and DPoP-misused tokens are rejected",

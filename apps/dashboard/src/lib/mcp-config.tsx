@@ -408,24 +408,27 @@ export const oauthClients: OAuthClientConfig[] = [
     kind: "chat",
     summary: "Add MemContext as a custom connector.",
     instructionsDestination: "Settings → Profile → Instructions for Claude",
+    deepLink: {
+      label: "Add to Claude",
+      icon: <Claude.Color className="w-3.5 h-3.5" />,
+      getHref: () =>
+        `https://claude.ai/customize/connectors?${new URLSearchParams({
+          modal: "add-custom-connector",
+          connectorName: "MemContext",
+          connectorUrl: MCP_SERVER_URL,
+        })}`,
+    },
     steps: [
       {
-        title: "Open Connectors",
+        title: "Add the connector",
         description: (
           <>
-            In Claude.ai or Claude Desktop, go to <Em>Settings → Connectors</Em>
-            .
+            Open Claude with MemContext pre-filled, or go to{" "}
+            <Em>Settings → Connectors → Add custom connector</Em>, name it{" "}
+            <Mono>MemContext</Mono>, and paste the server URL above.
           </>
         ),
-      },
-      {
-        title: "Add a custom connector",
-        description: (
-          <>
-            Choose <Em>Add custom connector</Em>, name it{" "}
-            <Mono>memcontext</Mono>, and paste the server URL above.
-          </>
-        ),
+        showDeepLink: true,
       },
       {
         title: "Connect and approve",
