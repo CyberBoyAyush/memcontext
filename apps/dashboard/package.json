@@ -10,7 +10,8 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@dodopayments/better-auth": "^1.4.2",
+    "@better-auth/oauth-provider": "^1.7.10",
+    "@dodopayments/better-auth": "^1.6.6",
     "@lobehub/icons": "^4.0.2",
     "@memcontext/types": "workspace:*",
     "@phosphor-icons/react": "^2.1.10",
@@ -22,7 +23,7 @@
     "@radix-ui/react-slot": "^1.1.1",
     "@radix-ui/react-tooltip": "^1.1.6",
     "@tanstack/react-query": "^5.62.16",
-    "better-auth": "^1.1.14",
+    "better-auth": "^1.7.10",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.468.0",

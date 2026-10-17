@@ -1,49 +1,46 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Key, Terminal } from "lucide-react";
-import { Claude } from "@lobehub/icons";
+import { ArrowRight, Key, KeyRound, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { McpSetupBadge } from "@/components/mcp-setup-badge";
 
-type ActiveSection = "claude" | "cli";
+type ActiveSection = "oauth" | "api-key";
 
 interface JumpCard {
   label: string;
   description: string;
   href: string;
   icon: React.ReactNode;
+  recommended?: boolean;
 }
 
+const API_KEYS_CARD: JumpCard = {
+  label: "API Keys",
+  description: "Manage your MemContext API keys",
+  href: "/api-keys",
+  icon: <Key className="w-6 h-6 text-foreground-muted" />,
+};
+
 const CARDS: Record<ActiveSection, JumpCard[]> = {
-  // On Claude page: show CLI section + API Keys
-  claude: [
+  oauth: [
     {
-      label: "CLI & editor integrations",
-      description: "Claude Code, Cursor, OpenCode, Codex CLI",
-      href: "/mcp/cli",
-      icon: <Terminal className="w-6 h-6 text-foreground-muted" />,
+      label: "API key setup",
+      description: "CI, servers, scripts, and non-OAuth clients",
+      href: "/mcp/api-key",
+      icon: <KeyRound className="w-6 h-6 text-foreground-muted" />,
     },
-    {
-      label: "API Keys",
-      description: "Manage your MemContext API keys",
-      href: "/api-keys",
-      icon: <Key className="w-6 h-6 text-foreground-muted" />,
-    },
+    API_KEYS_CARD,
   ],
-  // On CLI page: show Claude section + API Keys
-  cli: [
+  "api-key": [
     {
-      label: "Claude.ai & Desktop",
-      description: "Remote connector, no API key required",
-      href: "/mcp/claude",
-      icon: <Claude.Color className="w-6 h-6" />,
+      label: "Connect with OAuth",
+      description: "Browser sign-in, no API key required",
+      href: "/mcp/oauth",
+      icon: <ShieldCheck className="w-6 h-6 text-accent" />,
+      recommended: true,
     },
-    {
-      label: "API Keys",
-      description: "Manage your MemContext API keys",
-      href: "/api-keys",
-      icon: <Key className="w-6 h-6 text-foreground-muted" />,
-    },
+    API_KEYS_CARD,
   ],
 };
 
@@ -61,13 +58,23 @@ export function McpSectionTabs({ active }: { active: ActiveSection }) {
             "transition-all duration-200 hover:bg-surface-hover hover:border-border-hover hover:-translate-y-0.5 hover:shadow-md",
           )}
         >
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-background-secondary border border-border shrink-0">
+          <div
+            className={cn(
+              "flex h-12 w-12 items-center justify-center rounded-xl border shrink-0",
+              card.recommended
+                ? "bg-accent/10 border-accent/20"
+                : "bg-background-secondary border-border",
+            )}
+          >
             {card.icon}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-base font-semibold text-foreground truncate">
-              {card.label}
-            </p>
+            <div className="flex items-center gap-2 min-w-0">
+              <p className="text-base font-semibold text-foreground truncate">
+                {card.label}
+              </p>
+              {card.recommended && <McpSetupBadge variant="recommended" />}
+            </div>
             <p className="text-sm text-foreground-muted truncate mt-0.5">
               {card.description}
             </p>

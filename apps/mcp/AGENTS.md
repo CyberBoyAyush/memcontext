@@ -27,22 +27,20 @@ pnpm build        # Build for distribution
 ### Server Setup
 
 ```typescript
-// src/index.ts
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+// src/index.ts — @modelcontextprotocol/server v2 (MCP 2026-07-28 + 2025-era clients)
+import { McpServer } from "@modelcontextprotocol/server";
+import { serveStdio } from "@modelcontextprotocol/server/stdio";
 
-const server = new McpServer({
-  name: "memcontext",
-  version: "1.0.0",
+serveStdio(() => {
+  const server = new McpServer({ name: "memcontext", version: "1.0.0" });
+  // Tools use registerTool with a z.object(...) input schema (zod 4).
+  registerTools(server, apiClient);
+  return server;
 });
 
-// Register tools
-server.tool("save_memory", saveMemorySchema, saveMemoryHandler);
-server.tool("search_memory", searchMemorySchema, searchMemoryHandler);
-
-// Connect via stdio
-const transport = new StdioServerTransport();
-await server.connect(transport);
+// src/http.ts — stateless per-request servers for both protocol eras:
+// createMcpHandler(factory, { legacy: "stateless" }) + toNodeHandler from
+// @modelcontextprotocol/node. Auth: API-key headers, or OAuth Bearer/DPoP JWTs.
 ```
 
 ### Tool Definition

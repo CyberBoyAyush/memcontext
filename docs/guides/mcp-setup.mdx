@@ -3,7 +3,7 @@ title: "MCP Setup"
 description: "Connect MemContext to Claude.ai, Claude Desktop, or your AI coding assistant."
 ---
 
-MemContext provides a hosted MCP server. You can connect it directly to Claude.ai or Claude Desktop with OAuth, or use an API key for coding agents like Claude Code, Cursor, OpenCode, and Codex CLI.
+MemContext provides a hosted MCP server. You can connect with OAuth from any client that supports remote MCP sign-in (Claude.ai, Claude Desktop, ChatGPT, Claude Code, Codex CLI, Cursor, VS Code, OpenCode), or use an API key header in coding agents. Both work side by side.
 
 ## Prerequisites
 
@@ -11,8 +11,9 @@ MemContext provides a hosted MCP server. You can connect it directly to Claude.a
 - An API key if you are connecting a coding agent (create one under **Settings > API Keys**)
 
 <Tip>
-  The [MCP page](https://app.memcontext.in/mcp) in your dashboard generates
-  ready-to-paste configs with your API key pre-filled.
+  The [MCP page](https://app.memcontext.in/mcp) in your dashboard has
+  step-by-step OAuth instructions for each client (recommended) and an API-key
+  section that generates ready-to-paste configs with your key pre-filled.
 </Tip>
 
 ## Claude.ai & Claude Desktop
@@ -54,6 +55,28 @@ Paste this into **Claude → Settings → Profile → Instructions for Claude**:
   Claude.ai and Claude Desktop use OAuth for this flow. You do not need to paste
   API keys, headers, or config files.
 </Note>
+
+## Other clients with OAuth
+
+Any client that supports MCP OAuth can connect with just the server URL, with no API key. The client discovers MemContext's authorization server, opens a browser to sign in, and shows a consent screen with the client's name and logo. Pick the workspace for the connection and approve.
+
+```text
+https://mcp.memcontext.in/mcp
+```
+
+- **ChatGPT**: add a custom connector (developer mode) with the URL above.
+- **Claude Code**: `claude mcp add --transport http memcontext https://mcp.memcontext.in/mcp`, then run `/mcp` to sign in.
+- **Codex CLI**: `codex mcp add memcontext --url https://mcp.memcontext.in/mcp`, then `codex mcp login memcontext`.
+- **Cursor / VS Code / OpenCode**: add the server with only the `url` (no headers). The client prompts you to sign in.
+
+Connections stay signed in: clients receive refresh tokens and renew access automatically. Each connection is bound to the workspace you approved on the consent screen. To use a different workspace, connect again and pick it.
+
+<Note>
+  OAuth connections created before the MCP 2026-07-28 upgrade must be
+  reconnected once. API-key setups are unaffected.
+</Note>
+
+The sections below use API keys, which are useful for clients without OAuth support and for scripted setups.
 
 ## Claude Code
 

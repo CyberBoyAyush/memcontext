@@ -18,28 +18,18 @@ import {
   ChevronDown,
   Loader2,
   Lock,
+  RefreshCw,
   Search,
+  ShieldCheck,
   Sparkles,
   X,
 } from "lucide-react";
-import { useSession } from "@/lib/auth-client";
-
-// Inline Claude mark (Anthropic brand). Kept here to avoid an icon package dependency.
-function ClaudeMark({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      aria-hidden="true"
-    >
-      <path
-        fill="#D97757"
-        d="m3.127 10.604 3.135-1.76.053-.153-.053-.085H6.11l-.525-.032-1.791-.048-1.554-.065-1.505-.08-.38-.081L0 7.832l.036-.234.32-.214.455.04 1.009.069 1.513.105 1.097.064 1.626.17h.259l.036-.105-.089-.065-.068-.064-1.566-1.062-1.695-1.121-.887-.646-.48-.327-.243-.306-.104-.67.435-.48.585.04.15.04.593.456 1.267.981 1.654 1.218.242.202.097-.068.012-.049-.109-.181-.9-1.626-.96-1.655-.428-.686-.113-.411a2 2 0 0 1-.068-.484l.496-.674L4.446 0l.662.089.279.242.411.94.666 1.48 1.033 2.014.302.597.162.553.06.17h.105v-.097l.085-1.134.157-1.392.154-1.792.052-.504.25-.605.497-.327.387.186.319.456-.045.294-.19 1.23-.37 1.93-.243 1.29h.142l.161-.16.654-.868 1.097-1.372.484-.545.565-.601.363-.287h.686l.505.751-.226.775-.707.895-.585.759-.839 1.13-.524.904.048.072.125-.012 1.897-.403 1.024-.186 1.223-.21.553.258.06.263-.218.536-1.307.323-1.533.307-2.284.54-.028.02.032.04 1.029.098.44.024h1.077l2.005.15.525.346.315.424-.053.323-.807.411-3.631-.863-.872-.218h-.12v.073l.726.71 1.331 1.202 1.667 1.55.084.383-.214.302-.226-.032-1.464-1.101-.565-.497-1.28-1.077h-.084v.113l.295.432 1.557 2.34.08.718-.112.234-.404.141-.444-.08-.911-1.28-.94-1.44-.759-1.291-.093.053-.448 4.821-.21.246-.484.186-.403-.307-.214-.496.214-.98.258-1.28.21-1.016.19-1.263.112-.42-.008-.028-.092.012-.953 1.307-1.448 1.957-1.146 1.227-.274.109-.477-.247.045-.44.266-.39 1.586-2.018.956-1.25.617-.723-.004-.105h-.036l-4.212 2.736-.75.096-.324-.302.04-.496.154-.162 1.267-.871z"
-      />
-    </svg>
-  );
-}
+import { authClient, useSession } from "@/lib/auth-client";
+import {
+  describeRedirectTarget,
+  getClientBrand,
+  type ClientBrand,
+} from "@/components/oauth/client-brand";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
@@ -71,8 +61,7 @@ interface ScopeMeta {
 const SCOPE_REGISTRY: Record<string, ScopeMeta> = {
   "mcp:memories": {
     title: "Read and write your memories",
-    description:
-      "Save new memories, search existing ones, and update or delete entries on your behalf.",
+    description: "Save, search, update, and delete memories on your behalf.",
     icon: BrainCircuit,
   },
   openid: {
@@ -91,10 +80,10 @@ const SCOPE_REGISTRY: Record<string, ScopeMeta> = {
     icon: Search,
   },
   offline_access: {
-    title: "Stay connected when you're away",
+    title: "Stay connected",
     description:
-      "Refresh access in the background so Claude can recall context across sessions.",
-    icon: ArrowLeftRight,
+      "Keeps this connection signed in so you won't have to re-authorize; revoke anytime.",
+    icon: RefreshCw,
   },
 };
 
@@ -108,11 +97,26 @@ function humanizeScope(scope: string): ScopeMeta {
   };
 }
 
-interface ConsentResponse {
-  redirectURI?: string;
+interface ApiErrorResponse {
   error?: string;
-  error_description?: string;
   message?: string;
+}
+
+interface PublicClientInfo {
+  client_name?: string;
+  client_uri?: string;
+  logo_uri?: string;
+}
+
+function consentErrorMessage(error: {
+  message?: string;
+  statusText: string;
+  error_description?: unknown;
+}): string {
+  if (typeof error.error_description === "string" && error.error_description) {
+    return error.error_description;
+  }
+  return error.message || error.statusText || "Consent failed.";
 }
 
 interface WorkspaceOption {
@@ -135,7 +139,8 @@ function ConsentInner() {
 
   const clientId = searchParams.get("client_id");
   const scope = searchParams.get("scope");
-  const consentCode = searchParams.get("consent_code");
+  const redirectUri = searchParams.get("redirect_uri");
+  const signature = searchParams.get("sig");
 
   const scopes = useMemo(() => {
     if (!scope) return [] as string[];
@@ -145,10 +150,8 @@ function ConsentInner() {
       .filter(Boolean);
   }, [scope]);
 
-  // This page is the MemContext × Claude connector consent surface, so Claude
-  // branding is shown unconditionally — even when the client_id string isn't
-  // immediately recognizable.
-
+  const [clientInfo, setClientInfo] = useState<PublicClientInfo | null>(null);
+  const [clientLoading, setClientLoading] = useState(true);
   const [submitting, setSubmitting] = useState<"accept" | "deny" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [workspaces, setWorkspaces] = useState<WorkspaceOption[]>([]);
@@ -171,7 +174,8 @@ function ConsentInner() {
 
     Promise.all([
       fetch(`${API_URL}/api/workspaces`, { credentials: "include" }).then(
-        async (res) => (res.ok ? ((await res.json()) as WorkspacesResponse) : {}),
+        async (res) =>
+          res.ok ? ((await res.json()) as WorkspacesResponse) : {},
       ),
       fetch(`${API_URL}/api/user/mcp-workspace`, {
         credentials: "include",
@@ -184,9 +188,7 @@ function ConsentInner() {
         if (cancelled) return;
         const nextWorkspaces = workspaceData.workspaces ?? [];
         setWorkspaces(nextWorkspaces);
-        setWorkspaceId(
-          mcpWorkspace.workspaceId ?? nextWorkspaces[0]?.id ?? "",
-        );
+        setWorkspaceId(mcpWorkspace.workspaceId ?? nextWorkspaces[0]?.id ?? "");
       })
       .catch(() => {
         if (!cancelled) setError("Failed to load workspaces.");
@@ -200,13 +202,53 @@ function ConsentInner() {
     };
   }, [session.data]);
 
-  const missingRequired = !clientId || !scope;
+  useEffect(() => {
+    if (!session.data || !clientId) return;
+    let cancelled = false;
+
+    authClient.oauth2
+      .publicClient({ query: { client_id: clientId } })
+      .then(({ data }) => {
+        if (!cancelled && data) setClientInfo(data);
+      })
+      .catch(() => {
+        // Fall back to brand detection from client_id / redirect_uri.
+      })
+      .finally(() => {
+        if (!cancelled) setClientLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session.data, clientId]);
+
+  const brand = useMemo<ClientBrand>(
+    () =>
+      getClientBrand({
+        clientId,
+        clientName: clientInfo?.client_name,
+        clientUri: clientInfo?.client_uri,
+        redirectUri,
+        logoUri: clientInfo?.logo_uri,
+      }),
+    [clientId, clientInfo, redirectUri],
+  );
+  const redirectTarget = useMemo(
+    () => describeRedirectTarget(redirectUri),
+    [redirectUri],
+  );
+
+  const missing: string[] = [];
+  if (!clientId) missing.push("client_id");
+  if (!signature) missing.push("sig");
+  const missingRequired = missing.length > 0;
 
   const submit = useCallback(
     async (accept: boolean) => {
       if (missingRequired) return;
       if (accept && !workspaceId) {
-        setError("Select a workspace before authorizing Claude.");
+        setError(`Select a workspace before authorizing ${brand.name}.`);
         return;
       }
       setSubmitting(accept ? "accept" : "deny");
@@ -221,44 +263,34 @@ function ConsentInner() {
           });
 
           if (!workspaceRes.ok) {
-            const data: ConsentResponse = await workspaceRes
+            const data: ApiErrorResponse = await workspaceRes
               .json()
               .catch(() => ({}));
-            setError(data.message || data.error || "Failed to select workspace.");
+            setError(
+              data.message || data.error || "Failed to select workspace.",
+            );
             setSubmitting(null);
             return;
           }
         }
 
-        const res = await fetch(`${API_URL}/api/auth/oauth2/consent`, {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            accept,
-            ...(consentCode ? { consent_code: consentCode } : {}),
-          }),
+        // The oauthProviderClient plugin attaches the signed query as oauth_query.
+        const { data, error: consentError } = await authClient.oauth2.consent({
+          accept,
         });
 
-        const data: ConsentResponse = await res.json().catch(() => ({}));
-
-        if (!res.ok) {
-          const message =
-            data.error_description ||
-            data.message ||
-            data.error ||
-            `Consent failed (${res.status})`;
-          setError(message);
+        if (consentError) {
+          setError(consentErrorMessage(consentError));
           setSubmitting(null);
           return;
         }
 
-        if (data.redirectURI) {
-          window.location.href = data.redirectURI;
+        if (data?.url) {
+          window.location.href = data.url;
           return;
         }
 
-        // No redirectURI returned — surface a friendly message rather than spinning.
+        // No redirect returned; surface a friendly message rather than spinning.
         setError(
           accept
             ? "Access approved, but no redirect was returned. You can safely close this tab."
@@ -270,7 +302,7 @@ function ConsentInner() {
         setSubmitting(null);
       }
     },
-    [consentCode, missingRequired, workspaceId],
+    [brand.name, missingRequired, workspaceId],
   );
 
   // Session loading state.
@@ -280,38 +312,40 @@ function ConsentInner() {
 
   // Authenticated user without required params → graceful error.
   if (missingRequired) {
-    return <MissingParamsError clientId={clientId} scope={scope} />;
+    return <MissingParamsError missing={missing} />;
   }
 
-  // Authenticated user is still null briefly during redirect; render nothing to avoid flicker.
-  if (!session.data) {
+  // Session is briefly null during the login redirect, and client info is
+  // resolved before render so the name/logo never flicker.
+  if (!session.data || clientLoading) {
     return <ConsentSkeleton />;
   }
 
   const userEmail = session.data.user.email;
   const userName = session.data.user.name;
   const isBusy = submitting !== null;
-  const selectedWorkspace = workspaces.find((workspace) => workspace.id === workspaceId);
+  const selectedWorkspace = workspaces.find(
+    (workspace) => workspace.id === workspaceId,
+  );
   const canAuthorize = !isBusy && !workspacesLoading && Boolean(workspaceId);
 
   return (
     <ConsentCard
+      brand={brand}
       title={
         <>
           <span style={{ color: "#fafafa" }}>MemContext</span>
           <span className="mx-1.5" style={{ color: "#6b6b6b" }}>
             ×
           </span>
-          <span style={{ color: "#fafafa" }}>Claude</span>
+          <span style={{ color: "#fafafa" }}>{brand.name}</span>
         </>
       }
     >
-      <p
-        className="text-[13px] leading-relaxed"
-        style={{ color: "#a1a1a1" }}
-      >
-        <span style={{ color: "#fafafa" }}>Claude</span> is requesting access to
-        your MemContext memories so it can recall context across conversations.
+      <p className="text-[13px] leading-relaxed" style={{ color: "#a1a1a1" }}>
+        <span style={{ color: "#fafafa" }}>{brand.name}</span> is requesting
+        access to your MemContext memories so it can recall context across
+        conversations.
       </p>
 
       {/* Signed-in identity strip */}
@@ -388,7 +422,7 @@ function ConsentInner() {
                 className="mt-1 text-[11.5px] leading-snug"
                 style={{ color: "#a1a1a1" }}
               >
-                Claude will save and search memories in this workspace.
+                {brand.name} will save and search memories in this workspace.
               </p>
             </div>
             {workspaces.length > 1 && (
@@ -443,7 +477,7 @@ function ConsentInner() {
           className="text-[10px] uppercase tracking-[0.22em]"
           style={{ color: "#6b6b6b" }}
         >
-          This will allow Claude to
+          This will allow {brand.name} to
         </p>
         <ul className="mt-2 space-y-1.5">
           {scopes.map((s) => {
@@ -566,7 +600,7 @@ function ConsentInner() {
           type="button"
           disabled={!canAuthorize}
           onClick={() => submit(true)}
-          className="inline-flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-lg text-[13px] font-medium transition-all duration-200 disabled:pointer-events-none disabled:opacity-50"
+          className="inline-flex h-10 w-full min-w-0 cursor-pointer items-center justify-center gap-2 rounded-lg px-3 text-[13px] font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-[var(--client-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111111] disabled:pointer-events-none disabled:opacity-50"
           style={{ backgroundColor: "#fafafa", color: "#0a0a0a" }}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = "#e8e8e8";
@@ -578,30 +612,50 @@ function ConsentInner() {
           {submitting === "accept" ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : null}
-          Authorize Claude
+          <span className="truncate">Authorize {brand.name}</span>
         </button>
       </div>
 
+      {redirectTarget && (
+        <p
+          className="mt-3 flex items-center justify-center gap-1.5 text-[10.5px] leading-snug"
+          style={{ color: "#6b6b6b" }}
+        >
+          <ShieldCheck className="h-3 w-3 flex-shrink-0" aria-hidden />
+          <span>
+            Redirects to{" "}
+            <span className="font-mono" style={{ color: "#a1a1a1" }}>
+              {redirectTarget}
+            </span>
+          </span>
+        </p>
+      )}
+
       <p
-        className="mt-3.5 text-center text-[10.5px] leading-snug"
+        className="mt-1.5 text-center text-[10.5px] leading-snug"
         style={{ color: "#6b6b6b" }}
       >
-        By authorizing, you allow Claude to access your MemContext data per the
-        scopes above.
+        By authorizing, you allow {brand.name} to access your MemContext data
+        per the scopes above.
       </p>
     </ConsentCard>
   );
 }
 
 function ConsentCard({
+  brand,
   title,
   children,
 }: {
+  brand: ClientBrand;
   title: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <div className="relative w-full max-w-md animate-fade-in">
+    <div
+      className="relative w-full max-w-md animate-fade-in"
+      style={{ "--client-accent": brand.accent } as React.CSSProperties}
+    >
       {/* Border glow - top left */}
       <div
         className="absolute -top-px -left-px h-20 w-28 rounded-2xl blur-[1px]"
@@ -628,6 +682,14 @@ function ConsentCard({
       >
         {/* Inner glow */}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/[0.08] via-transparent to-transparent" />
+        {/* Client accent hairline */}
+        <div
+          className="pointer-events-none absolute inset-x-10 top-0 h-px"
+          style={{
+            background: `linear-gradient(to right, transparent, ${brand.accent}99, transparent)`,
+          }}
+          aria-hidden
+        />
 
         <div className="relative px-5 py-5 sm:px-6 sm:py-6">
           {/* Brand lockup */}
@@ -656,8 +718,8 @@ function ConsentCard({
               />
             </div>
 
-            <BrandTile>
-              <ClaudeMark className="relative z-10 h-[22px] w-[22px]" />
+            <BrandTile accent={brand.accent} label={brand.name}>
+              {brand.logo}
             </BrandTile>
           </div>
 
@@ -681,9 +743,30 @@ function ConsentCard({
   );
 }
 
-function BrandTile({ children }: { children: React.ReactNode }) {
+function BrandTile({
+  accent,
+  label,
+  children,
+}: {
+  accent?: string;
+  label?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="relative">
+    <div
+      className="relative"
+      role={label ? "img" : undefined}
+      aria-label={label}
+    >
+      {accent && (
+        <div
+          className="pointer-events-none absolute -inset-2 rounded-xl blur-md"
+          style={{
+            background: `radial-gradient(circle, ${accent}2e 0%, transparent 70%)`,
+          }}
+          aria-hidden
+        />
+      )}
       <div
         className="absolute -top-[1px] -left-[1px] h-10 w-10 rounded-lg blur-[0.5px]"
         style={{
@@ -693,7 +776,10 @@ function BrandTile({ children }: { children: React.ReactNode }) {
       />
       <div
         className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg border border-white/15 backdrop-blur-sm"
-        style={{ backgroundColor: "rgba(17, 17, 17, 0.9)" }}
+        style={{
+          backgroundColor: "rgba(17, 17, 17, 0.9)",
+          boxShadow: accent ? `inset 0 0 0 1px ${accent}26` : undefined,
+        }}
       >
         <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent" />
         {children}
@@ -755,17 +841,7 @@ function ConsentSkeleton() {
   );
 }
 
-function MissingParamsError({
-  clientId,
-  scope,
-}: {
-  clientId: string | null;
-  scope: string | null;
-}) {
-  const missing: string[] = [];
-  if (!clientId) missing.push("client_id");
-  if (!scope) missing.push("scope");
-
+function MissingParamsError({ missing }: { missing: string[] }) {
   return (
     <div className="relative w-full max-w-lg animate-fade-in">
       <div

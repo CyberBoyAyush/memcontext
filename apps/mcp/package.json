@@ -21,10 +21,12 @@
   },
   "dependencies": {
     "@memcontext/types": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.12.0",
+    "@modelcontextprotocol/node": "^2.1.1",
+    "@modelcontextprotocol/server": "^2.3.1",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
-    "zod": "^3.25.56"
+    "jose": "^6.2.3",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",

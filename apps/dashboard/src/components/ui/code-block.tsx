@@ -90,13 +90,19 @@ export function CodeBlock({
                 "[&_pre]:!bg-transparent [&_pre]:p-4 [&_pre]:m-0",
                 "[&_code]:block [&_code]:whitespace-pre [&_code]:w-max",
                 "[&_span]:!bg-transparent",
+                !filename && "[&_pre]:pr-14",
                 showLineNumbers &&
                   "[&_.line]:before:content-[counter(line)] [&_.line]:before:counter-increment-[line] [&_.line]:before:mr-4 [&_.line]:before:text-foreground-subtle [&_.line]:before:inline-block [&_.line]:before:w-4 [&_.line]:before:text-right",
               )}
               dangerouslySetInnerHTML={{ __html: highlightedHtml }}
             />
           ) : (
-            <pre className="p-4 text-sm font-mono leading-relaxed">
+            <pre
+              className={cn(
+                "p-4 text-sm font-mono leading-relaxed",
+                !filename && "pr-14",
+              )}
+            >
               <code className="whitespace-pre block w-max">{code}</code>
             </pre>
           )}
