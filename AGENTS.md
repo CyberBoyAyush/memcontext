@@ -132,9 +132,25 @@ Use a 30-day Better Auth session lifetime for dashboard users with a 1-day `upda
 
 <!-- Added: 2026-05-15 -->
 
-## Claude Remote MCP OAuth
+## Remote MCP OAuth (MCP 2026-07-28, Better Auth 1.7)
 
-Use Better Auth's built-in `mcp` plugin in `apps/api` to power Claude remote MCP OAuth. Keep dual auth on `apps/mcp/src/http.ts`: existing API-key headers remain supported, and OAuth Bearer tokens are added for Claude. The dashboard consent UI lives at `/oauth/consent` and Better Auth MCP uses it via `oidcConfig.consentPage`.
+`apps/api` is the OAuth 2.1 authorization server, built from `jwt()`, `mcp()` from `@better-auth/mcp`, and `cimd()` from `@better-auth/cimd` with `metadataProfile: "mcp-2026-07-28"`. The `resource` is `MCP_SERVER_URL`, scopes are `mcp:memories` and `offline_access`, and both unauthenticated DCR and CIMD are enabled. Discovery is served at the domain root via `app.get("/.well-known/*", auth.handler)`. The issuer is `<BETTER_AUTH_URL>/api/auth`.
+
+`apps/api/src/lib/mcp-oauth.ts`:
+- `normalizeMcpOAuthRequest` adds a missing `resource` and adds `offline_access` for refresh-capable clients on the initial (unsigned) authorize request. It also widens DCR registration scopes. Together these give persistent auth via refresh tokens.
+- `verifyMcpAccessToken` verifies the access-token JWT (issuer, audience = MCP URL, `mcp:memories`, DPoP proof for `cnf`-bound tokens), checks the consent row (revocation), and checks workspace membership.
+
+Grants are bound to a workspace at consent time. `postLogin.consentReferenceId` reads `mcp_workspace_selections`, and the `workspace_id` claim is set via `customAccessTokenClaims`.
+
+`apps/mcp` uses `@modelcontextprotocol/server` v2:
+- HTTP is `createMcpHandler(..., { legacy: "stateless" })` with `toNodeHandler`, so it serves both 2026-07-28 and 2025-era clients. stdio is `serveStdio`.
+- The HTTP server accepts API-key headers (precedence) or Bearer/DPoP tokens, verified with jose against the AS JWKS. DPoP proofs are forwarded to the API, which verifies them.
+- It returns a 401 `WWW-Authenticate` with `scope="mcp:memories"` (never `offline_access`).
+- It proxies the protected-resource metadata from the API.
+
+The dashboard consent UI is `/oauth/consent`. It uses `authClient.oauth2.consent`/`publicClient` via `oauthProviderClient()`, and shows client branding from `components/oauth/client-brand.tsx`, where web redirects are only branded when on the brand's official domains. The login page continues signed `sig` queries to the consent page.
+
+End-to-end verification against the dev DB with API + MCP running: `pnpm --filter=@memcontext/api test:mcp-oauth`.
 
 <!-- Added: 2026-05-31 -->
 
@@ -201,7 +217,7 @@ All tab/segmented-control UI in the dashboard uses the shared `AnimatedTabs` com
 
 Usage: `<AnimatedTabs<T> value={value} onChange={setValue} tabs={[{value, label, icon?}]} size="md|sm" align="start|center" ariaLabel="..." capitalize? />`
 
-Current consumers: MCP CLI agent picker, Memory Graph view-mode (full/focused), Context Vault search-mode (hybrid/documents/memories), Workspaces section (team/workspaces).
+Current consumers: MCP OAuth client picker and API-key agent picker, Memory Graph view-mode (full/focused), Context Vault search-mode (hybrid/documents/memories), Workspaces section (team/workspaces).
 
 <!-- Added: 2026-06-19 -->
 ## Website Isometric Diagram Aesthetic
@@ -225,3 +241,8 @@ Normal member-memory REST, API-key, OAuth, and MCP operations must read only the
 <!-- Added: 2026-06-28 -->
 ## Context Vault Naming
 Use Context Vault as the canonical product, API, SDK, docs, and code vocabulary for workspace document/company knowledge. Public API routes use `/api/context-vault`; do not reintroduce `Company Brain`, `company-brain`, `CompanyBrain`, `companyBrain`, or `/api/company-brain` aliases unless explicitly adding a documented migration shim.
+
+<!-- Added: 2026-10-17 -->
+## Dashboard MCP Setup Pages
+
+The dashboard MCP section is OAuth-first. `/mcp` is a landing page with a primary "Connect with OAuth" card (Recommended) and a secondary "Use an API key" card (Advanced), plus an OAuth vs API key comparison. `/mcp/oauth` has per-client OAuth setup for Claude.ai/Desktop, ChatGPT, Claude Code, Codex CLI, Cursor, VS Code, and OpenCode (no API key, sign-in via the client's own login flow), plus OAuth auto-configure prompts and agent instructions. `/mcp/api-key` keeps the API-key configs and prompts for CI/servers/scripts and clients without OAuth. Client data and prompt generators live in `apps/dashboard/src/lib/mcp-config.tsx` (`oauthClients`, `getOAuthAutoConfigPrompt`, and the API-key `agents`). The old `/mcp/claude` and `/mcp/cli` URLs redirect via `next.config.ts`.

@@ -1,6 +1,10 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { captcha, mcp } from "better-auth/plugins";
+import type { verifyJwsAccessToken } from "better-auth/oauth2";
+import { captcha, jwt } from "better-auth/plugins";
+import { mcp } from "@better-auth/mcp";
+import { cimd } from "@better-auth/cimd";
+import { fetchClientMetadataResource } from "@better-auth/cimd/node";
 import {
   dodopayments,
   checkout,
@@ -21,6 +25,11 @@ import {
   handleSubscriptionPlanChanged,
   handleSubscriptionFailed,
 } from "../services/dodo-webhooks.js";
+import {
+  MCP_SCOPE,
+  MCP_WORKSPACE_CLAIM,
+  resolveMcpWorkspaceId,
+} from "../services/mcp-workspace.js";
 import { logger } from "./logger.js";
 import { sendAuthEmail } from "./email.js";
 
@@ -94,26 +103,17 @@ function getTrustedOrigins(): string[] {
 const trustedOrigins = getTrustedOrigins();
 
 type BaseAuth = ReturnType<typeof betterAuth>;
+type JwksFetch = Exclude<
+  Parameters<typeof verifyJwsAccessToken>[1]["jwksFetch"],
+  string
+>;
 
-interface McpAccessSession {
-  accessToken?: string;
-  refreshToken?: string;
-  accessTokenExpiresAt?: string;
-  refreshTokenExpiresAt?: string;
-  clientId?: string;
-  userId?: string;
-  scopes: string;
-}
-
-type AuthWithMcp = BaseAuth & {
-  api: BaseAuth["api"] & {
-    getMcpSession(args: { headers: Headers }): Promise<McpAccessSession | null>;
-    getMcpOAuthConfig(...args: unknown[]): Promise<unknown>;
-    getMCPProtectedResource(...args: unknown[]): Promise<unknown>;
-  };
+// Explicit type keeps declaration emit small; plugin endpoints are added here.
+type AuthWithPlugins = BaseAuth & {
+  api: BaseAuth["api"] & { getJwks: JwksFetch };
 };
 
-export const auth: AuthWithMcp = betterAuth({
+export const auth: AuthWithPlugins = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
     schema: authSchema,
@@ -121,6 +121,8 @@ export const auth: AuthWithMcp = betterAuth({
   baseURL: env.BETTER_AUTH_URL,
   secret: env.BETTER_AUTH_SECRET,
   trustedOrigins,
+  // jwt() exposes a session-to-JWT /token endpoint that MCP OAuth does not use.
+  disabledPaths: ["/token"],
   socialProviders: {
     google: {
       clientId: env.GOOGLE_CLIENT_ID,
@@ -197,18 +199,33 @@ export const auth: AuthWithMcp = betterAuth({
       provider: "cloudflare-turnstile",
       secretKey: env.TURNSTILE_SECRET_KEY,
     }),
+    // Signs MCP access tokens and serves /api/auth/jwks.
+    jwt({ disableSettingJwtHeader: true }),
+    // OAuth 2.1 authorization server for remote MCP clients (MCP 2026-07-28).
     mcp({
       loginPage: new URL("/login", env.DASHBOARD_URL).toString(),
+      consentPage: new URL("/oauth/consent", env.DASHBOARD_URL).toString(),
       resource: env.MCP_SERVER_URL,
-      oidcConfig: {
-        allowDynamicClientRegistration: true,
-        allowPlainCodeChallengeMethod: false,
-        consentPage: new URL("/oauth/consent", env.DASHBOARD_URL).toString(),
-        loginPage: new URL("/login", env.DASHBOARD_URL).toString(),
-        requirePKCE: true,
-        defaultScope: "openid offline_access mcp:memories",
-        scopes: ["mcp:memories"],
+      // offline_access is required for refresh tokens (persistent connections).
+      scopes: [MCP_SCOPE, "offline_access"],
+      // DCR fallback for clients without CIMD (Codex, Cursor, OpenCode, ...).
+      allowDynamicClientRegistration: true,
+      allowUnauthenticatedClientRegistration: true,
+      clientRegistrationDefaultApplicationType: "infer",
+      postLogin: {
+        page: new URL("/oauth/consent", env.DASHBOARD_URL).toString(),
+        shouldRedirect: () => false,
+        // Binds each grant (consent + refresh tokens) to the workspace chosen
+        // on the consent page, so connections never drift between workspaces.
+        consentReferenceId: async ({ user }) => resolveMcpWorkspaceId(user.id),
       },
+      customAccessTokenClaims: ({ referenceId }) =>
+        referenceId ? { [MCP_WORKSPACE_CLAIM]: referenceId } : {},
+    }),
+    // Client ID Metadata Documents (preferred by Claude and newer MCP clients).
+    cimd({
+      fetchClientMetadataResource,
+      metadataProfile: "mcp-2026-07-28",
     }),
     dodopayments({
       client: dodoClient,
@@ -268,7 +285,7 @@ export const auth: AuthWithMcp = betterAuth({
       },
     },
   },
-}) as unknown as AuthWithMcp;
+}) as unknown as AuthWithPlugins;
 
 export type Auth = typeof auth;
 

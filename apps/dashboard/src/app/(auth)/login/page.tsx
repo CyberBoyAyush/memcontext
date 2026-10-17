@@ -878,7 +878,22 @@ function VerifiedSuccess() {
 
 function LoginInner() {
   const searchParams = useSearchParams();
-  const from = safeRedirectPath(searchParams.get("from"));
+  // MCP OAuth (Better Auth) sends unauthenticated users here with a signed
+  // authorization query; continue to the consent screen with it after sign-in.
+  // The consent page may also send signed-out users here as ?from=/oauth/consent?...
+  const fromConsent = searchParams.get("from")?.match(/^\/oauth\/consent\?(.*)$/)?.[1];
+  const oauthQuery = searchParams.has("sig")
+    ? (() => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete("verified");
+        return params.toString();
+      })()
+    : fromConsent && new URLSearchParams(fromConsent).has("sig")
+      ? fromConsent
+      : null;
+  const from = oauthQuery
+    ? `/oauth/consent?${oauthQuery}`
+    : safeRedirectPath(searchParams.get("from"));
   const token = searchParams.get("token");
   const verifiedParam = searchParams.get("verified");
   const isVerified = verifiedParam === "true" || verifiedParam === "1";
@@ -889,9 +904,12 @@ function LoginInner() {
   }, [from]);
 
   const signUpCallbackURL = useMemo(() => {
-    if (typeof window === "undefined") return "/login?verified=true";
-    return new URL("/login?verified=true", window.location.origin).toString();
-  }, []);
+    const path = oauthQuery
+      ? `/login?verified=true&${oauthQuery}`
+      : "/login?verified=true";
+    if (typeof window === "undefined") return path;
+    return new URL(path, window.location.origin).toString();
+  }, [oauthQuery]);
 
   if (isVerified) {
     return <VerifiedSuccess />;

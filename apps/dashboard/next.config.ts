@@ -26,6 +26,12 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      { source: "/mcp/claude", destination: "/mcp/oauth", permanent: false },
+      { source: "/mcp/cli", destination: "/mcp/api-key", permanent: false },
+    ];
+  },
   // Security headers
   async headers() {
     return [

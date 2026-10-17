@@ -4,9 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import {
   AlertCircle,
+  ArrowRight,
   Check,
   ExternalLink,
   Info,
+  KeyRound,
+  ShieldCheck,
   Sparkles,
   Terminal,
   Wand2,
@@ -28,6 +31,7 @@ import {
   agents,
 } from "@/lib/mcp-config";
 import { McpSectionTabs } from "@/components/mcp-section-tabs";
+import { McpSetupBadge } from "@/components/mcp-setup-badge";
 
 function ApiKeyInput({
   value,
@@ -337,7 +341,31 @@ function AgentConfigSection({
   );
 }
 
-export default function McpCliPage() {
+function PreferOAuthBanner() {
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 rounded-lg border border-accent/20 bg-accent/5 px-3.5 py-2.5">
+      <div className="flex items-start sm:items-center gap-2.5 flex-1 min-w-0">
+        <ShieldCheck className="h-4 w-4 text-accent shrink-0 mt-px sm:mt-0" />
+        <p className="text-xs text-foreground-muted leading-relaxed">
+          <span className="font-medium text-foreground">
+            Prefer OAuth for interactive apps.
+          </span>{" "}
+          Use API keys for CI/servers, scripts, or clients without OAuth
+          support.
+        </p>
+      </div>
+      <Link
+        href="/mcp/oauth"
+        className="group inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline underline-offset-4 shrink-0 pl-6.5 sm:pl-0"
+      >
+        Connect with OAuth
+        <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+      </Link>
+    </div>
+  );
+}
+
+export default function McpApiKeyPage() {
   const [selectedAgent, setSelectedAgent] = useState<AgentId>("claude-code");
   const [apiKey, setApiKey] = useState("");
 
@@ -348,14 +376,17 @@ export default function McpCliPage() {
     <div className="min-h-[calc(100vh-48px)] flex flex-col animate-fade-in overflow-hidden">
       {/* Header */}
       <div className="pb-5 shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-start sm:items-center gap-3 min-w-0">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-background-secondary border border-border shrink-0">
-            <Terminal className="w-6 h-6 text-foreground-muted" />
+            <KeyRound className="w-5 h-5 text-foreground-muted" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-xl font-bold tracking-tight">
-              CLI & editor integrations
-            </h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl font-bold tracking-tight">
+                Connect with an API key
+              </h1>
+              <McpSetupBadge variant="advanced" />
+            </div>
             <p className="text-sm text-foreground-muted mt-0.5">
               Wire MemContext into Claude Code, Cursor, OpenCode, or Codex CLI
               using an API key and a small config file.
@@ -366,6 +397,8 @@ export default function McpCliPage() {
 
       {/* Main Content */}
       <div className="space-y-5 min-w-0 overflow-hidden">
+        <PreferOAuthBanner />
+
         {/* API Key Input */}
         <ApiKeyInput value={apiKey} onChange={setApiKey} />
 
@@ -379,10 +412,7 @@ export default function McpCliPage() {
         {/* Agent Configuration */}
         <Card className="overflow-hidden shadow-none">
           <CardContent className="p-4 sm:p-5 overflow-hidden">
-            <AgentConfigSection
-              agent={currentAgent}
-              apiKey={displayApiKey}
-            />
+            <AgentConfigSection agent={currentAgent} apiKey={displayApiKey} />
           </CardContent>
         </Card>
 
@@ -391,7 +421,7 @@ export default function McpCliPage() {
           <p className="text-[11px] font-medium uppercase tracking-wider text-foreground-subtle mb-2.5">
             Continue
           </p>
-          <McpSectionTabs active="cli" />
+          <McpSectionTabs active="api-key" />
         </div>
       </div>
     </div>

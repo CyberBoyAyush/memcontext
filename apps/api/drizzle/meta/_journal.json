@@ -64,6 +64,13 @@
       "when": 1782518400000,
       "tag": "0008_workspace_vault_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1782777600000,
+      "tag": "0009_mcp_oauth_provider",
+      "breakpoints": true
     }
   ]
 }

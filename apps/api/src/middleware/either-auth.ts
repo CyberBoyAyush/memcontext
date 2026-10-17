@@ -1,11 +1,10 @@
 import { createMiddleware } from "hono/factory";
 import { HTTPException } from "hono/http-exception";
-import { and, eq } from "drizzle-orm";
 import { auth } from "../lib/auth.js";
+import { verifyMcpAccessToken } from "../lib/mcp-oauth.js";
 import { validateApiKey } from "./auth.js";
 import { getSubscriptionData } from "../services/subscription.js";
 import { getOrCreateDefaultWorkspace } from "../services/subscription.js";
-import { db, mcpWorkspaceSelections, workspaceMembers } from "../db/index.js";
 import { logger } from "../lib/logger.js";
 
 export interface EitherAuthContext {
@@ -18,23 +17,6 @@ export interface EitherAuthContext {
   plan: string;
   memoryCount: number;
   memoryLimit: number;
-}
-
-async function getSelectedMcpWorkspaceId(userId: string) {
-  const [selection] = await db
-    .select({ workspaceId: mcpWorkspaceSelections.workspaceId })
-    .from(mcpWorkspaceSelections)
-    .innerJoin(
-      workspaceMembers,
-      and(
-        eq(workspaceMembers.workspaceId, mcpWorkspaceSelections.workspaceId),
-        eq(workspaceMembers.userId, mcpWorkspaceSelections.userId),
-      ),
-    )
-    .where(eq(mcpWorkspaceSelections.userId, userId))
-    .limit(1);
-
-  return selection?.workspaceId;
 }
 
 export const eitherAuthMiddleware = createMiddleware<{
@@ -74,48 +56,32 @@ export const eitherAuthMiddleware = createMiddleware<{
     }
   }
 
-  // Try MCP OAuth Bearer token next
+  // Try MCP OAuth Bearer token next (JWT bound to the MCP resource + workspace)
   const authorizationHeader = c.req.header("Authorization");
   if (authorizationHeader?.startsWith("Bearer ")) {
-    try {
-      const mcpSession = await auth.api.getMcpSession({ headers: c.req.raw.headers });
+    const grant = await verifyMcpAccessToken(
+      authorizationHeader.slice("Bearer ".length).trim(),
+      c.req.header("DPoP"),
+    );
 
-      if (mcpSession?.userId) {
-        const scopes = (mcpSession.scopes ?? "")
-          .split(" ")
-          .map((scope: string) => scope.trim())
-          .filter(Boolean);
+    if (grant) {
+      const subData = await getSubscriptionData(grant.userId, grant.workspaceId);
+      const duration = Math.round(performance.now() - start);
 
-        if (scopes.includes("mcp:memories")) {
-          const workspaceId =
-            (await getSelectedMcpWorkspaceId(mcpSession.userId)) ??
-            (await getOrCreateDefaultWorkspace(mcpSession.userId));
-          const subData = await getSubscriptionData(mcpSession.userId, workspaceId);
-          const duration = Math.round(performance.now() - start);
+      logger.debug(
+        { requestId, userId: grant.userId, authType: "oauth", duration },
+        "either auth success via oauth bearer",
+      );
 
-          logger.debug(
-            {
-              requestId,
-              userId: mcpSession.userId,
-              authType: "oauth",
-              duration,
-            },
-            "either auth success via oauth bearer",
-          );
-
-          c.set("auth", {
-            userId: mcpSession.userId,
-            workspaceId,
-            authType: "oauth",
-            plan: subData.plan,
-            memoryCount: subData.memoryCount,
-            memoryLimit: subData.memoryLimit,
-          });
-          return next();
-        }
-      }
-    } catch {
-      // Fall through to session auth. Invalid bearer tokens should not crash the route.
+      c.set("auth", {
+        userId: grant.userId,
+        workspaceId: grant.workspaceId,
+        authType: "oauth",
+        plan: subData.plan,
+        memoryCount: subData.memoryCount,
+        memoryLimit: subData.memoryLimit,
+      });
+      return next();
     }
   }
 
