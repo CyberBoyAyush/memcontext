@@ -40,3 +40,6 @@ yarn-error.log*
 
 .env.local
 internal-docs/
+
+# Launch video (Remotion), kept local only
+apps/launch-video/

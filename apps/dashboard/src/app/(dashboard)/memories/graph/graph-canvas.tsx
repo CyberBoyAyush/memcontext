@@ -88,11 +88,23 @@ function getLinkBaseAlpha(link: CanvasLink): number {
   }
 }
 
-function getLinkWidth(link: CanvasLink): number {
-  if (link.type === "extends") return 1.5;
-  if (link.type === "similar") return 1.1;
-  return 0.8;
+function isDerivedLink(link: CanvasLink): boolean {
+  return (
+    link.type === "shared-project" ||
+    link.type === "shared-category" ||
+    link.type === "shared-root"
+  );
 }
+
+function getLinkWidth(link: CanvasLink, zoomedOut: boolean): number {
+  if (link.type === "extends") return zoomedOut ? 1.4 : 1.6;
+  if (link.type === "similar") return zoomedOut ? 1 : 1.2;
+  return zoomedOut ? 0.5 : 0.8;
+}
+
+// Below this zoom the graph switches to a lightweight, low-noise rendering.
+const DETAIL_ZOOM = 0.8;
+const HUB_SIZE = 9;
 
 export default function GraphCanvas(props: GraphCanvasProps) {
   const {
@@ -220,10 +232,12 @@ export default function GraphCanvas(props: GraphCanvasProps) {
     instance.zoom(Math.max(0.02, Math.min(current + delta, 3)), 220);
   }, []);
 
+  // Tooltip follows the hovered node first, falling back to the selection.
+  const tooltipNodeId = hoveredNodeId ?? activeNodeId;
   const activeNode = useMemo(() => {
-    if (!activeNodeId) return null;
-    return nodes.find((node) => node.id === activeNodeId) ?? null;
-  }, [activeNodeId, nodes]);
+    if (!tooltipNodeId) return null;
+    return nodes.find((node) => node.id === tooltipNodeId) ?? null;
+  }, [tooltipNodeId, nodes]);
 
   return (
     <div
@@ -254,18 +268,31 @@ export default function GraphCanvas(props: GraphCanvasProps) {
         maxZoom={3}
         linkDirectionalArrowLength={0}
         linkCurvature={0}
-        linkWidth={(link) => getLinkWidth(link as CanvasLink)}
+        linkWidth={(link) => {
+          const linkData = link as CanvasLink;
+          const zoomedOut = zoomLevel < DETAIL_ZOOM;
+          if (!activeNodeId) return getLinkWidth(linkData, zoomedOut);
+          const sourceId = resolveId((link as ForceLink).source);
+          const targetId = resolveId((link as ForceLink).target);
+          const isTouching = sourceId === activeNodeId || targetId === activeNodeId;
+          return isTouching
+            ? getLinkWidth(linkData, false) + 0.4
+            : getLinkWidth(linkData, zoomedOut);
+        }}
         linkColor={(link) => {
           const linkData = link as CanvasLink;
           const rgb = getLinkRGB(linkData);
-          const baseAlpha = getLinkBaseAlpha(linkData);
+          const quiet = zoomLevel < DETAIL_ZOOM && isDerivedLink(linkData);
+          const baseAlpha = getLinkBaseAlpha(linkData) * (quiet ? 0.45 : 1);
 
           if (!activeNodeId) return `rgba(${rgb}, ${baseAlpha})`;
 
           const sourceId = resolveId((link as ForceLink).source);
           const targetId = resolveId((link as ForceLink).target);
           const isTouching = sourceId === activeNodeId || targetId === activeNodeId;
-          return `rgba(${rgb}, ${isTouching ? Math.min(1, baseAlpha + 0.35) : 0.04})`;
+          return isTouching
+            ? `rgba(${rgb}, ${Math.min(1, getLinkBaseAlpha(linkData) + 0.4)})`
+            : `rgba(${rgb}, ${quiet ? 0.02 : 0.04})`;
         }}
         onZoom={(transform) => {
           // Defer to next microtask so we don't update GraphCanvas state
@@ -273,7 +300,7 @@ export default function GraphCanvas(props: GraphCanvasProps) {
           // about cross-component setState-during-render otherwise).
           queueMicrotask(() => setZoomLevel(transform.k));
         }}
-        onRenderFramePost={() => {
+        onRenderFramePost={(_ctx, globalScale) => {
           // Update tooltip position every animation frame so it follows the node
           // while the simulation is running.
           const tooltip = tooltipRef.current;
@@ -301,19 +328,35 @@ export default function GraphCanvas(props: GraphCanvasProps) {
             forceCurrent.x,
             forceCurrent.y,
           );
-          const size = forceCurrent.size ?? 6;
-          const offsetX = size + 14;
-          tooltip.style.transform = `translate(${coords.x + offsetX}px, ${coords.y - 14}px)`;
+          // Keep the tooltip inside the canvas (flip left near the right edge).
+          const offsetX = (forceCurrent.size ?? 6) * globalScale + 12;
+          const margin = 8;
+          let left = coords.x + offsetX;
+          if (left + tooltip.offsetWidth > dimensions.width - margin) {
+            left = coords.x - offsetX - tooltip.offsetWidth;
+          }
+          left = Math.max(margin, left);
+          const top = Math.max(
+            margin,
+            Math.min(coords.y - 14, dimensions.height - tooltip.offsetHeight - margin),
+          );
+          tooltip.style.transform = `translate(${left}px, ${top}px)`;
           tooltip.style.opacity = "1";
         }}
         nodeRelSize={4}
         nodeLabel={() => ""}
         nodeCanvasObjectMode={() => "replace"}
-        nodeCanvasObject={(node, ctx) => {
+        nodeCanvasObject={(node, ctx, globalScale) => {
           const casted = node as ForceNode;
           const x = casted.x ?? 0;
           const y = casted.y ?? 0;
           const baseRadius = casted.size ?? 5;
+          // One screen pixel in graph units.
+          const px = 1 / globalScale;
+          // Stays within the hit radius: max(size + 4, 7 / globalScale).
+          const radius = Math.max(baseRadius, 1.6 * px);
+          const detailed = globalScale > DETAIL_ZOOM;
+          const isHub = baseRadius >= HUB_SIZE;
 
           const isSelected = casted.id === selectedNodeId;
           const isHovered = casted.id === hoveredNodeId;
@@ -323,13 +366,12 @@ export default function GraphCanvas(props: GraphCanvasProps) {
 
           ctx.save();
 
-          // Strong glow when active
           if (isActive) {
-            const glowRadius = baseRadius + 16;
+            const glowRadius = radius + Math.max(16, 14 * px);
             const glowGradient = ctx.createRadialGradient(
               x,
               y,
-              baseRadius * 0.6,
+              radius * 0.6,
               x,
               y,
               glowRadius,
@@ -343,65 +385,89 @@ export default function GraphCanvas(props: GraphCanvasProps) {
             ctx.fill();
           }
 
-          ctx.globalAlpha = isDim ? 0.18 : 1;
+          ctx.globalAlpha = isDim ? (detailed ? 0.18 : 0.12) : 1;
 
-          // Soft outer halo (always on, very subtle)
-          const haloGradient = ctx.createRadialGradient(
-            x,
-            y,
-            baseRadius,
-            x,
-            y,
-            baseRadius + 5,
-          );
-          haloGradient.addColorStop(0, `${casted.color}44`);
-          haloGradient.addColorStop(1, `${casted.color}00`);
-          ctx.beginPath();
-          ctx.arc(x, y, baseRadius + 5, 0, Math.PI * 2);
-          ctx.fillStyle = haloGradient;
-          ctx.fill();
+          if (detailed) {
+            const haloGradient = ctx.createRadialGradient(
+              x,
+              y,
+              radius,
+              x,
+              y,
+              radius + 5,
+            );
+            haloGradient.addColorStop(0, `${casted.color}44`);
+            haloGradient.addColorStop(1, `${casted.color}00`);
+            ctx.beginPath();
+            ctx.arc(x, y, radius + 5, 0, Math.PI * 2);
+            ctx.fillStyle = haloGradient;
+            ctx.fill();
+          } else if (isHub) {
+            // Cheap flat halo so hubs still read as anchors when zoomed out.
+            ctx.beginPath();
+            ctx.arc(x, y, radius + 3 * px, 0, Math.PI * 2);
+            ctx.fillStyle = `${casted.color}38`;
+            ctx.fill();
+          }
 
-          // Node body
           ctx.beginPath();
-          ctx.arc(x, y, baseRadius, 0, Math.PI * 2);
+          ctx.arc(x, y, radius, 0, Math.PI * 2);
           ctx.fillStyle = casted.color;
           ctx.fill();
 
-          // Inner highlight for depth
-          const innerGradient = ctx.createRadialGradient(
-            x - baseRadius * 0.35,
-            y - baseRadius * 0.35,
-            0,
-            x,
-            y,
-            baseRadius,
-          );
-          innerGradient.addColorStop(0, "rgba(255,255,255,0.55)");
-          innerGradient.addColorStop(0.6, "rgba(255,255,255,0)");
-          ctx.beginPath();
-          ctx.arc(x, y, baseRadius, 0, Math.PI * 2);
-          ctx.fillStyle = innerGradient;
-          ctx.fill();
+          if (detailed) {
+            const innerGradient = ctx.createRadialGradient(
+              x - radius * 0.35,
+              y - radius * 0.35,
+              0,
+              x,
+              y,
+              radius,
+            );
+            innerGradient.addColorStop(0, "rgba(255,255,255,0.55)");
+            innerGradient.addColorStop(0.6, "rgba(255,255,255,0)");
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = innerGradient;
+            ctx.fill();
+
+            if (isHub && !isActive) {
+              ctx.beginPath();
+              ctx.arc(x, y, radius + 1.8, 0, Math.PI * 2);
+              ctx.strokeStyle = `${casted.color}66`;
+              ctx.lineWidth = 0.8;
+              ctx.stroke();
+            }
+          } else if (isHub) {
+            ctx.beginPath();
+            ctx.arc(x, y, radius * 0.42, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(255,255,255,0.55)";
+            ctx.fill();
+          }
 
           // Selection / hover ring — accent-tinted so it works in both themes.
           if (isActive) {
             ctx.beginPath();
-            ctx.arc(x, y, baseRadius + 2, 0, Math.PI * 2);
-            ctx.strokeStyle = "rgba(232, 97, 60, 0.85)";
-            ctx.lineWidth = 1.5;
+            ctx.arc(x, y, radius + Math.max(2, 2.5 * px), 0, Math.PI * 2);
+            ctx.strokeStyle = "rgba(232, 97, 60, 0.9)";
+            ctx.lineWidth = Math.max(1.5, 1.5 * px);
             ctx.stroke();
           }
 
           ctx.restore();
         }}
-        nodePointerAreaPaint={(node, color, ctx) => {
+        nodePointerAreaPaint={(node, color, ctx, globalScale) => {
           const casted = node as ForceNode;
-          const radius = (casted.size ?? 5) + 6;
+          // Keep at least ~7 screen px of hit radius when zoomed out.
+          const radius = Math.max((casted.size ?? 5) + 4, 7 / globalScale);
           ctx.fillStyle = color;
           ctx.beginPath();
           ctx.arc(casted.x ?? 0, casted.y ?? 0, radius, 0, Math.PI * 2);
           ctx.fill();
         }}
+        // Links aren't interactive; without this their wide hit areas
+        // swallow hovers meant for the (tiny) nodes they connect.
+        linkPointerAreaPaint={() => undefined}
         enableNodeDrag
         onNodeClick={(node) => {
           onSelectNode(String(node.id));
@@ -420,28 +486,29 @@ export default function GraphCanvas(props: GraphCanvasProps) {
       {/* Floating Supermemory-style hover/selection tooltip */}
       <div
         ref={tooltipRef}
-        className="pointer-events-none absolute left-0 top-0 z-10 w-64 origin-top-left opacity-0 transition-opacity duration-150"
+        className="pointer-events-none absolute left-0 top-0 z-10 w-72 origin-top-left opacity-0 transition-opacity duration-150"
       >
         {activeNode && (
-          <div className="overflow-hidden rounded-lg border border-border bg-surface-elevated/95 backdrop-blur-md">
-            <div className="flex items-start gap-2.5 px-3 py-2.5">
+          <div className="overflow-hidden rounded-xl border border-border bg-surface-elevated/95 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.45)] backdrop-blur-md">
+            <div className="h-0.5 w-full" style={{ background: activeNode.color }} />
+            <div className="flex items-start gap-2.5 px-3.5 pb-3 pt-2.5">
               <span
-                className="mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full border border-border"
+                className="mt-[3px] h-2 w-2 shrink-0 rounded-full"
                 style={{
                   background: activeNode.color,
-                  boxShadow: `0 0 8px ${activeNode.color}`,
+                  boxShadow: `0 0 0 3px ${activeNode.color}26`,
                 }}
               />
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold leading-snug text-foreground">
+                <p className="line-clamp-2 text-[13px] font-semibold leading-snug tracking-tight text-foreground">
                   {activeNode.label}
                 </p>
-                <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-foreground-muted">
+                <p className="mt-1.5 line-clamp-4 text-[11px] leading-relaxed text-foreground-muted">
                   {activeNode.content}
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-1 border-t border-border px-3 py-1.5 text-[10px]">
+            <div className="flex flex-wrap items-center gap-1 border-t border-border bg-surface/40 px-3.5 py-1.5 text-[10px]">
               {activeNode.project && (
                 <span className="rounded-sm border border-border bg-surface px-1.5 py-0.5 text-foreground-muted">
                   {activeNode.project}
