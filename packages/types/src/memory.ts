@@ -77,17 +77,23 @@ export interface SaveMemoryRequest {
   scope?: string;
   project?: string;
   source?: MemorySource;
+  /** App that produced the memory, e.g. "claude-code" or "chatgpt". */
+  client?: string;
   validUntil?: string;
 }
 
 export interface SaveMemoryResponse {
   id?: string;
   jobId?: string;
-  status: "saved" | "updated" | "extended" | "duplicate" | "accepted";
+  status: "saved" | "updated" | "extended" | "duplicate" | "accepted" | "skipped";
   superseded?: string;
   existingId?: string;
   message?: string;
   reservedSlots?: number;
+  /** "handoff" when the content was stored as the project's in-progress note. */
+  kind?: "handoff";
+  /** Number of secrets removed before saving. */
+  redacted?: number;
 }
 
 export interface SearchMemoryRequest {
@@ -117,6 +123,16 @@ export interface MemoryWithRelevance {
   memoryType?: MemoryType;
   relevance: number;
   createdAt: Date;
+  client?: string;
+  kind?: "handoff";
+  /** Older versions this memory replaced, newest first. */
+  previous?: MemoryVersionSummary[];
+}
+
+export interface MemoryVersionSummary {
+  content: string;
+  createdAt: Date;
+  client?: string;
 }
 
 export interface ListMemoryItem {
@@ -186,6 +202,107 @@ export interface MemoryFeedbackResponse {
 export interface SearchMemoryResponse {
   found: number;
   memories: MemoryWithRelevance[];
+}
+
+// === Cross-app context (plugins, hooks, chat apps) ===
+
+export interface HandoffNote {
+  id: string;
+  content: string;
+  project?: string;
+  scope?: string;
+  client?: string;
+  createdAt: Date;
+  validUntil?: Date;
+}
+
+export interface SetHandoffRequest {
+  content?: string;
+  /** Mark the current in-progress note as finished. */
+  done?: boolean;
+  project?: string;
+  scope?: string;
+  client?: string;
+}
+
+export interface SetHandoffResponse {
+  status: "saved" | "updated" | "closed" | "none";
+  handoff: HandoffNote | null;
+  redacted?: number;
+}
+
+export interface GetHandoffResponse {
+  handoff: HandoffNote | null;
+}
+
+export interface MemoryContextRequest {
+  query?: string;
+  project?: string;
+  scope?: string;
+  /** Approximate token budget for `text` (default 600). */
+  maxTokens?: number;
+}
+
+export interface MemoryContextResponse {
+  /** Ready-to-inject block for a system prompt or hook. */
+  text: string;
+  tokens: number;
+  handoff: HandoffNote | null;
+  preferences: MemoryWithRelevance[];
+  memories: MemoryWithRelevance[];
+}
+
+export interface TranscriptMessage {
+  role: "user" | "assistant" | "system" | "tool";
+  content: string;
+  /** ISO timestamp of the message, if known. */
+  at?: string;
+}
+
+export interface IngestTranscriptRequest {
+  /** Stable id of the conversation; used to skip chunks already ingested. */
+  sessionId: string;
+  messages: TranscriptMessage[];
+  client?: string;
+  project?: string;
+  scope?: string;
+  /** Conversation date (ISO). Used to resolve "next Friday" style dates. */
+  date?: string;
+  /** false = more messages will follow; the trailing partial chunk is held back. */
+  final?: boolean;
+  /** Optional in-progress note to store alongside the transcript. */
+  handoff?: Pick<SetHandoffRequest, "content" | "done">;
+}
+
+export interface IngestTranscriptResponse {
+  accepted: number;
+  skipped: number;
+  jobIds: string[];
+  redacted: number;
+  /** Chunks not queued in this request (per-request cap or memory limit). Resend later. */
+  deferred?: number;
+  limitExceeded?: boolean;
+  handoff?: SetHandoffResponse;
+}
+
+export interface ImportConversationsRequest {
+  format?: "chatgpt" | "claude" | "auto";
+  /** Parsed `conversations.json` from a ChatGPT or Claude data export. */
+  conversations: unknown[];
+  project?: string;
+  scope?: string;
+  /** Newest conversations to import (default 50, max 200). */
+  limit?: number;
+}
+
+export interface ImportConversationsResponse {
+  format: "chatgpt" | "claude";
+  conversations: number;
+  accepted: number;
+  skipped: number;
+  redacted: number;
+  deferred?: number;
+  limitExceeded?: boolean;
 }
 
 export type WorkspaceRole = "owner" | "admin" | "member" | "viewer";

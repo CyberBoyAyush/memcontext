@@ -1354,6 +1354,8 @@ async function claimNextContextVaultSource() {
     .where(
       and(
         sql`${memorySources.workspaceId} IS NOT NULL`,
+        // Personal long-content and transcript jobs (no vault) belong to the memory processor.
+        sql`${memorySources.vaultId} IS NOT NULL`,
         inArray(memorySources.sourceType, [...CONTEXT_VAULT_DOC_TYPES]),
         or(
           eq(memorySources.status, "pending"),

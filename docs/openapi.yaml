@@ -907,6 +907,198 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MemoryProfile"
+  /api/memories/context:
+    get:
+      tags: [Memories]
+      summary: Get ready-to-inject context
+      operationId: getMemoryContext
+      description: |
+        One call for plugins, hooks and chat apps. Returns the open in-progress note, the user's
+        preferences and the memories relevant to `query`, rendered as a `<memcontext>` block that
+        fits in `maxTokens`. Each line shows its date, the app it came from and what it replaced.
+      parameters:
+        - in: query
+          name: query
+          schema:
+            type: string
+            maxLength: 1000
+          description: The user's message. Omit to get recent memory instead.
+        - in: query
+          name: project
+          schema:
+            type: string
+          description: Current project or repo. Picks that project's in-progress note.
+        - in: query
+          name: scope
+          schema:
+            type: string
+            maxLength: 200
+        - in: query
+          name: maxTokens
+          schema:
+            type: integer
+            minimum: 100
+            maximum: 4000
+            default: 600
+      responses:
+        "200":
+          description: Context block and the structured pieces it was built from.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemoryContextResponse"
+  /api/memories/handoff:
+    get:
+      tags: [Memories]
+      summary: Get the open in-progress note
+      operationId: getHandoff
+      description: Latest open in-progress note for `project`. Without `project`, the newest open note across projects.
+      parameters:
+        - in: query
+          name: project
+          schema:
+            type: string
+        - in: query
+          name: scope
+          schema:
+            type: string
+            maxLength: 200
+      responses:
+        "200":
+          description: The note, or `null`.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  handoff:
+                    allOf:
+                      - $ref: "#/components/schemas/HandoffNote"
+                    nullable: true
+    put:
+      tags: [Memories]
+      summary: Set or close the in-progress note
+      operationId: setHandoff
+      description: |
+        Each project has one open in-progress note. A new note replaces the previous one (history is
+        kept and no extra memory slot is used). Send `done: true` to close it. Notes expire after 14 days.
+        Saving `In progress: …` through `POST /api/memories` or the `save_memory` MCP tool does the same.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                  maxLength: 4000
+                done:
+                  type: boolean
+                project:
+                  type: string
+                scope:
+                  type: string
+                client:
+                  type: string
+      responses:
+        "200":
+          description: Result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SetHandoffResponse"
+  /api/memories/ingest:
+    post:
+      tags: [Memories]
+      summary: Ingest a chat transcript
+      operationId: ingestTranscript
+      description: |
+        For plugins and hooks. Secrets are removed, then the conversation is split into chunks and
+        extracted into memories in the background. Resending the same (or a longer) transcript with the
+        same `sessionId` skips chunks already queued. Use `final: false` while the chat is still going.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sessionId, messages]
+              properties:
+                sessionId:
+                  type: string
+                  maxLength: 200
+                messages:
+                  type: array
+                  maxItems: 1000
+                  items:
+                    $ref: "#/components/schemas/TranscriptMessage"
+                client:
+                  type: string
+                project:
+                  type: string
+                scope:
+                  type: string
+                date:
+                  type: string
+                  description: Conversation date, used to resolve relative dates like "next Friday".
+                final:
+                  type: boolean
+                  default: true
+                handoff:
+                  type: object
+                  properties:
+                    content:
+                      type: string
+                    done:
+                      type: boolean
+      responses:
+        "202":
+          description: Accepted for background extraction.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestTranscriptResponse"
+  /api/memories/import:
+    post:
+      tags: [Memories]
+      summary: Import a ChatGPT or Claude export
+      operationId: importConversations
+      description: |
+        Send the parsed `conversations.json` from a ChatGPT or Claude data export. The newest
+        conversations are ingested (default 50, max 200). Re-importing the same export is a no-op.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [conversations]
+              properties:
+                format:
+                  type: string
+                  enum: [chatgpt, claude, auto]
+                  default: auto
+                conversations:
+                  type: array
+                  items: {}
+                project:
+                  type: string
+                scope:
+                  type: string
+                limit:
+                  type: integer
+                  minimum: 1
+                  maximum: 200
+      responses:
+        "202":
+          description: Accepted for background extraction.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportConversationsResponse"
+        "400":
+          description: Unrecognized export format.
   /api/memories/graph:
     get:
       tags: [Profiles]
@@ -2197,6 +2389,10 @@ components:
           description: "Grouping filter inside the selected scope. Format: lowercase, no spaces (e.g. `memcontext`)."
         source:
           $ref: "#/components/schemas/MemorySource"
+        client:
+          type: string
+          maxLength: 80
+          description: App that produced the memory (e.g. `claude-code`, `chatgpt`). Can also be sent as the `X-MemContext-Client` header.
         validUntil:
           type: string
           format: date-time
@@ -2215,13 +2411,22 @@ components:
           description: Job/source ID for tracking accepted long-content extraction.
         status:
           type: string
-          enum: [saved, updated, extended, duplicate, accepted]
+          enum: [saved, updated, extended, duplicate, accepted, skipped]
           description: |
             - `saved` - New memory created.
             - `updated` - New memory superseded an existing one.
             - `extended` - New memory extends an existing one (relation created).
             - `duplicate` - Content already exists; no new memory created.
             - `accepted` - Large content was accepted for asynchronous extraction into atomic memories.
+            - `skipped` - Not saved because the content was only a secret (passwords, keys and card numbers are never stored).
+        kind:
+          type: string
+          enum: [handoff]
+          description: Present when content starting with `In progress:`, `WIP:` or `Handoff:` was stored as the project's in-progress note.
+        redacted:
+          type: integer
+          minimum: 0
+          description: Number of secrets removed before saving.
         superseded:
           type: string
           format: uuid
@@ -2262,6 +2467,143 @@ components:
         createdAt:
           type: string
           format: date-time
+        client:
+          type: string
+          description: App that wrote the memory, when known.
+        kind:
+          type: string
+          enum: [handoff]
+          description: Present for the project's in-progress note.
+        previous:
+          type: array
+          description: Older versions this memory replaced, newest first (up to 3).
+          items:
+            $ref: "#/components/schemas/MemoryVersionSummary"
+    MemoryVersionSummary:
+      type: object
+      required: [content, createdAt]
+      properties:
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        client:
+          type: string
+    HandoffNote:
+      type: object
+      required: [id, content, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        content:
+          type: string
+        project:
+          type: string
+        scope:
+          type: string
+        client:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        validUntil:
+          type: string
+          format: date-time
+    SetHandoffResponse:
+      type: object
+      required: [status, handoff]
+      properties:
+        status:
+          type: string
+          enum: [saved, updated, closed, none]
+        handoff:
+          allOf:
+            - $ref: "#/components/schemas/HandoffNote"
+          nullable: true
+        redacted:
+          type: integer
+    MemoryContextResponse:
+      type: object
+      required: [text, tokens, handoff, preferences, memories]
+      properties:
+        text:
+          type: string
+          description: Ready-to-inject `<memcontext>` block for a system prompt or hook.
+        tokens:
+          type: integer
+          description: Approximate token count of `text`.
+        handoff:
+          allOf:
+            - $ref: "#/components/schemas/HandoffNote"
+          nullable: true
+        preferences:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchMemoryResult"
+        memories:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchMemoryResult"
+    TranscriptMessage:
+      type: object
+      required: [role, content]
+      properties:
+        role:
+          type: string
+          enum: [user, assistant, system, tool]
+          description: Only `user` and `assistant` messages are used.
+        content:
+          type: string
+        at:
+          type: string
+          format: date-time
+    IngestTranscriptResponse:
+      type: object
+      required: [accepted, skipped, jobIds, redacted]
+      properties:
+        accepted:
+          type: integer
+          description: Transcript chunks queued for extraction.
+        skipped:
+          type: integer
+          description: Chunks already ingested earlier (idempotent resend).
+        jobIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        redacted:
+          type: integer
+          description: Secrets removed before anything was stored.
+        deferred:
+          type: integer
+          description: Chunks not queued in this request (max 30 per request, or memory limit reached). Resend later; already-queued chunks are skipped.
+        limitExceeded:
+          type: boolean
+        handoff:
+          $ref: "#/components/schemas/SetHandoffResponse"
+    ImportConversationsResponse:
+      type: object
+      required: [format, conversations, accepted, skipped, redacted]
+      properties:
+        format:
+          type: string
+          enum: [chatgpt, claude]
+        conversations:
+          type: integer
+        accepted:
+          type: integer
+        skipped:
+          type: integer
+        redacted:
+          type: integer
+        deferred:
+          type: integer
+          description: Chunks over the per-import budget (100) or the memory limit. Re-import to continue.
+        limitExceeded:
+          type: boolean
     SearchMemoryResponse:
       type: object
       required: [found, memories]

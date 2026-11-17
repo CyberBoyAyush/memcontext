@@ -3,6 +3,8 @@ interface ApiClientConfig {
   apiKey?: string;
   accessToken?: string;
   dpopProof?: string;
+  /** App name of the MCP client (e.g. "claude-code"), forwarded so memories show where they came from. */
+  client?: () => string | undefined;
 }
 
 interface ApiError {
@@ -36,20 +38,30 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
   const { apiBase, apiKey, accessToken, dpopProof } = config;
 
   function getAuthHeaders(): Record<string, string> {
+    // Header values must be ASCII; client names come from untrusted clientInfo / User-Agent.
+    const client = config.client?.()
+      ?.normalize("NFKD")
+      .replace(/[^\x20-\x7e]/g, "")
+      .trim()
+      .slice(0, 80);
+    const clientHeader: Record<string, string> = client ? { "X-MemContext-Client": client } : {};
+
     if (accessToken) {
       return {
         Authorization: `Bearer ${accessToken}`,
         ...(dpopProof ? { DPoP: dpopProof } : {}),
+        ...clientHeader,
       };
     }
 
     if (apiKey) {
       return {
         "X-API-Key": apiKey,
+        ...clientHeader,
       };
     }
 
-    return {};
+    return clientHeader;
   }
 
   return {
