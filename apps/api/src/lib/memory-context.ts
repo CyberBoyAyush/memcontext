@@ -5,7 +5,6 @@ import { redactSecrets } from "./redact.js";
 export const TRANSCRIPT_CHUNK_CHARS = 6000;
 export const MAX_MESSAGE_CHARS = 8000;
 export const DEFAULT_CONTEXT_TOKENS = 600;
-export const EARLIER_CONTEXT_LABEL = "[earlier, context only]";
 const CARRY_LINES = 2;
 const CARRY_CHARS = 600;
 
@@ -70,6 +69,7 @@ export function chunkTranscript(
   let current: string[] = [];
   let raw: string[] = [];
   let carry: string[] = [];
+  let carryDay: string | undefined;
   let currentDay: string | undefined;
   let size = 0;
   for (const line of lines) {
@@ -78,6 +78,7 @@ export function chunkTranscript(
       chunks.push(current.join("\n\n"));
       days.push(currentDay);
       carry = newDay ? raw.slice(-CARRY_LINES).map((l) => l.slice(0, CARRY_CHARS)) : [];
+      carryDay = currentDay;
       current = [];
       raw = [];
       size = 0;
@@ -85,7 +86,8 @@ export function chunkTranscript(
     if (current.length === 0) {
       currentDay = line.day;
       if (carry.length) {
-        const context = `${EARLIER_CONTEXT_LABEL}\n${carry.join("\n\n")}`;
+        // Keep the earlier day so "tomorrow" in a copied turn resolves against that day.
+        const context = `[earlier${carryDay ? ` ${carryDay}` : ""}, context only]\n${carry.join("\n\n")}`;
         current.push(context);
         size += context.length + 2;
         carry = [];

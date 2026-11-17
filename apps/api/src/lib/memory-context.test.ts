@@ -63,7 +63,7 @@ describe("chunkTranscript", () => {
     );
     assert.deepEqual(r.chunks, [
       "[2026-10-01] USER: a\n\nASSISTANT: b",
-      "[earlier, context only]\nUSER: a\n\nASSISTANT: b\n\n[2026-10-03] USER: c",
+      "[earlier 2026-10-01, context only]\nUSER: a\n\nASSISTANT: b\n\n[2026-10-03] USER: c",
     ]);
     assert.deepEqual(r.days, ["2026-10-01", "2026-10-03"]);
   });
@@ -90,6 +90,7 @@ describe("chunkTranscript", () => {
       { final: true },
     );
     assert.equal(r.days[1], "2026-10-02");
+    assert.ok(r.chunks[1].startsWith("[earlier 2026-10-01, context only]"), r.chunks[1]);
     assert.match(r.chunks[1], /Hotel Atlas[\s\S]*\[2026-10-02\] USER: Yes, book it/);
   });
 

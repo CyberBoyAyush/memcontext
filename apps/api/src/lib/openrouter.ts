@@ -413,7 +413,7 @@ Transcript rules (the content is a chat between the USER and an AI ASSISTANT):
 - Skip small talk, jokes, hypotheticals ("what if…"), options the user rejected (unless the rejection itself matters later), other people's opinions the user did not adopt, and anything the user marked off the record or asked not to remember.
 - When the user changes something, write the NEW value and what it replaced, e.g. "Wedding moved to Dec 19 (was Dec 12)".
 - Write dates as absolute dates.${date ? ` The conversation happened on ${date}; resolve "tomorrow", "next Friday", "in two weeks" against it.` : ""} A line starting with [YYYY-MM-DD] means the chat continued on that date; resolve relative dates after it against that date.
-- Text under "[earlier, context only]" was already processed: use it only to understand the lines after it (e.g. what "yes, book it" refers to). Do not save facts that appear only there.
+- Text under "[earlier YYYY-MM-DD, context only]" was already processed and was said on that earlier date (resolve its relative dates against it): use it only to understand the lines after it (e.g. what "yes, book it" refers to). Do not save facts that appear only there.
 - Never include passwords, keys, tokens or card numbers; [REDACTED_SECRET] marks removed secrets.
 `;
 }
