@@ -61,7 +61,7 @@ describe("chunkTranscript", () => {
       ],
       { final: true },
     );
-    assert.equal(r.chunks[0], "[2026-10-01] USER: a\n\nASSISTANT: b\n\n[2026-10-03] USER: c");
+    assert.deepEqual(r.chunks, ["[2026-10-01] USER: a\n\nASSISTANT: b", "[2026-10-03] USER: c"]);
   });
 
   it("starts every chunk with its own date", () => {
@@ -74,11 +74,10 @@ describe("chunkTranscript", () => {
       { final: true },
     );
     assert.deepEqual(r.days, ["2026-10-01", "2026-12-05", "2026-12-05"]);
-    assert.deepEqual(r.lastDays, ["2026-10-01", "2026-12-05", "2026-12-05"]);
     assert.ok(r.chunks[2].startsWith("[2026-12-05] ASSISTANT:"), r.chunks[2].slice(0, 30));
   });
 
-  it("reports the latest day of a multi-day chunk", () => {
+  it("never lets a chunk span two days", () => {
     const r = chunkTranscript(
       [
         { role: "user", content: "a", at: "2026-10-01T10:00:00Z" },
@@ -86,7 +85,8 @@ describe("chunkTranscript", () => {
       ],
       { final: true },
     );
-    assert.deepEqual([r.days[0], r.lastDays[0]], ["2026-10-01", "2026-10-03"]);
+    assert.deepEqual(r.days, ["2026-10-01", "2026-10-03"]);
+    assert.equal(r.chunks.length, 2);
   });
 
   it("holds back the trailing partial chunk when final=false", () => {

@@ -24,10 +24,8 @@ export const estimateTokens = (text: string): number => Math.ceil(text.length / 
 
 export interface TranscriptChunks {
   chunks: string[];
-  /** Date (YYYY-MM-DD) each chunk starts on, when messages carry `at`. */
+  /** Day (YYYY-MM-DD) of each chunk, when messages carry `at`. A chunk never spans two days. */
   days: Array<string | undefined>;
-  /** Latest date seen in each chunk (used to compare against newer memories). */
-  lastDays: Array<string | undefined>;
   redacted: number;
   heldBack: boolean;
 }
@@ -62,26 +60,21 @@ export function chunkTranscript(
     }
   }
 
-  // Each chunk opens with its date and marks later day changes, so every chunk is self-dated.
+  // A new day starts a new chunk, so every fact has one unambiguous day for supersession.
   const chunks: string[] = [];
   const days: Array<string | undefined> = [];
-  const lastDays: Array<string | undefined> = [];
   let current: string[] = [];
   let currentDay: string | undefined;
-  let marked: string | undefined;
   let size = 0;
   for (const line of lines) {
-    if (size > 0 && size + line.text.length > target) {
+    if (size > 0 && (size + line.text.length > target || line.day !== currentDay)) {
       chunks.push(current.join("\n\n"));
       days.push(currentDay);
-      lastDays.push(marked);
       current = [];
-      marked = undefined;
       size = 0;
     }
     if (current.length === 0) currentDay = line.day;
-    const text = line.day && line.day !== marked ? `[${line.day}] ${line.text}` : line.text;
-    marked = line.day ?? marked;
+    const text = current.length === 0 && line.day ? `[${line.day}] ${line.text}` : line.text;
     current.push(text);
     size += text.length + 2;
   }
@@ -90,10 +83,9 @@ export function chunkTranscript(
     if (options.final || size >= target) {
       chunks.push(current.join("\n\n"));
       days.push(currentDay);
-      lastDays.push(marked);
     } else heldBack = true;
   }
-  return { chunks, days, lastDays, redacted, heldBack };
+  return { chunks, days, redacted, heldBack };
 }
 
 export interface ContextLine {

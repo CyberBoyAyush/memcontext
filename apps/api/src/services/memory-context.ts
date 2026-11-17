@@ -356,7 +356,7 @@ export async function ingestTranscript(
     maxChunks?: number;
   },
 ): Promise<Omit<IngestTranscriptResponse, "handoff">> {
-  const { chunks, days, lastDays, redacted } = chunkTranscript(params.messages, { final: params.final ?? true });
+  const { chunks, days, redacted } = chunkTranscript(params.messages, { final: params.final ?? true });
   const scope = normalizeScope(params.scope) ?? "";
   const project = normalizeProjectName(params.project) ?? "";
   const hashes = chunks.map((chunk) =>
@@ -406,7 +406,7 @@ export async function ingestTranscript(
         scope: params.scope,
         project: params.project,
         date: days[i] ?? params.date,
-        sourceDate: lastDays[i] ?? params.date,
+        sourceDate: days[i] ?? params.date,
         source: params.source,
       });
       if (result.status === "limit_exceeded") {
