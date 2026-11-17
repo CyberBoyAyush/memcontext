@@ -64,6 +64,19 @@ describe("chunkTranscript", () => {
     assert.equal(r.chunks[0], "[2026-10-01] USER: a\n\nASSISTANT: b\n\n[2026-10-03] USER: c");
   });
 
+  it("starts every chunk with its own date", () => {
+    const r = chunkTranscript(
+      [
+        { role: "user", content: long(4000), at: "2026-10-01T10:00:00Z" },
+        { role: "user", content: long(4000), at: "2026-12-05T10:00:00Z" },
+        { role: "assistant", content: long(4000) },
+      ],
+      { final: true },
+    );
+    assert.deepEqual(r.days, ["2026-10-01", "2026-12-05", "2026-12-05"]);
+    assert.ok(r.chunks[2].startsWith("[2026-12-05] ASSISTANT:"), r.chunks[2].slice(0, 30));
+  });
+
   it("holds back the trailing partial chunk when final=false", () => {
     const r = chunkTranscript([msg("user", long(3000)), msg("assistant", long(3000)), msg("user", "short")], { final: false });
     assert.equal(r.heldBack, true);

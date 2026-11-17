@@ -17,6 +17,8 @@ export const estimateTokens = (text: string): number => Math.ceil(text.length / 
 
 export interface TranscriptChunks {
   chunks: string[];
+  /** Date (YYYY-MM-DD) each chunk starts on, when messages carry `at`. */
+  days: Array<string | undefined>;
   redacted: number;
   heldBack: boolean;
 }
@@ -32,7 +34,7 @@ export function chunkTranscript(
 ): TranscriptChunks {
   const target = options.chunkChars ?? TRANSCRIPT_CHUNK_CHARS;
   let redacted = 0;
-  const lines: string[] = [];
+  const lines: Array<{ text: string; day?: string }> = [];
   let lastDay: string | undefined;
   for (const message of messages) {
     if (message.role !== "user" && message.role !== "assistant") continue;
@@ -41,34 +43,45 @@ export function chunkTranscript(
     // Redact the whole message first so a cut can never split a secret or a <private> span.
     const r = redactSecrets(body);
     redacted += r.count;
-    const day = message.at && !Number.isNaN(Date.parse(message.at)) ? new Date(message.at).toISOString().slice(0, 10) : undefined;
-    const dated = day && day !== lastDay ? `[${day}] ` : "";
-    if (day) lastDay = day;
+    if (message.at && !Number.isNaN(Date.parse(message.at))) {
+      lastDay = new Date(message.at).toISOString().slice(0, 10);
+    }
     const label = message.role === "user" ? "USER" : "ASSISTANT";
     // Long messages become several lines instead of being truncated.
     for (let i = 0; i < r.text.length; i += MAX_MESSAGE_CHARS) {
-      lines.push(`${i === 0 ? dated : ""}${label}: ${r.text.slice(i, i + MAX_MESSAGE_CHARS)}`);
+      lines.push({ text: `${label}: ${r.text.slice(i, i + MAX_MESSAGE_CHARS)}`, day: lastDay });
     }
   }
 
+  // Each chunk opens with its date and marks later day changes, so every chunk is self-dated.
   const chunks: string[] = [];
+  const days: Array<string | undefined> = [];
   let current: string[] = [];
+  let currentDay: string | undefined;
+  let marked: string | undefined;
   let size = 0;
   for (const line of lines) {
-    if (size > 0 && size + line.length > target) {
+    if (size > 0 && size + line.text.length > target) {
       chunks.push(current.join("\n\n"));
+      days.push(currentDay);
       current = [];
+      marked = undefined;
       size = 0;
     }
-    current.push(line);
-    size += line.length + 2;
+    if (current.length === 0) currentDay = line.day;
+    const text = line.day && line.day !== marked ? `[${line.day}] ${line.text}` : line.text;
+    marked = line.day ?? marked;
+    current.push(text);
+    size += text.length + 2;
   }
   let heldBack = false;
   if (current.length) {
-    if (options.final || size >= target) chunks.push(current.join("\n\n"));
-    else heldBack = true;
+    if (options.final || size >= target) {
+      chunks.push(current.join("\n\n"));
+      days.push(currentDay);
+    } else heldBack = true;
   }
-  return { chunks, redacted, heldBack };
+  return { chunks, days, redacted, heldBack };
 }
 
 export interface ContextLine {

@@ -89,6 +89,8 @@ interface SaveMemoryParams {
   memoryType?: "member" | "user" | "document" | "company";
   timing?: TimingContext;
   validUntil?: string;
+  /** Day (YYYY-MM-DD) the fact was said, for imported/ingested transcripts. */
+  sourceDate?: string;
 }
 
 type SaveMemoryResult =
@@ -314,6 +316,12 @@ async function saveAtomicMemory(
     content = redacted.text;
   }
   const userValidUntil = validUntil ? new Date(validUntil) : undefined;
+  // Facts from older conversations are valid from the day they were said, not the import time.
+  const sourceDay = params.sourceDate?.slice(0, 10);
+  const validFromDate =
+    sourceDay && /^\d{4}-\d{2}-\d{2}$/.test(sourceDay) && sourceDay < dayOf(new Date())
+      ? new Date(`${sourceDay}T00:00:00Z`)
+      : new Date();
 
   const expandResult = await expandMemory(content, timing);
   const expandedContent = expandResult.expandedContent;
@@ -375,7 +383,7 @@ async function saveAtomicMemory(
                 project,
                 source,
                 client: params.client ?? null,
-                validFrom: new Date(),
+                validFrom: validFromDate,
                 validUntil: validUntilDate,
               })
               .returning({ id: memories.id });
@@ -413,7 +421,7 @@ async function saveAtomicMemory(
               project,
               source,
               client: params.client ?? null,
-              validFrom: new Date(),
+              validFrom: validFromDate,
               validUntil: validUntilDate,
             })
             .returning({ id: memories.id });
@@ -518,6 +526,21 @@ async function saveAtomicMemory(
       ? similarMemories[classification.targetIndex]
       : undefined) ?? similarMemories[0];
 
+  // An imported fact said on an earlier day must not replace a newer current memory.
+  if (
+    classification.action === "update" &&
+    sourceDay &&
+    sourceDay < dayOf(targetMemory.validFrom ?? targetMemory.createdAt)
+  ) {
+    logger.info({ userId, existingId: targetMemory.id, sourceDay }, "older fact skipped (newer memory exists)");
+    return {
+      id: targetMemory.id,
+      status: "duplicate",
+      existingId: targetMemory.id,
+      message: "Not saved: a newer version of this memory already exists.",
+    };
+  }
+
   if (classification.action === "update") {
     const newMemoryId = await (timing
       ? withTiming(timing, "db_update", async () =>
@@ -539,7 +562,7 @@ async function saveAtomicMemory(
                 supersedesId: targetMemory.id,
                 rootId: targetMemory.rootId ?? targetMemory.id,
                 version: targetMemory.version + 1,
-                validFrom: new Date(),
+                validFrom: validFromDate,
                 validUntil: validUntilDate,
               })
               .returning({ id: memories.id });
@@ -578,7 +601,7 @@ async function saveAtomicMemory(
               supersedesId: targetMemory.id,
               rootId: targetMemory.rootId ?? targetMemory.id,
               version: targetMemory.version + 1,
-              validFrom: new Date(),
+              validFrom: validFromDate,
               validUntil: validUntilDate,
             })
             .returning({ id: memories.id });
@@ -656,7 +679,7 @@ async function saveAtomicMemory(
               project,
               source,
               client: params.client ?? null,
-              validFrom: new Date(),
+              validFrom: validFromDate,
               validUntil: validUntilDate,
             })
             .returning({ id: memories.id });
@@ -704,7 +727,7 @@ async function saveAtomicMemory(
             project,
             source,
             client: params.client ?? null,
-            validFrom: new Date(),
+            validFrom: validFromDate,
             validUntil: validUntilDate,
           })
           .returning({ id: memories.id });
@@ -981,6 +1004,7 @@ async function processMemorySource(memorySource: MemorySourceRow) {
     return;
   }
 
+  let processed = 0;
   for (const [index, candidate] of candidateMemories.entries()) {
     const saved = await saveAtomicMemory(
       {
@@ -995,6 +1019,7 @@ async function processMemorySource(memorySource: MemorySourceRow) {
         memoryType: payload.memoryType === "user" ? "member" : (payload.memoryType ?? "member"),
         validUntil: payload.validUntil ?? undefined,
         vaultId: memorySource.vaultId ?? undefined,
+        sourceDate: payload.mode === "transcript" ? payload.date : undefined,
       },
       {
         scope: memorySource.scope ?? undefined,
@@ -1006,11 +1031,19 @@ async function processMemorySource(memorySource: MemorySourceRow) {
       },
     );
     if (saved.status === "limit_exceeded") break;
+    processed++;
 
     await db
       .update(memorySources)
       .set({ updatedAt: new Date() })
       .where(eq(memorySources.id, memorySource.id));
+  }
+
+  if (processed < candidateMemories.length) {
+    logger.warn(
+      { memorySourceId: memorySource.id, userId: memorySource.userId, dropped: candidateMemories.length - processed },
+      "memory limit reached while saving extracted facts",
+    );
   }
 
   await db
@@ -1023,7 +1056,11 @@ async function processMemorySource(memorySource: MemorySourceRow) {
       payload: {
         contentLength: payload.content.length,
         validUntil: payload.validUntil ?? null,
-        extractedCount: candidateMemories.length,
+        extractedCount: processed,
+        // Facts not saved because the plan limit was reached (visible on the job for follow-up).
+        ...(processed < candidateMemories.length
+          ? { droppedForLimit: candidateMemories.length - processed }
+          : {}),
       },
     })
     .where(eq(memorySources.id, memorySource.id));
@@ -1145,8 +1182,12 @@ interface SimilarMemoryResult {
   rootId: string | null;
   version: number;
   validUntil: Date | null;
+  validFrom: Date | null;
+  createdAt: Date;
   distance: number;
 }
+
+const dayOf = (date: Date) => date.toISOString().slice(0, 10);
 
 export async function findSimilarMemories(
   userId: string,
@@ -1223,6 +1264,8 @@ export async function findSimilarMemories(
       rootId: memories.rootId,
       version: memories.version,
       validUntil: memories.validUntil,
+      validFrom: memories.validFrom,
+      createdAt: memories.createdAt,
       distance,
     })
     .from(memories)

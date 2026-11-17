@@ -28,6 +28,7 @@ import { normalizeProjectName, normalizeScope } from "../utils/index.js";
 import { logger } from "../lib/logger.js";
 
 const HANDOFF_TTL_DAYS = 14;
+const RELEVANT_LIMIT = 8;
 const MAX_HANDOFF_CHARS = 4000;
 // Caps per request so one big transcript or export cannot flood the shared extraction queue.
 export const MAX_INGEST_CHUNKS = 30;
@@ -269,7 +270,8 @@ export async function buildMemoryContext(
           workspaceId: params.workspaceId,
           visibleUserId: params.userId,
           query: params.query,
-          limit: 8,
+          // Over-fetch: preferences and handoffs shown in their own sections are removed below.
+          limit: RELEVANT_LIMIT + 6,
           scope,
         }).then((r) => r.memories)
       : recentMemories({ ...params, scope }),
@@ -285,7 +287,9 @@ export async function buildMemoryContext(
     createdAt: r.createdAt,
   }));
   const shown = new Set([handoff?.id, ...preferences.map((p) => p.id)]);
-  const memoriesOut = relevant.filter((m) => !shown.has(m.id) && m.kind !== "handoff");
+  const memoriesOut = relevant
+    .filter((m) => !shown.has(m.id) && m.kind !== "handoff")
+    .slice(0, RELEVANT_LIMIT);
 
   const rendered = renderContext(
     [
@@ -352,7 +356,7 @@ export async function ingestTranscript(
     maxChunks?: number;
   },
 ): Promise<Omit<IngestTranscriptResponse, "handoff">> {
-  const { chunks, redacted } = chunkTranscript(params.messages, { final: params.final ?? true });
+  const { chunks, days, redacted } = chunkTranscript(params.messages, { final: params.final ?? true });
   const scope = normalizeScope(params.scope) ?? "";
   const project = normalizeProjectName(params.project) ?? "";
   const hashes = chunks.map((chunk) =>
@@ -401,7 +405,7 @@ export async function ingestTranscript(
         client: params.client,
         scope: params.scope,
         project: params.project,
-        date: params.date,
+        date: days[i] ?? params.date,
         source: params.source,
       });
       if (result.status === "limit_exceeded") {
