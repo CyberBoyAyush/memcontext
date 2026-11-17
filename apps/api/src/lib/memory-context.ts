@@ -5,6 +5,9 @@ import { redactSecrets } from "./redact.js";
 export const TRANSCRIPT_CHUNK_CHARS = 6000;
 export const MAX_MESSAGE_CHARS = 8000;
 export const DEFAULT_CONTEXT_TOKENS = 600;
+export const EARLIER_CONTEXT_LABEL = "[earlier, context only]";
+const CARRY_LINES = 2;
+const CARRY_CHARS = 600;
 
 const HANDOFF_PREFIX = /^\s*(?:in[\s-]?progress|wip|handoff)\s*[:\-–—]\s*/i;
 
@@ -61,21 +64,36 @@ export function chunkTranscript(
   }
 
   // A new day starts a new chunk, so every fact has one unambiguous day for supersession.
+  // The last turns of the previous day ride along as context (e.g. a question asked before midnight).
   const chunks: string[] = [];
   const days: Array<string | undefined> = [];
   let current: string[] = [];
+  let raw: string[] = [];
+  let carry: string[] = [];
   let currentDay: string | undefined;
   let size = 0;
   for (const line of lines) {
-    if (size > 0 && (size + line.text.length > target || line.day !== currentDay)) {
+    const newDay = line.day !== currentDay;
+    if (size > 0 && (size + line.text.length > target || newDay)) {
       chunks.push(current.join("\n\n"));
       days.push(currentDay);
+      carry = newDay ? raw.slice(-CARRY_LINES).map((l) => l.slice(0, CARRY_CHARS)) : [];
       current = [];
+      raw = [];
       size = 0;
     }
-    if (current.length === 0) currentDay = line.day;
-    const text = current.length === 0 && line.day ? `[${line.day}] ${line.text}` : line.text;
+    if (current.length === 0) {
+      currentDay = line.day;
+      if (carry.length) {
+        const context = `${EARLIER_CONTEXT_LABEL}\n${carry.join("\n\n")}`;
+        current.push(context);
+        size += context.length + 2;
+        carry = [];
+      }
+    }
+    const text = raw.length === 0 && line.day ? `[${line.day}] ${line.text}` : line.text;
     current.push(text);
+    raw.push(line.text);
     size += text.length + 2;
   }
   let heldBack = false;

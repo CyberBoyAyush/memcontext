@@ -61,7 +61,11 @@ describe("chunkTranscript", () => {
       ],
       { final: true },
     );
-    assert.deepEqual(r.chunks, ["[2026-10-01] USER: a\n\nASSISTANT: b", "[2026-10-03] USER: c"]);
+    assert.deepEqual(r.chunks, [
+      "[2026-10-01] USER: a\n\nASSISTANT: b",
+      "[earlier, context only]\nUSER: a\n\nASSISTANT: b\n\n[2026-10-03] USER: c",
+    ]);
+    assert.deepEqual(r.days, ["2026-10-01", "2026-10-03"]);
   });
 
   it("starts every chunk with its own date", () => {
@@ -75,6 +79,18 @@ describe("chunkTranscript", () => {
     );
     assert.deepEqual(r.days, ["2026-10-01", "2026-12-05", "2026-12-05"]);
     assert.ok(r.chunks[2].startsWith("[2026-12-05] ASSISTANT:"), r.chunks[2].slice(0, 30));
+  });
+
+  it("keeps a question asked before midnight next to its answer", () => {
+    const r = chunkTranscript(
+      [
+        { role: "assistant", content: "Should I book Hotel Atlas for the wedding?", at: "2026-10-01T23:58:00Z" },
+        { role: "user", content: "Yes, book it", at: "2026-10-02T00:01:00Z" },
+      ],
+      { final: true },
+    );
+    assert.equal(r.days[1], "2026-10-02");
+    assert.match(r.chunks[1], /Hotel Atlas[\s\S]*\[2026-10-02\] USER: Yes, book it/);
   });
 
   it("never lets a chunk span two days", () => {
