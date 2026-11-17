@@ -72,9 +72,10 @@ export function redactSecrets(input: string): RedactResult {
 
   text = text.replace(LABELED_SECRET, (match, label: string, sep: string, _q: string, value: string) => {
     if (value === REDACTED) return match;
+    // "password: letmein" is a secret; "the password reset flow" (no explicit separator) is not.
     const looksSecret = DIGIT_ONLY_LABELS.has(label.toLowerCase())
       ? /^\d{3,8}$/.test(value)
-      : /[\d\W_]/.test(value);
+      : /[:=]/.test(sep) || /[\d\W_]/.test(value);
     if (!looksSecret) return match;
     count++;
     return `${label}${sep}${REDACTED}`;
@@ -90,7 +91,8 @@ export function redactSecrets(input: string): RedactResult {
     return REDACTED;
   });
 
-  text = text.replace(/<private>[\s\S]*?<\/private>/gi, () => {
+  // An unclosed <private> hides everything after it.
+  text = text.replace(/<private>[\s\S]*?(?:<\/private>|$)/gi, () => {
     count++;
     return "[PRIVATE]";
   });
@@ -104,7 +106,7 @@ export function redactSecrets(input: string): RedactResult {
  */
 export function isOnlySecret(text: string): boolean {
   const remainder = text.replaceAll(REDACTED, "").replace(/\[PRIVATE\]/g, "").trim();
-  if (remainder.replace(/[^A-Za-z0-9]/g, "").length < 3) return true;
+  if (remainder.replace(/[^\p{L}\p{N}]/gu, "").length < 3) return true;
   return (
     remainder.length < 32 &&
     /\b(key|keys|token|password|passcode|pin|secret|card|cvv|credentials?)\b/i.test(remainder)

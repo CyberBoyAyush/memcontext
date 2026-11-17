@@ -957,9 +957,10 @@ async function processMemorySource(memorySource: MemorySourceRow) {
     undefined,
     payload.mode === "transcript" ? { transcript: true, date: payload.date } : undefined,
   );
+  // Transcript chunks reserve few slots up front; extra facts are saved only within the plan limit.
   const candidateMemories = extractedMemories.slice(
     0,
-    memorySource.reservedSlots,
+    payload.mode === "transcript" ? MAX_RESERVED_MEMORY_SLOTS : memorySource.reservedSlots,
   );
 
   if (candidateMemories.length === 0) {
@@ -980,8 +981,8 @@ async function processMemorySource(memorySource: MemorySourceRow) {
     return;
   }
 
-  for (const candidate of candidateMemories) {
-    await saveAtomicMemory(
+  for (const [index, candidate] of candidateMemories.entries()) {
+    const saved = await saveAtomicMemory(
       {
         userId: memorySource.userId,
         workspaceId: memorySource.workspaceId ?? undefined,
@@ -1001,9 +1002,10 @@ async function processMemorySource(memorySource: MemorySourceRow) {
         workspaceId: memorySource.workspaceId ?? undefined,
         vaultId: memorySource.vaultId ?? undefined,
         memoryType: payload.memoryType === "user" ? "member" : (payload.memoryType ?? "member"),
-        skipLimitCheck: true,
+        skipLimitCheck: index < memorySource.reservedSlots,
       },
     );
+    if (saved.status === "limit_exceeded") break;
 
     await db
       .update(memorySources)

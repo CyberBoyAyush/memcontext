@@ -46,6 +46,15 @@ describe("redactSecrets", () => {
     assert.ok(!redactSecrets("cvv=417").text.includes("417"));
   });
 
+  it("redacts alphabetic passwords after an explicit separator", () => {
+    assert.ok(!redactSecrets("password: letmein").text.includes("letmein"));
+    assert.ok(!redactSecrets("wifi passwd=sunshine").text.includes("sunshine"));
+  });
+
+  it("redacts an unclosed <private> span to the end", () => {
+    assert.equal(redactSecrets("ok <private>salary 40L and more").text, "ok [PRIVATE]");
+  });
+
   it("redacts <private> spans", () => {
     assert.equal(redactSecrets("hi <private>salary 40L</private> bye").text, "hi [PRIVATE] bye");
   });
@@ -82,6 +91,8 @@ describe("isOnlySecret", () => {
     assert.equal(isOnlySecret(`my api key is ${REDACTED}`), true);
     assert.equal(isOnlySecret(`my stripe key is ${REDACTED}`), true);
     assert.equal(isOnlySecret(`${REDACTED}`), true);
+    assert.equal(isOnlySecret(`मीरा की शादी 19 दिसंबर को है ${REDACTED}`), false);
+    assert.equal(isOnlySecret(`婚礼改到十二月十九日 ${REDACTED}`), false);
     assert.equal(isOnlySecret(`Stripe key rotated, new key ${REDACTED} lives in Railway secrets`), false);
     assert.equal(isOnlySecret(`Pay with card ${REDACTED} for the shop supplies order`), false);
     assert.equal(isOnlySecret(`The deploy bot uses GitHub token ${REDACTED} stored in Railway secrets`), false);

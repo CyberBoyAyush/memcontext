@@ -39,6 +39,31 @@ describe("chunkTranscript", () => {
     assert.equal(a.chunks[0], b.chunks[0]);
   });
 
+  it("redacts a <private> span that crosses the per-line split", () => {
+    const content = `${"a".repeat(7990)} <private>${"secret plan ".repeat(5)}</private> after`;
+    const r = chunkTranscript([msg("user", content)], { final: true });
+    const all = r.chunks.join("\n");
+    assert.ok(!all.includes("secret plan"), "private text leaked");
+    assert.ok(all.includes("after"), "text after the span was dropped");
+  });
+
+  it("splits long messages instead of truncating them", () => {
+    const r = chunkTranscript([msg("user", `${"y".repeat(20_000)}END`)], { final: true });
+    assert.ok(r.chunks.join("").includes("END"));
+  });
+
+  it("marks the date when a conversation moves to a new day", () => {
+    const r = chunkTranscript(
+      [
+        { role: "user", content: "a", at: "2026-10-01T10:00:00Z" },
+        { role: "assistant", content: "b", at: "2026-10-01T10:01:00Z" },
+        { role: "user", content: "c", at: "2026-10-03T09:00:00Z" },
+      ],
+      { final: true },
+    );
+    assert.equal(r.chunks[0], "[2026-10-01] USER: a\n\nASSISTANT: b\n\n[2026-10-03] USER: c");
+  });
+
   it("holds back the trailing partial chunk when final=false", () => {
     const r = chunkTranscript([msg("user", long(3000)), msg("assistant", long(3000)), msg("user", "short")], { final: false });
     assert.equal(r.heldBack, true);

@@ -33,13 +33,22 @@ export function chunkTranscript(
   const target = options.chunkChars ?? TRANSCRIPT_CHUNK_CHARS;
   let redacted = 0;
   const lines: string[] = [];
+  let lastDay: string | undefined;
   for (const message of messages) {
     if (message.role !== "user" && message.role !== "assistant") continue;
-    const body = message.content.trim().slice(0, MAX_MESSAGE_CHARS);
+    const body = message.content.trim();
     if (!body) continue;
+    // Redact the whole message first so a cut can never split a secret or a <private> span.
     const r = redactSecrets(body);
     redacted += r.count;
-    lines.push(`${message.role === "user" ? "USER" : "ASSISTANT"}: ${r.text}`);
+    const day = message.at && !Number.isNaN(Date.parse(message.at)) ? new Date(message.at).toISOString().slice(0, 10) : undefined;
+    const dated = day && day !== lastDay ? `[${day}] ` : "";
+    if (day) lastDay = day;
+    const label = message.role === "user" ? "USER" : "ASSISTANT";
+    // Long messages become several lines instead of being truncated.
+    for (let i = 0; i < r.text.length; i += MAX_MESSAGE_CHARS) {
+      lines.push(`${i === 0 ? dated : ""}${label}: ${r.text.slice(i, i + MAX_MESSAGE_CHARS)}`);
+    }
   }
 
   const chunks: string[] = [];
@@ -66,6 +75,7 @@ export interface ContextLine {
   content: string;
   createdAt: Date;
   client?: string;
+  project?: string;
   previous?: Array<{ content: string; createdAt: Date }>;
 }
 
@@ -73,7 +83,8 @@ const day = (d: Date) => new Date(d).toISOString().slice(0, 10);
 const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
 export function renderLine(line: ContextLine): string {
-  let text = `- ${line.content} (${day(line.createdAt)}${line.client ? `, via ${line.client}` : ""})`;
+  const meta = [line.project ? `project ${line.project}` : "", day(line.createdAt), line.client ? `via ${line.client}` : ""];
+  let text = `- ${line.content} (${meta.filter(Boolean).join(", ")})`;
   if (line.previous?.length) {
     text += ` · before: ${line.previous
       .slice(0, 2)

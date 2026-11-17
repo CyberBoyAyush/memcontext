@@ -155,11 +155,14 @@ export async function setHandoff(
       return current.id;
     });
     if (!closed) return { status: "none", handoff: null };
+    await invalidateCachedProfile(params.userId, params.workspaceId, scope, project).catch(() => {});
     logger.info({ userId: params.userId, project, handoffId: closed }, "handoff closed");
     return { status: "closed", handoff: null };
   }
 
-  const { text: content, count: redacted } = redactSecrets((params.content ?? "").trim().slice(0, MAX_HANDOFF_CHARS));
+  // Redact before shortening so a cut cannot split a secret or a <private> span.
+  const { text: redactedText, count: redacted } = redactSecrets((params.content ?? "").trim());
+  const content = redactedText.slice(0, MAX_HANDOFF_CHARS);
   if (!content || (redacted > 0 && isOnlySecret(content))) {
     return { status: "none", handoff: null, ...(redacted ? { redacted } : {}) };
   }
@@ -220,6 +223,7 @@ const toLine = (m: MemoryWithRelevance): ContextLine => ({
   content: m.content,
   createdAt: m.createdAt,
   client: m.client,
+  project: m.project,
   previous: m.previous,
 });
 
@@ -314,7 +318,8 @@ async function recentMemories(params: Owner & { scope?: string }): Promise<Memor
         eq(memories.memoryType, "member"),
         eq(memories.isCurrent, true),
         isNull(memories.deletedAt),
-        ne(memories.category, "preference"),
+        or(isNull(memories.category), ne(memories.category, "preference")),
+        sql`${memories.kind} IS DISTINCT FROM 'handoff'`,
         params.scope ? eq(memories.scope, params.scope) : isNull(memories.scope),
         sql`(${memories.validUntil} IS NULL OR ${memories.validUntil} > NOW())`,
       ),
@@ -447,7 +452,9 @@ export async function importConversations(
   if (!format) throw new Error("Unrecognized export format");
   const parsed = (format === "chatgpt" ? parseChatGPTExport : parseClaudeExport)(params.conversations)
     .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))
-    .slice(0, Math.min(params.limit ?? 50, MAX_IMPORT_CONVERSATIONS));
+    .slice(0, Math.min(params.limit ?? 50, MAX_IMPORT_CONVERSATIONS))
+    // The worker is FIFO: queue oldest first so newer facts supersede older ones.
+    .reverse();
 
   let accepted = 0;
   let skipped = 0;
@@ -460,11 +467,12 @@ export async function importConversations(
       userId: params.userId,
       workspaceId: params.workspaceId,
       sessionId: `import:${format}:${conversation.id}`,
-      messages: conversation.messages.slice(-400),
+      messages: conversation.messages,
       client: format,
       project: params.project,
       scope: params.scope,
-      date: conversation.date?.slice(0, 10),
+      // Start of the chat; later days are marked per line by chunkTranscript.
+      date: (conversation.messages[0]?.at ?? conversation.date)?.slice(0, 10),
       final: true,
       source: params.source,
       maxChunks: limitExceeded ? 0 : MAX_IMPORT_CHUNKS - accepted,
