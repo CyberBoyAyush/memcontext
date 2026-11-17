@@ -38,13 +38,21 @@ search_memory({
       "content": "User prefers pnpm for JavaScript projects.",
       "category": "preference",
       "relevance": 0.92,
-      "createdAt": "2026-04-11T12:00:00.000Z"
+      "createdAt": "2026-04-11T12:00:00.000Z",
+      "client": "claude-code"
     }
   ]
 }
 ```
 
-Each result includes a `relevance` score from 0 to 1.
+Each result includes a `relevance` score from 0 to 1, the date it was saved and, when known, the app that saved it (`client`).
+
+When a memory replaced older values, the result also includes `previous` (newest first). The MCP tool shows it like this:
+
+```
+1. [100% match] Wedding moved to Dec 19 (was Dec 12) (fact) · saved 2026-10-06 via chatgpt [id: …]
+   before: "Wedding is on Dec 12 in Jaipur" (2026-10-03)
+```
 
 ## Query Guidelines
 

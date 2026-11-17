@@ -43,6 +43,16 @@ import type {
 } from "@memcontext/types";
 import type { TimingContext } from "../utils/timing.js";
 import { requireWorkspaceMember } from "../services/workspace.js";
+import {
+  buildMemoryContext,
+  getHandoff,
+  importConversations,
+  ingestTranscript,
+  MAX_IMPORT_CONVERSATIONS,
+  normalizeClient,
+  setHandoff,
+} from "../services/memory-context.js";
+import { isHandoffContent } from "../lib/memory-context.js";
 
 const app = new Hono<{
   Variables: {
@@ -63,9 +73,72 @@ const saveMemorySchema = z.object({
   scope: z.string().trim().min(1).max(200, "Scope too long").optional(),
   project: z.string().max(100, "Project name too long").optional(),
   source: z.enum(["mcp", "web", "api", "openclaw"]).optional().default("api"),
+  client: z.string().trim().max(80).optional(),
   validUntil: z.string().datetime().optional(),
   workspaceId: z.string().uuid().optional(),
 });
+
+const contextQuerySchema = z.object({
+  query: z.string().trim().max(1000).optional(),
+  project: z.string().max(100).optional(),
+  scope: z.string().trim().min(1).max(200, "Scope too long").optional(),
+  maxTokens: z.coerce.number().int().min(100).max(4000).optional(),
+  workspaceId: z.string().uuid().optional(),
+});
+
+const handoffQuerySchema = z.object({
+  project: z.string().max(100).optional(),
+  scope: z.string().trim().min(1).max(200, "Scope too long").optional(),
+  workspaceId: z.string().uuid().optional(),
+});
+
+const setHandoffSchema = z
+  .object({
+    content: z.string().trim().min(1).max(4000).optional(),
+    done: z.boolean().optional(),
+    project: z.string().max(100).optional(),
+    scope: z.string().trim().min(1).max(200, "Scope too long").optional(),
+    client: z.string().trim().max(80).optional(),
+    workspaceId: z.string().uuid().optional(),
+  })
+  .refine((v) => v.done || v.content, { message: "Provide content or done: true" });
+
+const transcriptMessageSchema = z.object({
+  role: z.enum(["user", "assistant", "system", "tool"]),
+  content: z.string().max(100_000),
+  at: z.string().optional(),
+});
+
+const ingestTranscriptSchema = z.object({
+  sessionId: z.string().trim().min(1).max(200),
+  messages: z.array(transcriptMessageSchema).min(1).max(1000),
+  client: z.string().trim().max(80).optional(),
+  project: z.string().max(100).optional(),
+  scope: z.string().trim().min(1).max(200, "Scope too long").optional(),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}(T[\d:.]+(Z|[+-]\d{2}:?\d{2})?)?$/, "date must be YYYY-MM-DD or ISO 8601")
+    .optional(),
+  final: z.boolean().optional(),
+  handoff: z
+    .object({ content: z.string().trim().min(1).max(4000).optional(), done: z.boolean().optional() })
+    .optional(),
+  workspaceId: z.string().uuid().optional(),
+});
+
+const importConversationsSchema = z.object({
+  format: z.enum(["chatgpt", "claude", "auto"]).default("auto"),
+  conversations: z.array(z.unknown()).min(1).max(5000),
+  project: z.string().max(100).optional(),
+  scope: z.string().trim().min(1).max(200, "Scope too long").optional(),
+  limit: z.coerce.number().int().min(1).max(MAX_IMPORT_CONVERSATIONS).optional(),
+  workspaceId: z.string().uuid().optional(),
+});
+
+/** App name from the body, the MemContext client header, or (MCP) the forwarded clientInfo. */
+function resolveClient(c: { req: { header: (name: string) => string | undefined } }, bodyClient?: string) {
+  return normalizeClient(bodyClient ?? c.req.header("X-MemContext-Client"));
+}
 
 const searchMemorySchema = z.object({
   query: z
@@ -177,6 +250,36 @@ app.post(
     const body = c.req.valid("json");
     const timing = getTimingContext(c);
     const workspaceId = await resolveWritableMemoryWorkspace(auth, body.workspaceId);
+    const client = resolveClient(c, body.client);
+
+    // "In progress: …" notes become the project's single, replaceable handoff note.
+    // Runs before the early limit check: replacing an existing note uses no new slot.
+    if (isHandoffContent(body.content) && !body.validUntil) {
+      const handoff = await saveHandoffOr403({
+        userId: auth.userId,
+        workspaceId,
+        content: body.content,
+        scope: body.scope,
+        project: body.project,
+        client,
+        source: body.source as MemorySource,
+      });
+      if (handoff.status === "none") {
+        return c.json(
+          { id: "", status: "skipped", message: "Not saved: the note was empty or only a secret.", redacted: handoff.redacted ?? 0 },
+          200,
+        );
+      }
+      return c.json(
+        {
+          id: handoff.handoff?.id,
+          status: handoff.status === "updated" ? "updated" : "saved",
+          kind: "handoff",
+          ...(handoff.redacted ? { redacted: handoff.redacted } : {}),
+        },
+        201,
+      );
+    }
 
     // Early limit check - saves LLM/embedding costs when user is already at limit
     const limitCheck = await checkMemoryLimit(auth.userId, {
@@ -196,9 +299,14 @@ app.post(
       scope: body.scope,
       project: body.project,
       source: body.source as MemorySource,
+      client,
       timing,
       validUntil: body.validUntil,
     });
+
+    if (result.status === "skipped") {
+      return c.json(result, 200);
+    }
 
     // Transaction-level check handles race condition edge case (e.g., 299/300 + concurrent requests)
     if (result.status === "limit_exceeded") {
@@ -278,6 +386,169 @@ app.get(
     });
 
     return c.json(result);
+  },
+);
+
+async function saveHandoffOr403(params: Parameters<typeof setHandoff>[0]) {
+  try {
+    return await setHandoff(params);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Memory limit exceeded") {
+      throw new HTTPException(403, {
+        message: "Memory limit exceeded. Upgrade your plan at https://app.memcontext.in/settings",
+      });
+    }
+    throw error;
+  }
+}
+
+// GET /context - Ready-to-inject context for plugins, hooks and chat apps
+app.get(
+  "/context",
+  eitherAuthMiddleware,
+  zValidator("query", contextQuerySchema),
+  rateLimitSearchMemory,
+  async (c) => {
+    const auth = c.get("auth");
+    const query = c.req.valid("query");
+    const workspaceId = await resolveMemoryWorkspace(auth, query.workspaceId);
+    const result = await buildMemoryContext({
+      userId: auth.userId,
+      workspaceId,
+      query: query.query || undefined,
+      project: query.project,
+      scope: query.scope,
+      maxTokens: query.maxTokens,
+    });
+    return c.json(result);
+  },
+);
+
+// GET /handoff - Latest open "in progress" note (any project when none is given)
+app.get(
+  "/handoff",
+  eitherAuthMiddleware,
+  zValidator("query", handoffQuerySchema),
+  rateLimitSearchMemory,
+  async (c) => {
+    const auth = c.get("auth");
+    const query = c.req.valid("query");
+    const workspaceId = await resolveMemoryWorkspace(auth, query.workspaceId);
+    const handoff = await getHandoff({
+      userId: auth.userId,
+      workspaceId,
+      project: query.project,
+      scope: query.scope,
+    });
+    return c.json({ handoff });
+  },
+);
+
+// PUT /handoff - Replace the project's in-progress note, or close it with done: true
+app.put(
+  "/handoff",
+  eitherAuthMiddleware,
+  zValidator("json", setHandoffSchema),
+  rateLimitSaveMemory,
+  async (c) => {
+    const auth = c.get("auth");
+    const body = c.req.valid("json");
+    const workspaceId = await resolveWritableMemoryWorkspace(auth, body.workspaceId);
+    const result = await saveHandoffOr403({
+      userId: auth.userId,
+      workspaceId,
+      content: body.content,
+      done: body.done,
+      project: body.project,
+      scope: body.scope,
+      client: resolveClient(c, body.client),
+      source: auth.authType === "session" ? "web" : "api",
+    });
+    return c.json(result);
+  },
+);
+
+// POST /ingest - Queue a chat transcript (hooks, plugins, importers). Idempotent per sessionId.
+app.post(
+  "/ingest",
+  eitherAuthMiddleware,
+  zValidator("json", ingestTranscriptSchema),
+  rateLimitSaveMemory,
+  async (c) => {
+    const auth = c.get("auth");
+    const body = c.req.valid("json");
+    const workspaceId = await resolveWritableMemoryWorkspace(auth, body.workspaceId);
+    const client = resolveClient(c, body.client);
+    const source: MemorySource = auth.authType === "session" ? "web" : "api";
+    const result = await ingestTranscript({
+      userId: auth.userId,
+      workspaceId,
+      sessionId: body.sessionId,
+      messages: body.messages,
+      client,
+      project: body.project,
+      scope: body.scope,
+      date: body.date,
+      final: body.final,
+      source,
+    });
+    if (result.limitExceeded && result.accepted === 0) {
+      throw new HTTPException(403, {
+        message: "Memory limit exceeded. Upgrade your plan at https://app.memcontext.in/settings",
+      });
+    }
+    const handoff =
+      body.handoff && (body.handoff.content || body.handoff.done)
+        ? await saveHandoffOr403({
+            userId: auth.userId,
+            workspaceId,
+            content: body.handoff.content,
+            done: body.handoff.done,
+            project: body.project,
+            scope: body.scope,
+            client,
+            source,
+          })
+        : undefined;
+    return c.json({ ...result, ...(handoff ? { handoff } : {}) }, 202);
+  },
+);
+
+// POST /import - Import a ChatGPT or Claude conversations.json export
+app.post(
+  "/import",
+  eitherAuthMiddleware,
+  zValidator("json", importConversationsSchema),
+  rateLimitSaveMemory,
+  async (c) => {
+    const auth = c.get("auth");
+    const body = c.req.valid("json");
+    const workspaceId = await resolveWritableMemoryWorkspace(auth, body.workspaceId);
+    try {
+      const result = await importConversations({
+        userId: auth.userId,
+        workspaceId,
+        format: body.format,
+        conversations: body.conversations,
+        project: body.project,
+        scope: body.scope,
+        limit: body.limit,
+        source: auth.authType === "session" ? "web" : "api",
+      });
+      if (result.limitExceeded && result.accepted === 0) {
+        throw new HTTPException(403, {
+          message: "Memory limit exceeded. Upgrade your plan at https://app.memcontext.in/settings",
+        });
+      }
+      return c.json(result, 202);
+    } catch (error) {
+      if (error instanceof Error && error.message === "Unrecognized export format") {
+        throw new HTTPException(400, {
+          message: "Unrecognized export. Upload conversations.json from a ChatGPT or Claude data export.",
+        });
+      }
+      throw error;
+    }
   },
 );
 

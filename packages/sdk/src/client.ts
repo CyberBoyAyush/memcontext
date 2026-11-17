@@ -51,6 +51,17 @@ import type {
   Memory,
   ListMemoryItem,
   MemoryWithRelevance,
+  MemoryVersionSummary,
+  HandoffNote,
+  SetHandoffRequest,
+  SetHandoffResponse,
+  GetHandoffResponse,
+  MemoryContextRequest,
+  MemoryContextResponse,
+  IngestTranscriptRequest,
+  IngestTranscriptResponse,
+  ImportConversationsRequest,
+  ImportConversationsResponse,
 } from "./types.js";
 import { MemContextApiError } from "./errors.js";
 
@@ -139,13 +150,43 @@ type JsonListMemoryItem = Omit<
 
 type JsonMemoryWithRelevance = Omit<
   MemoryWithRelevance,
-  "category" | "scope" | "project" | "createdAt"
+  "category" | "scope" | "project" | "createdAt" | "previous"
 > & {
   category?: MemoryWithRelevance["category"] | null;
   scope?: string | null;
   project?: string | null;
   createdAt: string;
+  previous?: Array<Omit<MemoryVersionSummary, "createdAt"> & { createdAt: string }>;
 };
+
+type JsonHandoffNote = Omit<HandoffNote, "createdAt" | "validUntil"> & {
+  createdAt: string;
+  validUntil?: string;
+};
+
+function hydrateSearchMemory(memory: JsonMemoryWithRelevance): MemoryWithRelevance {
+  const { previous, ...rest } = memory;
+  return {
+    ...rest,
+    category: memory.category ?? undefined,
+    scope: memory.scope ?? undefined,
+    project: memory.project ?? undefined,
+    createdAt: new Date(memory.createdAt),
+    ...(previous
+      ? { previous: previous.map((p) => ({ ...p, createdAt: new Date(p.createdAt) })) }
+      : {}),
+  };
+}
+
+function hydrateHandoff(note: JsonHandoffNote | null): HandoffNote | null {
+  if (!note) return null;
+  const { validUntil, ...rest } = note;
+  return {
+    ...rest,
+    createdAt: new Date(note.createdAt),
+    ...(validUntil ? { validUntil: new Date(validUntil) } : {}),
+  };
+}
 
 type JsonWorkspaceResponse = Omit<CreateWorkspaceResponse, "workspace"> & {
   workspace: Omit<CreateWorkspaceResponse["workspace"], "createdAt"> & {
@@ -391,14 +432,113 @@ export class MemContextClient {
 
     return {
       ...response,
-      memories: response.memories.map((memory) => ({
-        ...memory,
-        category: memory.category ?? undefined,
-        scope: memory.scope ?? undefined,
-        project: memory.project ?? undefined,
-        createdAt: new Date(memory.createdAt),
-      })),
+      memories: response.memories.map(hydrateSearchMemory),
     };
+  }
+
+  /** Ready-to-inject memory block (open handoff, preferences, relevant memories) within a token budget. */
+  async context(
+    request: MemoryContextRequest = {},
+    options?: SaveOptions,
+  ): Promise<MemoryContextResponse> {
+    const response = await this.request<
+      Omit<MemoryContextResponse, "handoff" | "preferences" | "memories"> & {
+        handoff: JsonHandoffNote | null;
+        preferences: JsonMemoryWithRelevance[];
+        memories: JsonMemoryWithRelevance[];
+      }
+    >(
+      `/api/memories/context${buildQuery({
+        query: request.query,
+        project: normalizeProject(request.project) ?? this.defaultProject,
+        scope: normalizeScope(request.scope) ?? this.defaultScope,
+        maxTokens: request.maxTokens,
+      })}`,
+      { method: "GET", signal: options?.signal },
+    );
+    return {
+      ...response,
+      handoff: hydrateHandoff(response.handoff),
+      preferences: response.preferences.map(hydrateSearchMemory),
+      memories: response.memories.map(hydrateSearchMemory),
+    };
+  }
+
+  /** Latest open "in progress" note for a project (or across projects when none is set). */
+  async getHandoff(
+    request: Pick<SetHandoffRequest, "project" | "scope"> = {},
+    options?: SaveOptions,
+  ): Promise<GetHandoffResponse> {
+    const response = await this.request<{ handoff: JsonHandoffNote | null }>(
+      `/api/memories/handoff${buildQuery({
+        project: normalizeProject(request.project) ?? this.defaultProject,
+        scope: normalizeScope(request.scope) ?? this.defaultScope,
+      })}`,
+      { method: "GET", signal: options?.signal },
+    );
+    return { handoff: hydrateHandoff(response.handoff) };
+  }
+
+  /** Replace the project's in-progress note, or close it with `done: true`. */
+  async setHandoff(
+    request: SetHandoffRequest,
+    options?: SaveOptions,
+  ): Promise<SetHandoffResponse> {
+    const response = await this.request<
+      Omit<SetHandoffResponse, "handoff"> & { handoff: JsonHandoffNote | null }
+    >("/api/memories/handoff", {
+      method: "PUT",
+      body: {
+        ...request,
+        project: normalizeProject(request.project) ?? this.defaultProject,
+        scope: normalizeScope(request.scope) ?? this.defaultScope,
+      },
+      signal: options?.signal,
+    });
+    return { ...response, handoff: hydrateHandoff(response.handoff) };
+  }
+
+  /** Queue a chat transcript for memory extraction. Safe to resend: chunks already ingested are skipped. */
+  async ingest(
+    request: IngestTranscriptRequest,
+    options?: SaveOptions,
+  ): Promise<IngestTranscriptResponse> {
+    const response = await this.request<
+      Omit<IngestTranscriptResponse, "handoff"> & {
+        handoff?: Omit<SetHandoffResponse, "handoff"> & { handoff: JsonHandoffNote | null };
+      }
+    >("/api/memories/ingest", {
+      method: "POST",
+      body: {
+        ...request,
+        project: normalizeProject(request.project) ?? this.defaultProject,
+        scope: normalizeScope(request.scope) ?? this.defaultScope,
+      },
+      signal: options?.signal,
+    });
+    const { handoff, ...rest } = response;
+    return {
+      ...rest,
+      ...(handoff ? { handoff: { ...handoff, handoff: hydrateHandoff(handoff.handoff) } } : {}),
+    };
+  }
+
+  /** Import a ChatGPT or Claude `conversations.json` export (newest conversations first). */
+  async importConversations(
+    request: ImportConversationsRequest,
+    options?: SaveOptions,
+  ): Promise<ImportConversationsResponse> {
+    return this.request<ImportConversationsResponse>("/api/memories/import", {
+      method: "POST",
+      body: {
+        format: request.format ?? "auto",
+        conversations: request.conversations,
+        limit: request.limit,
+        project: normalizeProject(request.project) ?? this.defaultProject,
+        scope: normalizeScope(request.scope) ?? this.defaultScope,
+      },
+      signal: options?.signal,
+    });
   }
 
   async list(request: ListMemoriesRequest = {}): Promise<ListMemoriesResponse> {

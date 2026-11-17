@@ -116,6 +116,10 @@ export const memories = pgTable(
     category: text("category"),
     project: text("project"),
     source: text("source").notNull(),
+    // App that wrote the memory (e.g. "claude-code", "chatgpt"), when known.
+    client: text("client"),
+    // null = normal memory; "handoff" = latest "in progress" note per project.
+    kind: text("kind"),
     isCurrent: boolean("is_current").default(true).notNull(),
     supersedesId: uuid("supersedes_id"),
     rootId: uuid("root_id"),
@@ -155,6 +159,11 @@ export const memories = pgTable(
     index("memories_vault_scope_type_current_idx")
       .on(table.vaultId, table.scope, table.memoryType)
       .where(sql`${table.isCurrent} = true AND ${table.deletedAt} IS NULL`),
+    index("memories_handoff_current_idx")
+      .on(table.workspaceId, table.userId, table.project)
+      .where(
+        sql`${table.kind} = 'handoff' AND ${table.isCurrent} = true AND ${table.deletedAt} IS NULL`,
+      ),
     index("memories_supersedes_idx").on(table.supersedesId),
     index("memories_root_idx").on(table.rootId),
     index("memories_valid_until_idx").on(table.validUntil),
@@ -217,6 +226,11 @@ export const memorySources = pgTable(
       table.workspaceId,
       table.contentHash,
     ),
+    uniqueIndex("memory_sources_transcript_hash_uidx")
+      .on(table.workspaceId, table.userId, table.contentHash)
+      .where(
+        sql`${table.vaultId} IS NULL AND ${table.contentHash} IS NOT NULL AND ${table.status} <> 'failed'`,
+      ),
     index("memory_sources_workspace_phase_idx").on(
       table.workspaceId,
       table.processingPhase,

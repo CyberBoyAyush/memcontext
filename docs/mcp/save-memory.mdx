@@ -56,8 +56,16 @@ The response includes a `status` field indicating what happened:
 | `extended`  | Created a relation to an existing memory                   |
 | `duplicate` | Content already exists, nothing saved                      |
 | `accepted`  | Large content accepted for asynchronous extraction         |
+| `skipped`   | Not saved: the content was only a secret                   |
 
 Duplicates are handled automatically - re-saving an already-known fact is safe.
+
+Passwords, API keys, tokens and card numbers are removed before anything is stored. The response includes `redacted` with the number removed.
+
+### Changes and in-progress work
+
+- When something changes, save the new value and say what it replaced, e.g. `"Wedding moved to Dec 19 (was Dec 12)"`. The old memory is kept as history and `search_memory` shows it under `before:`.
+- Content starting with `In progress:`, `WIP:` or `Handoff:` becomes the project's single in-progress note (`kind: "handoff"` in the response). A newer note replaces the old one, so the next session in any app can continue where you stopped. Notes expire after 14 days.
 
 When `status` is `accepted`, the response includes a `jobId` plus a message for tracking extraction.
 

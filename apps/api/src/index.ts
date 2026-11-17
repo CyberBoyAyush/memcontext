@@ -32,6 +32,8 @@ import type { HealthResponse } from "@memcontext/types";
 
 const app = new Hono();
 const defaultBodyLimit = bodyLimit({ maxSize: 50 * 1024 });
+const transcriptBodyLimit = bodyLimit({ maxSize: 2 * 1024 * 1024 });
+const importBodyLimit = bodyLimit({ maxSize: 20 * 1024 * 1024 });
 
 app.use("*", requestLogger);
 
@@ -61,6 +63,7 @@ const appCors = cors({
     "Content-Type",
     "Authorization",
     "X-API-Key",
+    "X-MemContext-Client",
     "x-captcha-response",
   ],
   credentials: true,
@@ -100,6 +103,8 @@ app.use("*", (c, next) => {
   ) {
     return next();
   }
+  if (c.req.path === "/api/memories/ingest") return transcriptBodyLimit(c, next);
+  if (c.req.path === "/api/memories/import") return importBodyLimit(c, next);
   return defaultBodyLimit(c, next);
 });
 

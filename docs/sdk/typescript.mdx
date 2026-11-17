@@ -223,6 +223,64 @@ Checks API health.
 const health = await client.health();
 ```
 
+## Cross-App Methods
+
+Building blocks for plugins, hooks and chat-app integrations. The app name can be passed as `client` (or the `X-MemContext-Client` header) so memories show where they came from.
+
+### `context(request?, options?)`
+
+Ready-to-inject memory for a prompt: the open in-progress note, preferences and memories relevant to `query`, within a token budget. Each line shows its date, app and what it replaced.
+
+```typescript
+const { text, tokens, handoff } = await client.context({
+  query: "continue where I left off",
+  project: "shopfront",
+  maxTokens: 600,
+});
+// Put `text` in the system prompt or a UserPromptSubmit hook.
+```
+
+### `setHandoff(request, options?)` / `getHandoff(request?, options?)`
+
+One open "in progress" note per project. A new note replaces the old one; `done: true` closes it. Notes expire after 14 days.
+
+```typescript
+await client.setHandoff({
+  project: "shopfront",
+  content: "In progress: orders pagination — next: return nextCursor",
+  client: "claude-code",
+});
+const { handoff } = await client.getHandoff({ project: "shopfront" });
+await client.setHandoff({ project: "shopfront", done: true });
+```
+
+### `ingest(request, options?)`
+
+Queue a chat transcript for background extraction. Secrets are removed first. Resending the same or a longer transcript with the same `sessionId` only queues new chunks; pass `final: false` while the chat is still going.
+
+```typescript
+await client.ingest({
+  sessionId: "claude-code:7f3a",
+  client: "claude-code",
+  project: "shopfront",
+  date: "2026-10-13",
+  messages: [
+    { role: "user", content: "Switch payments to Dodo, it handles GST." },
+    { role: "assistant", content: "Done. Webhook is in src/routes/webhooks/dodo.ts." },
+  ],
+  handoff: { content: "In progress: Dodo webhook — next: verify signature" },
+});
+```
+
+### `importConversations(request, options?)`
+
+Import `conversations.json` from a ChatGPT or Claude data export. The newest conversations are ingested (default 50, max 200); re-importing is a no-op.
+
+```typescript
+import conversations from "./conversations.json";
+await client.importConversations({ format: "auto", conversations, limit: 100 });
+```
+
 ## Workspace Methods
 
 Context Vault uses workspaces for shared knowledge. These methods require an API
