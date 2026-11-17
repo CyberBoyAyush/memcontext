@@ -7,6 +7,14 @@ import type {
   UpdateMemoryResponse,
 } from "@memcontext/types";
 
+// Sent as MCP server `instructions`. ChatGPT and Codex read the first ~512 chars, so the key rules come first.
+export const SERVER_INSTRUCTIONS =
+  "MemContext is the user's memory shared across all their AI apps (ChatGPT, Claude, Codex, Cursor, coding agents). " +
+  "At the start of a conversation, call search_memory with the user's request to load their preferences, ongoing work and past decisions. " +
+  "Call save_memory when the user shares or CHANGES a preference, decision, plan, date or fact (say what it replaced). " +
+  "If work is left unfinished, save 'In progress: <task> — next: <step>' with the project. " +
+  "Never save passwords, API keys or card numbers.";
+
 const saveMemorySchema = {
   content: z
     .string()
@@ -98,6 +106,29 @@ type SaveMemoryInput = z.infer<z.ZodObject<typeof saveMemorySchema>>;
 type SearchMemoryInput = z.infer<z.ZodObject<typeof searchMemorySchema>>;
 type UpdateMemoryInput = z.infer<z.ZodObject<typeof updateMemorySchema>>;
 
+const day = (value: Date | string) => String(value).slice(0, 10);
+
+/** One search hit: content, when/where it was saved, and what it replaced (newest first). */
+export function formatSearchResult(
+  m: SearchMemoryResponse["memories"][number],
+  index: number,
+): string {
+  const meta = [m.category, m.project ? `project: ${m.project}` : undefined]
+    .filter(Boolean)
+    .join(", ");
+  const saved = `saved ${day(m.createdAt)}${m.client ? ` via ${m.client}` : ""}`;
+  const label = m.kind === "handoff" ? "[in progress] " : "";
+  let line = `${index + 1}. [${(m.relevance * 100).toFixed(0)}% match] ${label}${m.content}${
+    meta ? ` (${meta})` : ""
+  } · ${saved} [id: ${m.id}]`;
+  if (m.previous?.length) {
+    line += `\n   before: ${m.previous
+      .map((p) => `"${p.content.length > 120 ? `${p.content.slice(0, 119)}…` : p.content}" (${day(p.createdAt)})`)
+      .join(" ← ")}`;
+  }
+  return line;
+}
+
 function normalizeProject(project: string | undefined): string | undefined {
   if (!project) return undefined;
   return project
@@ -121,6 +152,8 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
         "(4) User says 'remember', 'save this', 'note this', or similar. " +
         "(5) A durable project fact is learned (stack, structure, naming conventions). " +
         "(6) A project convention or reusable pattern is established. " +
+        "When the user CHANGES something already decided (a date, plan, tool, budget), save the new value and say what it replaced, e.g. 'Wedding moved to Dec 19 (was Dec 12)'. " +
+        "When the user leaves with work unfinished, save 'In progress: <what> — next: <exact next step>' with the project; it replaces the previous in-progress note so any app can continue. " +
         "Do not defer or batch saves — save the moment the trigger occurs. " +
         "Do not save ephemeral task state, one-off debug info, or trivial details with no future value. " +
         "Long notes may be accepted for background extraction into multiple atomic memories while shorter notes are saved immediately. " +
@@ -205,12 +238,7 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
         }
 
         const formattedMemories = response.memories
-          .map(
-            (m, i) =>
-              `${i + 1}. [${(m.relevance * 100).toFixed(0)}% match] ${m.content}${
-                m.category ? ` (${m.category})` : ""
-              }${m.project ? ` [${m.project}]` : ""} [id: ${m.id}]`,
-          )
+          .map((m, i) => formatSearchResult(m, i))
           .join("\n\n");
 
         return {

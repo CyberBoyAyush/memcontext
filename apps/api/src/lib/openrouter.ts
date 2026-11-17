@@ -399,8 +399,28 @@ Memory: "${escapedContent}"`,
   }
 }
 
+export interface ExtractOptions {
+  /** Content is a USER/ASSISTANT chat transcript rather than a note. */
+  transcript?: boolean;
+  /** ISO date of the conversation, used to resolve relative dates. */
+  date?: string;
+}
+
+function transcriptRules(date?: string): string {
+  return `
+Transcript rules (the content is a chat between the USER and an AI ASSISTANT):
+- Remember what the USER said, decided, or confirmed. Assistant suggestions count only if the user clearly accepted them.
+- Skip small talk, jokes, hypotheticals ("what if…"), options the user rejected (unless the rejection itself matters later), other people's opinions the user did not adopt, and anything the user marked off the record or asked not to remember.
+- When the user changes something, write the NEW value and what it replaced, e.g. "Wedding moved to Dec 19 (was Dec 12)".
+- Write dates as absolute dates.${date ? ` The conversation happened on ${date}; resolve "tomorrow", "next Friday", "in two weeks" against it.` : ""} A line starting with [YYYY-MM-DD] means the chat continued on that date; resolve relative dates after it against that date.
+- Text under "[earlier YYYY-MM-DD, context only]" was already processed and was said on that earlier date (resolve its relative dates against it): use it only to understand the lines after it (e.g. what "yes, book it" refers to). Do not save facts that appear only there.
+- Never include passwords, keys, tokens or card numbers; [REDACTED_SECRET] marks removed secrets.
+`;
+}
+
 export async function extractAtomicMemories(
   content: string,
+  options: ExtractOptions = {},
 ): Promise<string[]> {
   const start = performance.now();
 
@@ -408,6 +428,7 @@ export async function extractAtomicMemories(
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     const escapedContent = escapeForPrompt(content);
+    const extraRules = options.transcript ? transcriptRules(options.date) : "";
 
     try {
       const response = await fetch(
@@ -455,7 +476,7 @@ Rules:
 - Keep each memory concise, ideally 1-2 sentences.
 - Return no more than 25 high-value memories.
 - If the content contains nothing worth remembering, return {"memories": []}.
-
+${extraRules}
 Content:
 "${escapedContent}"`,
               },

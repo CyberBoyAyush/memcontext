@@ -26,6 +26,8 @@ import {
 import { invalidateApiKey, invalidateCachedProfile } from "./cache.js";
 import { normalizeProjectName, normalizeScope } from "../utils/index.js";
 import { logger } from "../lib/logger.js";
+import { redactSecrets, isOnlySecret } from "../lib/redact.js";
+import { isValidDay } from "../lib/memory-context.js";
 import {
   eq,
   and,
@@ -53,6 +55,7 @@ import type {
   MemoryHistoryResponse,
   MemoryProfile,
   MemorySource,
+  MemoryVersionSummary,
   SaveMemoryResponse,
   MemoryWithRelevance,
   SearchMemoryResponse,
@@ -67,6 +70,7 @@ const NO_PROJECT_FILTER_VALUE = "__memcontext_no_project__";
 const LONG_CONTENT_THRESHOLD = 800;
 const ESTIMATED_CHARS_PER_MEMORY = 200;
 const MAX_RESERVED_MEMORY_SLOTS = 25;
+const MAX_TRANSCRIPT_CHUNK_SLOTS = 8;
 const MEMORY_SOURCE_POLL_INTERVAL_MS = 1500;
 const MEMORY_SOURCE_STALE_AFTER_MS = 60 * 60 * 1000;
 
@@ -82,9 +86,12 @@ interface SaveMemoryParams {
   scope?: string;
   project?: string;
   source: MemorySource;
+  client?: string;
   memoryType?: "member" | "user" | "document" | "company";
   timing?: TimingContext;
   validUntil?: string;
+  /** Day (YYYY-MM-DD) the fact was said, for imported/ingested transcripts. */
+  sourceDate?: string;
 }
 
 type SaveMemoryResult =
@@ -94,12 +101,23 @@ type SaveMemoryResult =
       status: "limit_exceeded";
       current?: number;
       limit?: number;
+    }
+  | {
+      id: "";
+      status: "skipped";
+      message: string;
+      redacted: number;
     };
 
 interface MemorySourcePayload {
   content: string;
   validUntil?: string | null;
   memoryType?: "member" | "user" | "document" | "company";
+  mode?: "transcript";
+  client?: string;
+  sessionId?: string;
+  date?: string;
+  sourceDate?: string;
 }
 
 interface AtomicSaveOptions {
@@ -131,6 +149,26 @@ interface SearchMemoriesParams {
 export async function saveMemory(
   params: SaveMemoryParams,
 ): Promise<SaveMemoryResult> {
+  const { userId } = params;
+  const { text: content, count: redacted } = redactSecrets(params.content);
+  if (redacted > 0 && isOnlySecret(content)) {
+    logger.info({ userId, redacted }, "memory skipped (secret only)");
+    return {
+      id: "",
+      status: "skipped",
+      message: "Not saved: the content was only a secret (passwords, keys and card numbers are never stored).",
+      redacted,
+    };
+  }
+  const result = await saveRedactedMemory({ ...params, content });
+  return redacted > 0 && result.status !== "limit_exceeded" && result.status !== "skipped"
+    ? { ...result, redacted }
+    : result;
+}
+
+async function saveRedactedMemory(
+  params: SaveMemoryParams,
+): Promise<SaveMemoryResult> {
   const { userId, content, category, source, timing, validUntil } = params;
   const scope = normalizeScope(params.scope);
   const noProject = params.project === NO_PROJECT_FILTER_VALUE;
@@ -149,6 +187,7 @@ export async function saveMemory(
       content,
       category,
       source,
+      client: params.client,
       scope,
       project,
       memoryType,
@@ -164,6 +203,7 @@ export async function saveMemory(
       scope,
       project,
       source,
+      client: params.client,
       workspaceId,
       vaultId,
       memoryType,
@@ -257,7 +297,7 @@ async function saveAtomicMemory(
   params: SaveMemoryParams,
   options: AtomicSaveOptions,
 ): Promise<SaveMemoryResult> {
-  const { userId, content, category, source, timing, validUntil } = params;
+  const { userId, category, source, timing, validUntil } = params;
   const {
     scope,
     project,
@@ -267,7 +307,23 @@ async function saveAtomicMemory(
     skipLimitCheck = false,
     countTowardsUserLimit = true,
   } = options;
+  // Personal memories (incl. ones extracted from transcripts) never keep secrets.
+  // Context Vault document/company memories are left as written.
+  let content = params.content;
+  if (memoryType === "member") {
+    const redacted = redactSecrets(params.content);
+    if (redacted.count > 0 && isOnlySecret(redacted.text)) {
+      return { id: "", status: "skipped", message: "Not saved: the content was only a secret.", redacted: redacted.count };
+    }
+    content = redacted.text;
+  }
   const userValidUntil = validUntil ? new Date(validUntil) : undefined;
+  // Facts from older conversations are valid from the day they were said, not the import time.
+  const sourceDay = params.sourceDate?.slice(0, 10);
+  const validFromDate =
+    sourceDay && isValidDay(sourceDay) && sourceDay < dayOf(new Date())
+      ? new Date(`${sourceDay}T00:00:00Z`)
+      : new Date();
 
   const expandResult = await expandMemory(content, timing);
   const expandedContent = expandResult.expandedContent;
@@ -328,7 +384,8 @@ async function saveAtomicMemory(
                 category,
                 project,
                 source,
-                validFrom: new Date(),
+                client: params.client ?? null,
+                validFrom: validFromDate,
                 validUntil: validUntilDate,
               })
               .returning({ id: memories.id });
@@ -365,7 +422,8 @@ async function saveAtomicMemory(
               category,
               project,
               source,
-              validFrom: new Date(),
+              client: params.client ?? null,
+              validFrom: validFromDate,
               validUntil: validUntilDate,
             })
             .returning({ id: memories.id });
@@ -470,6 +528,22 @@ async function saveAtomicMemory(
       ? similarMemories[classification.targetIndex]
       : undefined) ?? similarMemories[0];
 
+  // An imported fact said on an earlier day must not replace a newer current memory.
+  if (
+    classification.action === "update" &&
+    sourceDay &&
+    isValidDay(sourceDay) &&
+    sourceDay < dayOf(targetMemory.validFrom ?? targetMemory.createdAt)
+  ) {
+    logger.info({ userId, existingId: targetMemory.id, sourceDay }, "older fact skipped (newer memory exists)");
+    return {
+      id: targetMemory.id,
+      status: "duplicate",
+      existingId: targetMemory.id,
+      message: "Not saved: a newer version of this memory already exists.",
+    };
+  }
+
   if (classification.action === "update") {
     const newMemoryId = await (timing
       ? withTiming(timing, "db_update", async () =>
@@ -487,10 +561,11 @@ async function saveAtomicMemory(
                 category: category ?? targetMemory.category,
                 project: project ?? targetMemory.project,
                 source,
+                client: params.client ?? null,
                 supersedesId: targetMemory.id,
                 rootId: targetMemory.rootId ?? targetMemory.id,
                 version: targetMemory.version + 1,
-                validFrom: new Date(),
+                validFrom: validFromDate,
                 validUntil: validUntilDate,
               })
               .returning({ id: memories.id });
@@ -525,10 +600,11 @@ async function saveAtomicMemory(
               category: category ?? targetMemory.category,
               project: project ?? targetMemory.project,
               source,
+              client: params.client ?? null,
               supersedesId: targetMemory.id,
               rootId: targetMemory.rootId ?? targetMemory.id,
               version: targetMemory.version + 1,
-              validFrom: new Date(),
+              validFrom: validFromDate,
               validUntil: validUntilDate,
             })
             .returning({ id: memories.id });
@@ -605,7 +681,8 @@ async function saveAtomicMemory(
               category,
               project,
               source,
-              validFrom: new Date(),
+              client: params.client ?? null,
+              validFrom: validFromDate,
               validUntil: validUntilDate,
             })
             .returning({ id: memories.id });
@@ -652,7 +729,8 @@ async function saveAtomicMemory(
             category,
             project,
             source,
-            validFrom: new Date(),
+            client: params.client ?? null,
+            validFrom: validFromDate,
             validUntil: validUntilDate,
           })
           .returning({ id: memories.id });
@@ -705,6 +783,35 @@ async function saveAtomicMemory(
   };
 }
 
+/** Queue one already-redacted transcript chunk for background extraction. */
+export async function enqueueTranscriptChunk(params: {
+  userId: string;
+  workspaceId: string;
+  content: string;
+  sessionId: string;
+  contentHash: string;
+  client?: string;
+  scope?: string;
+  project?: string;
+  date?: string;
+  /** Latest day in the chunk; an older fact never supersedes a newer memory. */
+  sourceDate?: string;
+  source: MemorySource;
+}): Promise<SaveMemoryResult> {
+  return enqueueLongMemorySource({
+    userId: params.userId,
+    workspaceId: params.workspaceId,
+    content: params.content,
+    source: params.source,
+    client: params.client,
+    scope: normalizeScope(params.scope),
+    project: normalizeProjectName(params.project),
+    memoryType: "member",
+    transcript: { sessionId: params.sessionId, date: params.date, sourceDate: params.sourceDate },
+    contentHash: params.contentHash,
+  });
+}
+
 function estimateReservedMemorySlots(content: string): number {
   return Math.min(
     MAX_RESERVED_MEMORY_SLOTS,
@@ -713,12 +820,29 @@ function estimateReservedMemorySlots(content: string): number {
 }
 
 async function enqueueLongMemorySource(
-  params: SaveMemoryParams & { scope?: string; project?: string },
+  params: SaveMemoryParams & {
+    scope?: string;
+    project?: string;
+    transcript?: { sessionId: string; date?: string; sourceDate?: string };
+    contentHash?: string;
+  },
 ): Promise<SaveMemoryResult> {
-  const reservedSlots = estimateReservedMemorySlots(params.content);
+  // Transcript chunks are mostly chatter; reserving 25 slots per chunk would lock users out.
+  const reservedSlots = params.transcript
+    ? Math.min(MAX_TRANSCRIPT_CHUNK_SLOTS, estimateReservedMemorySlots(params.content))
+    : estimateReservedMemorySlots(params.content);
   const payload: MemorySourcePayload = {
     content: params.content,
     validUntil: params.validUntil ?? null,
+    ...(params.client ? { client: params.client } : {}),
+    ...(params.transcript
+      ? {
+          mode: "transcript" as const,
+          sessionId: params.transcript.sessionId,
+          date: params.transcript.date,
+          sourceDate: params.transcript.sourceDate,
+        }
+      : {}),
   };
 
   const result = await db.transaction(async (tx) => {
@@ -748,6 +872,8 @@ async function enqueueLongMemorySource(
         sourceType: "text",
         status: "pending",
         reservedSlots,
+        contentHash: params.contentHash,
+        title: params.transcript ? `transcript:${params.transcript.sessionId}`.slice(0, 200) : undefined,
         payload: {
           ...payload,
           memoryType: params.memoryType === "user" ? "member" : (params.memoryType ?? "member"),
@@ -859,10 +985,15 @@ async function claimNextPendingMemorySource() {
 
 async function processMemorySource(memorySource: MemorySourceRow) {
   const payload = memorySource.payload as MemorySourcePayload;
-  const extractedMemories = await extractAtomicMemories(payload.content);
+  const extractedMemories = await extractAtomicMemories(
+    payload.content,
+    undefined,
+    payload.mode === "transcript" ? { transcript: true, date: payload.date } : undefined,
+  );
+  // Transcript chunks reserve few slots up front; extra facts are saved only within the plan limit.
   const candidateMemories = extractedMemories.slice(
     0,
-    memorySource.reservedSlots,
+    payload.mode === "transcript" ? MAX_RESERVED_MEMORY_SLOTS : memorySource.reservedSlots,
   );
 
   if (candidateMemories.length === 0) {
@@ -883,8 +1014,9 @@ async function processMemorySource(memorySource: MemorySourceRow) {
     return;
   }
 
-  for (const candidate of candidateMemories) {
-    await saveAtomicMemory(
+  let processed = 0;
+  for (const [index, candidate] of candidateMemories.entries()) {
+    const saved = await saveAtomicMemory(
       {
         userId: memorySource.userId,
         workspaceId: memorySource.workspaceId ?? undefined,
@@ -893,9 +1025,11 @@ async function processMemorySource(memorySource: MemorySourceRow) {
         scope: memorySource.scope ?? undefined,
         project: memorySource.project ?? undefined,
         source: memorySource.source as MemorySource,
+        client: payload.client,
         memoryType: payload.memoryType === "user" ? "member" : (payload.memoryType ?? "member"),
         validUntil: payload.validUntil ?? undefined,
         vaultId: memorySource.vaultId ?? undefined,
+        sourceDate: payload.mode === "transcript" ? (payload.sourceDate ?? payload.date) : undefined,
       },
       {
         scope: memorySource.scope ?? undefined,
@@ -903,14 +1037,23 @@ async function processMemorySource(memorySource: MemorySourceRow) {
         workspaceId: memorySource.workspaceId ?? undefined,
         vaultId: memorySource.vaultId ?? undefined,
         memoryType: payload.memoryType === "user" ? "member" : (payload.memoryType ?? "member"),
-        skipLimitCheck: true,
+        skipLimitCheck: index < memorySource.reservedSlots,
       },
     );
+    if (saved.status === "limit_exceeded") break;
+    processed++;
 
     await db
       .update(memorySources)
       .set({ updatedAt: new Date() })
       .where(eq(memorySources.id, memorySource.id));
+  }
+
+  if (processed < candidateMemories.length) {
+    logger.warn(
+      { memorySourceId: memorySource.id, userId: memorySource.userId, dropped: candidateMemories.length - processed },
+      "memory limit reached while saving extracted facts",
+    );
   }
 
   await db
@@ -923,7 +1066,11 @@ async function processMemorySource(memorySource: MemorySourceRow) {
       payload: {
         contentLength: payload.content.length,
         validUntil: payload.validUntil ?? null,
-        extractedCount: candidateMemories.length,
+        extractedCount: processed,
+        // Facts not saved because the plan limit was reached (visible on the job for follow-up).
+        ...(processed < candidateMemories.length
+          ? { droppedForLimit: candidateMemories.length - processed }
+          : {}),
       },
     })
     .where(eq(memorySources.id, memorySource.id));
@@ -1045,8 +1192,12 @@ interface SimilarMemoryResult {
   rootId: string | null;
   version: number;
   validUntil: Date | null;
+  validFrom: Date | null;
+  createdAt: Date;
   distance: number;
 }
+
+const dayOf = (date: Date) => date.toISOString().slice(0, 10);
 
 export async function findSimilarMemories(
   userId: string,
@@ -1078,6 +1229,8 @@ export async function findSimilarMemories(
       memories.memoryType,
       effectiveMemoryType,
     ),
+    // In-progress notes have their own latest-wins chain; never dedupe facts against them.
+    sql`${memories.kind} IS DISTINCT FROM 'handoff'`,
   ];
 
   if (effectiveMemoryType === "member") {
@@ -1121,6 +1274,8 @@ export async function findSimilarMemories(
       rootId: memories.rootId,
       version: memories.version,
       validUntil: memories.validUntil,
+      validFrom: memories.validFrom,
+      createdAt: memories.createdAt,
       distance,
     })
     .from(memories)
@@ -1212,6 +1367,10 @@ export async function searchMemories(
         scope: memories.scope,
         project: memories.project,
         memoryType: memories.memoryType,
+        rootId: memories.rootId,
+        version: memories.version,
+        client: memories.client,
+        kind: memories.kind,
         createdAt: memories.createdAt,
       })
       .from(memories)
@@ -1265,6 +1424,10 @@ export async function searchMemories(
         scope: memories.scope,
         project: memories.project,
         memoryType: memories.memoryType,
+        rootId: memories.rootId,
+        version: memories.version,
+        client: memories.client,
+        kind: memories.kind,
         createdAt: memories.createdAt,
         rank: tsRank,
       })
@@ -1326,6 +1489,10 @@ export async function searchMemories(
         project: string | null;
         memoryType: string;
         createdAt: Date;
+        rootId: string | null;
+        version: number;
+        client: string | null;
+        kind: string | null;
       };
     }
   >();
@@ -1345,6 +1512,10 @@ export async function searchMemories(
           project: row.project,
           memoryType: row.memoryType,
           createdAt: row.createdAt,
+          rootId: row.rootId,
+          version: row.version,
+          client: row.client,
+          kind: row.kind,
         },
       });
     });
@@ -1418,6 +1589,11 @@ export async function searchMemories(
   const searchDuration = Math.round(performance.now() - searchStart);
   const topScore = merged.length > 0 ? merged[0].score : 0;
 
+  const previousByRoot = await getPreviousVersions(
+    merged.map(({ row }) => row),
+    { userId: params.visibleUserId ?? userId, workspaceId },
+  );
+
   const memoriesWithRelevance: MemoryWithRelevance[] = merged.map(
     ({ row, score }) => ({
       id: row.id,
@@ -1428,6 +1604,11 @@ export async function searchMemories(
       memoryType: row.memoryType as "user" | "document" | "company",
       relevance: topScore > 0 ? Math.round((score / topScore) * 100) / 100 : 0,
       createdAt: row.createdAt,
+      ...(row.client ? { client: row.client } : {}),
+      ...(row.kind === "handoff" ? { kind: "handoff" as const } : {}),
+      ...(row.rootId && previousByRoot.get(row.rootId)?.length
+        ? { previous: previousByRoot.get(row.rootId) }
+        : {}),
     }),
   );
 
@@ -1459,6 +1640,54 @@ export async function searchMemories(
   };
 }
 
+const MAX_PREVIOUS_VERSIONS = 3;
+
+/** Older versions (newest first) for memories that superseded something. */
+async function getPreviousVersions(
+  rows: Array<{ id: string; rootId: string | null; version: number }>,
+  owner: { userId: string; workspaceId?: string },
+): Promise<Map<string, MemoryVersionSummary[]>> {
+  const versioned = rows.filter((row) => row.rootId && row.version > 1);
+  const result = new Map<string, MemoryVersionSummary[]>();
+  if (versioned.length === 0) return result;
+
+  const rootIds = [...new Set(versioned.map((row) => row.rootId!))];
+  const olderRows = await db
+    .select({
+      rootId: sql<string>`COALESCE(${memories.rootId}, ${memories.id})`,
+      content: memories.content,
+      createdAt: memories.createdAt,
+      client: memories.client,
+      version: memories.version,
+    })
+    .from(memories)
+    .where(
+      and(
+        or(inArray(memories.rootId, rootIds), inArray(memories.id, rootIds)),
+        eq(memories.isCurrent, false),
+        isNull(memories.deletedAt),
+        eq(memories.userId, owner.userId),
+        owner.workspaceId
+          ? eq(memories.workspaceId, owner.workspaceId)
+          : isNull(memories.workspaceId),
+      ),
+    )
+    .orderBy(desc(memories.version));
+
+  for (const row of olderRows) {
+    const list = result.get(row.rootId) ?? [];
+    if (list.length >= MAX_PREVIOUS_VERSIONS) continue;
+    list.push({
+      // Older rows may predate redaction.
+      content: redactSecrets(row.content).text,
+      createdAt: row.createdAt,
+      ...(row.client ? { client: row.client } : {}),
+    });
+    result.set(row.rootId, list);
+  }
+  return result;
+}
+
 interface UpdateMemoryParams {
   userId: string;
   workspaceId: string;
@@ -1487,7 +1716,8 @@ interface UpdateMemoryResult {
 export async function updateMemory(
   params: UpdateMemoryParams,
 ): Promise<UpdateMemoryResult> {
-  const { userId, workspaceId, memoryId, content, category, timing } = params;
+  const { userId, workspaceId, memoryId, category, timing } = params;
+  const content = params.content ? redactSecrets(params.content).text : undefined;
   const scope = normalizeScope(params.scope);
   const project = normalizeProjectName(params.project);
   const start = performance.now();

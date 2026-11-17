@@ -4,7 +4,7 @@ import {
   extractAtomicMemories as openrouterExtractAtomicMemories,
   generateQueryVariants as openrouterGenerateQueryVariants,
 } from "../lib/openrouter.js";
-import type { ExpandMemoryResult } from "../lib/openrouter.js";
+import type { ExpandMemoryResult, ExtractOptions } from "../lib/openrouter.js";
 import { logger } from "../lib/logger.js";
 import type { TimingContext } from "../utils/timing.js";
 import { withTiming } from "../utils/timing.js";
@@ -70,6 +70,7 @@ export async function generateQueryVariants(
 export async function extractAtomicMemories(
   content: string,
   timing?: TimingContext,
+  options?: ExtractOptions,
 ): Promise<string[]> {
   if (!content || content.trim().length === 0) {
     return [];
@@ -77,9 +78,9 @@ export async function extractAtomicMemories(
 
   if (timing) {
     return withTiming(timing, "extract_atomic_memories", () =>
-      openrouterExtractAtomicMemories(content),
+      openrouterExtractAtomicMemories(content, options),
     );
   }
 
-  return openrouterExtractAtomicMemories(content);
+  return openrouterExtractAtomicMemories(content, options);
 }

@@ -10,7 +10,7 @@ import {
 } from "@modelcontextprotocol/server";
 import { toNodeHandler } from "@modelcontextprotocol/node";
 import { createApiClient } from "./lib/api-client.js";
-import { registerTools } from "./tools.js";
+import { registerTools, SERVER_INSTRUCTIONS } from "./tools.js";
 
 const app = express();
 const port = parseInt(process.env.MCP_HTTP_PORT || "3001", 10);
@@ -185,9 +185,12 @@ app.get(
 // Stateless: serves MCP 2026-07-28 plus 2025-era clients (initialize handshake).
 const mcpHandler = createMcpHandler(
   ({ authInfo }) => {
-    const server = new McpServer({ name: "memcontext", version: "1.0.0" });
+    const server = new McpServer(
+      { name: "memcontext", version: "1.0.0" },
+      { instructions: SERVER_INSTRUCTIONS },
+    );
     const credentials = authInfo?.extra as
-      | { apiKey?: string; dpopProof?: string }
+      | { apiKey?: string; dpopProof?: string; client?: string }
       | undefined;
     registerTools(
       server,
@@ -196,12 +199,26 @@ const mcpHandler = createMcpHandler(
         apiKey: credentials?.apiKey,
         accessToken: credentials?.apiKey ? undefined : authInfo?.token,
         dpopProof: credentials?.dpopProof,
+        client: () => credentials?.client,
       }),
     );
     return server;
   },
   { legacy: "stateless" },
 );
+
+/**
+ * App name for the request: 2026-07-28 clients send clientInfo in every request's _meta;
+ * 2025-era stateless tool calls do not, so fall back to the User-Agent product token.
+ */
+function extractClientName(req: express.Request): string | undefined {
+  const params = (req.body as { params?: Record<string, unknown> } | undefined)?.params;
+  const meta = params?._meta as Record<string, { name?: unknown } | undefined> | undefined;
+  const fromMeta = meta?.["io.modelcontextprotocol/clientInfo"]?.name;
+  const fromInit = (params?.clientInfo as { name?: unknown } | undefined)?.name;
+  const name = typeof fromMeta === "string" ? fromMeta : typeof fromInit === "string" ? fromInit : undefined;
+  return (name ?? req.get("user-agent"))?.slice(0, 80);
+}
 
 app.all("/mcp", async (req, res) => {
   const apiKey = extractApiKey(req);
@@ -240,6 +257,8 @@ app.all("/mcp", async (req, res) => {
     );
     return;
   }
+
+  authInfo = { ...authInfo, extra: { ...authInfo.extra, client: extractClientName(req) } };
 
   await toNodeHandler({
     fetch: (request, options) => mcpHandler.fetch(request, { ...options, authInfo }),
