@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { chunkTranscript, isHandoffContent, renderContext, estimateTokens } from "./memory-context.js";
+import { chunkTranscript, isHandoffContent, isValidDay, renderContext, estimateTokens } from "./memory-context.js";
 import type { TranscriptMessage } from "@memcontext/types";
 
 const msg = (role: TranscriptMessage["role"], content: string): TranscriptMessage => ({ role, content });
@@ -74,7 +74,19 @@ describe("chunkTranscript", () => {
       { final: true },
     );
     assert.deepEqual(r.days, ["2026-10-01", "2026-12-05", "2026-12-05"]);
+    assert.deepEqual(r.lastDays, ["2026-10-01", "2026-12-05", "2026-12-05"]);
     assert.ok(r.chunks[2].startsWith("[2026-12-05] ASSISTANT:"), r.chunks[2].slice(0, 30));
+  });
+
+  it("reports the latest day of a multi-day chunk", () => {
+    const r = chunkTranscript(
+      [
+        { role: "user", content: "a", at: "2026-10-01T10:00:00Z" },
+        { role: "user", content: "b", at: "2026-10-03T10:00:00Z" },
+      ],
+      { final: true },
+    );
+    assert.deepEqual([r.days[0], r.lastDays[0]], ["2026-10-01", "2026-10-03"]);
   });
 
   it("holds back the trailing partial chunk when final=false", () => {
@@ -84,6 +96,13 @@ describe("chunkTranscript", () => {
     const f = chunkTranscript([msg("user", "only short")], { final: false });
     assert.equal(f.chunks.length, 0);
     assert.equal(f.heldBack, true);
+  });
+});
+
+describe("isValidDay", () => {
+  it("accepts real days only", () => {
+    assert.equal(isValidDay("2026-02-28"), true);
+    for (const d of ["2026-00-01", "2026-02-30", "2026-13-01", "2026-1-01", "x"]) assert.equal(isValidDay(d), false, d);
   });
 });
 

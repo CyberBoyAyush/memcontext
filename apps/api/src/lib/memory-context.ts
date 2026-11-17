@@ -13,12 +13,21 @@ export function isHandoffContent(content: string): boolean {
   return HANDOFF_PREFIX.test(content);
 }
 
+/** True for a real calendar day in YYYY-MM-DD form (rejects 2026-00-01, 2026-02-30). */
+export function isValidDay(day: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return false;
+  const parsed = new Date(`${day}T00:00:00Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === day;
+}
+
 export const estimateTokens = (text: string): number => Math.ceil(text.length / 4);
 
 export interface TranscriptChunks {
   chunks: string[];
   /** Date (YYYY-MM-DD) each chunk starts on, when messages carry `at`. */
   days: Array<string | undefined>;
+  /** Latest date seen in each chunk (used to compare against newer memories). */
+  lastDays: Array<string | undefined>;
   redacted: number;
   heldBack: boolean;
 }
@@ -56,6 +65,7 @@ export function chunkTranscript(
   // Each chunk opens with its date and marks later day changes, so every chunk is self-dated.
   const chunks: string[] = [];
   const days: Array<string | undefined> = [];
+  const lastDays: Array<string | undefined> = [];
   let current: string[] = [];
   let currentDay: string | undefined;
   let marked: string | undefined;
@@ -64,6 +74,7 @@ export function chunkTranscript(
     if (size > 0 && size + line.text.length > target) {
       chunks.push(current.join("\n\n"));
       days.push(currentDay);
+      lastDays.push(marked);
       current = [];
       marked = undefined;
       size = 0;
@@ -79,9 +90,10 @@ export function chunkTranscript(
     if (options.final || size >= target) {
       chunks.push(current.join("\n\n"));
       days.push(currentDay);
+      lastDays.push(marked);
     } else heldBack = true;
   }
-  return { chunks, days, redacted, heldBack };
+  return { chunks, days, lastDays, redacted, heldBack };
 }
 
 export interface ContextLine {

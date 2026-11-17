@@ -52,7 +52,7 @@ import {
   normalizeClient,
   setHandoff,
 } from "../services/memory-context.js";
-import { isHandoffContent } from "../lib/memory-context.js";
+import { isHandoffContent, isValidDay } from "../lib/memory-context.js";
 
 const app = new Hono<{
   Variables: {
@@ -118,6 +118,7 @@ const ingestTranscriptSchema = z.object({
   date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}(T[\d:.]+(Z|[+-]\d{2}:?\d{2})?)?$/, "date must be YYYY-MM-DD or ISO 8601")
+    .refine((v) => isValidDay(v.slice(0, 10)) && !Number.isNaN(Date.parse(v)), "date is not a real calendar date")
     .optional(),
   final: z.boolean().optional(),
   handoff: z

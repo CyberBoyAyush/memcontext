@@ -27,6 +27,7 @@ import { invalidateApiKey, invalidateCachedProfile } from "./cache.js";
 import { normalizeProjectName, normalizeScope } from "../utils/index.js";
 import { logger } from "../lib/logger.js";
 import { redactSecrets, isOnlySecret } from "../lib/redact.js";
+import { isValidDay } from "../lib/memory-context.js";
 import {
   eq,
   and,
@@ -116,6 +117,7 @@ interface MemorySourcePayload {
   client?: string;
   sessionId?: string;
   date?: string;
+  sourceDate?: string;
 }
 
 interface AtomicSaveOptions {
@@ -319,7 +321,7 @@ async function saveAtomicMemory(
   // Facts from older conversations are valid from the day they were said, not the import time.
   const sourceDay = params.sourceDate?.slice(0, 10);
   const validFromDate =
-    sourceDay && /^\d{4}-\d{2}-\d{2}$/.test(sourceDay) && sourceDay < dayOf(new Date())
+    sourceDay && isValidDay(sourceDay) && sourceDay < dayOf(new Date())
       ? new Date(`${sourceDay}T00:00:00Z`)
       : new Date();
 
@@ -530,6 +532,7 @@ async function saveAtomicMemory(
   if (
     classification.action === "update" &&
     sourceDay &&
+    isValidDay(sourceDay) &&
     sourceDay < dayOf(targetMemory.validFrom ?? targetMemory.createdAt)
   ) {
     logger.info({ userId, existingId: targetMemory.id, sourceDay }, "older fact skipped (newer memory exists)");
@@ -791,6 +794,8 @@ export async function enqueueTranscriptChunk(params: {
   scope?: string;
   project?: string;
   date?: string;
+  /** Latest day in the chunk; an older fact never supersedes a newer memory. */
+  sourceDate?: string;
   source: MemorySource;
 }): Promise<SaveMemoryResult> {
   return enqueueLongMemorySource({
@@ -802,7 +807,7 @@ export async function enqueueTranscriptChunk(params: {
     scope: normalizeScope(params.scope),
     project: normalizeProjectName(params.project),
     memoryType: "member",
-    transcript: { sessionId: params.sessionId, date: params.date },
+    transcript: { sessionId: params.sessionId, date: params.date, sourceDate: params.sourceDate },
     contentHash: params.contentHash,
   });
 }
@@ -818,7 +823,7 @@ async function enqueueLongMemorySource(
   params: SaveMemoryParams & {
     scope?: string;
     project?: string;
-    transcript?: { sessionId: string; date?: string };
+    transcript?: { sessionId: string; date?: string; sourceDate?: string };
     contentHash?: string;
   },
 ): Promise<SaveMemoryResult> {
@@ -831,7 +836,12 @@ async function enqueueLongMemorySource(
     validUntil: params.validUntil ?? null,
     ...(params.client ? { client: params.client } : {}),
     ...(params.transcript
-      ? { mode: "transcript" as const, sessionId: params.transcript.sessionId, date: params.transcript.date }
+      ? {
+          mode: "transcript" as const,
+          sessionId: params.transcript.sessionId,
+          date: params.transcript.date,
+          sourceDate: params.transcript.sourceDate,
+        }
       : {}),
   };
 
@@ -1019,7 +1029,7 @@ async function processMemorySource(memorySource: MemorySourceRow) {
         memoryType: payload.memoryType === "user" ? "member" : (payload.memoryType ?? "member"),
         validUntil: payload.validUntil ?? undefined,
         vaultId: memorySource.vaultId ?? undefined,
-        sourceDate: payload.mode === "transcript" ? payload.date : undefined,
+        sourceDate: payload.mode === "transcript" ? (payload.sourceDate ?? payload.date) : undefined,
       },
       {
         scope: memorySource.scope ?? undefined,
